@@ -1,0 +1,17 @@
+import { Box, Toolbar } from '@mui/material';
+import { Outlet } from 'react-router-dom';
+import Sidebar from '../components/Sidebar';
+import Header from '../components/Header';
+
+export default function DashboardLayout() {
+    return (
+        <Box sx={{ display: 'flex' }}>
+            <Header />
+            <Sidebar />
+            <Box component="main" sx={{ flexGrow: 1, p: 3, width: { sm: `calc(100% - 260px)` }, bgcolor: 'background.default', minHeight: '100vh' }}>
+                <Toolbar /> {/* Spacer for fixed Header */}
+                <Outlet />
+            </Box>
+        </Box>
+    );
+}
