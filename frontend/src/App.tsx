@@ -1,11 +1,13 @@
-import { BrowserRouter as Router, Routes, Route, Navigate, Outlet } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Box, Typography } from '@mui/material';
 import TenantOnboarding from './pages/super-admin/TenantOnboarding';
 import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
 import EstateDetails from './pages/super-admin/EstateDetails';
 import Login from './pages/Login';
 import DashboardLayout from './layouts/DashboardLayout';
+import SuperAdminLayout from './layouts/SuperAdminLayout';
 import UserManagement from './pages/UserManagement';
+import Divisions from './pages/Divisions';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => (
@@ -16,8 +18,6 @@ const DashboardHome = () => (
     <Typography variant="body1" color="text.secondary">
       Welcome to your plantation management dashboard. Select a module from the sidebar to get started.
     </Typography>
-
-    {/* Future: Add Widgets here (Summary Cards, recent activity) */}
   </Box>
 );
 
@@ -27,23 +27,20 @@ function App() {
       <Routes>
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<TenantOnboarding />} />
 
-        {/* Protected Dashboard Routes - Wrapped in Layout */}
+        {/* Protected Dashboard Routes (Estate Owner/Manager) */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
           <Route path="users" element={<UserManagement />} />
-          {/* Future sub-routes: 
-            <Route path="map" element={<MapPage />} />
-            <Route path="harvest" element={<HarvestPage />} />
-            <Route path="muster" element={<MusterPage />} />
-            <Route path="inventory" element={<InventoryPage />} />
-            */}
+          <Route path="divisions" element={<Divisions />} />
         </Route>
 
-        {/* Public/Admin Routes */}
-        <Route path="/register" element={<TenantOnboarding />} />
-        <Route path="/super-admin" element={<SuperAdminDashboard />} />
-        <Route path="/super-admin/estate/:id" element={<EstateDetails />} />
+        {/* Super Admin Routes */}
+        <Route path="/super-admin" element={<SuperAdminLayout />}>
+          <Route index element={<SuperAdminDashboard />} />
+          <Route path="estate/:id" element={<EstateDetails />} />
+        </Route>
       </Routes>
     </Router>
   );

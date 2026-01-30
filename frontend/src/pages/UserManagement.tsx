@@ -18,7 +18,8 @@ import {
     TextField,
     MenuItem,
     CircularProgress,
-    IconButton
+    IconButton,
+    Alert
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -26,7 +27,7 @@ import axios from 'axios';
 
 // Roles Enum
 const ROLES = [
-    { value: 'MANAGER', label: 'Manager' },
+    { value: 'MANAGER', label: 'Estate Manager' },
     { value: 'FIELD_OFFICER', label: 'Field Officer' },
     { value: 'STORE_KEEPER', label: 'Store Keeper' }
 ];
@@ -38,14 +39,14 @@ export default function UserManagement() {
 
     // User Session
     const userSession = JSON.parse(localStorage.getItem('user') || '{}');
-    const tenantId = userSession.tenantId; // Need this to create user
+    const tenantId = userSession.tenantId;
 
     // Form State
     const [formData, setFormData] = useState({
         fullName: '',
         username: '',
         password: '',
-        role: 'FIELD_OFFICER'
+        role: 'MANAGER' // Default to Manager since Owner is creating it
     });
 
     useEffect(() => {
@@ -54,7 +55,6 @@ export default function UserManagement() {
 
     const fetchUsers = async () => {
         try {
-            // Using the existing endpoint to get users by tenant ID
             const response = await axios.get(`http://localhost:8080/api/tenants/${tenantId}/users`);
             setUsers(response.data);
         } catch (error) {
@@ -73,7 +73,7 @@ export default function UserManagement() {
                 ...formData
             });
             setOpen(false);
-            setFormData({ fullName: '', username: '', password: '', role: 'FIELD_OFFICER' });
+            setFormData({ fullName: '', username: '', password: '', role: 'MANAGER' });
             fetchUsers(); // Refresh list
         } catch (error) {
             alert("Failed to create user. Username might be taken.");
@@ -84,7 +84,7 @@ export default function UserManagement() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" fontWeight="bold">
-                    Staff Management
+                    Staff & User Management
                 </Typography>
                 <Button
                     variant="contained"
@@ -92,9 +92,13 @@ export default function UserManagement() {
                     onClick={() => setOpen(true)}
                     sx={{ px: 3 }}
                 >
-                    Add New User
+                    Add Staff Member
                 </Button>
             </Box>
+
+            <Typography variant="body2" color="text.secondary" mb={2}>
+                Manage your estate's operational staff. You are the <strong>Client Admin (Owner)</strong>.
+            </Typography>
 
             {loading ? (
                 <CircularProgress />
@@ -117,14 +121,20 @@ export default function UserManagement() {
                                     <TableCell>
                                         <Chip
                                             label={user.role.replace('_', ' ')}
-                                            color={user.role === 'MANAGER' ? 'primary' : 'default'}
+                                            color={
+                                                user.role === 'ESTATE_ADMIN' ? 'error' :
+                                                    user.role === 'MANAGER' ? 'primary' : 'default'
+                                            }
+                                            variant={user.role === 'ESTATE_ADMIN' ? 'filled' : 'outlined'}
                                             size="small"
                                         />
                                     </TableCell>
                                     <TableCell align="right">
-                                        <IconButton color="error" size="small">
-                                            <DeleteIcon />
-                                        </IconButton>
+                                        {user.role !== 'ESTATE_ADMIN' && (
+                                            <IconButton color="error" size="small">
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        )}
                                     </TableCell>
                                 </TableRow>
                             ))}

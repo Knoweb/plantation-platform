@@ -10,35 +10,20 @@ import {
     Divider,
 } from '@mui/material';
 import DashboardIcon from '@mui/icons-material/Dashboard';
-import ParkIcon from '@mui/icons-material/Park';
-import SpaIcon from '@mui/icons-material/Spa';
-import GroupsIcon from '@mui/icons-material/Groups';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import AddBusinessIcon from '@mui/icons-material/AddBusiness';
 import LogoutIcon from '@mui/icons-material/Logout';
-import PeopleIcon from '@mui/icons-material/People';
-import DomainIcon from '@mui/icons-material/Domain';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 260;
 
 const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard' },
-    { text: 'Field Map', icon: <ParkIcon />, path: '/dashboard/map' },
-    { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest' },
-    { text: 'Muster', icon: <GroupsIcon />, path: '/dashboard/muster' },
-    { text: 'Inventory', icon: <InventoryIcon />, path: '/dashboard/inventory' },
-    { text: 'Staff', icon: <PeopleIcon />, path: '/dashboard/users' },
-    { text: 'Divisions', icon: <DomainIcon />, path: '/dashboard/divisions' },
+    { text: 'Estates Overview', icon: <DashboardIcon />, path: '/super-admin' },
+    // We can add more global settings here later
 ];
 
-export default function Sidebar() {
+export default function SuperAdminSidebar() {
     const navigate = useNavigate();
     const location = useLocation();
-
-    // Load estate name & logo from backend session
-    const userSession = JSON.parse(localStorage.getItem('user') || '{}');
-    const estateName = userSession.estateName || 'EstateIQ';
-    const estateLogo = userSession.estateLogo;
 
     return (
         <Drawer
@@ -49,41 +34,16 @@ export default function Sidebar() {
                 [`& .MuiDrawer-paper`]: {
                     width: drawerWidth,
                     boxSizing: 'border-box',
-                    bgcolor: 'primary.main', // Green Sidebar
-                    color: 'white'
+                    bgcolor: 'primary.main', // Unified Plantation Green
+                    color: 'white',
+                    borderRight: 'none',
+                    boxShadow: '4px 0 10px rgba(0,0,0,0.1)' // Soft shadow for depth
                 },
             }}
         >
             <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                {/* Dynamic Logo Box - No White Background, Larger Size */}
-                <Box sx={{
-                    width: 70,
-                    height: 70,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    overflow: 'hidden',
-                    flexShrink: 0
-                }}>
-                    {estateLogo ? (
-                        <img src={estateLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
-                    ) : (
-                        <Box sx={{ width: 50, height: 50, bgcolor: 'white', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <SpaIcon color="primary" fontSize="large" />
-                        </Box>
-                    )}
-                </Box>
-
-                <Typography
-                    variant="subtitle1"
-                    fontWeight="bold"
-                    sx={{
-                        lineHeight: 1.2,
-                        textTransform: 'uppercase', // Capitalized Name
-                        letterSpacing: 1
-                    }}
-                >
-                    {estateName}
+                <Typography variant="h6" fontWeight="bold">
+                    SUPER ADMIN
                 </Typography>
             </Box>
 
@@ -111,6 +71,24 @@ export default function Sidebar() {
                         </ListItemButton>
                     </ListItem>
                 ))}
+
+                {/* Special 'Add Estate' Button in Sidebar */}
+                <ListItem disablePadding>
+                    <ListItemButton
+                        onClick={() => navigate('/register', { state: { fromAdmin: true } })}
+                        sx={{
+                            bgcolor: 'rgba(255, 255, 255, 0.15)', // White transparent
+                            mx: 1,
+                            borderRadius: 2,
+                            mb: 1,
+                            border: '1px solid rgba(255,255,255,0.3)',
+                            '&:hover': { bgcolor: 'rgba(255, 255, 255, 0.25)' }
+                        }}
+                    >
+                        <ListItemIcon sx={{ color: 'white' }}><AddBusinessIcon /></ListItemIcon>
+                        <ListItemText primary="New Estate" primaryTypographyProps={{ color: 'white', fontWeight: 'bold' }} />
+                    </ListItemButton>
+                </ListItem>
             </List>
 
             <Box sx={{ mt: 'auto', p: 2 }}>

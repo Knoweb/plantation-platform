@@ -26,6 +26,7 @@ public class TenantService {
 
     @Transactional
     public Tenant createTenant(TenantRequest request) {
+        System.out.println("DEBUG: Creating Tenant: " + request.getCompanyName());
         // 1. Validation
         if (tenantRepository.findBySubDomain(request.getSubDomain()).isPresent()) {
             throw new RuntimeException("Subdomain already exists");
@@ -42,14 +43,16 @@ public class TenantService {
 
         tenant = tenantRepository.save(tenant);
 
-        // 3. Create Admin User
+        // 3. Create Admin User (ESTATE OWNER)
         User adminUser = new User();
         adminUser.setTenantId(tenant.getTenantId());
-        adminUser.setFullName(request.getCompanyName() + " Admin");
+        adminUser.setFullName(request.getCompanyName() + " Owner");
         adminUser.setUsername(request.getAdminUsername());
         adminUser.setPasswordHash(request.getAdminPassword());
-        adminUser.setRole("MANAGER");
+        adminUser.setRole("ESTATE_ADMIN"); // Changed from MANAGER to ESTATE_ADMIN
 
+        System.out.println(
+                "DEBUG: Saving Admin User: " + adminUser.getUsername() + ", Pass: " + adminUser.getPasswordHash());
         userRepository.save(adminUser);
 
         return tenant;
@@ -82,14 +85,25 @@ public class TenantService {
     }
 
     public AuthResponse login(AuthRequest request) {
+        System.out.println("DEBUG: Login Attempt for: " + request.getUsername());
+
         // 1. Find User
         User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+                .orElseThrow(() -> {
+                    System.out.println("DEBUG: User not found!");
+                    return new RuntimeException("Invalid credentials");
+                });
+
+        System.out.println(
+                "DEBUG: User Found. DB Pass: " + user.getPasswordHash() + ", Input Pass: " + request.getPassword());
 
         // 2. Verify Password (Simple check for now)
-        if (!user.getPasswordHash().equals(request.getPassword())) {
+        if (user.getPasswordHash() == null || !user.getPasswordHash().equals(request.getPassword())) {
+            System.out.println("DEBUG: Password Mismatch!");
             throw new RuntimeException("Invalid credentials");
         }
+
+        System.out.println("DEBUG: Login Success!");
 
         // 3. Get Tenant Details
         Tenant tenant = tenantRepository.findById(user.getTenantId())

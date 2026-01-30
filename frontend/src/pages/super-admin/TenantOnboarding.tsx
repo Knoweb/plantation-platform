@@ -14,6 +14,7 @@ import BasicInfoStep from './steps/BasicInfoStep';
 import LogoUploadStep from './steps/LogoUploadStep';
 import DivisionsStep from './steps/DivisionsStep';
 import ConfigurationStep from './steps/ConfigurationStep';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 const steps = ['Estate Details', 'Branding', 'Manage Divisions', 'Select Crops'];
 
@@ -21,6 +22,10 @@ export default function TenantOnboarding() {
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+
+    const location = useLocation();
+    const navigate = useNavigate();
+    const fromAdmin = location.state?.fromAdmin;
 
     const [tenantData, setTenantData] = useState({
         companyName: '',
@@ -48,14 +53,26 @@ export default function TenantOnboarding() {
                     : 'estate-' + Math.floor(Math.random() * 10000);
 
                 // 1. Create Tenant & Admin User
-                await axios.post('http://localhost:8080/api/tenants', {
+                const response = await axios.post('http://localhost:8080/api/tenants', {
                     companyName: tenantData.companyName,
                     subDomain: generatedSubDomain,
                     adminUsername: tenantData.adminUsername,
                     adminPassword: tenantData.adminPassword,
-                    logoUrl: tenantData.logo, // Send the Logo URL
+                    logoUrl: tenantData.logo,
                     configJson: tenantData.configJson
                 });
+
+                const newTenantId = response.data.tenantId;
+
+                // 2. Save Divisions if any
+                if (tenantData.divisions && tenantData.divisions.length > 0) {
+                    await Promise.all(tenantData.divisions.map((divName) =>
+                        axios.post('http://localhost:8080/api/divisions', {
+                            tenantId: newTenantId,
+                            name: divName
+                        })
+                    ));
+                }
 
                 // 2. TODO: Call API to save Divisions (after we build that endpoint)
                 // 3. TODO: Call API to save Logo URL (after we build S3)
@@ -113,14 +130,27 @@ export default function TenantOnboarding() {
                                 Registration Successful!
                             </Typography>
                             <Typography variant="subtitle1" paragraph>
-                                Welcome, <strong>{tenantData.companyName}</strong>.
+                                {fromAdmin ? (
+                                    <>
+                                        Estate <strong>{tenantData.companyName}</strong> has been created successfully.
+                                        You can now manage it from the dashboard.
+                                    </>
+                                ) : (
+                                    <>
+                                        Welcome, <strong>{tenantData.companyName}</strong>.
+                                    </>
+                                )}
                             </Typography>
                             <Typography variant="body1">
-                                Your admin account <strong>{tenantData.adminUsername}</strong> has been created.
+                                Admin account <strong>{tenantData.adminUsername}</strong> is ready.
                             </Typography>
 
-                            <Button href="/login" variant="contained" sx={{ mt: 4 }}>
-                                Proceed to Login
+                            <Button
+                                onClick={() => fromAdmin ? navigate('/super-admin') : navigate('/login')}
+                                variant="contained"
+                                sx={{ mt: 4 }}
+                            >
+                                {fromAdmin ? "Return to Super Admin Dashboard" : "Proceed to Login"}
                             </Button>
                         </Box>
                     ) : (

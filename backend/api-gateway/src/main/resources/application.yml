@@ -24,7 +24,7 @@ spring:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
           predicates:
-            - Path=/api/tenants/**
+            - Path=/api/tenants/**, /api/divisions/**
 
 eureka:
   client:

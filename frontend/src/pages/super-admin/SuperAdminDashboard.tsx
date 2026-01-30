@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
     Box,
-    Container,
     Typography,
     Paper,
     Table,
@@ -12,24 +11,45 @@ import {
     TableRow,
     Chip,
     Button,
-    AppBar,
-    Toolbar,
-    CircularProgress,
+    Grid,
+    Card,
+    CardContent,
     IconButton,
-    Tooltip
+    Avatar
 } from '@mui/material';
 import axios from 'axios';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
 import DeleteIcon from '@mui/icons-material/Delete';
-import PowerSettingsNewIcon from '@mui/icons-material/PowerSettingsNew';
-import SettingsIcon from '@mui/icons-material/Settings';
+import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
+import BusinessIcon from '@mui/icons-material/Business';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import PeopleIcon from '@mui/icons-material/People';
 import { useNavigate } from 'react-router-dom';
+
+function KPICard({ title, value, color, icon }: any) {
+    return (
+        <Card sx={{ height: '100%', borderLeft: `5px solid ${color}`, boxShadow: 2 }}>
+            <CardContent>
+                <Box display="flex" justifyContent="space-between" alignItems="center">
+                    <Box>
+                        <Typography variant="overline" color={color} fontWeight="bold">
+                            {title}
+                        </Typography>
+                        <Typography variant="h5" fontWeight="bold">
+                            {value}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ color: '#e0e0e0' }}>
+                        {icon}
+                    </Box>
+                </Box>
+            </CardContent>
+        </Card>
+    );
+}
 
 export default function SuperAdminDashboard() {
     const navigate = useNavigate();
     const [tenants, setTenants] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         fetchTenants();
@@ -41,8 +61,6 @@ export default function SuperAdminDashboard() {
             setTenants(response.data);
         } catch (error) {
             console.error('Failed to fetch tenants', error);
-        } finally {
-            setLoading(false);
         }
     };
 
@@ -57,127 +75,105 @@ export default function SuperAdminDashboard() {
         }
     };
 
-    const handleToggleStatus = async (id: string, currentStatus: string) => {
-        const newStatus = currentStatus === 'ACTIVE' ? 'SUSPENDED' : 'ACTIVE';
-        try {
-            await axios.put(`http://localhost:8080/api/tenants/${id}/status?status=${newStatus}`);
-            setTenants(prev => prev.map(t => t.tenantId === id ? { ...t, subscriptionStatus: newStatus } : t));
-        } catch (error) {
-            alert('Failed to update status');
-        }
-    };
+    // handleToggleStatus removed (moved to EstateDetails)
+
+    // Derived Metrics
+    const totalEstates = tenants.length;
+    const activeEstates = tenants.filter(t => t.subscriptionStatus === 'ACTIVE').length;
+    const suspendedEstates = tenants.filter(t => t.subscriptionStatus !== 'ACTIVE').length;
 
     return (
-        <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: 'background.default' }}>
-            <AppBar position="static" color="primary">
-                <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        EstateIQ - Super Admin Panel
-                    </Typography>
-                    <Button color="inherit" href="/login">Logout</Button>
-                </Toolbar>
-            </AppBar>
+        <Box sx={{ flexGrow: 1, minHeight: '100vh', bgcolor: '#f8f9fc', p: 3 }}>
 
-            <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                    <Typography variant="h4" gutterBottom>
-                        Registered Estates
-                    </Typography>
-                    <Button variant="contained" color="secondary" onClick={fetchTenants}>
-                        Refresh List
-                    </Button>
+            {/* Branding Header & Profile - Kept Same */}
+            <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
+                <Box>
+                    <Typography variant="h4" fontWeight="bold" color="primary">EstateIQ</Typography>
+                    <Typography variant="subtitle1" color="text.secondary">Super Admin Dashboard</Typography>
                 </Box>
-
-                {loading ? (
-                    <Box display="flex" justifyContent="center" mt={5}>
-                        <CircularProgress />
+                <Box display="flex" alignItems="center" gap={2}>
+                    <Box textAlign="right" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                        <Typography variant="subtitle2" fontWeight="bold" color="text.primary">Super Admin</Typography>
+                        <Typography variant="caption" color="text.secondary">{new Date().toLocaleDateString()}</Typography>
                     </Box>
-                ) : (
-                    <TableContainer component={Paper}>
-                        <Table sx={{ minWidth: 650 }} aria-label="tenants table">
-                            <TableHead sx={{ bgcolor: 'grey.200' }}>
-                                <TableRow>
-                                    <TableCell><strong>Company Name</strong></TableCell>
-                                    <TableCell><strong>Subdomain</strong></TableCell>
-                                    <TableCell><strong>Status</strong></TableCell>
-                                    <TableCell><strong>Configured Crops</strong></TableCell>
-                                    <TableCell><strong>Created At</strong></TableCell>
-                                    <TableCell align="right"><strong>Actions</strong></TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {tenants.map((tenant) => (
-                                    <TableRow
-                                        key={tenant.tenantId}
-                                        sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                                    >
-                                        <TableCell component="th" scope="row">
-                                            {tenant.companyName}
-                                        </TableCell>
-                                        <TableCell>
-                                            <a href={`http://${tenant.subDomain}.localhost:5173`} target="_blank" rel="noreferrer" style={{ textDecoration: 'none', color: '#1976d2' }}>
-                                                {tenant.subDomain}.estateiq.com
-                                            </a>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip
-                                                icon={tenant.subscriptionStatus === 'ACTIVE' ? <CheckCircleIcon /> : <CancelIcon />}
-                                                label={tenant.subscriptionStatus}
-                                                color={tenant.subscriptionStatus === 'ACTIVE' ? "success" : "error"}
-                                                size="small"
-                                                variant="outlined"
-                                            />
-                                        </TableCell>
-                                        <TableCell>
-                                            {tenant.configJson && Object.keys(tenant.configJson)
-                                                .filter(k => tenant.configJson[k])
-                                                .map(crop => (
-                                                    <Chip key={crop} label={crop} size="small" sx={{ mr: 0.5, textTransform: 'capitalize' }} />
-                                                ))
-                                            }
-                                        </TableCell>
-                                        <TableCell>{new Date(tenant.createdAt).toLocaleDateString()}</TableCell>
-                                        <TableCell align="right">
-                                            <Button
-                                                variant="outlined"
-                                                size="small"
-                                                startIcon={<SettingsIcon />}
-                                                onClick={() => navigate(`/super-admin/estate/${tenant.tenantId}`)}
-                                                sx={{ mr: 1 }}
-                                            >
-                                                Manage
-                                            </Button>
-                                            <Tooltip title={tenant.subscriptionStatus === 'ACTIVE' ? "Suspend" : "Activate"}>
-                                                <IconButton
-                                                    color={tenant.subscriptionStatus === 'ACTIVE' ? "warning" : "success"}
-                                                    onClick={() => handleToggleStatus(tenant.tenantId, tenant.subscriptionStatus)}
-                                                >
-                                                    <PowerSettingsNewIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                            <Tooltip title="Delete Estate">
-                                                <IconButton color="error" onClick={() => handleDelete(tenant.tenantId, tenant.companyName)}>
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                            </Tooltip>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
+                    <Avatar sx={{ bgcolor: 'primary.main', width: 45, height: 45 }}>SA</Avatar>
+                </Box>
+            </Box>
 
-                                {tenants.length === 0 && (
-                                    <TableRow>
-                                        <TableCell colSpan={6} align="center">
-                                            <Typography sx={{ py: 3, color: 'text.secondary' }}>
-                                                No estates registered yet.
-                                            </Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
-                )}
-            </Container>
+            {/* KPI Cards Row */}
+            <Grid container spacing={3} mb={4}>
+                <Grid item xs={12} sm={6} md={3}>
+                    <KPICard title="Total Estates" value={totalEstates} color="#4e73df" icon={<BusinessIcon fontSize="large" />} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <KPICard title="Active Subscriptions" value={activeEstates} color="#1cc88a" icon={<MonetizationOnIcon fontSize="large" />} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <KPICard title="Suspended / Inactive" value={suspendedEstates} color="#e74a3b" icon={<AssignmentIcon fontSize="large" />} />
+                </Grid>
+                <Grid item xs={12} sm={6} md={3}>
+                    <KPICard title="Total Active Staff" value="--" color="#f6c23e" icon={<PeopleIcon fontSize="large" />} />
+                </Grid>
+            </Grid>
+
+            {/* Bottom Section: Estates Table */}
+            <Paper sx={{ width: '100%', overflow: 'hidden', boxShadow: 2, borderRadius: 2 }}>
+                <Box p={3} borderBottom="1px solid #e3e6f0">
+                    <Typography variant="h6" fontWeight="bold" color="primary">Registered Estates</Typography>
+                </Box>
+                <TableContainer sx={{ maxHeight: 440 }}>
+                    <Table stickyHeader aria-label="sticky table">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Logo</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Company Name</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Subdomain</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }} align="right">Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {tenants.map((tenant) => (
+                                <TableRow hover role="checkbox" tabIndex={-1} key={tenant.tenantId}>
+                                    <TableCell>
+                                        {tenant.logoUrl ? (
+                                            <Avatar src={tenant.logoUrl} variant="rounded" sx={{ width: 40, height: 40 }} />
+                                        ) : (
+                                            <Avatar variant="rounded" sx={{ width: 40, height: 40, bgcolor: 'secondary.main' }}>
+                                                {tenant.companyName.charAt(0)}
+                                            </Avatar>
+                                        )}
+                                    </TableCell>
+                                    <TableCell>
+                                        <Typography fontWeight="bold">{tenant.companyName}</Typography>
+                                    </TableCell>
+                                    <TableCell>{tenant.subDomain}.estateiq.com</TableCell>
+                                    <TableCell>
+                                        <Chip
+                                            label={tenant.subscriptionStatus}
+                                            color={tenant.subscriptionStatus === 'ACTIVE' ? "success" : "error"}
+                                            size="small"
+                                        />
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        <Button
+                                            variant="contained"
+                                            size="small"
+                                            onClick={() => navigate(`/super-admin/estate/${tenant.tenantId}`)}
+                                            sx={{ mr: 1, textTransform: 'none', bgcolor: '#4e73df' }}
+                                        >
+                                            Manage
+                                        </Button>
+                                        <IconButton color="error" size="small" onClick={() => handleDelete(tenant.tenantId, tenant.companyName)}>
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
         </Box>
     );
 }
