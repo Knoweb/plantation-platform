@@ -37,6 +37,9 @@ public class User {
     @JdbcTypeCode(SqlTypes.JSON)
     private List<String> divisionAccess;
 
+    @Column(name = "email", length = 100)
+    private String email;
+
     public User() {
     }
 
@@ -103,5 +106,13 @@ public class User {
 
     public void setDivisionAccess(List<String> divisionAccess) {
         this.divisionAccess = divisionAccess;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
     }
 }

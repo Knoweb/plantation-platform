@@ -48,7 +48,7 @@ export default function Login() {
                 userId: response.data.userId
             };
 
-            localStorage.setItem('user', JSON.stringify(sessionData));
+            sessionStorage.setItem('user', JSON.stringify(sessionData));
 
             navigate('/dashboard');
         } catch (err: any) {

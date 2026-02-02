@@ -66,10 +66,10 @@ export default function TenantOnboarding() {
 
                 // 2. Save Divisions if any
                 if (tenantData.divisions && tenantData.divisions.length > 0) {
-                    await Promise.all(tenantData.divisions.map((divName) =>
+                    await Promise.all(tenantData.divisions.map((div: any) =>
                         axios.post('http://localhost:8080/api/divisions', {
                             tenantId: newTenantId,
-                            name: divName
+                            name: div.name
                         })
                     ));
                 }

@@ -92,7 +92,7 @@ export default function SuperAdminSidebar() {
             </List>
 
             <Box sx={{ mt: 'auto', p: 2 }}>
-                <ListItemButton onClick={() => { localStorage.removeItem('user'); navigate('/login'); }} sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                <ListItemButton onClick={() => { sessionStorage.removeItem('user'); navigate('/login'); }} sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
                     <ListItemIcon sx={{ color: 'white' }}><LogoutIcon /></ListItemIcon>
                     <ListItemText primary="Logout" />
                 </ListItemButton>

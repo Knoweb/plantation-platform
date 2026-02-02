@@ -31,31 +31,48 @@ public class TenantService {
         if (tenantRepository.findBySubDomain(request.getSubDomain()).isPresent()) {
             throw new RuntimeException("Subdomain already exists");
         }
+        // Check Global Username Duplication (if required by business rule, though DB
+        // constraint is per tenant)
+        // If we want globally unique usernames:
+        if (userRepository.findByUsername(request.getAdminUsername()).isPresent()) {
+            throw new RuntimeException("Username already taken. Please choose another.");
+        }
 
-        // 2. Create Tenant
-        Tenant tenant = new Tenant();
-        tenant.setCompanyName(request.getCompanyName());
-        tenant.setSubDomain(request.getSubDomain());
-        tenant.setLogoUrl(request.getLogoUrl()); // Set Logo
-        tenant.setSubscriptionStatus("ACTIVE");
-        tenant.setConfigJson(request.getConfigJson());
-        tenant.setCreatedAt(LocalDateTime.now());
+        try {
+            // 2. Create Tenant
+            Tenant tenant = new Tenant();
+            tenant.setCompanyName(request.getCompanyName());
+            tenant.setSubDomain(request.getSubDomain());
+            tenant.setLogoUrl(request.getLogoUrl()); // Set Logo
+            tenant.setSubscriptionStatus("ACTIVE");
+            tenant.setConfigJson(request.getConfigJson());
+            tenant.setCreatedAt(LocalDateTime.now());
 
-        tenant = tenantRepository.save(tenant);
+            tenant = tenantRepository.save(tenant);
 
-        // 3. Create Admin User (ESTATE OWNER)
-        User adminUser = new User();
-        adminUser.setTenantId(tenant.getTenantId());
-        adminUser.setFullName(request.getCompanyName() + " Owner");
-        adminUser.setUsername(request.getAdminUsername());
-        adminUser.setPasswordHash(request.getAdminPassword());
-        adminUser.setRole("ESTATE_ADMIN"); // Changed from MANAGER to ESTATE_ADMIN
+            // 3. Create Admin User (ESTATE OWNER)
+            User adminUser = new User();
+            adminUser.setTenantId(tenant.getTenantId());
+            adminUser.setFullName(request.getCompanyName() + " Owner");
+            adminUser.setUsername(request.getAdminUsername());
+            adminUser.setPasswordHash(request.getAdminPassword());
+            adminUser.setRole("ESTATE_ADMIN");
 
-        System.out.println(
-                "DEBUG: Saving Admin User: " + adminUser.getUsername() + ", Pass: " + adminUser.getPasswordHash());
-        userRepository.save(adminUser);
+            System.out.println("DEBUG: Saving Admin User: " + adminUser.getUsername());
+            userRepository.save(adminUser);
 
-        return tenant;
+            return tenant;
+        } catch (Exception e) {
+            e.printStackTrace();
+            try {
+                java.nio.file.Files.writeString(
+                        java.nio.file.Path.of("tenant_error.log"),
+                        e.toString() + "\n" + java.util.Arrays.toString(e.getStackTrace()));
+            } catch (java.io.IOException ioException) {
+                // Ignore
+            }
+            throw new RuntimeException("Error creating tenant: " + e.getMessage());
+        }
     }
 
     public java.util.List<Tenant> getAllTenants() {
@@ -132,9 +149,41 @@ public class TenantService {
         user.setTenantId(request.getTenantId());
         user.setFullName(request.getFullName());
         user.setUsername(request.getUsername());
-        user.setPasswordHash(request.getPassword()); // In real app, hash this!
+        user.setEmail(request.getEmail());
+        user.setPasswordHash(request.getPassword());
         user.setRole(request.getRole());
+        user.setDivisionAccess(request.getDivisionAccess());
 
         return userRepository.save(user);
+    }
+
+    @Transactional
+    public User updateUser(java.util.UUID userId, UserRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+
+        // Check for duplicate username if changed
+        if (!user.getUsername().equals(request.getUsername()) &&
+                userRepository.findByUsername(request.getUsername()).isPresent()) {
+            throw new RuntimeException("Username already exists");
+        }
+
+        user.setFullName(request.getFullName());
+        user.setUsername(request.getUsername());
+        user.setEmail(request.getEmail());
+        user.setRole(request.getRole());
+        user.setDivisionAccess(request.getDivisionAccess());
+
+        // Update password only if provided and not empty
+        if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
+            user.setPasswordHash(request.getPassword());
+        }
+
+        return userRepository.save(user);
+    }
+
+    @Transactional
+    public void deleteUser(java.util.UUID userId) {
+        userRepository.deleteById(userId);
     }
 }

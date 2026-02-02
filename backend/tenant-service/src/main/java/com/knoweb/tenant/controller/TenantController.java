@@ -71,4 +71,19 @@ public class TenantController {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
+
+    @PutMapping("/users/{userId}")
+    public ResponseEntity<?> updateUser(@PathVariable java.util.UUID userId, @RequestBody UserRequest request) {
+        try {
+            return ResponseEntity.ok(tenantService.updateUser(userId, request));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @DeleteMapping("/users/{userId}")
+    public ResponseEntity<?> deleteUser(@PathVariable java.util.UUID userId) {
+        tenantService.deleteUser(userId);
+        return ResponseEntity.noContent().build();
+    }
 }

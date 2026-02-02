@@ -9,17 +9,31 @@ import SuperAdminLayout from './layouts/SuperAdminLayout';
 import UserManagement from './pages/UserManagement';
 import Divisions from './pages/Divisions';
 
+import ManagerDashboard from './pages/manager/ManagerDashboard';
+import FieldOfficerDashboard from './pages/field-officer/FieldOfficerDashboard';
+import StoreKeeperDashboard from './pages/store-keeper/StoreKeeperDashboard';
+import EstateAdminDashboard from './pages/estate-admin/EstateAdminDashboard';
+import DailyEntry from './pages/field-officer/DailyEntry';
+import CropAchievements from './pages/field-officer/tabs/CropAchievements';
+import MusterApproval from './pages/field-officer/tabs/MusterApproval';
+import MusterReview from './pages/field-officer/tabs/MusterReview';
+import GeneralStock from './pages/field-officer/tabs/GeneralStock';
+import KPIs from './pages/field-officer/tabs/KPIs';
+import PendingApprovals from './pages/manager/tabs/PendingApprovals';
+import CropBook from './pages/manager/tabs/CropBook';
+
 // Placeholder Component for the Main Dashboard View
-const DashboardHome = () => (
-  <Box>
-    <Typography variant="h4" color="primary" gutterBottom fontWeight="bold">
-      Estate Overview
-    </Typography>
-    <Typography variant="body1" color="text.secondary">
-      Welcome to your plantation management dashboard. Select a module from the sidebar to get started.
-    </Typography>
-  </Box>
-);
+const DashboardHome = () => {
+  const user = JSON.parse(sessionStorage.getItem('user') || '{}');
+  const role = user.role;
+
+  if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
+  if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
+  if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
+  if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/store" replace />;
+
+  return <Navigate to="/dashboard/admin" replace />;
+};
 
 function App() {
   return (
@@ -32,8 +46,30 @@ function App() {
         {/* Protected Dashboard Routes (Estate Owner/Manager) */}
         <Route path="/dashboard" element={<DashboardLayout />}>
           <Route index element={<DashboardHome />} />
+
+          {/* Explicit Role Dashboards */}
+          <Route path="admin" element={<EstateAdminDashboard />} />
+          <Route path="manager" element={<ManagerDashboard />} />
+          <Route path="field" element={<FieldOfficerDashboard />} />
+          <Route path="store" element={<StoreKeeperDashboard />} />
+
+          {/* Feature Routes */}
           <Route path="users" element={<UserManagement />} />
           <Route path="divisions" element={<Divisions />} />
+          <Route path="harvest" element={<DailyEntry />} />
+          <Route path="muster" element={<DailyEntry />} />
+
+          {/* Field Officer Tabs */}
+          <Route path="crop-achievements" element={<CropAchievements />} />
+          <Route path="muster-approval" element={<MusterApproval />} />
+          <Route path="muster-review" element={<MusterReview />} />
+          <Route path="stock" element={<GeneralStock />} />
+          <Route path="kpis" element={<KPIs />} />
+          <Route path="inventory" element={<GeneralStock />} /> {/* Shared/Placeholder for Store */}
+
+          {/* Manager Tabs */}
+          <Route path="approvals" element={<PendingApprovals />} />
+          <Route path="crop-book" element={<CropBook />} />
         </Route>
 
         {/* Super Admin Routes */}

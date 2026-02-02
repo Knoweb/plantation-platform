@@ -6,8 +6,10 @@ public class UserRequest {
     private UUID tenantId;
     private String fullName;
     private String username;
+    private String email;
     private String password;
     private String role; // MANAGER, FIELD_OFFICER, STORE_KEEPER
+    private java.util.List<String> divisionAccess; // List of Division IDs
 
     // Getters and Setters
     public UUID getTenantId() {
@@ -34,6 +36,14 @@ public class UserRequest {
         this.username = username;
     }
 
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
     public String getPassword() {
         return password;
     }
@@ -48,5 +58,13 @@ public class UserRequest {
 
     public void setRole(String role) {
         this.role = role;
+    }
+
+    public java.util.List<String> getDivisionAccess() {
+        return divisionAccess;
+    }
+
+    public void setDivisionAccess(java.util.List<String> divisionAccess) {
+        this.divisionAccess = divisionAccess;
     }
 }

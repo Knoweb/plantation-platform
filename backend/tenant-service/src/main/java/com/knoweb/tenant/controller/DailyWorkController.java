@@ -1,0 +1,53 @@
+package com.knoweb.tenant.controller;
+
+import com.knoweb.tenant.dto.DailyWorkRequest;
+import com.knoweb.tenant.service.DailyWorkService;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+import java.util.Map;
+
+@RestController
+@RequestMapping("/api/tenants/daily-work")
+public class DailyWorkController {
+
+    private final DailyWorkService dailyWorkService;
+
+    public DailyWorkController(DailyWorkService dailyWorkService) {
+        this.dailyWorkService = dailyWorkService;
+    }
+
+    @PostMapping
+    public ResponseEntity<?> submitWork(@RequestBody DailyWorkRequest request) {
+        try {
+            return ResponseEntity.ok(dailyWorkService.submitWork(request));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/approve")
+    public ResponseEntity<?> approveWork(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(dailyWorkService.approveWork(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @GetMapping
+    public ResponseEntity<?> getRecords(
+            @RequestParam UUID tenantId,
+            @RequestParam(required = false) String divisionId,
+            @RequestParam(required = false) String status) {
+
+        if (divisionId != null) {
+            return ResponseEntity.ok(dailyWorkService.getRecordsByDivision(tenantId, divisionId));
+        }
+        if ("PENDING".equalsIgnoreCase(status)) {
+            return ResponseEntity.ok(dailyWorkService.getPendingRecords(tenantId));
+        }
+        return ResponseEntity.ok(dailyWorkService.getRecordsByTenant(tenantId));
+    }
+}
