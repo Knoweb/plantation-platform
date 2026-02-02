@@ -1,5 +1,5 @@
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Box, Typography } from '@mui/material';
+
 import TenantOnboarding from './pages/super-admin/TenantOnboarding';
 import SuperAdminDashboard from './pages/super-admin/SuperAdminDashboard';
 import EstateDetails from './pages/super-admin/EstateDetails';
@@ -30,7 +30,7 @@ const DashboardHome = () => {
   if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
   if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
   if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
-  if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/store" replace />;
+  if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/inventory" replace />;
 
   return <Navigate to="/dashboard/admin" replace />;
 };
@@ -65,7 +65,7 @@ function App() {
           <Route path="muster-review" element={<MusterReview />} />
           <Route path="stock" element={<GeneralStock />} />
           <Route path="kpis" element={<KPIs />} />
-          <Route path="inventory" element={<GeneralStock />} /> {/* Shared/Placeholder for Store */}
+          <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Main Store Keeper View */}
 
           {/* Manager Tabs */}
           <Route path="approvals" element={<PendingApprovals />} />

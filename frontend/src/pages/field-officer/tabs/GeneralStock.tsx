@@ -1,89 +1,142 @@
-import { Box, Typography, Card, CardContent, Grid, Paper, LinearProgress } from '@mui/material';
-import InventoryIcon from '@mui/icons-material/Inventory';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert } from '@mui/material';
+import EditIcon from '@mui/icons-material/Edit';
+import WarningIcon from '@mui/icons-material/Warning';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
 export default function GeneralStock() {
+    const [items, setItems] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+
+    // Buffer Edit State
+    const [editOpen, setEditOpen] = useState(false);
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [bufferInput, setBufferInput] = useState<string>('');
+
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const tenantId = userSession.tenantId;
+    const isManager = userSession.role === 'MANAGER';
+
+    useEffect(() => {
+        fetchInventory();
+    }, [tenantId]);
+
+    const fetchInventory = async () => {
+        try {
+            const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`);
+            setItems(res.data);
+            setLoading(false);
+        } catch (err) {
+            console.error(err);
+            setError("Failed to load inventory.");
+            setLoading(false);
+        }
+    };
+
+    const handleEditClick = (item: any) => {
+        setSelectedItem(item);
+        setBufferInput(String(item.bufferLevel));
+        setEditOpen(true);
+    };
+
+    const handleSaveBuffer = async () => {
+        if (!selectedItem) return;
+        const newLevel = parseInt(bufferInput) || 0;
+        try {
+            await axios.put(`http://localhost:8080/api/inventory/${selectedItem.id}/buffer`, newLevel, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            setEditOpen(false);
+            fetchInventory();
+        } catch (err) {
+            alert("Failed to update buffer level");
+        }
+    };
+
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                General Stock
+                General Stock & Inventory Level
             </Typography>
             <Typography variant="body1" color="text.secondary" mb={4}>
-                Real-time updates on seeds, fertilizers, and field equipment.
+                Overview of current stock levels. Managers can set buffer thresholds here.
             </Typography>
 
-            <Grid container spacing={3}>
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <InventoryIcon color="success" sx={{ mr: 1 }} />
-                                <Typography variant="h6">Fertilizers & Chemicals</Typography>
-                            </Box>
+            {/* Manager Alert Summary */}
+            {isManager && items.some(i => i.currentQuantity < i.bufferLevel) && (
+                <Alert severity="warning" sx={{ mb: 3 }}>
+                    Attention Manager: Some items are below their buffer level. Please review stock and authorize purchase requests.
+                </Alert>
+            )}
 
-                            <Box mb={3}>
-                                <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography variant="body2">NPK Fertilizer</Typography>
-                                    <Typography variant="body2" fontWeight="bold">450 kg / 1000 kg</Typography>
-                                </Box>
-                                <LinearProgress variant="determinate" value={45} color="warning" />
-                            </Box>
+            <TableContainer component={Paper}>
+                <Table>
+                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                        <TableRow>
+                            <TableCell><strong>Item Name</strong></TableCell>
+                            <TableCell><strong>Category</strong></TableCell>
+                            <TableCell align="center"><strong>Unit</strong></TableCell>
+                            <TableCell align="center"><strong>Current Qty</strong></TableCell>
+                            <TableCell align="center"><strong>Buffer Level</strong></TableCell>
+                            <TableCell align="center"><strong>Status</strong></TableCell>
+                        </TableRow>
+                    </TableHead>
+                    <TableBody>
+                        {items.map((item) => {
+                            const isLow = item.currentQuantity < item.bufferLevel;
+                            return (
+                                <TableRow key={item.id} sx={{ bgcolor: isLow ? '#fff4f4' : 'inherit' }}>
+                                    <TableCell>{item.name}</TableCell>
+                                    <TableCell><Chip label={item.category} size="small" /></TableCell>
+                                    <TableCell align="center">{item.unit}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{item.currentQuantity}</TableCell>
+                                    <TableCell align="center">
+                                        {item.bufferLevel}
+                                        {isManager && (
+                                            <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 1 }}>
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        {isLow ? (
+                                            <Chip icon={<WarningIcon />} label="Low Stock" color="error" size="small" />
+                                        ) : (
+                                            <Chip icon={<CheckCircleIcon />} label="Good" color="success" size="small" variant="outlined" />
+                                        )}
+                                    </TableCell>
+                                </TableRow>
+                            );
+                        })}
+                        {items.length === 0 && !loading && (
+                            <TableRow><TableCell colSpan={6} align="center">No inventory items found.</TableCell></TableRow>
+                        )}
+                    </TableBody>
+                </Table>
+            </TableContainer>
 
-                            <Box mb={3}>
-                                <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography variant="body2">Urea</Typography>
-                                    <Typography variant="body2" fontWeight="bold">800 kg / 1000 kg</Typography>
-                                </Box>
-                                <LinearProgress variant="determinate" value={80} color="success" />
-                            </Box>
-
-                            <Box>
-                                <Box display="flex" justifyContent="space-between" mb={1}>
-                                    <Typography variant="body2">Weedicide</Typography>
-                                    <Typography variant="body2" fontWeight="bold">20 L / 50 L</Typography>
-                                </Box>
-                                <LinearProgress variant="determinate" value={40} color="error" />
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <InventoryIcon color="info" sx={{ mr: 1 }} />
-                                <Typography variant="h6">Tools & Equipment</Typography>
-                            </Box>
-                            <Grid container spacing={2}>
-                                <Grid item xs={6}>
-                                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#e3f2fd' }}>
-                                        <Typography variant="h5" fontWeight="bold">128</Typography>
-                                        <Typography variant="body2">Baskets</Typography>
-                                    </Paper>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#e3f2fd' }}>
-                                        <Typography variant="h5" fontWeight="bold">45</Typography>
-                                        <Typography variant="body2">Pruning Shears</Typography>
-                                    </Paper>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#e3f2fd' }}>
-                                        <Typography variant="h5" fontWeight="bold">12</Typography>
-                                        <Typography variant="body2">Safety Kits</Typography>
-                                    </Paper>
-                                </Grid>
-                                <Grid item xs={6}>
-                                    <Paper sx={{ p: 2, textAlign: 'center', bgcolor: '#fff3e0' }}>
-                                        <Typography variant="h5" fontWeight="bold" color="warning.main">2</Typography>
-                                        <Typography variant="body2">Broken/Repair</Typography>
-                                    </Paper>
-                                </Grid>
-                            </Grid>
-                        </CardContent>
-                    </Card>
-                </Grid>
-            </Grid>
+            {/* Buffer Edit Dialog */}
+            <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
+                <DialogTitle>Update Buffer Level</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" mb={2}>
+                        Set the minimum stock level for <strong>{selectedItem?.name}</strong>.
+                    </Typography>
+                    <TextField
+                        type="number"
+                        label="Buffer Level"
+                        fullWidth
+                        value={bufferInput}
+                        onChange={(e) => setBufferInput(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setEditOpen(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={handleSaveBuffer}>Update</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

@@ -11,7 +11,6 @@ import java.util.List;
 
 @RestController
 @RequestMapping("/api/inventory")
-@CrossOrigin(origins = "http://localhost:5173")
 public class InventoryController {
 
     @Autowired
@@ -20,6 +19,11 @@ public class InventoryController {
     @GetMapping
     public List<InventoryItem> getInventory(@RequestParam String tenantId) {
         return service.getAllItems(tenantId);
+    }
+
+    @PostMapping
+    public InventoryItem createItem(@RequestBody InventoryItem item) {
+        return service.createItem(item);
     }
 
     @PostMapping("/transaction")

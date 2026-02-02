@@ -11,7 +11,7 @@ export default function Header() {
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
     // Load user info
-    const userSession = JSON.parse(localStorage.getItem('user') || '{}');
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userName = userSession.username || 'Guest User';
     const userRole = userSession.role || 'Visitor';
 
@@ -24,7 +24,7 @@ export default function Header() {
     };
 
     const handleLogout = () => {
-        localStorage.removeItem('user');
+        sessionStorage.removeItem('user');
         navigate('/login');
     };
 
