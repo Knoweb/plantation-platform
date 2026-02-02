@@ -42,7 +42,7 @@ export default function ManagerDashboard() {
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Manager Dashboard
+                Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Manage approvals and oversee crop lifecycle records.

@@ -8,7 +8,10 @@ import {
     Box,
     Typography,
     Divider,
+    Badge, // Import Badge
 } from '@mui/material';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SpaIcon from '@mui/icons-material/Spa';
 import InventoryIcon from '@mui/icons-material/Inventory';
@@ -22,6 +25,7 @@ import TerrainIcon from '@mui/icons-material/Terrain';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
+import HistoryIcon from '@mui/icons-material/History';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 260;
@@ -49,6 +53,7 @@ const menuItems = [
 
     // Store Keeper
     { text: 'Inventory', icon: <InventoryIcon />, path: '/dashboard/inventory', roles: ['STORE_KEEPER'] },
+    { text: 'Recent Transactions', icon: <HistoryIcon />, path: '/dashboard/store/history', roles: ['STORE_KEEPER'] },
 
     // Settings
     { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: ['ESTATE_ADMIN'] },
@@ -59,9 +64,47 @@ export default function Sidebar() {
 
     // Load estate name & logo from backend session
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const estateName = userSession.estateName || 'EstateIQ';
-    const estateLogo = userSession.estateLogo;
     const userRole = userSession.role;
+    const estateName = userSession.estateName || 'Plantation';
+    const estateLogo = userSession.estateLogo;
+
+    // Alert Count for Manager
+    const [alertCount, setAlertCount] = useState(0);
+    const [restockCount, setRestockCount] = useState(0);
+
+    useEffect(() => {
+        if (userRole === 'MANAGER' && userSession.tenantId) {
+            fetchAlerts();
+            // Poll every 30 seconds for updates
+            const interval = setInterval(fetchAlerts, 30000);
+            return () => clearInterval(interval);
+        }
+    }, [userRole, userSession.tenantId]);
+
+    const fetchAlerts = async () => {
+        try {
+            // Stock Alerts
+            const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${userSession.tenantId}`);
+            const items = res.data;
+            const count = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
+            setAlertCount(count);
+
+            // Restock Requests (Pending) - For Manager
+            if (userRole === 'MANAGER') {
+                const transRes = await axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                // Count Pending Only
+                const reqCount = transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)).length;
+                setRestockCount(reqCount);
+            }
+        } catch (err) {
+            console.error("Failed to fetch sidebar alerts", err);
+        }
+    };
+
+    const handleLogout = () => {
+        sessionStorage.removeItem('user');
+        navigate('/login');
+    };
 
     // Filter menu items based on role
     const filteredMenuItems = menuItems.filter(item =>
@@ -138,7 +181,15 @@ export default function Sidebar() {
                                 mb: 1
                             }}
                         >
-                            <ListItemIcon sx={{ color: 'white' }}>{item.icon}</ListItemIcon>
+                            <ListItemIcon sx={{ color: 'white' }}>
+                                {item.text === 'General Stock' && (alertCount + restockCount) > 0 ? (
+                                    <Badge badgeContent={alertCount + restockCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : (
+                                    item.icon
+                                )}
+                            </ListItemIcon>
                             <ListItemText primary={item.text} />
                         </ListItemButton>
                     </ListItem>
@@ -146,7 +197,7 @@ export default function Sidebar() {
             </List>
 
             <Box sx={{ mt: 'auto', p: 2 }}>
-                <ListItemButton onClick={() => { sessionStorage.removeItem('user'); navigate('/login'); }} sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+                <ListItemButton onClick={handleLogout} sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
                     <ListItemIcon sx={{ color: 'white' }}><LogoutIcon /></ListItemIcon>
                     <ListItemText primary="Logout" />
                 </ListItemButton>

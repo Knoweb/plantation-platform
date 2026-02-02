@@ -15,6 +15,17 @@ export default function Header() {
     const userName = userSession.username || 'Guest User';
     const userRole = userSession.role || 'Visitor';
 
+    const getDashboardTitle = (role: string) => {
+        switch (role) {
+            case 'MANAGER': return 'Manager Dashboard';
+            case 'ESTATE_ADMIN': return 'Estate Admin Dashboard';
+            case 'FIELD_OFFICER': return 'Field Officer Dashboard';
+            case 'STORE_KEEPER': return 'Store Keeper Dashboard';
+            default: return 'Plantation Dashboard';
+        }
+    };
+    const dashboardTitle = getDashboardTitle(userRole);
+
     const handleMenu = (event: React.MouseEvent<HTMLElement>) => {
         setAnchorEl(event.currentTarget);
     };
@@ -41,8 +52,8 @@ export default function Header() {
             }}
         >
             <Toolbar>
-                <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', flexGrow: 1 }}>
-                    Dashboard
+                <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 'bold', flexGrow: 1, textTransform: 'capitalize' }}>
+                    {dashboardTitle}
                 </Typography>
 
                 <Box display="flex" alignItems="center" gap={1}>

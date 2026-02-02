@@ -12,6 +12,7 @@ import Divisions from './pages/Divisions';
 import ManagerDashboard from './pages/manager/ManagerDashboard';
 import FieldOfficerDashboard from './pages/field-officer/FieldOfficerDashboard';
 import StoreKeeperDashboard from './pages/store-keeper/StoreKeeperDashboard';
+import StoreTransactionHistory from './pages/store-keeper/StoreTransactionHistory';
 import EstateAdminDashboard from './pages/estate-admin/EstateAdminDashboard';
 import DailyEntry from './pages/field-officer/DailyEntry';
 import CropAchievements from './pages/field-officer/tabs/CropAchievements';
@@ -52,6 +53,8 @@ function App() {
           <Route path="manager" element={<ManagerDashboard />} />
           <Route path="field" element={<FieldOfficerDashboard />} />
           <Route path="store" element={<StoreKeeperDashboard />} />
+          <Route path="store/history" element={<StoreTransactionHistory />} />
+          <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Legacy/Direct link */}
 
           {/* Feature Routes */}
           <Route path="users" element={<UserManagement />} />

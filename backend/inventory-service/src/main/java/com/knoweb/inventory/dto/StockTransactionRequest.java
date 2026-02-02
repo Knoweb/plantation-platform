@@ -39,4 +39,14 @@ public class StockTransactionRequest {
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
     }
+
+    private String issuedTo;
+
+    public String getIssuedTo() {
+        return issuedTo;
+    }
+
+    public void setIssuedTo(String issuedTo) {
+        this.issuedTo = issuedTo;
+    }
 }

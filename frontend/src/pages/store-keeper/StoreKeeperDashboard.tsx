@@ -1,22 +1,29 @@
 import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+
 import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
 import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+
+import AddAlertIcon from '@mui/icons-material/AddAlert';
 import { useState, useEffect } from 'react';
+import { InputAdornment } from '@mui/material';
 import axios from 'axios';
 
 export default function StoreKeeperDashboard() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
+    const [pendingItems, setPendingItems] = useState<Set<number>>(new Set());
 
     // Transaction Modal
     const [openModal, setOpenModal] = useState(false);
-    const [modalType, setModalType] = useState<'ISSUE' | 'RECEIPT'>('ISSUE');
+    const [modalType, setModalType] = useState<'ISSUE' | 'RECEIPT' | 'RESTOCK_REQUEST'>('ISSUE');
     const [selectedItem, setSelectedItem] = useState('');
-    const [qty, setQty] = useState<number>(0);
+    const [qty, setQty] = useState<string | number>('');
+    const [issuedTo, setIssuedTo] = useState('');
+    const [search, setSearch] = useState('');
 
     // New Item Modal
     const [newItemOpen, setNewItemOpen] = useState(false);
@@ -24,8 +31,8 @@ export default function StoreKeeperDashboard() {
         name: '',
         category: 'FERTILIZER',
         unit: 'kg',
-        currentQuantity: 0,
-        bufferLevel: 100
+        currentQuantity: '' as any, // Allow string for input
+        bufferLevel: 0
     });
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -37,31 +44,51 @@ export default function StoreKeeperDashboard() {
 
     const fetchInventory = async () => {
         try {
-            // Connect to Gateway -> Inventory Service
-            const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`);
-            setItems(res.data);
+            // Connect to Gateway -> Inventory Service (Fetch Items and Transactions)
+            const [itemsRes, transRes] = await Promise.all([
+                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`),
+                axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`)
+            ]);
+
+            setItems(itemsRes.data);
+
+            // Identify items with PENDING restock requests
+            const pending = new Set<number>();
+            transRes.data.forEach((t: any) => {
+                if (t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING') {
+                    pending.add(t.itemId);
+                }
+            });
+            setPendingItems(pending);
+
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch inventory. Ensure Inventory Service is running.");
             setError("Could not load inventory data. Please check connection.");
             setLoading(false);
-            // Fallback for visual testing if backend is offline
-            // setItems([
-            //     { id: 1, name: 'Urea Fertilizer', category: 'FERTILIZER', currentQuantity: 450, bufferLevel: 500, unit: 'kg' },
-            //     { id: 2, name: 'Picking Baskets', category: 'TOOL', currentQuantity: 120, bufferLevel: 50, unit: 'units' }
-            // ]);
         }
+    };
+
+    const handleRestockRequest = (item: any) => {
+        setSelectedItem(item.id);
+        setModalType('RESTOCK_REQUEST');
+        setOpenModal(true);
+        setQty('');
+        setIssuedTo('');
     };
 
     const handleTransaction = async () => {
         try {
             await axios.post('http://localhost:8080/api/inventory/transaction', {
                 itemId: selectedItem,
-                quantity: qty,
+                quantity: Number(qty) || 0,
                 type: modalType,
-                tenantId: tenantId
+                tenantId: tenantId,
+                issuedTo: (modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') ? issuedTo : undefined
             });
             setOpenModal(false);
+            setQty(''); // Reset
+            setIssuedTo('');
             fetchInventory(); // Refresh
             alert("Transaction Successful");
         } catch (err: any) {
@@ -71,11 +98,15 @@ export default function StoreKeeperDashboard() {
 
     const handleCreateItem = async () => {
         try {
-            await axios.post('http://localhost:8080/api/inventory', { ...newItem, tenantId });
+            await axios.post('http://localhost:8080/api/inventory', {
+                ...newItem,
+                currentQuantity: Number(newItem.currentQuantity) || 0, // Ensure number
+                tenantId
+            });
             setNewItemOpen(false);
             fetchInventory();
             alert("Item Created Successfully");
-            setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: 0, bufferLevel: 100 });
+            setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: '', bufferLevel: 0 });
         } catch (err) {
             alert("Failed to create item");
         }
@@ -87,7 +118,7 @@ export default function StoreKeeperDashboard() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                    Store Keeper Dashboard
+                    Dashboard
                 </Typography>
                 <Box>
                     <Button
@@ -98,20 +129,13 @@ export default function StoreKeeperDashboard() {
                     >
                         New Item
                     </Button>
-                    <Button
-                        startIcon={<AddShoppingCartIcon />}
-                        variant="contained"
-                        color="success"
-                        sx={{ mr: 2 }}
-                        onClick={() => { setModalType('RECEIPT'); setOpenModal(true); }}
-                    >
-                        Receive Stock (GRN)
-                    </Button>
+
+
                     <Button
                         startIcon={<RemoveShoppingCartIcon />}
                         variant="contained"
                         color="warning"
-                        onClick={() => { setModalType('ISSUE'); setOpenModal(true); }}
+                        onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); }}
                     >
                         Issue Stock
                     </Button>
@@ -153,9 +177,21 @@ export default function StoreKeeperDashboard() {
             {/* Full Inventory Table */}
             <Card>
                 <CardContent>
-                    <Box display="flex" alignItems="center" mb={2}>
-                        <InventoryIcon color="action" sx={{ mr: 1 }} />
-                        <Typography variant="h6">Current Inventory</Typography>
+                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                        <Box display="flex" alignItems="center">
+                            <InventoryIcon color="action" sx={{ mr: 1 }} />
+                            <Typography variant="h6">Current Inventory</Typography>
+                        </Box>
+                        <TextField
+                            placeholder="Search Items..."
+                            size="small"
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                            }}
+                            sx={{ width: 300, bgcolor: 'white' }}
+                        />
                     </Box>
 
                     {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
@@ -168,6 +204,7 @@ export default function StoreKeeperDashboard() {
                                 <TableCell align="right">Available Stock</TableCell>
                                 <TableCell align="right">Buffer Level</TableCell>
                                 <TableCell align="center">Status</TableCell>
+                                <TableCell align="center">Action</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -175,7 +212,7 @@ export default function StoreKeeperDashboard() {
                                 <TableRow>
                                     <TableCell colSpan={5} align="center">Loading...</TableCell>
                                 </TableRow>
-                            ) : items.map(item => (
+                            ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                                 <TableRow key={item.id}>
                                     <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
                                     <TableCell><Chip label={item.category} size="small" /></TableCell>
@@ -192,11 +229,26 @@ export default function StoreKeeperDashboard() {
                                             <Chip label="Good" color="success" size="small" />
                                         )}
                                     </TableCell>
+                                    <TableCell align="center">
+                                        {pendingItems.has(item.id) ? (
+                                            <Chip label="Pending..." color="warning" variant="outlined" size="small" />
+                                        ) : (
+                                            <Button
+                                                variant="outlined"
+                                                color="warning"
+                                                size="small"
+                                                startIcon={<AddAlertIcon />}
+                                                onClick={() => handleRestockRequest(item)}
+                                            >
+                                                Restock
+                                            </Button>
+                                        )}
+                                    </TableCell>
                                 </TableRow>
                             ))}
                             {!loading && items.length === 0 && !error && (
                                 <TableRow>
-                                    <TableCell colSpan={5} align="center">No inventory items found.</TableCell>
+                                    <TableCell colSpan={6} align="center">No inventory items found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -206,7 +258,11 @@ export default function StoreKeeperDashboard() {
 
             {/* Transaction Modal */}
             <Dialog open={openModal} onClose={() => setOpenModal(false)}>
-                <DialogTitle>{modalType === 'RECEIPT' ? 'Receive New Stock' : 'Issue Stock to Field'}</DialogTitle>
+                <DialogTitle>
+                    {modalType === 'RECEIPT' ? 'Receive New Stock' :
+                        modalType === 'ISSUE' ? 'Issue Stock to Field' :
+                            'Request Restock'}
+                </DialogTitle>
                 <DialogContent sx={{ minWidth: 400, pt: 2 }}>
                     <FormControl fullWidth margin="normal">
                         <InputLabel>Select Item</InputLabel>
@@ -218,17 +274,26 @@ export default function StoreKeeperDashboard() {
                     </FormControl>
                     <TextField
                         fullWidth
-                        label="Quantity"
+                        label={modalType === 'RESTOCK_REQUEST' ? "Quantity Needed" : "Quantity"}
                         type="number"
                         margin="normal"
                         value={qty}
-                        onChange={(e) => setQty(Number(e.target.value))}
+                        onChange={(e) => setQty(e.target.value)}
                     />
+                    {(modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') && (
+                        <TextField
+                            fullWidth
+                            label={modalType === 'RESTOCK_REQUEST' ? "Notes / Reason" : "Issued To (Person / Field)"}
+                            margin="normal"
+                            value={issuedTo}
+                            onChange={(e) => setIssuedTo(e.target.value)}
+                        />
+                    )}
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenModal(false)}>Cancel</Button>
                     <Button variant="contained" color={modalType === 'RECEIPT' ? "success" : "warning"} onClick={handleTransaction}>
-                        Confirm {modalType}
+                        {modalType === 'RESTOCK_REQUEST' ? 'Send Request' : `Confirm ${modalType}`}
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -271,16 +336,9 @@ export default function StoreKeeperDashboard() {
                         type="number"
                         margin="normal"
                         value={newItem.currentQuantity}
-                        onChange={(e) => setNewItem({ ...newItem, currentQuantity: parseInt(e.target.value) || 0 })}
+                        onChange={(e) => setNewItem({ ...newItem, currentQuantity: e.target.value })}
                     />
-                    <TextField
-                        fullWidth
-                        label="Buffer Level Threshold"
-                        type="number"
-                        margin="normal"
-                        value={newItem.bufferLevel}
-                        onChange={(e) => setNewItem({ ...newItem, bufferLevel: parseInt(e.target.value) || 0 })}
-                    />
+
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setNewItemOpen(false)}>Cancel</Button>

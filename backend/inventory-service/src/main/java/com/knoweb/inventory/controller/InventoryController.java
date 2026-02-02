@@ -2,6 +2,7 @@ package com.knoweb.inventory.controller;
 
 import com.knoweb.inventory.dto.StockTransactionRequest;
 import com.knoweb.inventory.entity.InventoryItem;
+import com.knoweb.inventory.entity.InventoryTransaction;
 import com.knoweb.inventory.service.InventoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
@@ -39,5 +40,15 @@ public class InventoryController {
     @PutMapping("/{id}/buffer")
     public ResponseEntity<InventoryItem> updateBuffer(@PathVariable Long id, @RequestBody int bufferLevel) {
         return ResponseEntity.ok(service.updateBuffer(id, bufferLevel));
+    }
+
+    @GetMapping("/transactions")
+    public List<InventoryTransaction> getTransactions(@RequestParam String tenantId) {
+        return service.getTransactions(tenantId);
+    }
+
+    @PutMapping("/transactions/{id}/status")
+    public InventoryTransaction updateStatus(@PathVariable Long id, @RequestParam String status) {
+        return service.updateTransactionStatus(id, status);
     }
 }

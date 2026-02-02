@@ -11,7 +11,7 @@ export default function FieldOfficerDashboard() {
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Field Officer Dashboard
+                Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Overview of Division Performance, Muster, and Stock Levels.

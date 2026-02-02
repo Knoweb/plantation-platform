@@ -8,5 +8,5 @@ import java.util.Optional;
 public interface InventoryItemRepository extends JpaRepository<InventoryItem, Long> {
     List<InventoryItem> findByTenantId(String tenantId);
 
-    Optional<InventoryItem> findByTenantIdAndName(String tenantId, String name);
+    List<InventoryItem> findByTenantIdAndName(String tenantId, String name);
 }

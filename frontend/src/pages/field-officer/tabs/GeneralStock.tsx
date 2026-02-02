@@ -2,6 +2,11 @@ import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import InfoIcon from '@mui/icons-material/Info'; // For notification
+import SettingsIcon from '@mui/icons-material/Settings'; // For unconfigured status
+import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
+import CancelIcon from '@mui/icons-material/Cancel';
+import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -15,6 +20,12 @@ export default function GeneralStock() {
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [bufferInput, setBufferInput] = useState<string>('');
 
+    // Restock State (Manager Only)
+    const [receiveOpen, setReceiveOpen] = useState(false);
+    const [restockItemId, setRestockItemId] = useState('');
+    const [transactionQty, setTransactionQty] = useState<string>('');
+    const [restockRequests, setRestockRequests] = useState<any[]>([]); // New state
+
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const isManager = userSession.role === 'MANAGER';
@@ -27,11 +38,28 @@ export default function GeneralStock() {
         try {
             const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`);
             setItems(res.data);
+
+            if (isManager) {
+                const transRes = await axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`);
+                setRestockRequests(transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)));
+            }
+
             setLoading(false);
         } catch (err) {
             console.error(err);
             setError("Failed to load inventory.");
             setLoading(false);
+        }
+    };
+
+    const handleRequestAction = async (id: number, status: string) => {
+        try {
+            await axios.put(`http://localhost:8080/api/inventory/transactions/${id}/status?status=${status}`);
+            fetchInventory();
+            alert(`Request ${status}`);
+        } catch (e) {
+            console.error(e);
+            alert("Action failed");
         }
     };
 
@@ -55,20 +83,97 @@ export default function GeneralStock() {
         }
     };
 
+    const handleRestock = async () => {
+        try {
+            await axios.post('http://localhost:8080/api/inventory/transaction', {
+                itemId: restockItemId,
+                quantity: Number(transactionQty) || 0,
+                type: 'RECEIPT',
+                tenantId: tenantId
+            });
+            setReceiveOpen(false);
+            setTransactionQty('');
+            fetchInventory();
+            alert("Stock Received Successfully");
+        } catch (err) {
+            alert("Transaction Failed");
+        }
+    };
+
     return (
         <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                General Stock & Inventory Level
-            </Typography>
+            <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
+                    General Stock & Inventory Level
+                </Typography>
+                {isManager && (
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<AddShoppingCartIcon />}
+                        onClick={() => { setReceiveOpen(true); setTransactionQty(''); }}
+                    >
+                        Receive Stock (Refill)
+                    </Button>
+                )}
+            </Box>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Overview of current stock levels. Managers can set buffer thresholds here.
             </Typography>
 
             {/* Manager Alert Summary */}
-            {isManager && items.some(i => i.currentQuantity < i.bufferLevel) && (
+            {/* Manager Alert Summary */}
+            {isManager && items.some(i => i.bufferLevel === 0) && (
+                <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2, border: '1px solid #0288d1' }}>
+                    <strong>Action Required:</strong> New items detected. Please set simple buffer levels for unconfigured items.
+                </Alert>
+            )}
+
+            {isManager && items.some(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0) && (
                 <Alert severity="warning" sx={{ mb: 3 }}>
                     Attention Manager: Some items are below their buffer level. Please review stock and authorize purchase requests.
                 </Alert>
+            )}
+
+            {/* Restock Requests Display */}
+            {isManager && restockRequests.length > 0 && (
+                <Paper sx={{ mb: 4, p: 2, border: '1px solid #ed6c02', bgcolor: '#fff3e0' }}>
+                    <Box display="flex" alignItems="center" mb={2}>
+                        <InfoIcon color="warning" sx={{ mr: 1 }} />
+                        <Typography variant="h6" color="warning.dark" fontWeight="bold">
+                            Pending Restock Requests (From Store Keeper)
+                        </Typography>
+                    </Box>
+                    <Table size="small">
+                        <TableHead>
+                            <TableRow>
+                                <TableCell><strong>Date</strong></TableCell>
+                                <TableCell><strong>Item</strong></TableCell>
+                                <TableCell><strong>Qty Needed</strong></TableCell>
+                                <TableCell><strong>Note</strong></TableCell>
+                                <TableCell align="center"><strong>Actions</strong></TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {restockRequests.slice(0, 5).map(req => (
+                                <TableRow key={req.id}>
+                                    <TableCell>{new Date(req.date).toLocaleDateString()} {new Date(req.date).toLocaleTimeString()}</TableCell>
+                                    <TableCell>{req.itemName}</TableCell>
+                                    <TableCell>{req.quantity}</TableCell>
+                                    <TableCell>{req.issuedTo || '-'}</TableCell>
+                                    <TableCell align="center">
+                                        <IconButton size="small" color="success" onClick={() => handleRequestAction(req.id, 'APPROVED')} title="Approve & Refill">
+                                            <CheckCircleIcon />
+                                        </IconButton>
+                                        <IconButton size="small" color="error" onClick={() => handleRequestAction(req.id, 'DECLINED')} title="Decline">
+                                            <CancelIcon />
+                                        </IconButton>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </Paper>
             )}
 
             <TableContainer component={Paper}>
@@ -101,7 +206,9 @@ export default function GeneralStock() {
                                         )}
                                     </TableCell>
                                     <TableCell align="center">
-                                        {isLow ? (
+                                        {item.bufferLevel === 0 ? (
+                                            <Chip icon={<SettingsIcon />} label="Configure" color="info" size="small" variant="outlined" />
+                                        ) : item.currentQuantity < item.bufferLevel ? (
                                             <Chip icon={<WarningIcon />} label="Low Stock" color="error" size="small" />
                                         ) : (
                                             <Chip icon={<CheckCircleIcon />} label="Good" color="success" size="small" variant="outlined" />
@@ -135,6 +242,39 @@ export default function GeneralStock() {
                 <DialogActions>
                     <Button onClick={() => setEditOpen(false)}>Cancel</Button>
                     <Button variant="contained" onClick={handleSaveBuffer}>Update</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Restock Dialog */}
+            <Dialog open={receiveOpen} onClose={() => setReceiveOpen(false)}>
+                <DialogTitle>Receive New Stock (Refill)</DialogTitle>
+                <DialogContent sx={{ minWidth: 400, pt: 2 }}>
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Select Item</InputLabel>
+                        <Select
+                            value={restockItemId}
+                            label="Select Item"
+                            onChange={(e) => setRestockItemId(e.target.value)}
+                        >
+                            {items.map(i => (
+                                <MenuItem key={i.id} value={i.id}>{i.name} ({i.currentQuantity} {i.unit})</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                    <TextField
+                        fullWidth
+                        label="Quantity to Add"
+                        type="number"
+                        margin="normal"
+                        value={transactionQty}
+                        onChange={(e) => setTransactionQty(e.target.value)}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setReceiveOpen(false)}>Cancel</Button>
+                    <Button variant="contained" color="success" onClick={handleRestock}>
+                        Confirm Receipt
+                    </Button>
                 </DialogActions>
             </Dialog>
         </Box>

@@ -8,7 +8,7 @@ export default function EstateAdminDashboard() {
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Estate Admin Dashboard
+                Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Welcome, Estate Owner. Here is the high-level overview of your entire plantation.
