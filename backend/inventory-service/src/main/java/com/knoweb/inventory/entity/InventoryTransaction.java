@@ -18,6 +18,7 @@ public class InventoryTransaction {
     private String tenantId;
     private String issuedTo;
     private String status;
+    private LocalDateTime approvedDate; // Track approval time
 
     public Long getId() {
         return id;
@@ -89,5 +90,13 @@ public class InventoryTransaction {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public LocalDateTime getApprovedDate() {
+        return approvedDate;
+    }
+
+    public void setApprovedDate(LocalDateTime approvedDate) {
+        this.approvedDate = approvedDate;
     }
 }

@@ -9,6 +9,7 @@ interface Transaction {
     type: string;
     quantity: number;
     date: string;
+    approvedDate?: string; // Add approvedDate
     issuedTo?: string;
     status?: string;
 }
@@ -45,6 +46,9 @@ export default function StoreTransactionHistory() {
             end.setHours(23, 59, 59); // End of day
             res = res.filter(t => new Date(t.date) <= end);
         }
+
+        // Filter out PENDING requests (Only show history of completed actions)
+        res = res.filter(t => !(t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING'));
 
         setFiltered(res);
     }, [search, startDate, endDate, transactions]);
@@ -123,7 +127,15 @@ export default function StoreTransactionHistory() {
                         {filtered.length > 0 ? (
                             filtered.map((t) => (
                                 <TableRow key={t.id} hover>
-                                    <TableCell>{new Date(t.date).toLocaleString()}</TableCell>
+                                    <TableCell>
+                                        {t.approvedDate ? (
+                                            <span title={`Requested: ${new Date(t.date).toLocaleString()}`}>
+                                                {new Date(t.approvedDate).toLocaleString()}
+                                            </span>
+                                        ) : (
+                                            new Date(t.date).toLocaleString()
+                                        )}
+                                    </TableCell>
                                     <TableCell>{t.itemName}</TableCell>
                                     <TableCell>
                                         <Chip label={t.type} color={getTypeColor(t.type) as any} size="small" />

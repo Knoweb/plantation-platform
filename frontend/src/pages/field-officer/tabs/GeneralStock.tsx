@@ -1,4 +1,4 @@
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert, Snackbar } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -25,6 +25,25 @@ export default function GeneralStock() {
     const [restockItemId, setRestockItemId] = useState('');
     const [transactionQty, setTransactionQty] = useState<string>('');
     const [restockRequests, setRestockRequests] = useState<any[]>([]); // New state
+    // Approval Dialog State
+    const [approveOpen, setApproveOpen] = useState(false);
+    const [approveReq, setApproveReq] = useState<any>(null);
+    const [approveQty, setApproveQty] = useState('');
+
+    // Notification State
+    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({
+        open: false,
+        message: '',
+        severity: 'info'
+    });
+
+    const showNotification = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+        setNotification({ open: true, message, severity });
+    };
+
+    const handleCloseNotification = () => {
+        setNotification({ ...notification, open: false });
+    };
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -52,14 +71,34 @@ export default function GeneralStock() {
         }
     };
 
-    const handleRequestAction = async (id: number, status: string) => {
+    const handleRequestAction = async (req: any, status: string) => {
+        if (status === 'APPROVED') {
+            const isAuto = req.issuedTo && (req.issuedTo.includes('Auto-Refill') || req.issuedTo.includes('SYSTEM'));
+            setApproveReq({ ...req, isAuto });
+            setApproveQty(isAuto ? '' : req.quantity); // Pre-fill for manual, empty for auto
+            setApproveOpen(true);
+            return;
+        }
+
+        // For Decline
         try {
-            await axios.put(`http://localhost:8080/api/inventory/transactions/${id}/status?status=${status}`);
+            await axios.put(`http://localhost:8080/api/inventory/transactions/${req.id}/status?status=${status}`);
             fetchInventory();
-            alert(`Request ${status}`);
+            showNotification(`Request ${status}`, 'success');
         } catch (e) {
-            console.error(e);
-            alert("Action failed");
+            showNotification("Action failed", 'error');
+        }
+    };
+
+    const handleConfirmApprove = async () => {
+        if (!approveReq || !approveQty) return;
+        try {
+            await axios.put(`http://localhost:8080/api/inventory/transactions/${approveReq.id}/status?status=APPROVED&quantity=${approveQty}`);
+            setApproveOpen(false);
+            fetchInventory();
+            showNotification("Request APPROVED", 'success');
+        } catch (e) {
+            showNotification("Approval Failed", 'error');
         }
     };
 
@@ -79,7 +118,7 @@ export default function GeneralStock() {
             setEditOpen(false);
             fetchInventory();
         } catch (err) {
-            alert("Failed to update buffer level");
+            showNotification("Failed to update buffer level", 'error');
         }
     };
 
@@ -94,9 +133,9 @@ export default function GeneralStock() {
             setReceiveOpen(false);
             setTransactionQty('');
             fetchInventory();
-            alert("Stock Received Successfully");
+            showNotification("Stock Received Successfully", 'success');
         } catch (err) {
-            alert("Transaction Failed");
+            showNotification("Transaction Failed", 'error');
         }
     };
 
@@ -149,7 +188,7 @@ export default function GeneralStock() {
                             <TableRow>
                                 <TableCell><strong>Date</strong></TableCell>
                                 <TableCell><strong>Item</strong></TableCell>
-                                <TableCell><strong>Qty Needed</strong></TableCell>
+                                <TableCell><strong>Quantity</strong></TableCell>
                                 <TableCell><strong>Note</strong></TableCell>
                                 <TableCell align="center"><strong>Actions</strong></TableCell>
                             </TableRow>
@@ -159,13 +198,13 @@ export default function GeneralStock() {
                                 <TableRow key={req.id}>
                                     <TableCell>{new Date(req.date).toLocaleDateString()} {new Date(req.date).toLocaleTimeString()}</TableCell>
                                     <TableCell>{req.itemName}</TableCell>
-                                    <TableCell>{req.quantity}</TableCell>
+                                    <TableCell>{req.quantity || '-'}</TableCell>
                                     <TableCell>{req.issuedTo || '-'}</TableCell>
                                     <TableCell align="center">
-                                        <IconButton size="small" color="success" onClick={() => handleRequestAction(req.id, 'APPROVED')} title="Approve & Refill">
+                                        <IconButton size="small" color="success" onClick={() => handleRequestAction(req, 'APPROVED')} title="Approve & Refill">
                                             <CheckCircleIcon />
                                         </IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleRequestAction(req.id, 'DECLINED')} title="Decline">
+                                        <IconButton size="small" color="error" onClick={() => handleRequestAction(req, 'DECLINED')} title="Decline">
                                             <CancelIcon />
                                         </IconButton>
                                     </TableCell>
@@ -277,6 +316,66 @@ export default function GeneralStock() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Approval Confirmation Dialog */}
+            <Dialog open={approveOpen} onClose={() => setApproveOpen(false)}>
+                <DialogTitle>Approve Refill Request</DialogTitle>
+                <DialogContent sx={{ minWidth: 350, pt: 2 }}>
+                    <Typography variant="body1" gutterBottom>
+                        Refilling for: <strong>{approveReq?.itemName}</strong>
+                    </Typography>
+                    {(() => {
+                        const item = items.find(i => i.id === approveReq?.itemId);
+                        return item ? (
+                            <Box sx={{ mb: 2, p: 1, bgcolor: '#f0faff', borderRadius: 1 }}>
+                                <Typography variant="caption" display="block">Buffer Level: <strong>{item.bufferLevel} {item.unit}</strong></Typography>
+                                <Typography variant="caption" display="block">Current Stock: <strong>{item.currentQuantity} {item.unit}</strong></Typography>
+                            </Box>
+                        ) : null;
+                    })()}
+
+
+
+                    {approveReq?.isAuto ? (
+                        <TextField
+                            autoFocus
+                            fullWidth
+                            label={`Quantity to Refill`}
+                            type="number"
+                            value={approveQty}
+                            onChange={(e) => setApproveQty(e.target.value)}
+                            variant="outlined"
+                            placeholder="Enter amount"
+                            helperText="System Auto-Request: Please specify refill amount."
+                        />
+                    ) : (
+                        <Box mt={2}>
+                            <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary' }}>
+                                Store Keeper Requested Amount:
+                            </Typography>
+                            <Typography variant="h5" color="primary" fontWeight="bold">
+                                {approveQty} {items.find(i => i.id === approveReq?.itemId)?.unit}
+                            </Typography>
+                            <Typography variant="caption" color="text.secondary">
+                                Click 'Confirm Approval' to accept this request.
+                            </Typography>
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setApproveOpen(false)}>Cancel</Button>
+                    <Button variant="contained" color="success" onClick={handleConfirmApprove}>
+                        Confirm Approval
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Notification Snackbar */}
+            <Snackbar open={notification.open} autoHideDuration={6000} onClose={handleCloseNotification} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+                <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+                    {notification.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }

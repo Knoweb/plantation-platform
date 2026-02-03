@@ -16,6 +16,7 @@ public class InventoryItem {
 
     private int currentQuantity;
     private int bufferLevel; // Set by Manager
+    private double pricePerUnit; // Added for Value Tracking
 
     private String tenantId;
 
@@ -65,6 +66,14 @@ public class InventoryItem {
 
     public void setBufferLevel(int bufferLevel) {
         this.bufferLevel = bufferLevel;
+    }
+
+    public double getPricePerUnit() {
+        return pricePerUnit;
+    }
+
+    public void setPricePerUnit(double pricePerUnit) {
+        this.pricePerUnit = pricePerUnit;
     }
 
     public String getTenantId() {

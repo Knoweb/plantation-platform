@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert } from '@mui/material';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
 
@@ -7,6 +7,10 @@ import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 
 import AddAlertIcon from '@mui/icons-material/AddAlert';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SpaIcon from '@mui/icons-material/Spa';
+import { IconButton } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
@@ -15,7 +19,7 @@ export default function StoreKeeperDashboard() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [pendingItems, setPendingItems] = useState<Set<number>>(new Set());
+    const [pendingItems, setPendingItems] = useState<Map<number, number>>(new Map());
 
     // Transaction Modal
     const [openModal, setOpenModal] = useState(false);
@@ -25,15 +29,33 @@ export default function StoreKeeperDashboard() {
     const [issuedTo, setIssuedTo] = useState('');
     const [search, setSearch] = useState('');
 
-    // New Item Modal
+    // New Item / Edit Modal
     const [newItemOpen, setNewItemOpen] = useState(false);
+    const [isEditing, setIsEditing] = useState(false);
+    const [editId, setEditId] = useState<number | null>(null);
     const [newItem, setNewItem] = useState({
         name: '',
         category: 'FERTILIZER',
         unit: 'kg',
         currentQuantity: '' as any, // Allow string for input
-        bufferLevel: 0
+        bufferLevel: 0,
+        pricePerUnit: '' as any
     });
+
+    // Notification State
+    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({
+        open: false,
+        message: '',
+        severity: 'info'
+    });
+
+    const showNotification = (message: string, severity: 'success' | 'error' | 'info' | 'warning' = 'success') => {
+        setNotification({ open: true, message, severity });
+    };
+
+    const handleCloseNotification = () => {
+        setNotification({ ...notification, open: false });
+    };
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -53,10 +75,11 @@ export default function StoreKeeperDashboard() {
             setItems(itemsRes.data);
 
             // Identify items with PENDING restock requests
-            const pending = new Set<number>();
+            const pending = new Map<number, number>();
             transRes.data.forEach((t: any) => {
                 if (t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING') {
-                    pending.add(t.itemId);
+                    const current = pending.get(t.itemId) || 0;
+                    pending.set(t.itemId, current + t.quantity);
                 }
             });
             setPendingItems(pending);
@@ -86,30 +109,85 @@ export default function StoreKeeperDashboard() {
                 tenantId: tenantId,
                 issuedTo: (modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') ? issuedTo : undefined
             });
+
+            // Automated Low Stock Notification
+            if (modalType === 'ISSUE') {
+                const item = items.find(i => i.id === selectedItem);
+                if (item) {
+                    const newQty = item.currentQuantity - (Number(qty) || 0);
+                    if (newQty < item.bufferLevel) {
+                        showNotification(`Note: ${item.name} is below buffer level. System has auto-generated a refill request.`, 'warning');
+                    }
+                }
+            }
+
             setOpenModal(false);
-            setQty(''); // Reset
+            setQty('');
             setIssuedTo('');
-            fetchInventory(); // Refresh
-            alert("Transaction Successful");
+            fetchInventory();
+            showNotification("Transaction Successful", 'success');
         } catch (err: any) {
-            alert("Transaction Failed: " + (err.response?.data || err.message));
+            showNotification("Transaction Failed: " + (err.response?.data || err.message), 'error');
         }
     };
 
-    const handleCreateItem = async () => {
+    const handleSaveItem = async () => {
         try {
-            await axios.post('http://localhost:8080/api/inventory', {
-                ...newItem,
-                currentQuantity: Number(newItem.currentQuantity) || 0, // Ensure number
-                tenantId
-            });
+            if (isEditing && editId) {
+                // Update Item
+                await axios.put(`http://localhost:8080/api/inventory/${editId}`, {
+                    ...newItem,
+                    pricePerUnit: Number(newItem.pricePerUnit) || 0,
+                    tenantId
+                });
+                showNotification("Item Updated Successfully", 'success');
+            } else {
+                // Create Item
+                await axios.post('http://localhost:8080/api/inventory', {
+                    ...newItem,
+                    currentQuantity: Number(newItem.currentQuantity) || 0,
+                    pricePerUnit: Number(newItem.pricePerUnit) || 0,
+                    tenantId
+                });
+                showNotification("Item Created Successfully", 'success');
+            }
             setNewItemOpen(false);
             fetchInventory();
-            alert("Item Created Successfully");
-            setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: '', bufferLevel: 0 });
+            resetForm();
         } catch (err) {
-            alert("Failed to create item");
+            showNotification(isEditing ? "Failed to update item" : "Failed to create item", 'error');
         }
+    };
+
+    const handleDeleteItem = async (id: number) => {
+        if (!window.confirm("Are you sure you want to delete this item?")) return;
+        try {
+            await axios.delete(`http://localhost:8080/api/inventory/${id}`);
+            fetchInventory();
+            showNotification("Item Deleted", 'success');
+        } catch (err) {
+            showNotification("Failed to delete item", 'error');
+        }
+    };
+
+    const handleEditItem = (item: any) => {
+        setIsEditing(true);
+        setEditId(item.id);
+        setNewItem({
+            name: item.name,
+            category: item.category,
+            unit: item.unit,
+            currentQuantity: item.currentQuantity,
+            bufferLevel: item.bufferLevel,
+            pricePerUnit: item.pricePerUnit
+        });
+        setNewItemOpen(true);
+    };
+
+    const resetForm = () => {
+        setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: '' as any, bufferLevel: 0, pricePerUnit: '' as any });
+        setIsEditing(false);
+        setEditId(null);
     };
 
     const lowStockItems = items.filter(i => i.currentQuantity < i.bufferLevel);
@@ -125,7 +203,7 @@ export default function StoreKeeperDashboard() {
                         startIcon={<AddIcon />}
                         variant="contained"
                         sx={{ mr: 2, bgcolor: '#424242' }}
-                        onClick={() => setNewItemOpen(true)}
+                        onClick={() => { resetForm(); setNewItemOpen(true); }}
                     >
                         New Item
                     </Button>
@@ -202,6 +280,7 @@ export default function StoreKeeperDashboard() {
                                 <TableCell>Item Name</TableCell>
                                 <TableCell>Category</TableCell>
                                 <TableCell align="right">Available Stock</TableCell>
+                                <TableCell align="right">Total Value (Rs)</TableCell>
                                 <TableCell align="right">Buffer Level</TableCell>
                                 <TableCell align="center">Status</TableCell>
                                 <TableCell align="center">Action</TableCell>
@@ -210,7 +289,28 @@ export default function StoreKeeperDashboard() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={5} align="center">Loading...</TableCell>
+                                    <TableCell colSpan={7} align="center" sx={{ py: 10 }}>
+                                        <Box display="flex" flexDirection="column" alignItems="center">
+                                            <SpaIcon
+                                                sx={{
+                                                    fontSize: 60,
+                                                    color: '#2e7d32',
+                                                    animation: 'pulse 1.5s infinite ease-in-out',
+                                                    '@keyframes pulse': {
+                                                        '0%': { transform: 'scale(1)', opacity: 0.7 },
+                                                        '50%': { transform: 'scale(1.2)', opacity: 1 },
+                                                        '100%': { transform: 'scale(1)', opacity: 0.7 }
+                                                    }
+                                                }}
+                                            />
+                                            <Typography variant="h6" color="primary" mt={2} fontWeight="bold">
+                                                Loading Plantation Inventory...
+                                            </Typography>
+                                            <Typography variant="body2" color="text.secondary">
+                                                Fetching fertilizers, tools, and harvest data.
+                                            </Typography>
+                                        </Box>
+                                    </TableCell>
                                 </TableRow>
                             ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                                 <TableRow key={item.id}>
@@ -218,6 +318,9 @@ export default function StoreKeeperDashboard() {
                                     <TableCell><Chip label={item.category} size="small" /></TableCell>
                                     <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
                                         {item.currentQuantity} {item.unit}
+                                    </TableCell>
+                                    <TableCell align="right">
+                                        {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
                                     </TableCell>
                                     <TableCell align="right" sx={{ color: 'text.secondary' }}>
                                         {item.bufferLevel} {item.unit}
@@ -231,7 +334,12 @@ export default function StoreKeeperDashboard() {
                                     </TableCell>
                                     <TableCell align="center">
                                         {pendingItems.has(item.id) ? (
-                                            <Chip label="Pending..." color="warning" variant="outlined" size="small" />
+                                            <Chip
+                                                label={`Pending: ${pendingItems.get(item.id)} ${item.unit}`}
+                                                color="warning"
+                                                variant="outlined"
+                                                size="small"
+                                            />
                                         ) : (
                                             <Button
                                                 variant="outlined"
@@ -243,6 +351,14 @@ export default function StoreKeeperDashboard() {
                                                 Restock
                                             </Button>
                                         )}
+                                        <Box display="inline-flex" ml={1}>
+                                            <IconButton size="small" onClick={() => handleEditItem(item)} title="Edit Details">
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                            <IconButton size="small" onClick={() => handleDeleteItem(item.id)} color="error" title="Delete Item">
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -298,9 +414,9 @@ export default function StoreKeeperDashboard() {
                 </DialogActions>
             </Dialog>
 
-            {/* Create Item Modal */}
+            {/* Create / Edit Item Modal */}
             <Dialog open={newItemOpen} onClose={() => setNewItemOpen(false)}>
-                <DialogTitle>Add New Inventory Item</DialogTitle>
+                <DialogTitle>{isEditing ? "Edit Item Details" : "Add New Inventory Item"}</DialogTitle>
                 <DialogContent sx={{ minWidth: 400, pt: 2 }}>
                     <TextField
                         fullWidth
@@ -323,13 +439,20 @@ export default function StoreKeeperDashboard() {
                             <MenuItem value="OTHER">Other</MenuItem>
                         </Select>
                     </FormControl>
-                    <TextField
-                        fullWidth
-                        label="Unit (e.g., kg, L, units)"
-                        margin="normal"
-                        value={newItem.unit}
-                        onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
-                    />
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Unit</InputLabel>
+                        <Select
+                            value={newItem.unit}
+                            label="Unit"
+                            onChange={(e) => setNewItem({ ...newItem, unit: e.target.value })}
+                        >
+                            <MenuItem value="kg">Kilogram (kg)</MenuItem>
+                            <MenuItem value="liters">Liters (L)</MenuItem>
+                            <MenuItem value="units">Units</MenuItem>
+                            <MenuItem value="pairs">Pairs</MenuItem>
+                            <MenuItem value="packets">Packets</MenuItem>
+                        </Select>
+                    </FormControl>
                     <TextField
                         fullWidth
                         label="Initial Quantity"
@@ -337,14 +460,31 @@ export default function StoreKeeperDashboard() {
                         margin="normal"
                         value={newItem.currentQuantity}
                         onChange={(e) => setNewItem({ ...newItem, currentQuantity: e.target.value })}
+                        disabled={isEditing} // Prevent stock edit here
+                    />
+                    <TextField
+                        fullWidth
+                        label="Unit Price (Rs)"
+                        type="number"
+                        margin="normal"
+                        value={newItem.pricePerUnit}
+                        onChange={(e) => setNewItem({ ...newItem, pricePerUnit: e.target.value })}
                     />
 
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setNewItemOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleCreateItem}>Create Item</Button>
+                    <Button variant="contained" onClick={handleSaveItem}>{isEditing ? "Update Item" : "Create Item"}</Button>
                 </DialogActions>
+
             </Dialog>
-        </Box>
+
+            {/* Notification Snackbar */}
+            <Snackbar open={notification.open} autoHideDuration={6000} onClose={handleCloseNotification} anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}>
+                <Alert onClose={handleCloseNotification} severity={notification.severity} sx={{ width: '100%' }}>
+                    {notification.message}
+                </Alert>
+            </Snackbar>
+        </Box >
     );
 }

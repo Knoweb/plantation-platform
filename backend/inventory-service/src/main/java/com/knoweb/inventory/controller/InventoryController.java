@@ -48,7 +48,20 @@ public class InventoryController {
     }
 
     @PutMapping("/transactions/{id}/status")
-    public InventoryTransaction updateStatus(@PathVariable Long id, @RequestParam String status) {
-        return service.updateTransactionStatus(id, status);
+    public InventoryTransaction updateStatus(@PathVariable Long id,
+            @RequestParam String status,
+            @RequestParam(required = false) Integer quantity) {
+        return service.updateTransactionStatus(id, status, quantity);
+    }
+
+    @DeleteMapping("/{id}")
+    public ResponseEntity<Void> deleteItem(@PathVariable Long id) {
+        service.deleteItem(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<InventoryItem> updateItem(@PathVariable Long id, @RequestBody InventoryItem item) {
+        return ResponseEntity.ok(service.updateItemDetails(id, item));
     }
 }
