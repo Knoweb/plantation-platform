@@ -46,6 +46,23 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                         value={data.adminPassword || ''}
                         onChange={handleChange('adminPassword')}
                     />
+                    <Box sx={{ mt: 1, pl: 1 }}>
+                        <Typography variant="caption" display="block" color={data.adminPassword?.length >= 8 ? "success.main" : "text.secondary"}>
+                            {data.adminPassword?.length >= 8 ? "✓" : "○"} At least 8 characters
+                        </Typography>
+                        <Typography variant="caption" display="block" color={/[A-Z]/.test(data.adminPassword || '') ? "success.main" : "text.secondary"}>
+                            {/[A-Z]/.test(data.adminPassword || '') ? "✓" : "○"} At least one uppercase letter
+                        </Typography>
+                        <Typography variant="caption" display="block" color={/[a-z]/.test(data.adminPassword || '') ? "success.main" : "text.secondary"}>
+                            {/[a-z]/.test(data.adminPassword || '') ? "✓" : "○"} At least one lowercase letter
+                        </Typography>
+                        <Typography variant="caption" display="block" color={/\d/.test(data.adminPassword || '') ? "success.main" : "text.secondary"}>
+                            {/\d/.test(data.adminPassword || '') ? "✓" : "○"} At least one number
+                        </Typography>
+                        <Typography variant="caption" display="block" color={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(data.adminPassword || '') ? "success.main" : "text.secondary"}>
+                            {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(data.adminPassword || '') ? "✓" : "○"} At least one special character
+                        </Typography>
+                    </Box>
                 </Grid>
 
                 <Grid size={{ xs: 12 }}>

@@ -54,4 +54,15 @@ public class Division {
     public void setName(String name) {
         this.name = name;
     }
+
+    @ManyToMany(mappedBy = "divisions")
+    private java.util.Set<User> users = new java.util.HashSet<>();
+
+    public java.util.Set<User> getUsers() {
+        return users;
+    }
+
+    public void setUsers(java.util.Set<User> users) {
+        this.users = users;
+    }
 }

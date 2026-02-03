@@ -16,6 +16,14 @@ Start-Sleep -Seconds 10
 Write-Host "2. Launching Tenant Service..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$baseDir\tenant-service'; & '$mvn' spring-boot:run"
 
+# 3. Start Inventory Service
+Write-Host "3. Launching Inventory Service..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$baseDir\inventory-service'; & '$mvn' spring-boot:run"
+
+# 4. Start Operation Service
+Write-Host "4. Launching Operation Service..." -ForegroundColor Cyan
+Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$baseDir\operation-service'; & '$mvn' spring-boot:run"
+
 # 3. Start API Gateway
 Write-Host "3. Launching API Gateway..." -ForegroundColor Cyan
 Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$baseDir\api-gateway'; & '$mvn' spring-boot:run"

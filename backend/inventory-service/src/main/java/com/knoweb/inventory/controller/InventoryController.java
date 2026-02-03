@@ -64,4 +64,5 @@ public class InventoryController {
     public ResponseEntity<InventoryItem> updateItem(@PathVariable Long id, @RequestBody InventoryItem item) {
         return ResponseEntity.ok(service.updateItemDetails(id, item));
     }
+
 }

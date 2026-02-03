@@ -31,6 +31,7 @@ export default function TenantOnboarding() {
         companyName: '',
         // Subdomain will be generated
         adminUsername: '',
+        adminEmail: '',
         adminPassword: '',
         logo: '',
         divisions: [],
@@ -57,6 +58,7 @@ export default function TenantOnboarding() {
                     companyName: tenantData.companyName,
                     subDomain: generatedSubDomain,
                     adminUsername: tenantData.adminUsername,
+                    adminEmail: tenantData.adminEmail,
                     adminPassword: tenantData.adminPassword,
                     logoUrl: tenantData.logo,
                     configJson: tenantData.configJson

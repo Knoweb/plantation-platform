@@ -33,9 +33,17 @@ public class User {
     @Column(name = "role", length = 20)
     private String role;
 
-    @Column(name = "division_access", columnDefinition = "jsonb")
-    @JdbcTypeCode(SqlTypes.JSON)
-    private List<String> divisionAccess;
+    @ManyToMany(fetch = FetchType.EAGER)
+    @JoinTable(name = "user_divisions", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "division_id"))
+    private java.util.Set<Division> divisions = new java.util.HashSet<>();
+
+    public java.util.Set<Division> getDivisions() {
+        return divisions;
+    }
+
+    public void setDivisions(java.util.Set<Division> divisions) {
+        this.divisions = divisions;
+    }
 
     @Column(name = "email", length = 100)
     private String email;
@@ -98,14 +106,6 @@ public class User {
 
     public void setRole(String role) {
         this.role = role;
-    }
-
-    public List<String> getDivisionAccess() {
-        return divisionAccess;
-    }
-
-    public void setDivisionAccess(List<String> divisionAccess) {
-        this.divisionAccess = divisionAccess;
     }
 
     public String getEmail() {

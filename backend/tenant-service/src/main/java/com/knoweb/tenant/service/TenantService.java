@@ -19,12 +19,15 @@ public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
+    private final com.knoweb.tenant.repository.DivisionRepository divisionRepository;
     private final PasswordEncoder passwordEncoder;
 
     public TenantService(TenantRepository tenantRepository, UserRepository userRepository,
+            com.knoweb.tenant.repository.DivisionRepository divisionRepository,
             PasswordEncoder passwordEncoder) {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
+        this.divisionRepository = divisionRepository;
         this.passwordEncoder = passwordEncoder;
     }
 
@@ -38,7 +41,7 @@ public class TenantService {
         if (userRepository.findByUsername(request.getAdminUsername()).isPresent()) {
             throw new RuntimeException("Username already taken. Please choose another.");
         }
-        if (userRepository.findByEmail(request.getAdminEmail()).isPresent()) {
+        if (userRepository.findByEmailIgnoreCase(request.getAdminEmail()).isPresent()) {
             throw new RuntimeException("Email already registered. Please login or use another.");
         }
 
@@ -62,10 +65,17 @@ public class TenantService {
             adminUser.setEmail(request.getAdminEmail());
             // VALIDATE AND HASH THE PASSWORD
             validatePassword(request.getAdminPassword());
-            adminUser.setPasswordHash(passwordEncoder.encode(request.getAdminPassword()));
+
+            String rawPassword = request.getAdminPassword();
+            String encodedPassword = passwordEncoder.encode(rawPassword);
+            System.out.println("DEBUG: Raw Password: " + rawPassword);
+            System.out.println("DEBUG: Encoded Password: " + encodedPassword);
+
+            adminUser.setPasswordHash(encodedPassword);
             adminUser.setRole("ESTATE_ADMIN");
 
-            System.out.println("DEBUG: Saving Admin User: " + adminUser.getUsername());
+            System.out.println(
+                    "DEBUG: Saving Admin User: " + adminUser.getUsername() + " with email: " + adminUser.getEmail());
             userRepository.save(adminUser);
 
             return tenant;
@@ -111,12 +121,19 @@ public class TenantService {
     public AuthResponse login(AuthRequest request) {
         System.out.println("DEBUG: Login Attempt for: " + request.getUsername());
 
-        // 1. Find User
-        User user = userRepository.findByUsername(request.getUsername())
-                .orElseThrow(() -> {
-                    System.out.println("DEBUG: User not found!");
-                    return new RuntimeException("Invalid credentials");
-                });
+        // 1. Find User (by Username OR Email)
+        String loginInput = request.getUsername(); // The logic accepts either in this field
+        User user;
+
+        if (loginInput.contains("@")) {
+            // Attempt login by EMAIL
+            user = userRepository.findByEmailIgnoreCase(loginInput)
+                    .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+        } else {
+            // Attempt login by USERNAME
+            user = userRepository.findByUsername(loginInput)
+                    .orElseThrow(() -> new RuntimeException("Invalid credentials"));
+        }
 
         // 2. Verify Password using BCrypt
         if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
@@ -158,7 +175,18 @@ public class TenantService {
         validatePassword(request.getPassword());
         user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
-        user.setDivisionAccess(request.getDivisionAccess());
+        if (request.getDivisionAccess() != null && !request.getDivisionAccess().isEmpty()) {
+            java.util.Set<com.knoweb.tenant.entity.Division> divisions = new java.util.HashSet<>();
+            for (String divIdStr : request.getDivisionAccess()) {
+                try {
+                    java.util.UUID divId = java.util.UUID.fromString(divIdStr);
+                    divisionRepository.findById(divId).ifPresent(divisions::add);
+                } catch (IllegalArgumentException e) {
+                    // Ignore invalid IDs
+                }
+            }
+            user.setDivisions(divisions);
+        }
 
         return userRepository.save(user);
     }
@@ -178,7 +206,18 @@ public class TenantService {
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
         user.setRole(request.getRole());
-        user.setDivisionAccess(request.getDivisionAccess());
+        if (request.getDivisionAccess() != null) {
+            java.util.Set<com.knoweb.tenant.entity.Division> divisions = new java.util.HashSet<>();
+            for (String divIdStr : request.getDivisionAccess()) {
+                try {
+                    java.util.UUID divId = java.util.UUID.fromString(divIdStr);
+                    divisionRepository.findById(divId).ifPresent(divisions::add);
+                } catch (IllegalArgumentException e) {
+                    // Ignore
+                }
+            }
+            user.setDivisions(divisions);
+        }
 
         // Update password only if provided and not empty
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
@@ -197,7 +236,7 @@ public class TenantService {
 
     @Transactional
     public String forgotPassword(String email) {
-        User user = userRepository.findByEmail(email)
+        User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
 
         // Generate Token

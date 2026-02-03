@@ -261,6 +261,26 @@ export default function UserManagement() {
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                             helperText={editingUser ? "Leave blank to keep current password" : ""}
                         />
+
+                        {(formData.password || !editingUser) && (
+                            <Box sx={{ mt: 1, pl: 1, mb: 2 }}>
+                                <Typography variant="caption" display="block" color={formData.password.length >= 8 ? "success.main" : "text.secondary"}>
+                                    {formData.password.length >= 8 ? "✓" : "○"} At least 8 characters
+                                </Typography>
+                                <Typography variant="caption" display="block" color={/[A-Z]/.test(formData.password) ? "success.main" : "text.secondary"}>
+                                    {/[A-Z]/.test(formData.password) ? "✓" : "○"} At least one uppercase letter
+                                </Typography>
+                                <Typography variant="caption" display="block" color={/[a-z]/.test(formData.password) ? "success.main" : "text.secondary"}>
+                                    {/[a-z]/.test(formData.password) ? "✓" : "○"} At least one lowercase letter
+                                </Typography>
+                                <Typography variant="caption" display="block" color={/\d/.test(formData.password) ? "success.main" : "text.secondary"}>
+                                    {/\d/.test(formData.password) ? "✓" : "○"} At least one number
+                                </Typography>
+                                <Typography variant="caption" display="block" color={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(formData.password) ? "success.main" : "text.secondary"}>
+                                    {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(formData.password) ? "✓" : "○"} At least one special character
+                                </Typography>
+                            </Box>
+                        )}
                         <TextField
                             select
                             margin="normal"

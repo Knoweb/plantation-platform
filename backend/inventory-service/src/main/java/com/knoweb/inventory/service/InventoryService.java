@@ -22,9 +22,9 @@ public class InventoryService {
 
     public List<InventoryItem> getAllItems(String tenantId) {
         // Ensure new items are seeded
-        if (repository.findByTenantIdAndName(tenantId, "Glyphosate 360").isEmpty()) {
-            seedData(tenantId);
-        }
+        // if (repository.findByTenantIdAndName(tenantId, "Glyphosate 360").isEmpty()) {
+        // seedData(tenantId);
+        // }
         return repository.findByTenantId(tenantId);
     }
 
@@ -153,7 +153,7 @@ public class InventoryService {
                     repository.save(item);
                 }
             }
-
+        }
     }
 
     public void deleteItem(Long id) {
@@ -169,4 +169,5 @@ public class InventoryService {
         // Buffer Level and Quantity are NOT updated here (Security/Process rule)
         return repository.save(item);
     }
+
 }

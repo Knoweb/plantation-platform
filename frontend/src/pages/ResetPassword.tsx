@@ -91,9 +91,25 @@ export default function ResetPassword() {
                             autoFocus
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
-                            helperText="Min 8 chars, 1 uppercase, 1 lowercase, 1 number, 1 special char"
-                            sx={{ mb: 2 }}
+                            sx={{ mb: 1 }}
                         />
+                        <Box sx={{ mb: 2, pl: 1 }}>
+                            <Typography variant="caption" display="block" color={newPassword.length >= 8 ? "success.main" : "text.secondary"}>
+                                {newPassword.length >= 8 ? "✓" : "○"} At least 8 characters
+                            </Typography>
+                            <Typography variant="caption" display="block" color={/[A-Z]/.test(newPassword) ? "success.main" : "text.secondary"}>
+                                {/[A-Z]/.test(newPassword) ? "✓" : "○"} At least one uppercase letter
+                            </Typography>
+                            <Typography variant="caption" display="block" color={/[a-z]/.test(newPassword) ? "success.main" : "text.secondary"}>
+                                {/[a-z]/.test(newPassword) ? "✓" : "○"} At least one lowercase letter
+                            </Typography>
+                            <Typography variant="caption" display="block" color={/\d/.test(newPassword) ? "success.main" : "text.secondary"}>
+                                {/\d/.test(newPassword) ? "✓" : "○"} At least one number
+                            </Typography>
+                            <Typography variant="caption" display="block" color={/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(newPassword) ? "success.main" : "text.secondary"}>
+                                {/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>/?]/.test(newPassword) ? "✓" : "○"} At least one special character
+                            </Typography>
+                        </Box>
                         <TextField
                             margin="normal"
                             required
