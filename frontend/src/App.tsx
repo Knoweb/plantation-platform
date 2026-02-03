@@ -8,6 +8,8 @@ import DashboardLayout from './layouts/DashboardLayout';
 import SuperAdminLayout from './layouts/SuperAdminLayout';
 import UserManagement from './pages/UserManagement';
 import Divisions from './pages/Divisions';
+import ForgotPassword from './pages/ForgotPassword';
+import ResetPassword from './pages/ResetPassword';
 
 import ManagerDashboard from './pages/manager/ManagerDashboard';
 import FieldOfficerDashboard from './pages/field-officer/FieldOfficerDashboard';
@@ -43,6 +45,8 @@ function App() {
         <Route path="/" element={<Navigate to="/login" replace />} />
         <Route path="/login" element={<Login />} />
         <Route path="/register" element={<TenantOnboarding />} />
+        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path="/reset-password" element={<ResetPassword />} />
 
         {/* Protected Dashboard Routes (Estate Owner/Manager) */}
         <Route path="/dashboard" element={<DashboardLayout />}>

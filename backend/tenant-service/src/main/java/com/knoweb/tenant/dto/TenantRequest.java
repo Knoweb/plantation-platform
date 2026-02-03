@@ -7,6 +7,7 @@ public class TenantRequest {
     private String subDomain;
     private String logoUrl;
     private String adminUsername;
+    private String adminEmail;
     private String adminPassword;
     private Map<String, Object> configJson;
 
@@ -49,6 +50,14 @@ public class TenantRequest {
 
     public void setAdminPassword(String adminPassword) {
         this.adminPassword = adminPassword;
+    }
+
+    public String getAdminEmail() {
+        return adminEmail;
+    }
+
+    public void setAdminEmail(String adminEmail) {
+        this.adminEmail = adminEmail;
     }
 
     public Map<String, Object> getConfigJson() {

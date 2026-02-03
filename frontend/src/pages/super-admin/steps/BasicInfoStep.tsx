@@ -16,17 +16,28 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                 Account Setup
             </Typography>
             <Grid container spacing={3}>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
+                    <TextField
+                        required
+                        fullWidth
+                        label="Admin Email"
+                        type="email"
+                        value={data.adminEmail || ''}
+                        onChange={handleChange('adminEmail')}
+                        helperText="Used for password reset and notifications"
+                    />
+                </Grid>
+                <Grid size={{ xs: 12 }}>
                     <TextField
                         required
                         fullWidth
                         label="Admin Username"
                         value={data.adminUsername || ''}
                         onChange={handleChange('adminUsername')}
-                        helperText="This will be your login email/username"
+                        helperText="Unique login identifier"
                     />
                 </Grid>
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField
                         required
                         fullWidth
@@ -37,13 +48,13 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                     />
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <Typography variant="h6" gutterBottom sx={{ mt: 2 }}>
                         Estate Details
                     </Typography>
                 </Grid>
 
-                <Grid item xs={12}>
+                <Grid size={{ xs: 12 }}>
                     <TextField
                         required
                         fullWidth

@@ -8,6 +8,7 @@ import com.knoweb.tenant.entity.Tenant;
 import com.knoweb.tenant.entity.User;
 import com.knoweb.tenant.repository.TenantRepository;
 import com.knoweb.tenant.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -18,10 +19,13 @@ public class TenantService {
 
     private final TenantRepository tenantRepository;
     private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
 
-    public TenantService(TenantRepository tenantRepository, UserRepository userRepository) {
+    public TenantService(TenantRepository tenantRepository, UserRepository userRepository,
+            PasswordEncoder passwordEncoder) {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
     }
 
     @Transactional
@@ -31,11 +35,11 @@ public class TenantService {
         if (tenantRepository.findBySubDomain(request.getSubDomain()).isPresent()) {
             throw new RuntimeException("Subdomain already exists");
         }
-        // Check Global Username Duplication (if required by business rule, though DB
-        // constraint is per tenant)
-        // If we want globally unique usernames:
         if (userRepository.findByUsername(request.getAdminUsername()).isPresent()) {
             throw new RuntimeException("Username already taken. Please choose another.");
+        }
+        if (userRepository.findByEmail(request.getAdminEmail()).isPresent()) {
+            throw new RuntimeException("Email already registered. Please login or use another.");
         }
 
         try {
@@ -55,7 +59,10 @@ public class TenantService {
             adminUser.setTenantId(tenant.getTenantId());
             adminUser.setFullName(request.getCompanyName() + " Owner");
             adminUser.setUsername(request.getAdminUsername());
-            adminUser.setPasswordHash(request.getAdminPassword());
+            adminUser.setEmail(request.getAdminEmail());
+            // VALIDATE AND HASH THE PASSWORD
+            validatePassword(request.getAdminPassword());
+            adminUser.setPasswordHash(passwordEncoder.encode(request.getAdminPassword()));
             adminUser.setRole("ESTATE_ADMIN");
 
             System.out.println("DEBUG: Saving Admin User: " + adminUser.getUsername());
@@ -111,11 +118,8 @@ public class TenantService {
                     return new RuntimeException("Invalid credentials");
                 });
 
-        System.out.println(
-                "DEBUG: User Found. DB Pass: " + user.getPasswordHash() + ", Input Pass: " + request.getPassword());
-
-        // 2. Verify Password (Simple check for now)
-        if (user.getPasswordHash() == null || !user.getPasswordHash().equals(request.getPassword())) {
+        // 2. Verify Password using BCrypt
+        if (user.getPasswordHash() == null || !passwordEncoder.matches(request.getPassword(), user.getPasswordHash())) {
             System.out.println("DEBUG: Password Mismatch!");
             throw new RuntimeException("Invalid credentials");
         }
@@ -150,7 +154,9 @@ public class TenantService {
         user.setFullName(request.getFullName());
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-        user.setPasswordHash(request.getPassword());
+        // VALIDATE AND HASH THE PASSWORD
+        validatePassword(request.getPassword());
+        user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         user.setRole(request.getRole());
         user.setDivisionAccess(request.getDivisionAccess());
 
@@ -176,7 +182,9 @@ public class TenantService {
 
         // Update password only if provided and not empty
         if (request.getPassword() != null && !request.getPassword().trim().isEmpty()) {
-            user.setPasswordHash(request.getPassword());
+            // VALIDATE AND HASH THE PASSWORD
+            validatePassword(request.getPassword());
+            user.setPasswordHash(passwordEncoder.encode(request.getPassword()));
         }
 
         return userRepository.save(user);
@@ -185,5 +193,57 @@ public class TenantService {
     @Transactional
     public void deleteUser(java.util.UUID userId) {
         userRepository.deleteById(userId);
+    }
+
+    @Transactional
+    public String forgotPassword(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("User not found with email: " + email));
+
+        // Generate Token
+        String token = java.util.UUID.randomUUID().toString();
+        user.setResetToken(token);
+        user.setResetTokenExpiry(LocalDateTime.now().plusHours(1)); // 1 Hour Validity
+
+        userRepository.save(user);
+
+        // In a real app, send email here. For now, return token for testing/demo
+        System.out.println("DEBUG: Reset Token for " + email + ": " + token);
+        return token;
+    }
+
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        User user = userRepository.findByResetToken(token)
+                .orElseThrow(() -> new RuntimeException("Invalid or expired token"));
+
+        if (user.getResetTokenExpiry().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("Token expired");
+        }
+
+        validatePassword(newPassword);
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        user.setResetToken(null);
+        user.setResetTokenExpiry(null);
+
+        userRepository.save(user);
+    }
+
+    private void validatePassword(String password) {
+        if (password == null || password.length() < 8) {
+            throw new RuntimeException("Password must be at least 8 characters long.");
+        }
+        if (!password.matches(".*[A-Z].*")) {
+            throw new RuntimeException("Password must contain at least one uppercase letter.");
+        }
+        if (!password.matches(".*[a-z].*")) {
+            throw new RuntimeException("Password must contain at least one lowercase letter.");
+        }
+        if (!password.matches(".*\\d.*")) {
+            throw new RuntimeException("Password must contain at least one number.");
+        }
+        if (!password.matches(".*[!@#$%^&*()_+\\-=\\[\\]{};':\"\\\\|,.<>/?].*")) {
+            throw new RuntimeException("Password must contain at least one special character.");
+        }
     }
 }
