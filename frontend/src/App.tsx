@@ -24,6 +24,7 @@ import GeneralStock from './pages/field-officer/tabs/GeneralStock';
 import KPIs from './pages/field-officer/tabs/KPIs';
 import PendingApprovals from './pages/manager/tabs/PendingApprovals';
 import CropBook from './pages/manager/tabs/CropBook';
+import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -62,6 +63,7 @@ function App() {
 
           {/* Feature Routes */}
           <Route path="users" element={<UserManagement />} />
+          <Route path="workers" element={<WorkerRegistry />} />
           <Route path="divisions" element={<Divisions />} />
           <Route path="harvest" element={<DailyEntry />} />
           <Route path="muster" element={<DailyEntry />} />

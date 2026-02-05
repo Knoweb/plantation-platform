@@ -24,6 +24,10 @@ public class OperationService {
         return musterRepository.findByTenantIdOrderByDateDesc(tenantId);
     }
 
+    public List<Muster> getMustersByDivision(String tenantId, String divisionId) {
+        return musterRepository.findByTenantIdAndDivisionIdOrderByDateDesc(tenantId, divisionId);
+    }
+
     public Muster createMuster(Muster muster) {
         if (muster.getDate() == null)
             muster.setDate(LocalDate.now());
@@ -41,6 +45,10 @@ public class OperationService {
     // Harvest Operations
     public List<HarvestLog> getHarvestLogs(String tenantId) {
         return harvestLogRepository.findByTenantIdOrderByDateDesc(tenantId);
+    }
+
+    public List<HarvestLog> getHarvestLogsByDivision(String tenantId, String divisionId) {
+        return harvestLogRepository.findByTenantIdAndDivisionIdOrderByDateDesc(tenantId, divisionId);
     }
 
     public HarvestLog logHarvest(HarvestLog log) {

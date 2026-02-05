@@ -36,7 +36,13 @@ public class DivisionService {
     }
 
     public void deleteDivision(UUID divisionId) {
-        // TODO: Check if fields exist or users are assigned?
+        // Remove relationship from users first
+        Division division = divisionRepository.findById(divisionId)
+                .orElseThrow(() -> new RuntimeException("Division not found"));
+
+        for (com.knoweb.tenant.entity.User user : division.getUsers()) {
+            user.getDivisions().remove(division);
+        }
         divisionRepository.deleteById(divisionId);
     }
 }

@@ -14,6 +14,7 @@ public class HarvestLog {
 
     private LocalDate date;
     private String tenantId;
+    private String divisionId; // For filtering by division
     private String workerName;
     private String fieldName;
     private Double quantityKg;

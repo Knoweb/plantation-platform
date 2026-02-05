@@ -14,6 +14,7 @@ public class Muster {
 
     private LocalDate date;
     private String tenantId;
+    private String divisionId; // For filtering by division
     private String fieldName;
     private String taskType;
     private int workerCount;

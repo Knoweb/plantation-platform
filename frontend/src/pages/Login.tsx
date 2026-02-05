@@ -35,14 +35,15 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await axios.post('http://localhost:8080/api/tenants/login', formData);
+            const response = await axios.post('http://localhost:8081/api/tenants/login', formData);
             const sessionData = {
                 username: response.data.username,
                 role: response.data.role,
                 estateName: response.data.companyName,
                 estateLogo: response.data.logoUrl,
                 tenantId: response.data.tenantId,
-                userId: response.data.userId
+                userId: response.data.userId,
+                divisionAccess: response.data.divisionAccess
             };
             sessionStorage.setItem('user', JSON.stringify(sessionData));
             navigate('/dashboard');

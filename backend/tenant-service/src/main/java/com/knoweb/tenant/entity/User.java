@@ -138,4 +138,11 @@ public class User {
     public void setResetTokenExpiry(java.time.LocalDateTime resetTokenExpiry) {
         this.resetTokenExpiry = resetTokenExpiry;
     }
+
+    // Helper for Frontend Compatibility (returns list of Division IDs)
+    public java.util.List<String> getDivisionAccess() {
+        return divisions.stream()
+                .map(division -> division.getDivisionId().toString())
+                .collect(java.util.stream.Collectors.toList());
+    }
 }

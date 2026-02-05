@@ -6,4 +6,6 @@ import java.util.List;
 
 public interface HarvestLogRepository extends JpaRepository<HarvestLog, Long> {
     List<HarvestLog> findByTenantIdOrderByDateDesc(String tenantId);
+
+    List<HarvestLog> findByTenantIdAndDivisionIdOrderByDateDesc(String tenantId, String divisionId);
 }

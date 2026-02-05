@@ -1,10 +1,11 @@
+import AgricultureIcon from '@mui/icons-material/Agriculture';
+import FieldManagementDialog from '../components/FieldManagementDialog';
 import { useState, useEffect } from 'react';
 import {
     Box,
     Typography,
     Paper,
     Button,
-    Grid,
     Card,
     CardContent,
     CardActions,
@@ -16,7 +17,8 @@ import {
     TextField,
     Container,
     Alert,
-    CircularProgress
+    CircularProgress,
+    Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -31,6 +33,10 @@ export default function Divisions() {
     const [editingDivision, setEditingDivision] = useState<any>(null);
     const [formData, setFormData] = useState({ name: '' });
 
+    // Field Management State
+    const [openFieldDialog, setOpenFieldDialog] = useState(false);
+    const [selectedDivisionForFields, setSelectedDivisionForFields] = useState<any>(null);
+
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = user?.tenantId;
 
@@ -42,7 +48,7 @@ export default function Divisions() {
     const fetchDivisions = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`);
+            const response = await axios.get(`http://localhost:8081/api/divisions?tenantId=${tenantId}`);
             setDivisions(response.data);
         } catch (err) {
             console.error("Failed to fetch divisions", err);
@@ -58,12 +64,12 @@ export default function Divisions() {
         try {
             if (editingDivision) {
                 // Update
-                await axios.put(`http://localhost:8080/api/divisions/${editingDivision.divisionId}`, {
+                await axios.put(`http://localhost:8081/api/divisions/${editingDivision.divisionId}`, {
                     name: formData.name
                 });
             } else {
                 // Create
-                await axios.post(`http://localhost:8080/api/divisions`, {
+                await axios.post(`http://localhost:8081/api/divisions`, {
                     tenantId,
                     name: formData.name
                 });
@@ -78,7 +84,7 @@ export default function Divisions() {
     const handleDelete = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this division?")) {
             try {
-                await axios.delete(`http://localhost:8080/api/divisions/${id}`);
+                await axios.delete(`http://localhost:8081/api/divisions/${id}`);
                 fetchDivisions();
             } catch (err) {
                 alert("Failed to delete division.");
@@ -97,6 +103,11 @@ export default function Divisions() {
         setEditingDivision(null);
         setFormData({ name: '' });
     };
+
+    const handleOpenFields = (division: any) => {
+        setSelectedDivisionForFields(division);
+        setOpenFieldDialog(true);
+    }
 
     return (
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
@@ -118,9 +129,9 @@ export default function Divisions() {
             {loading ? (
                 <Box display="flex" justifyContent="center"><CircularProgress /></Box>
             ) : (
-                <Grid container spacing={3}>
+                <Box sx={{ display: 'flex', flexWrap: 'wrap', mx: -1.5 }}>
                     {divisions.map((div) => (
-                        <Grid item xs={12} sm={6} md={4} key={div.divisionId}>
+                        <Box key={div.divisionId} sx={{ width: { xs: '100%', sm: '50%', md: '33.33%' }, p: 1.5 }}>
                             <Card elevation={3}>
                                 <CardContent>
                                     <Typography variant="h6" fontWeight="bold">
@@ -130,27 +141,42 @@ export default function Divisions() {
                                         ID: {div.divisionId.substring(0, 8)}...
                                     </Typography>
                                 </CardContent>
-                                <CardActions sx={{ justifyContent: 'flex-end' }}>
-                                    <IconButton color="primary" onClick={() => handleOpen(div)}>
-                                        <EditIcon />
-                                    </IconButton>
-                                    <IconButton color="error" onClick={() => handleDelete(div.divisionId)}>
-                                        <DeleteIcon />
-                                    </IconButton>
+                                <CardActions sx={{ justifyContent: 'space-between', px: 2, pb: 2 }}>
+                                    <Button
+                                        size="small"
+                                        startIcon={<AgricultureIcon />}
+                                        onClick={() => handleOpenFields(div)}
+                                        variant="outlined"
+                                        color="success"
+                                    >
+                                        Manage Fields
+                                    </Button>
+                                    <Box>
+                                        <Tooltip title="Edit Division Name">
+                                            <IconButton color="primary" onClick={() => handleOpen(div)}>
+                                                <EditIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                        <Tooltip title="Delete Division">
+                                            <IconButton color="error" onClick={() => handleDelete(div.divisionId)}>
+                                                <DeleteIcon />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </Box>
                                 </CardActions>
                             </Card>
-                        </Grid>
+                        </Box>
                     ))}
                     {divisions.length === 0 && (
-                        <Grid item xs={12}>
+                        <Box sx={{ width: '100%', p: 1.5 }}>
                             <Paper sx={{ p: 4, textAlign: 'center' }}>
                                 <Typography color="text.secondary">
                                     No divisions found. Create your first division to get started.
                                 </Typography>
                             </Paper>
-                        </Grid>
+                        </Box>
                     )}
-                </Grid>
+                </Box>
             )}
 
             {/* Add/Edit Dialog */}
@@ -173,6 +199,15 @@ export default function Divisions() {
                     <Button onClick={handleSave} variant="contained">Save</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Field Management Dialog */}
+            <FieldManagementDialog
+                open={openFieldDialog}
+                onClose={() => setOpenFieldDialog(false)}
+                divisionId={selectedDivisionForFields?.divisionId}
+                divisionName={selectedDivisionForFields?.name || ''}
+                tenantId={tenantId}
+            />
         </Container>
     );
 }

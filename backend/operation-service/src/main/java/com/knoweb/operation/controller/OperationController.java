@@ -18,8 +18,12 @@ public class OperationController {
 
     // Muster Endpoints
     @GetMapping("/muster")
-    public List<Muster> getMusters(@RequestParam String tenantId) {
-        return service.getMusters(tenantId);
+    public ResponseEntity<?> getMusters(@RequestParam String tenantId,
+            @RequestParam(required = false) String divisionId) {
+        if (divisionId != null && !divisionId.isEmpty()) {
+            return ResponseEntity.ok(service.getMustersByDivision(tenantId, divisionId));
+        }
+        return ResponseEntity.ok(service.getMusters(tenantId));
     }
 
     @PostMapping("/muster")
@@ -34,8 +38,12 @@ public class OperationController {
 
     // Harvest Endpoints
     @GetMapping("/harvest")
-    public List<HarvestLog> getHarvestLogs(@RequestParam String tenantId) {
-        return service.getHarvestLogs(tenantId);
+    public ResponseEntity<?> getHarvestLogs(@RequestParam String tenantId,
+            @RequestParam(required = false) String divisionId) {
+        if (divisionId != null && !divisionId.isEmpty()) {
+            return ResponseEntity.ok(service.getHarvestLogsByDivision(tenantId, divisionId));
+        }
+        return ResponseEntity.ok(service.getHarvestLogs(tenantId));
     }
 
     @PostMapping("/harvest")

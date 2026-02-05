@@ -156,7 +156,8 @@ public class TenantService {
                 tenant.getTenantId(),
                 tenant.getCompanyName(),
                 tenant.getLogoUrl(),
-                tenant.getSubDomain());
+                tenant.getSubDomain(),
+                user.getDivisionAccess()); // Pass the list of Division IDs
     }
 
     @Transactional

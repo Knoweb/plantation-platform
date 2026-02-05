@@ -14,8 +14,12 @@ public class AuthResponse {
     private String logoUrl;
     private String subDomain;
 
+    // User Access
+    private java.util.List<String> divisionAccess;
+
     public AuthResponse(UUID userId, String username, String fullName, String role,
-            UUID tenantId, String companyName, String logoUrl, String subDomain) {
+            UUID tenantId, String companyName, String logoUrl, String subDomain,
+            java.util.List<String> divisionAccess) {
         this.userId = userId;
         this.username = username;
         this.fullName = fullName;
@@ -24,6 +28,7 @@ public class AuthResponse {
         this.companyName = companyName;
         this.logoUrl = logoUrl;
         this.subDomain = subDomain;
+        this.divisionAccess = divisionAccess;
     }
 
     // Getters
@@ -57,5 +62,9 @@ public class AuthResponse {
 
     public String getSubDomain() {
         return subDomain;
+    }
+
+    public java.util.List<String> getDivisionAccess() {
+        return divisionAccess;
     }
 }

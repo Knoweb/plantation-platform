@@ -55,6 +55,7 @@ public class Division {
         this.name = name;
     }
 
+    @com.fasterxml.jackson.annotation.JsonIgnore
     @ManyToMany(mappedBy = "divisions")
     private java.util.Set<User> users = new java.util.HashSet<>();
 

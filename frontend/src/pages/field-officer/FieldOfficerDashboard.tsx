@@ -1,9 +1,7 @@
 import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
-import InventoryIcon from '@mui/icons-material/Inventory';
 import AddIcon from '@mui/icons-material/Add';
-import { BarChart } from '@mui/x-charts/BarChart';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -25,6 +23,12 @@ interface HarvestLog {
     cropType: string;
 }
 
+interface Field {
+    id: string;
+    name: string;
+    divisionId: string;
+}
+
 export default function FieldOfficerDashboard() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -33,6 +37,7 @@ export default function FieldOfficerDashboard() {
     const [musters, setMusters] = useState<Muster[]>([]);
     const [harvestLogs, setHarvestLogs] = useState<HarvestLog[]>([]);
     const [inventory, setInventory] = useState<any[]>([]);
+    const [fields, setFields] = useState<Field[]>([]);
 
     // KPIs
     const [dailyYield, setDailyYield] = useState(0);
@@ -54,15 +59,41 @@ export default function FieldOfficerDashboard() {
 
     const fetchData = async () => {
         try {
-            const [musterRes, harvestRes, invRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/operations/muster?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/operations/harvest?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`)
+            // Filter data based on User's Assigned Divisions
+            const myDivisions = userSession.divisionAccess || [];
+            const primaryDivisionId = myDivisions.length > 0 ? myDivisions[0] : '';
+
+            const [musterRes, harvestRes, invRes, divRes, fieldRes] = await Promise.all([
+                axios.get(`http://localhost:8080/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
+                axios.get(`http://localhost:8080/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
+                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`),
+                axios.get(`http://localhost:8081/api/divisions?tenantId=${tenantId}`),
+                axios.get(primaryDivisionId
+                    ? `http://localhost:8081/api/fields?divisionId=${primaryDivisionId}`
+                    : `http://localhost:8081/api/fields?tenantId=${tenantId}`)
             ]);
+
+            // Map Division IDs to Names for display/fuzzy matching if needed (simplified for now)
+            // Ideally, the backend operations API should support ?divisionId=... filtering.
+            // For now, we filter purely on Frontend if the API returns all.
+            // NOTE: This assumes the "fieldName" or "divisionId" is present in the response. 
+            // Since the current mock/API might not have DivisionID strictly linked in the Operations Service yet,
+            // we will proceed by accepting ALL for Admins, and eventually filtering for Officers.
+
+            // FOR NOW: If the user has specific division access, we should ideally filter.
+            // However, the current "Muster" and "Harvest" objects don't explicitly show a 'divisionId' in the interface above.
+            // We will display ALL for now but acknowledge this is where the filter logic lives.
+
+            // Example Filter Logic (Commented out until Backend returns divisionId in Muster/Harvest Objects)
+            /*
+            const filteredMusters = musterRes.data.filter(m => myDivisions.includes(m.divisionId));
+            setMusters(filteredMusters);
+            */
 
             setMusters(musterRes.data);
             setHarvestLogs(harvestRes.data);
             setInventory(invRes.data);
+            setFields(fieldRes.data);
 
             // Calculate KPIs
             const today = new Date().toISOString().split('T')[0];
@@ -91,7 +122,8 @@ export default function FieldOfficerDashboard() {
 
     const handleCreateMuster = async () => {
         try {
-            await axios.post('http://localhost:8080/api/operations/muster', { ...newMuster, tenantId, date: new Date().toISOString().split('T')[0] });
+            const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
+            await axios.post('http://localhost:8080/api/operations/muster', { ...newMuster, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
             setOpenMuster(false);
             fetchData();
         } catch (e) {
@@ -101,7 +133,8 @@ export default function FieldOfficerDashboard() {
 
     const handleLogHarvest = async () => {
         try {
-            await axios.post('http://localhost:8080/api/operations/harvest', { ...newHarvest, tenantId, date: new Date().toISOString().split('T')[0] });
+            const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
+            await axios.post('http://localhost:8080/api/operations/harvest', { ...newHarvest, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
             setOpenHarvest(false);
             fetchData();
         } catch (e) {
@@ -232,7 +265,20 @@ export default function FieldOfficerDashboard() {
             <Dialog open={openMuster} onClose={() => setOpenMuster(false)}>
                 <DialogTitle>Add Morning Muster</DialogTitle>
                 <DialogContent>
-                    <TextField autoFocus margin="dense" label="Field Name (e.g., Field No. 4)" fullWidth value={newMuster.fieldName} onChange={(e) => setNewMuster({ ...newMuster, fieldName: e.target.value })} />
+                    <FormControl fullWidth margin="dense">
+                        <InputLabel>Field Name</InputLabel>
+                        <Select
+                            value={newMuster.fieldName}
+                            label="Field Name"
+                            onChange={(e) => setNewMuster({ ...newMuster, fieldName: e.target.value })}
+                        >
+                            {fields.map((field) => (
+                                <MenuItem key={field.id} value={field.name}>
+                                    {field.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Task Type</InputLabel>
                         <Select value={newMuster.taskType} label="Task Type" onChange={(e) => setNewMuster({ ...newMuster, taskType: e.target.value })}>
@@ -255,7 +301,20 @@ export default function FieldOfficerDashboard() {
                 <DialogTitle>Log Daily Harvest</DialogTitle>
                 <DialogContent>
                     <TextField autoFocus margin="dense" label="Worker Name / Gang ID" fullWidth value={newHarvest.workerName} onChange={(e) => setNewHarvest({ ...newHarvest, workerName: e.target.value })} />
-                    <TextField margin="dense" label="Field Name" fullWidth value={newHarvest.fieldName} onChange={(e) => setNewHarvest({ ...newHarvest, fieldName: e.target.value })} />
+                    <FormControl fullWidth margin="dense">
+                        <InputLabel>Field Name</InputLabel>
+                        <Select
+                            value={newHarvest.fieldName}
+                            label="Field Name"
+                            onChange={(e) => setNewHarvest({ ...newHarvest, fieldName: e.target.value })}
+                        >
+                            {fields.map((field) => (
+                                <MenuItem key={field.id} value={field.name}>
+                                    {field.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
                     <TextField margin="dense" label="Quantity (kg)" type="number" fullWidth value={newHarvest.quantityKg} onChange={(e) => setNewHarvest({ ...newHarvest, quantityKg: Number(e.target.value) })} />
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Crop Type</InputLabel>
