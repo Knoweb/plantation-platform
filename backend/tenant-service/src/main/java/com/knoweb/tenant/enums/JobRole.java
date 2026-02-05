@@ -10,5 +10,7 @@ public enum JobRole {
     MANUAL_WEEDER,
     WATCHER,
     SUNDRY,
+    TAPPER,
+    WELDER,
     OTHER
 }

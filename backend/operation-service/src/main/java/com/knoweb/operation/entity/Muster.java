@@ -15,6 +15,14 @@ public class Muster {
     private LocalDate date;
     private String tenantId;
     private String divisionId; // For filtering by division
+
+    public String getDivisionId() {
+        return divisionId;
+    }
+
+    public void setDivisionId(String divisionId) {
+        this.divisionId = divisionId;
+    }
     private String fieldName;
     private String taskType;
     private int workerCount;
@@ -68,11 +76,22 @@ public class Muster {
         this.workerCount = workerCount;
     }
 
+    @ElementCollection
+    private java.util.List<String> workerIds; // IDs of workers assigned to this muster
+
     public String getStatus() {
         return status;
     }
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public java.util.List<String> getWorkerIds() {
+        return workerIds;
+    }
+
+    public void setWorkerIds(java.util.List<String> workerIds) {
+        this.workerIds = workerIds;
     }
 }

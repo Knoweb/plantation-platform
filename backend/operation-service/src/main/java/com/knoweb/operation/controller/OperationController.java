@@ -36,6 +36,17 @@ public class OperationController {
         return service.approveMuster(id);
     }
 
+    @PutMapping("/muster/{id}")
+    public ResponseEntity<?> updateMuster(@PathVariable Long id, @RequestBody Muster muster) {
+        return ResponseEntity.ok(service.updateMuster(id, muster));
+    }
+
+    @DeleteMapping("/muster/{id}")
+    public ResponseEntity<?> deleteMuster(@PathVariable Long id) {
+        service.deleteMuster(id);
+        return ResponseEntity.ok().build();
+    }
+
     // Harvest Endpoints
     @GetMapping("/harvest")
     public ResponseEntity<?> getHarvestLogs(@RequestParam String tenantId,

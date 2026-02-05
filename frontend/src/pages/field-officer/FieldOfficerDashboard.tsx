@@ -1,4 +1,4 @@
-import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip } from '@mui/material';
+import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, OutlinedInput } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
@@ -11,6 +11,7 @@ interface Muster {
     fieldName: string;
     taskType: string;
     workerCount: number;
+    workerIds: string[]; // Added workerIds
     status: string;
 }
 
@@ -24,9 +25,15 @@ interface HarvestLog {
 }
 
 interface Field {
-    id: string;
+    fieldId: string;
     name: string;
     divisionId: string;
+}
+
+interface Worker {
+    id: string;
+    name: string;
+    jobRole: string;
 }
 
 export default function FieldOfficerDashboard() {
@@ -38,6 +45,7 @@ export default function FieldOfficerDashboard() {
     const [harvestLogs, setHarvestLogs] = useState<HarvestLog[]>([]);
     const [inventory, setInventory] = useState<any[]>([]);
     const [fields, setFields] = useState<Field[]>([]);
+    const [workers, setWorkers] = useState<Worker[]>([]); // Added workers state
 
     // KPIs
     const [dailyYield, setDailyYield] = useState(0);
@@ -49,13 +57,31 @@ export default function FieldOfficerDashboard() {
     const [openHarvest, setOpenHarvest] = useState(false);
 
     // New Muster State
-    const [newMuster, setNewMuster] = useState({ fieldName: '', taskType: 'Plucking', workerCount: 0 });
+    const [newMuster, setNewMuster] = useState<{ fieldName: string, taskType: string, workerIds: string[] }>({
+        fieldName: '',
+        taskType: 'Plucking',
+        workerIds: []
+    });
     // New Harvest State
     const [newHarvest, setNewHarvest] = useState({ fieldName: '', workerName: '', quantityKg: 0, cropType: 'Tea' });
 
     useEffect(() => {
         fetchData();
+        fetchWorkers(); // Fetch workers on mount
     }, []);
+
+    const fetchWorkers = async () => {
+        try {
+            const divisionAccess = userSession.divisionAccess || [];
+            // Ideally fetch by division, but for now fetch all active workers for tenant if no specific division filter
+            // Or if backend supports filtering by multiple divisions, we'd do that.
+            // For now, let's just get all workers for the tenant to populate the dropdown.
+            const res = await axios.get(`http://localhost:8081/api/workers?tenantId=${tenantId}`);
+            setWorkers(res.data);
+        } catch (err) {
+            console.error("Failed to fetch workers", err);
+        }
+    }
 
     const fetchData = async () => {
         try {
@@ -72,23 +98,6 @@ export default function FieldOfficerDashboard() {
                     ? `http://localhost:8081/api/fields?divisionId=${primaryDivisionId}`
                     : `http://localhost:8081/api/fields?tenantId=${tenantId}`)
             ]);
-
-            // Map Division IDs to Names for display/fuzzy matching if needed (simplified for now)
-            // Ideally, the backend operations API should support ?divisionId=... filtering.
-            // For now, we filter purely on Frontend if the API returns all.
-            // NOTE: This assumes the "fieldName" or "divisionId" is present in the response. 
-            // Since the current mock/API might not have DivisionID strictly linked in the Operations Service yet,
-            // we will proceed by accepting ALL for Admins, and eventually filtering for Officers.
-
-            // FOR NOW: If the user has specific division access, we should ideally filter.
-            // However, the current "Muster" and "Harvest" objects don't explicitly show a 'divisionId' in the interface above.
-            // We will display ALL for now but acknowledge this is where the filter logic lives.
-
-            // Example Filter Logic (Commented out until Backend returns divisionId in Muster/Harvest Objects)
-            /*
-            const filteredMusters = musterRes.data.filter(m => myDivisions.includes(m.divisionId));
-            setMusters(filteredMusters);
-            */
 
             setMusters(musterRes.data);
             setHarvestLogs(harvestRes.data);
@@ -123,8 +132,15 @@ export default function FieldOfficerDashboard() {
     const handleCreateMuster = async () => {
         try {
             const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
-            await axios.post('http://localhost:8080/api/operations/muster', { ...newMuster, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
+            await axios.post('http://localhost:8080/api/operations/muster', {
+                ...newMuster,
+                tenantId,
+                divisionId,
+                date: new Date().toISOString().split('T')[0],
+                workerCount: newMuster.workerIds.length // Optimistically send count, backend recalculates anyway
+            });
             setOpenMuster(false);
+            setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] }); // Reset form
             fetchData();
         } catch (e) {
             alert("Failed to create Muster");
@@ -248,7 +264,19 @@ export default function FieldOfficerDashboard() {
                                         >
                                             <ListItemText
                                                 primary={`${m.fieldName} - ${m.taskType}`}
-                                                secondary={`${m.workerCount} Workers • ${m.status}`}
+                                                secondary={
+                                                    <Box component="span">
+                                                        <Typography variant="body2" component="span">
+                                                            {m.workerCount} Workers • {m.status}
+                                                        </Typography>
+                                                        {/* Preview first few workers if ids exist */}
+                                                        {m.workerIds && m.workerIds.length > 0 && (
+                                                            <Typography variant="caption" display="block" color="text.secondary">
+                                                                Assigned: {m.workerIds.length} person(s)
+                                                            </Typography>
+                                                        )}
+                                                    </Box>
+                                                }
                                             />
                                         </ListItem>
                                         <Divider />
@@ -262,7 +290,7 @@ export default function FieldOfficerDashboard() {
             </Grid>
 
             {/* Add Muster Dialog */}
-            <Dialog open={openMuster} onClose={() => setOpenMuster(false)}>
+            <Dialog open={openMuster} onClose={() => setOpenMuster(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Add Morning Muster</DialogTitle>
                 <DialogContent>
                     <FormControl fullWidth margin="dense">
@@ -273,7 +301,7 @@ export default function FieldOfficerDashboard() {
                             onChange={(e) => setNewMuster({ ...newMuster, fieldName: e.target.value })}
                         >
                             {fields.map((field) => (
-                                <MenuItem key={field.id} value={field.name}>
+                                <MenuItem key={field.fieldId} value={field.name}>
                                     {field.name}
                                 </MenuItem>
                             ))}
@@ -288,11 +316,45 @@ export default function FieldOfficerDashboard() {
                             <MenuItem value="Tapping">Tapping</MenuItem>
                         </Select>
                     </FormControl>
-                    <TextField margin="dense" label="Worker Count" type="number" fullWidth value={newMuster.workerCount} onChange={(e) => setNewMuster({ ...newMuster, workerCount: Number(e.target.value) })} />
+
+                    {/* Worker Multi-Select */}
+                    <FormControl fullWidth margin="dense">
+                        <InputLabel>Assign Workers</InputLabel>
+                        <Select
+                            multiple
+                            value={newMuster.workerIds}
+                            onChange={(e) => {
+                                const value = e.target.value;
+                                // On autofill we get a stringified value based on Mui Select docs, forcing array
+                                setNewMuster({ ...newMuster, workerIds: typeof value === 'string' ? value.split(',') : value as string[] });
+                            }}
+                            input={<OutlinedInput label="Assign Workers" />}
+                            renderValue={(selected) => (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                                    {selected.map((value) => {
+                                        const worker = workers.find(w => w.id === value);
+                                        return (
+                                            <Chip key={value} label={worker ? worker.name : value} size="small" />
+                                        );
+                                    })}
+                                </Box>
+                            )}
+                        >
+                            {workers.length === 0 && <MenuItem disabled>No workers available</MenuItem>}
+                            {workers.map((worker) => (
+                                <MenuItem key={worker.id} value={worker.id}>
+                                    {worker.name} ({worker.jobRole})
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setOpenMuster(false)}>Cancel</Button>
-                    <Button onClick={handleCreateMuster} variant="contained">Assign</Button>
+                    <Button onClick={handleCreateMuster} variant="contained" disabled={newMuster.workerIds.length === 0 || !newMuster.fieldName}>
+                        Assign ({newMuster.workerIds.length})
+                    </Button>
                 </DialogActions>
             </Dialog>
 
@@ -309,7 +371,7 @@ export default function FieldOfficerDashboard() {
                             onChange={(e) => setNewHarvest({ ...newHarvest, fieldName: e.target.value })}
                         >
                             {fields.map((field) => (
-                                <MenuItem key={field.id} value={field.name}>
+                                <MenuItem key={field.fieldId} value={field.name}>
                                     {field.name}
                                 </MenuItem>
                             ))}

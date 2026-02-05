@@ -23,7 +23,7 @@ import AddIcon from '@mui/icons-material/Add';
 import axios from 'axios';
 
 interface Field {
-    id: string;
+    fieldId: string;
     name: string;
     acreage: number;
     cropType: string;
@@ -189,13 +189,13 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
                             </Typography>
                         )}
                         {fields.map((field) => (
-                            <ListItem key={field.id} divider>
+                            <ListItem key={field.fieldId} divider>
                                 <ListItemText
                                     primary={field.name}
                                     secondary={field.cropType}
                                 />
                                 <ListItemSecondaryAction>
-                                    <IconButton edge="end" color="error" onClick={() => handleDeleteField(field.id)}>
+                                    <IconButton edge="end" color="error" onClick={() => handleDeleteField(field.fieldId)}>
                                         <DeleteIcon />
                                     </IconButton>
                                 </ListItemSecondaryAction>
