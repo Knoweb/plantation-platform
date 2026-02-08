@@ -43,7 +43,8 @@ export default function Login() {
                 estateLogo: response.data.logoUrl,
                 tenantId: response.data.tenantId,
                 userId: response.data.userId,
-                divisionAccess: response.data.divisionAccess
+                divisionAccess: response.data.divisionAccess,
+                config: response.data.config
             };
             sessionStorage.setItem('user', JSON.stringify(sessionData));
             navigate('/dashboard');

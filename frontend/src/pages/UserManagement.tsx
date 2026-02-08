@@ -68,7 +68,7 @@ export default function UserManagement() {
 
     const fetchUsers = async () => {
         try {
-            const response = await axios.get(`http://localhost:8081/api/tenants/${tenantId}/users`);
+            const response = await axios.get(`http://localhost:8080/api/tenants/${tenantId}/users`);
             setUsers(response.data);
         } catch (error) {
             console.error("Failed to fetch users", error);
@@ -79,7 +79,7 @@ export default function UserManagement() {
 
     const fetchDivisions = async () => {
         try {
-            const response = await axios.get(`http://localhost:8081/api/divisions?tenantId=${tenantId}`);
+            const response = await axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`);
             setDivisions(response.data);
         } catch (error) {
             console.error("Failed to fetch divisions", error);
@@ -122,9 +122,9 @@ export default function UserManagement() {
 
         try {
             if (editingUser) {
-                await axios.put(`http://localhost:8081/api/tenants/users/${editingUser.userId}`, payload);
+                await axios.put(`http://localhost:8080/api/tenants/users/${editingUser.userId}`, payload);
             } else {
-                await axios.post('http://localhost:8081/api/tenants/users', payload);
+                await axios.post('http://localhost:8080/api/tenants/users', payload);
             }
             handleClose();
             fetchUsers();
@@ -136,7 +136,7 @@ export default function UserManagement() {
     const handleDelete = async (userId: string) => {
         if (window.confirm("Are you sure you want to delete this user?")) {
             try {
-                await axios.delete(`http://localhost:8081/api/tenants/users/${userId}`);
+                await axios.delete(`http://localhost:8080/api/tenants/users/${userId}`);
                 fetchUsers();
             } catch (error) {
                 alert("Failed to delete user.");

@@ -65,7 +65,7 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
 
     const fetchTenantDetails = async () => {
         try {
-            const res = await axios.get(`http://localhost:8081/api/tenants/${tenantId}`);
+            const res = await axios.get(`http://localhost:8080/api/tenants/${tenantId}`);
             if (res.data.configJson) {
                 // Filter keys where value is true
                 const crops = Object.entries(res.data.configJson)
@@ -86,7 +86,7 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
         if (!divisionId) return;
         try {
             setLoading(true);
-            const res = await axios.get(`http://localhost:8081/api/fields?divisionId=${divisionId}`);
+            const res = await axios.get(`http://localhost:8080/api/fields?divisionId=${divisionId}`);
             setFields(res.data);
         } catch (err) {
             console.error("Failed to fetch fields", err);
@@ -103,7 +103,7 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
         }
 
         try {
-            await axios.post(`http://localhost:8081/api/fields`, {
+            await axios.post(`http://localhost:8080/api/fields`, {
                 tenantId,
                 divisionId,
                 name: newFieldName,
@@ -122,7 +122,7 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
     const handleDeleteField = async (id: string) => {
         if (!window.confirm("Delete this field?")) return;
         try {
-            await axios.delete(`http://localhost:8081/api/fields/${id}`);
+            await axios.delete(`http://localhost:8080/api/fields/${id}`);
             fetchFields();
         } catch (err) {
             alert("Failed to delete field.");

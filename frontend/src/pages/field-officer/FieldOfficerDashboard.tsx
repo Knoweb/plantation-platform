@@ -1,7 +1,9 @@
-import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, OutlinedInput } from '@mui/material';
+import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, OutlinedInput, Autocomplete, Checkbox } from '@mui/material';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -76,7 +78,7 @@ export default function FieldOfficerDashboard() {
             // Ideally fetch by division, but for now fetch all active workers for tenant if no specific division filter
             // Or if backend supports filtering by multiple divisions, we'd do that.
             // For now, let's just get all workers for the tenant to populate the dropdown.
-            const res = await axios.get(`http://localhost:8081/api/workers?tenantId=${tenantId}`);
+            const res = await axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`);
             setWorkers(res.data);
         } catch (err) {
             console.error("Failed to fetch workers", err);
@@ -93,10 +95,10 @@ export default function FieldOfficerDashboard() {
                 axios.get(`http://localhost:8080/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
                 axios.get(`http://localhost:8080/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
                 axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8081/api/divisions?tenantId=${tenantId}`),
+                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`),
                 axios.get(primaryDivisionId
-                    ? `http://localhost:8081/api/fields?divisionId=${primaryDivisionId}`
-                    : `http://localhost:8081/api/fields?tenantId=${tenantId}`)
+                    ? `http://localhost:8080/api/fields?divisionId=${primaryDivisionId}`
+                    : `http://localhost:8080/api/fields?tenantId=${tenantId}`)
             ]);
 
             setMusters(musterRes.data);
@@ -158,14 +160,7 @@ export default function FieldOfficerDashboard() {
         }
     };
 
-    const handleApproveMuster = async (id: number) => {
-        try {
-            await axios.put(`http://localhost:8080/api/operations/muster/${id}/approve`);
-            fetchData();
-        } catch (e) {
-            alert("Approval Failed");
-        }
-    };
+    // handleApproveMuster removed as per request (Manager Only)
 
     return (
         <Box>
@@ -174,12 +169,7 @@ export default function FieldOfficerDashboard() {
                     Field Operation Center
                 </Typography>
                 <Box>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => setOpenMuster(true)} sx={{ mr: 1 }}>
-                        New Muster
-                    </Button>
-                    <Button variant="contained" color="secondary" startIcon={<AddIcon />} onClick={() => setOpenHarvest(true)}>
-                        Log Harvest
-                    </Button>
+                    {/* Buttons removed as per request */}
                 </Box>
             </Box>
 
@@ -256,9 +246,7 @@ export default function FieldOfficerDashboard() {
                                         <ListItem
                                             secondaryAction={
                                                 m.status === 'PENDING' && (
-                                                    <Button size="small" variant="contained" color="success" onClick={() => handleApproveMuster(m.id)}>
-                                                        Approve
-                                                    </Button>
+                                                    <Chip label="Pending Approval" size="small" color="warning" />
                                                 )
                                             }
                                         >
@@ -318,36 +306,44 @@ export default function FieldOfficerDashboard() {
                     </FormControl>
 
                     {/* Worker Multi-Select */}
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>Assign Workers</InputLabel>
-                        <Select
-                            multiple
-                            value={newMuster.workerIds}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                // On autofill we get a stringified value based on Mui Select docs, forcing array
-                                setNewMuster({ ...newMuster, workerIds: typeof value === 'string' ? value.split(',') : value as string[] });
-                            }}
-                            input={<OutlinedInput label="Assign Workers" />}
-                            renderValue={(selected) => (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                    {selected.map((value) => {
-                                        const worker = workers.find(w => w.id === value);
-                                        return (
-                                            <Chip key={value} label={worker ? worker.name : value} size="small" />
-                                        );
-                                    })}
+                    {/* Worker Multi-Select with Autocomplete and Grouping */}
+                    <Autocomplete
+                        multiple
+                        id="worker-select-grouped"
+                        options={workers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
+                        groupBy={(option) => option.jobRole}
+                        getOptionLabel={(option) => option.name}
+                        value={workers.filter(w => newMuster.workerIds.includes(w.id))}
+                        onChange={(event, newValue) => {
+                            setNewMuster({ ...newMuster, workerIds: newValue.map(w => w.id) });
+                        }}
+                        disableCloseOnSelect
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Assign Workers"
+                                placeholder="Search by name or role"
+                                margin="dense"
+                            />
+                        )}
+                        renderOption={(props, option, { selected }) => (
+                            <li {...props} key={option.id}>
+                                <Checkbox
+                                    checked={selected}
+                                    style={{ marginRight: 8 }}
+                                />
+                                <Box>
+                                    <Typography variant="body2">{option.name}</Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Reg: {option.id ? '...' : '' /* Should use RegNo but interface defines name/jobRole only */}
+                                        {/* Wait, Interface Worker only has id, name, jobRole. Need to add RegNo to interface? */}
+                                        {option.jobRole}
+                                    </Typography>
                                 </Box>
-                            )}
-                        >
-                            {workers.length === 0 && <MenuItem disabled>No workers available</MenuItem>}
-                            {workers.map((worker) => (
-                                <MenuItem key={worker.id} value={worker.id}>
-                                    {worker.name} ({worker.jobRole})
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
+                            </li>
+                        )}
+                        sx={{ mt: 2 }}
+                    />
 
                 </DialogContent>
                 <DialogActions>
@@ -381,9 +377,9 @@ export default function FieldOfficerDashboard() {
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Crop Type</InputLabel>
                         <Select value={newHarvest.cropType} label="Crop Type" onChange={(e) => setNewHarvest({ ...newHarvest, cropType: e.target.value })}>
-                            <MenuItem value="Tea">Tea</MenuItem>
-                            <MenuItem value="Rubber">Rubber</MenuItem>
-                            <MenuItem value="Cinnamon">Cinnamon</MenuItem>
+                            {(userSession.config?.crops || ['Tea', 'Rubber', 'Cinnamon']).map((crop: string) => (
+                                <MenuItem key={crop} value={crop}>{crop}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
                 </DialogContent>

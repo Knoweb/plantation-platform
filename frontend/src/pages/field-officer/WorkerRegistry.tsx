@@ -68,7 +68,7 @@ export default function WorkerRegistry() {
     const fetchWorkers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:8081/api/workers?tenantId=${tenantId}`);
+            const response = await axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`);
             setWorkers(response.data);
         } catch (error) {
             console.error("Error fetching workers", error);
@@ -82,9 +82,9 @@ export default function WorkerRegistry() {
             const payload = { ...currentWorker, tenantId };
 
             if (isEdit && currentWorker.id) {
-                await axios.put(`http://localhost:8081/api/workers/${currentWorker.id}`, payload);
+                await axios.put(`http://localhost:8080/api/workers/${currentWorker.id}`, payload);
             } else {
-                await axios.post(`http://localhost:8081/api/workers`, payload);
+                await axios.post(`http://localhost:8080/api/workers`, payload);
             }
             setOpenDialog(false);
             fetchWorkers();
@@ -196,7 +196,7 @@ export default function WorkerRegistry() {
                 <DialogTitle>{isEdit ? "Edit Worker" : "Register New Worker"}</DialogTitle>
                 <DialogContent>
                     <Grid container spacing={2} sx={{ mt: 1 }}>
-                        <Grid xs={6}>
+                        <Grid item xs={6}>
                             <TextField
                                 label="Registration Number (e.g. 101)"
                                 fullWidth
@@ -204,7 +204,7 @@ export default function WorkerRegistry() {
                                 onChange={(e) => setCurrentWorker({ ...currentWorker, registrationNumber: e.target.value })}
                             />
                         </Grid>
-                        <Grid xs={6}>
+                        <Grid item xs={6}>
                             <TextField
                                 label="EPF Number"
                                 fullWidth
@@ -212,7 +212,7 @@ export default function WorkerRegistry() {
                                 onChange={(e) => setCurrentWorker({ ...currentWorker, epfNumber: e.target.value })}
                             />
                         </Grid>
-                        <Grid xs={12}>
+                        <Grid item xs={12}>
                             <TextField
                                 label="Full Name"
                                 fullWidth
@@ -221,7 +221,7 @@ export default function WorkerRegistry() {
                             />
                         </Grid>
 
-                        <Grid xs={6}>
+                        <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel>Gender</InputLabel>
                                 <Select
@@ -234,7 +234,7 @@ export default function WorkerRegistry() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid xs={6}>
+                        <Grid item xs={6}>
                             <FormControl fullWidth>
                                 <InputLabel>Job Role</InputLabel>
                                 <Select
@@ -248,7 +248,7 @@ export default function WorkerRegistry() {
                                 </Select>
                             </FormControl>
                         </Grid>
-                        <Grid xs={12}>
+                        <Grid item xs={12}>
                             <FormControl fullWidth>
                                 <InputLabel>Status</InputLabel>
                                 <Select

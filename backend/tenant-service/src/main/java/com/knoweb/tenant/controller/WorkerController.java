@@ -11,7 +11,6 @@ import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/workers")
-@CrossOrigin(origins = "*") // Allow frontend access
 public class WorkerController {
 
     @Autowired

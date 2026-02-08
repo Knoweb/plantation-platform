@@ -1,10 +1,13 @@
-import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions } from '@mui/material';
+import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions, Autocomplete, Checkbox, TextField, Alert } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import EditIcon from '@mui/icons-material/Edit';
 import PersonIcon from '@mui/icons-material/Person';
 import SpaIcon from '@mui/icons-material/Spa';
 import AddIcon from '@mui/icons-material/Add';
+import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 
 interface Muster {
     id: number;
@@ -53,6 +56,9 @@ export default function MorningMuster() {
 
     // Confirmation Dialog State
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [confirmMessage, setConfirmMessage] = useState("");
+    const [confirmButtonText, setConfirmButtonText] = useState("Confirm");
+    const [confirmButtonColor, setConfirmButtonColor] = useState<"primary" | "secondary" | "error" | "info" | "success" | "warning">("primary");
     const [confirmAction, setConfirmAction] = useState<() => Promise<void>>(() => async () => { });
     const [newMuster, setNewMuster] = useState<{ fieldName: string, taskType: string, workerIds: string[] }>({
         fieldName: '',
@@ -60,17 +66,35 @@ export default function MorningMuster() {
         workerIds: []
     });
 
+    // Read-Only State
+    const [isReadOnly, setIsReadOnly] = useState(false);
+
     useEffect(() => {
         fetchData();
-    }, [tenantId]);
+        if (tenantId && selectedDivisionId) {
+            checkApprovalStatus();
+        }
+    }, [tenantId, selectedDivisionId]);
+
+    const checkApprovalStatus = async () => {
+        try {
+            const today = new Date().toISOString().split('T')[0];
+            const res = await axios.get(`http://localhost:8080/api/tenants/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
+            // Check if TODAY'S work for this division is SUBMITTED (Pending or Approved)
+            const submittedWork = res.data.find((w: any) => w.workDate === today && (w.status === 'APPROVED' || w.status === 'PENDING'));
+            setIsReadOnly(!!submittedWork);
+        } catch (e) {
+            console.error("Failed to check approval status", e);
+        }
+    };
 
     const fetchData = async () => {
         try {
             const [musterRes, workerRes, fieldRes, divisionRes] = await Promise.all([
                 axios.get(`http://localhost:8084/api/operations/muster?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8081/api/workers?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8081/api/fields?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8081/api/divisions?tenantId=${tenantId}`)
+                axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`),
+                axios.get(`http://localhost:8080/api/fields?tenantId=${tenantId}`),
+                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`)
             ]);
 
             setMusters(musterRes.data);
@@ -155,12 +179,8 @@ export default function MorningMuster() {
         return relatedField ? relatedField.divisionId === activeDivId : true; // Show if unknown
     });
 
-    const filteredWorkers = workers.filter(w => {
-        // If worker has no specific assignments, maybe show all? Or hide?
-        // Usually workers are assigned to divisions.
-        if (!w.divisionIds || w.divisionIds.length === 0) return true;
-        return w.divisionIds.includes(activeDivId);
-    });
+    // Workers are available across all divisions (Floating Pool)
+    const filteredWorkers = workers;
 
     const filteredFields = fields.filter(f => f.divisionId === activeDivId);
 
@@ -188,6 +208,9 @@ export default function MorningMuster() {
     const getWorkerDetails = (id: string) => workers.find(w => w.id === id);
 
     const handleClearAll = () => {
+        setConfirmMessage("Are you sure you want to clear ALL assignments for this division? This cannot be undone.");
+        setConfirmButtonText("Clear All");
+        setConfirmButtonColor("error");
         setConfirmAction(() => async () => {
             try {
                 // Delete all filtered musters one by one
@@ -198,6 +221,55 @@ export default function MorningMuster() {
                 fetchData();
             } catch (e) {
                 console.error("Failed to clear assignments", e);
+            }
+        });
+        setConfirmOpen(true);
+    };
+
+    const handleFinalize = () => {
+        setConfirmMessage("Are you sure you want to finalize the muster? This will submit the assignments for Manager Approval.");
+        setConfirmButtonText("Confirm Submission");
+        setConfirmButtonColor("success");
+        setConfirmAction(() => async () => {
+            try {
+                // Aggregate all into ONE submission with detailed worker info
+                const allAssignments: { task: string, field: string, count: number, assigned: { id: string, name: string }[] }[] = [];
+                let totalCount = 0;
+
+                // Iterate filtered musters directly to preserve all details
+                filteredMusters.forEach(m => {
+                    const assignedWorkers = m.workerIds?.map(wid => {
+                        const w = workers.find(work => work.id === wid);
+                        return { id: wid, name: w ? w.name : 'Unknown' };
+                    }) || [];
+
+                    totalCount += m.workerCount;
+                    allAssignments.push({
+                        task: m.taskType,
+                        field: m.fieldName,
+                        count: m.workerCount,
+                        assigned: assignedWorkers
+                    });
+                });
+
+                const payload = {
+                    tenantId: tenantId,
+                    divisionId: selectedDivisionId,
+                    workDate: new Date().toISOString().split('T')[0],
+                    workType: "Morning Muster",
+                    workerCount: totalCount,
+                    // Store structured data containing Task Type + Field + Workers + NAMES
+                    details: JSON.stringify(allAssignments),
+                    quantity: 0
+                };
+
+                await axios.post('http://localhost:8080/api/tenants/daily-work', payload);
+
+                alert("Muster Submitted for Manager Approval!");
+                // Optionally disable editing here?
+            } catch (error) {
+                console.error("Submission failed", error);
+                alert("Failed to submit muster. Please check backend connection.");
             }
         });
         setConfirmOpen(true);
@@ -216,7 +288,12 @@ export default function MorningMuster() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Box>
-                    <Typography variant="h4" fontWeight="bold" color="primary.dark">Morning Muster</Typography>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <Typography variant="h4" fontWeight="bold" color="primary.dark">
+                            {isReadOnly ? "Muster Review" : "Morning Muster"}
+                        </Typography>
+                        {isReadOnly && <Chip label="Read-Only Mode" color="info" size="small" />}
+                    </Box>
                     <Typography variant="subtitle1" color="text.secondary">
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </Typography>
@@ -229,6 +306,7 @@ export default function MorningMuster() {
                         value={selectedDivisionId}
                         label="Division"
                         onChange={(e) => setSelectedDivisionId(e.target.value)}
+                        disabled={isReadOnly}
                     >
                         {divisions.map((div) => (
                             <MenuItem key={div.divisionId} value={div.divisionId}>
@@ -243,20 +321,38 @@ export default function MorningMuster() {
                         setEditingMusterId(null);
                         setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
                         setOpenMuster(true);
-                    }} disabled={!selectedDivisionId}>
+                    }} disabled={!selectedDivisionId || isReadOnly}>
                         Assign Workers
                     </Button>
                     <Button
                         variant="contained"
-                        color="success"
+                        // Removed color="success" to use custom gradient
                         size="large"
-                        sx={{ px: 4, fontWeight: 'bold', fontSize: '1rem', boxShadow: 3 }}
+                        startIcon={<DoneAllIcon />}
+                        onClick={handleFinalize}
+                        disabled={filteredMusters.length === 0 || isReadOnly}
+                        sx={{
+                            px: 4,
+                            fontWeight: 'bold',
+                            fontSize: '1rem',
+                            boxShadow: 3,
+                            background: filteredMusters.length === 0 ? undefined : 'linear-gradient(45deg, #d32f2f 30%, #ef5350 90%)',
+                            color: 'white'
+                        }}
                     >
-                        Finalize Muster
+                        Submit Muster
                     </Button>
-                    <Button variant="outlined" color="error" onClick={handleClearAll} disabled={filteredMusters.length === 0}>Clear All</Button>
+                    <Button variant="outlined" color="error" onClick={handleClearAll} disabled={filteredMusters.length === 0 || isReadOnly}>Clear All</Button>
                 </Box>
             </Box>
+
+            {isReadOnly && (
+                <Alert severity="info" sx={{ mb: 3 }}>
+                    <Typography fontWeight="bold">Muster Submitted</Typography>
+                    This muster has been submitted and is currently in <strong>Read-Only Review Mode</strong>.
+                    Changes cannot be made until it is processed by the Manager.
+                </Alert>
+            )}
 
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                 {/* Left Panel: Muster Chit Summary */}
@@ -323,8 +419,14 @@ export default function MorningMuster() {
                                     setEditingMusterId(null);
                                     setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
                                     setOpenMuster(true);
-                                }} disabled={!selectedDivisionId}>Quick Add</Button>
+                                }} disabled={!selectedDivisionId || isReadOnly}>Quick Add</Button>
                             </Box>
+
+                            {isReadOnly && (
+                                <Alert severity="info" sx={{ mb: 2 }}>
+                                    This muster has been <strong>APPROVED</strong> by the Manager and is now Read-Only.
+                                </Alert>
+                            )}
 
                             {Object.entries(groupedMusters).map(([task, typeMusters]) => (
                                 <Box key={task} mb={3} p={2} sx={{ bgcolor: 'white', borderRadius: 2, border: '1px solid #e0e0e0' }}>
@@ -339,7 +441,7 @@ export default function MorningMuster() {
                                                 <Typography variant="body2" color="text.secondary" gutterBottom>
                                                     Field: <strong>{muster.fieldName}</strong> • ({muster.workerCount} workers)
                                                 </Typography>
-                                                <IconButton size="small" onClick={() => handleEditMuster(muster)}>
+                                                <IconButton size="small" onClick={() => handleEditMuster(muster)} disabled={isReadOnly}>
                                                     <EditIcon fontSize="small" />
                                                 </IconButton>
                                             </Box>
@@ -378,7 +480,7 @@ export default function MorningMuster() {
                                         setEditingMusterId(null);
                                         setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
                                         setOpenMuster(true);
-                                    }} disabled={!selectedDivisionId}>Start Allocation</Button>
+                                    }} disabled={!selectedDivisionId || isReadOnly}>Start Allocation</Button>
                                 </Box>
                             )}
                         </CardContent>
@@ -417,43 +519,55 @@ export default function MorningMuster() {
                     </FormControl>
 
                     {/* Worker Multi-Select */}
-                    <FormControl fullWidth margin="dense">
-                        <InputLabel>Assign Workers</InputLabel>
-                        <Select
-                            multiple
-                            value={newMuster.workerIds}
-                            onChange={(e) => {
-                                const value = e.target.value;
-                                setNewMuster({ ...newMuster, workerIds: typeof value === 'string' ? value.split(',') : value as string[] });
-                            }}
-                            input={<OutlinedInput label="Assign Workers" />}
-                            renderValue={(selected) => (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
-                                    {selected.map((value) => {
-                                        const worker = workers.find(w => w.id === value);
-                                        return (
-                                            <Chip key={value} label={worker ? worker.name : value} size="small" />
-                                        );
-                                    })}
-                                </Box>
-                            )}
-                        >
-                            {filteredWorkers.length === 0 && <MenuItem disabled>No workers available in division</MenuItem>}
-                            {filteredWorkers.map((worker) => {
-                                // Check if worker is already assigned to another muster in this division
-                                const isUnavailable = filteredMusters.some(m =>
-                                    m.id !== editingMusterId && // Don't count current muster if editing
-                                    m.workerIds?.includes(worker.id)
-                                );
+                    {/* Worker Multi-Select with Autocomplete */}
+                    <Autocomplete
+                        multiple
+                        id="worker-select-grouped-muster"
+                        options={filteredWorkers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
+                        groupBy={(option) => option.jobRole}
+                        getOptionLabel={(option) => option.name}
+                        value={filteredWorkers.filter(w => newMuster.workerIds.includes(w.id))}
+                        onChange={(event, newValue) => {
+                            setNewMuster({ ...newMuster, workerIds: newValue.map(w => w.id) });
+                        }}
+                        disableCloseOnSelect
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Assign Workers"
+                                placeholder="Search by name or role"
+                                margin="dense"
+                            />
+                        )}
+                        renderOption={(props, option, { selected }) => {
+                            // Check unavailable against ALL musters (Global Tenant Availability)
+                            const isUnavailable = musters.some(m =>
+                                m.id !== editingMusterId &&
+                                m.workerIds?.includes(option.id)
+                            );
 
-                                return (
-                                    <MenuItem key={worker.id} value={worker.id} disabled={isUnavailable}>
-                                        {worker.name} ({worker.jobRole}) {isUnavailable ? '(Assigned)' : ''}
-                                    </MenuItem>
-                                );
-                            })}
-                        </Select>
-                    </FormControl>
+                            return (
+                                <li {...props} key={option.id}>
+                                    <Checkbox
+                                        icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                        checkedIcon={<CheckBoxIcon fontSize="small" />}
+                                        style={{ marginRight: 8 }}
+                                        checked={selected}
+                                        disabled={isUnavailable}
+                                    />
+                                    <Box sx={{ opacity: isUnavailable ? 0.5 : 1 }}>
+                                        <Typography variant="body2">
+                                            {option.name} {isUnavailable ? '(Assigned)' : ''}
+                                        </Typography>
+                                        <Typography variant="caption" color="text.secondary">
+                                            {option.jobRole}
+                                        </Typography>
+                                    </Box>
+                                </li>
+                            );
+                        }}
+                        sx={{ mt: 2 }}
+                    />
 
                 </DialogContent>
                 <DialogActions>
@@ -468,11 +582,11 @@ export default function MorningMuster() {
             <Dialog open={confirmOpen} onClose={handleConfirmClose}>
                 <DialogTitle>Confirm Action</DialogTitle>
                 <DialogContent>
-                    <Typography>Are you sure you want to clear ALL assignments for this division?</Typography>
+                    <Typography>{confirmMessage}</Typography>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={handleConfirmClose} color="primary">Cancel</Button>
-                    <Button onClick={handleConfirmProceed} color="error" variant="contained">Clear All</Button>
+                    <Button onClick={handleConfirmProceed} color={confirmButtonColor} variant="contained">{confirmButtonText}</Button>
                 </DialogActions>
             </Dialog>
         </Box>

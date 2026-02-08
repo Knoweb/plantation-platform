@@ -23,7 +23,7 @@ public class WorkerService {
     }
 
     public List<Worker> getAllWorkers(String tenantId) {
-        return workerRepository.findByTenantId(tenantId);
+        return workerRepository.findByTenantIdAndStatus(tenantId, WorkerStatus.ACTIVE);
     }
 
     public List<Worker> getWorkersByDivision(String divisionId) {

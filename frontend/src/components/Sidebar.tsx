@@ -38,7 +38,7 @@ const menuItems = [
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Workers', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
-    { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] },
+    // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review', roles: ['FIELD_OFFICER'] },
     { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['FIELD_OFFICER', 'MANAGER'] }, // Shared with Mgr
     { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
@@ -75,14 +75,32 @@ export default function Sidebar() {
     const [alertCount, setAlertCount] = useState(0);
     const [restockCount, setRestockCount] = useState(0);
 
+    // State for Divisions
+    const [divisions, setDivisions] = useState<any[]>([]);
+
     useEffect(() => {
-        if (userRole === 'MANAGER' && userSession.tenantId) {
-            fetchAlerts();
-            // Poll every 30 seconds for updates
-            const interval = setInterval(fetchAlerts, 30000);
-            return () => clearInterval(interval);
+        if (userSession.tenantId) {
+            fetchDivisions();
+            if (userRole === 'MANAGER') {
+                fetchAlerts();
+            }
         }
     }, [userRole, userSession.tenantId]);
+
+    const fetchDivisions = async () => {
+        try {
+            const res = await axios.get(`http://localhost:8080/api/divisions?tenantId=${userSession.tenantId}`);
+            // Filter if user has restricted access (e.g. Field Officer with specific list)
+            // For now, load all or filter by session access
+            let loaded = res.data;
+            if (userSession.divisionAccess && userSession.divisionAccess.length > 0) {
+                loaded = loaded.filter((d: any) => userSession.divisionAccess.includes(d.divisionId));
+            }
+            setDivisions(loaded);
+        } catch (err) {
+            console.warn("Failed to fetch divisions for sidebar", err);
+        }
+    };
 
     const fetchAlerts = async () => {
         try {
@@ -100,7 +118,8 @@ export default function Sidebar() {
                 setRestockCount(reqCount);
             }
         } catch (err) {
-            console.error("Failed to fetch sidebar alerts", err);
+            // Silently fail if inventory service is down
+            console.warn("Sidebar alerts unavailable (Inventory Service might be down)");
         }
     };
 
@@ -109,7 +128,23 @@ export default function Sidebar() {
         navigate('/login');
     };
 
-    // Filter menu items based on role
+    // Integrate Divisions into Menu
+    // For Managers, we put Divisions at the top like the reference image
+    const divisionItems = divisions.map(d => ({
+        text: d.name,
+        icon: <TerrainIcon />,
+        path: `/dashboard/division/${d.divisionId}`,
+        roles: ['MANAGER', 'ESTATE_ADMIN', 'FIELD_OFFICER'],
+        isDivision: true // Marker for styling
+    }));
+
+    const finalMenuItems = [
+        ...menuItems.filter(m => !m.text.includes('Divisions')), // Remove generic 'Divisions' link if we show list
+        ...((userRole === 'MANAGER' || userRole === 'ESTATE_ADMIN') ? [] : []) // Logic to insert divisions
+    ];
+
+    // We'll just render Divisions manually in the list below
+
     const filteredMenuItems = menuItems.filter(item =>
         !item.roles || (userRole && item.roles.includes(userRole))
     );
@@ -123,9 +158,7 @@ export default function Sidebar() {
                 [`& .MuiDrawer-paper`]: {
                     width: drawerWidth,
                     boxSizing: 'border-box',
-                    background: userRole === 'ESTATE_ADMIN'
-                        ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' // Premium Gradient for Admin
-                        : '#2e7d32', // Standard Flat Green for Staff
+                    background: userRole === 'ESTATE_ADMIN' ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' : '#2e7d32',
                     color: 'white',
                     borderRight: 'none',
                     boxShadow: 4
@@ -133,58 +166,84 @@ export default function Sidebar() {
             }}
         >
             <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
-                {/* Dynamic Logo Box - No White Background, Larger Size */}
                 <Box sx={{
-                    width: 70,
-                    height: 70,
+                    width: 50,
+                    height: 50,
+                    bgcolor: 'white',
+                    borderRadius: 1,
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    overflow: 'hidden',
-                    flexShrink: 0
+                    p: 0.5,
+                    boxShadow: 2
                 }}>
                     {estateLogo ? (
                         <img src={estateLogo} alt="Logo" style={{ width: '100%', height: '100%', objectFit: 'contain' }} />
                     ) : (
-                        <Box sx={{ width: 50, height: 50, bgcolor: 'white', borderRadius: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            <SpaIcon color="primary" fontSize="large" />
-                        </Box>
+                        <SpaIcon color="primary" fontSize="medium" />
                     )}
                 </Box>
-
-                <Typography
-                    variant="subtitle1"
-                    fontWeight="bold"
-                    sx={{
-                        lineHeight: 1.2,
-                        textTransform: 'uppercase', // Capitalized Name
-                        letterSpacing: 1
-                    }}
-                >
-                    {estateName}
-                </Typography>
+                <Box>
+                    <Typography variant="subtitle1" fontWeight="900" sx={{ color: 'white', lineHeight: 1.2, textTransform: 'uppercase' }}>
+                        {estateName}
+                    </Typography>
+                    <Typography variant="caption" sx={{ color: 'rgba(255,255,255,0.7)', letterSpacing: 1 }}>
+                        {userRole}
+                    </Typography>
+                </Box>
             </Box>
+            <Divider sx={{ mb: 2, bgcolor: 'rgba(255,255,255,0.2)' }} />
 
-            <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)' }} />
+            <List sx={{ px: 2 }}>
 
-            <List sx={{ mt: 2 }}>
+
+                {divisions.map((d) => (
+                    <ListItem key={d.divisionId} disablePadding sx={{ mb: 1 }}>
+                        <ListItemButton
+                            onClick={() => navigate(`/dashboard?divisionId=${d.divisionId}`)}
+                            selected={location.search.includes(d.divisionId)}
+                            sx={{
+                                borderRadius: 2, // Match Menu Items
+                                mx: 1, // Match Menu Items margin
+                                minHeight: 48,
+                                justifyContent: 'initial',
+                                bgcolor: location.search.includes(d.divisionId) ? 'rgba(255,255,255,0.2)' : 'transparent',
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                                '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                            }}
+                        >
+                            <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
+                                <TerrainIcon fontSize="medium" />
+                            </ListItemIcon>
+                            <ListItemText
+                                primary={d.name}
+                                primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} // Standardize
+                            />
+                        </ListItemButton>
+                    </ListItem>
+                ))}
+
+
+
+                {/* Standard Menu Items */}
                 {filteredMenuItems.map((item) => (
-                    <ListItem key={item.text} disablePadding>
+                    <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
                         <ListItemButton
                             onClick={() => navigate(item.path)}
                             selected={location.pathname === item.path}
                             sx={{
+                                borderRadius: 2,
+                                mx: 1,
+                                minHeight: 48,
+                                justifyContent: 'initial',
                                 '&.Mui-selected': {
                                     bgcolor: 'rgba(255,255,255,0.2)',
-                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.3)' }
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
                                 },
                                 '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
-                                mx: 1,
-                                borderRadius: 2,
-                                mb: 1
                             }}
                         >
-                            <ListItemIcon sx={{ color: 'white' }}>
+                            <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
                                 {item.text === 'General Stock' && (alertCount + restockCount) > 0 ? (
                                     <Badge badgeContent={alertCount + restockCount} color="error">
                                         {item.icon}
@@ -193,7 +252,10 @@ export default function Sidebar() {
                                     item.icon
                                 )}
                             </ListItemIcon>
-                            <ListItemText primary={item.text} />
+                            <ListItemText
+                                primary={item.text}
+                                primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} // Standardize
+                            />
                         </ListItemButton>
                     </ListItem>
                 ))}
