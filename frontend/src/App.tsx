@@ -23,7 +23,9 @@ import MusterReview from './pages/field-officer/tabs/MusterReview';
 import GeneralStock from './pages/field-officer/tabs/GeneralStock';
 import KPIs from './pages/field-officer/tabs/KPIs';
 import PendingApprovals from './pages/manager/tabs/PendingApprovals';
+import MusterReviewManager from './pages/manager/tabs/MusterReviewManager';
 import CropBook from './pages/manager/tabs/CropBook';
+import AttendanceReport from './pages/manager/tabs/AttendanceReport';
 import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 import MorningMuster from './pages/field-officer/MorningMuster';
 
@@ -75,6 +77,7 @@ function App() {
 
           {/* Field Officer Tabs */}
           <Route path="morning-muster" element={<MorningMuster />} />
+          <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />
           <Route path="muster-approval" element={<MusterApproval />} />
           <Route path="muster-review" element={<MusterReview />} />
@@ -84,7 +87,9 @@ function App() {
 
           {/* Manager Tabs */}
           <Route path="approvals" element={<PendingApprovals />} />
+          <Route path="muster-review-manager" element={<MusterReviewManager />} />
           <Route path="crop-book" element={<CropBook />} />
+          <Route path="attendance" element={<AttendanceReport />} />
         </Route>
 
         {/* Super Admin Routes */}

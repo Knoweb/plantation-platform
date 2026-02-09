@@ -36,6 +36,16 @@ public class DailyWorkController {
         }
     }
 
+    @DeleteMapping("/{id}")
+    public ResponseEntity<?> deleteWork(@PathVariable UUID id) {
+        try {
+            dailyWorkService.deleteWork(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @GetMapping
     public ResponseEntity<?> getRecords(
             @RequestParam UUID tenantId,

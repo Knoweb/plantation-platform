@@ -25,7 +25,7 @@ public class DailyWork {
     @Column(name = "work_type", nullable = false) // HARVEST, MAINTENANCE
     private String workType;
 
-    @Column(name = "details") // e.g., "Plucking", "Weeding"
+    @Column(name = "details_v2", columnDefinition = "TEXT") // Version 2 for larger JSON payload
     private String details;
 
     @Column(name = "quantity")

@@ -306,7 +306,6 @@ export default function MorningMuster() {
                         value={selectedDivisionId}
                         label="Division"
                         onChange={(e) => setSelectedDivisionId(e.target.value)}
-                        disabled={isReadOnly}
                     >
                         {divisions.map((div) => (
                             <MenuItem key={div.divisionId} value={div.divisionId}>
