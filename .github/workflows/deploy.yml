@@ -11,18 +11,28 @@ jobs:
     steps:
       - name: Deploy via SSH
         uses: appleboy/ssh-action@v1.0.0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           host: ${{ secrets.DO_HOST }}
           username: root
           password: ${{ secrets.DO_PASSWORD }}
           port: 22
+          envs: GITHUB_TOKEN
           script: |
             # Stop existing containers if running
             # docker compose -f /root/plantation-platform/docker-compose.prod.yml down || true
 
+            # Repo URL with Token Auth
+            REPO_URL="https://oauth2:${GITHUB_TOKEN}@github.com/Knoweb/plantation-platform.git"
+
             # Check if directory exists, if not, clone it (First run mostly)
             if [ ! -d "/root/plantation-platform" ]; then
-              git clone -b dev-isuru https://github.com/Knoweb/plantation-platform.git /root/plantation-platform
+              git clone -b dev-isuru $REPO_URL /root/plantation-platform
+            else
+              # If exists, ensure remote is correct for auth
+              cd /root/plantation-platform
+              git remote set-url origin $REPO_URL
             fi
 
             # Navigate to directory
