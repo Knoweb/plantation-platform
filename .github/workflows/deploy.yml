@@ -46,5 +46,8 @@ jobs:
             # Using --build to ensure code changes are reflected in images
             docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
             
+            # Force restart Nginx to pick up config changes
+            docker compose -f docker-compose.prod.yml restart nginx
+            
             # Prune unused images to save space
             docker image prune -f
