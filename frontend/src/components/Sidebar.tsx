@@ -202,7 +202,8 @@ export default function Sidebar() {
             <List sx={{ px: 2 }}>
 
 
-                {divisions.map((d) => (
+                {/* Dynamic Divisions List - Hide for Store Keeper */}
+                {['MANAGER', 'ESTATE_ADMIN', 'FIELD_OFFICER'].includes(userRole) && divisions.map((d) => (
                     <ListItem key={d.divisionId} disablePadding sx={{ mb: 1 }}>
                         <ListItemButton
                             onClick={() => navigate(`/dashboard?divisionId=${d.divisionId}`)}
