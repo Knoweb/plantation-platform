@@ -1,0 +1,40 @@
+name: Deploy to DigitalOcean
+on:
+  push:
+    branches:
+      - main
+      - dev-isuru
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.0
+        with:
+          host: ${{ secrets.DO_HOST }}
+          username: root
+          password: ${{ secrets.DO_PASSWORD }}
+          port: 22
+          script: |
+            # Stop existing containers if running
+            # docker compose -f /root/plantation-platform/docker-compose.prod.yml down || true
+
+            # Check if directory exists, if not, clone it (First run mostly)
+            if [ ! -d "/root/plantation-platform" ]; then
+              git clone -b dev-isuru https://github.com/Knoweb/plantation-platform.git /root/plantation-platform
+            fi
+
+            # Navigate to directory
+            cd /root/plantation-platform
+            
+            # Fetch latest
+            git fetch origin dev-isuru
+            git reset --hard origin/dev-isuru
+            
+            # Start/Restart Services
+            # Using --build to ensure code changes are reflected in images
+            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            
+            # Prune unused images to save space
+            docker image prune -f
