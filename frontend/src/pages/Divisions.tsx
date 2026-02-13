@@ -48,7 +48,7 @@ export default function Divisions() {
     const fetchDivisions = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`);
+            const response = await axios.get(`/api/divisions?tenantId=${tenantId}`);
             setDivisions(response.data);
         } catch (err) {
             console.error("Failed to fetch divisions", err);
@@ -64,12 +64,12 @@ export default function Divisions() {
         try {
             if (editingDivision) {
                 // Update
-                await axios.put(`http://localhost:8080/api/divisions/${editingDivision.divisionId}`, {
+                await axios.put(`/api/divisions/${editingDivision.divisionId}`, {
                     name: formData.name
                 });
             } else {
                 // Create
-                await axios.post(`http://localhost:8080/api/divisions`, {
+                await axios.post(`/api/divisions`, {
                     tenantId,
                     name: formData.name
                 });
@@ -84,7 +84,7 @@ export default function Divisions() {
     const handleDelete = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this division?")) {
             try {
-                await axios.delete(`http://localhost:8080/api/divisions/${id}`);
+                await axios.delete(`/api/divisions/${id}`);
                 fetchDivisions();
             } catch (err) {
                 alert("Failed to delete division.");

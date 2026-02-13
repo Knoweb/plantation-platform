@@ -29,9 +29,9 @@ export default function MusterReviewManager() {
         setLoading(true);
         try {
             const [workRes, divRes, workerRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
-                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`)
+                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`)
             ]);
 
             const divMap = new Map(divRes.data.map((d: any) => [d.divisionId, d.name]));
@@ -70,7 +70,7 @@ export default function MusterReviewManager() {
         if (!selectedItem) return;
         try {
             // Updated Endpoint: /approve (Backend has @PutMapping("/{id}/approve"))
-            await axios.put(`http://localhost:8080/api/tenants/daily-work/${selectedItem.id}/approve`);
+            await axios.put(`/api/tenants/daily-work/${selectedItem.id}/approve`);
             setNotification({ open: true, message: "Muster Approved Successfully", severity: 'success' });
             setSelectedItem(null);
             fetchPending();
@@ -82,7 +82,7 @@ export default function MusterReviewManager() {
     const handleReject = async () => {
         if (!selectedItem || (viewStatus === 'PENDING' && !window.confirm("Reject this muster?")) || (viewStatus !== 'PENDING' && !window.confirm("Delete this record permanently?"))) return;
         try {
-            await axios.delete(`http://localhost:8080/api/tenants/daily-work/${selectedItem.id}`);
+            await axios.delete(`/api/tenants/daily-work/${selectedItem.id}`);
             setNotification({ open: true, message: viewStatus === 'PENDING' ? "Muster Rejected" : "Record Deleted", severity: 'success' });
             setSelectedItem(null);
             fetchPending();

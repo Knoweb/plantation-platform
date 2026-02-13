@@ -57,7 +57,7 @@ export default function SuperAdminDashboard() {
 
     const fetchTenants = async () => {
         try {
-            const response = await axios.get('http://localhost:8080/api/tenants');
+            const response = await axios.get('/api/tenants');
             setTenants(response.data);
         } catch (error) {
             console.error('Failed to fetch tenants', error);
@@ -67,7 +67,7 @@ export default function SuperAdminDashboard() {
     const handleDelete = async (id: string, name: string) => {
         if (window.confirm(`Are you sure you want to delete ${name}? This cannot be undone.`)) {
             try {
-                await axios.delete(`http://localhost:8080/api/tenants/${id}`);
+                await axios.delete(`/api/tenants/${id}`);
                 setTenants(prev => prev.filter(t => t.tenantId !== id));
             } catch (error) {
                 alert('Failed to delete tenant');

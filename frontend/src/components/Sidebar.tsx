@@ -94,7 +94,7 @@ export default function Sidebar() {
 
     const fetchDivisions = async () => {
         try {
-            const res = await axios.get(`http://localhost:8080/api/divisions?tenantId=${userSession.tenantId}`);
+            const res = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
             // Filter if user has restricted access (e.g. Field Officer with specific list)
             // For now, load all or filter by session access
             let loaded = res.data;
@@ -110,14 +110,14 @@ export default function Sidebar() {
     const fetchAlerts = async () => {
         try {
             // Stock Alerts
-            const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${userSession.tenantId}`);
+            const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
             const items = res.data;
             const count = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
             setAlertCount(count);
 
             // Restock Requests (Pending) - For Manager
             if (userRole === 'MANAGER') {
-                const transRes = await axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
                 // Count Pending Only
                 const reqCount = transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)).length;
                 setRestockCount(reqCount);

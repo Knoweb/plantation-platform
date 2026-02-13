@@ -62,8 +62,8 @@ export default function EstateDetails() {
     const fetchDetails = async () => {
         try {
             const [tenantRes, usersRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/tenants/${id}`),
-                axios.get(`http://localhost:8080/api/tenants/${id}/users`)
+                axios.get(`/api/tenants/${id}`),
+                axios.get(`/api/tenants/${id}/users`)
             ]);
             setTenant(tenantRes.data);
             setUsers(usersRes.data);
@@ -77,7 +77,7 @@ export default function EstateDetails() {
     const handleCreateUser = async () => {
         if (!formData.fullName || !formData.username || !formData.password) return;
         try {
-            await axios.post('http://localhost:8080/api/tenants/users', {
+            await axios.post('/api/tenants/users', {
                 tenantId: id, // Use ID from URL
                 ...formData
             });
@@ -94,7 +94,7 @@ export default function EstateDetails() {
         if (window.confirm(`Are you sure you want to change the status to ${newStatus}?`)) {
             try {
                 // Backend expects @RequestParam, so we pass it in the URL query string
-                await axios.put(`http://localhost:8080/api/tenants/${id}/status?status=${newStatus}`);
+                await axios.put(`/api/tenants/${id}/status?status=${newStatus}`);
                 fetchDetails(); // Refresh details
             } catch (error) {
                 alert('Failed to update status');

@@ -35,7 +35,7 @@ export default function Login() {
         setError('');
 
         try {
-            const response = await axios.post('http://localhost:8080/api/tenants/login', formData);
+            const response = await axios.post('/api/tenants/login', formData);
             const sessionData = {
                 username: response.data.username,
                 role: response.data.role,

@@ -14,7 +14,7 @@ export default function AttendanceReport() {
     // Fetch Workers (for name mapping)
     useEffect(() => {
         if (tenantId) {
-            axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`)
+            axios.get(`/api/workers?tenantId=${tenantId}`)
                 .then(res => setWorkers(res.data))
                 .catch(err => console.error("Failed to fetch workers", err));
         }
@@ -30,7 +30,7 @@ export default function AttendanceReport() {
     const fetchAttendance = async () => {
         setLoading(true);
         try {
-            let url = `http://localhost:8080/api/tenants/attendance?tenantId=${tenantId}`;
+            let url = `/api/tenants/attendance?tenantId=${tenantId}`;
             if (selectedDate) {
                 url += `&date=${selectedDate}`;
             }

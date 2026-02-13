@@ -35,7 +35,7 @@ export default function ResetPassword() {
         setMessage('');
 
         try {
-            await axios.post('http://localhost:8080/api/tenants/reset-password', {
+            await axios.post('/api/tenants/reset-password', {
                 token: token,
                 newPassword: newPassword
             });

@@ -54,7 +54,7 @@ export default function TenantOnboarding() {
                     : 'estate-' + Math.floor(Math.random() * 10000);
 
                 // 1. Create Tenant & Admin User
-                const response = await axios.post('http://localhost:8080/api/tenants', {
+                const response = await axios.post('/api/tenants', {
                     companyName: tenantData.companyName,
                     subDomain: generatedSubDomain,
                     adminUsername: tenantData.adminUsername,
@@ -69,7 +69,7 @@ export default function TenantOnboarding() {
                 // 2. Save Divisions if any
                 if (tenantData.divisions && tenantData.divisions.length > 0) {
                     await Promise.all(tenantData.divisions.map((div: any) =>
-                        axios.post('http://localhost:8080/api/divisions', {
+                        axios.post('/api/divisions', {
                             tenantId: newTenantId,
                             name: div.name
                         })

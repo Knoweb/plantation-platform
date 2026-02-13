@@ -80,7 +80,7 @@ export default function MorningMuster() {
     const checkApprovalStatus = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const res = await axios.get(`http://localhost:8080/api/tenants/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
+            const res = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
             // Check if TODAY'S work for this division is SUBMITTED (Pending or Approved)
             const submittedWork = res.data.find((w: any) => w.workDate === today && (w.status === 'APPROVED' || w.status === 'PENDING'));
             setIsReadOnly(!!submittedWork);
@@ -92,10 +92,10 @@ export default function MorningMuster() {
     const fetchData = async () => {
         try {
             const [musterRes, workerRes, fieldRes, divisionRes] = await Promise.all([
-                axios.get(`http://localhost:8084/api/operations/muster?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/fields?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`)
+                axios.get(`/api/operations/muster?tenantId=${tenantId}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`)
             ]);
 
             setMusters(musterRes.data);
@@ -142,9 +142,9 @@ export default function MorningMuster() {
             };
 
             if (editingMusterId) {
-                await axios.put(`http://localhost:8084/api/operations/muster/${editingMusterId}`, payload);
+                await axios.put(`/api/operations/muster/${editingMusterId}`, payload);
             } else {
-                await axios.post('http://localhost:8084/api/operations/muster', payload);
+                await axios.post('/api/operations/muster', payload);
             }
 
             setOpenMuster(false);
@@ -241,7 +241,7 @@ export default function MorningMuster() {
                 // Delete all filtered musters one by one
                 // DIRECT CALL TO OPERATION SERVICE (Bypassing Gateway 8080 due to persistent 405)
                 await Promise.all(filteredMusters.map(m =>
-                    axios.delete(`http://localhost:8084/api/operations/muster/${m.id}`)
+                    axios.delete(`/api/operations/muster/${m.id}`)
                 ));
                 fetchData();
             } catch (e) {
@@ -288,7 +288,7 @@ export default function MorningMuster() {
                     quantity: 0
                 };
 
-                await axios.post('http://localhost:8080/api/tenants/daily-work', payload);
+                await axios.post('/api/tenants/daily-work', payload);
 
                 alert("Muster Submitted for Manager Approval!");
                 // Optionally disable editing here?

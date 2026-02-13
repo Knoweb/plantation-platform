@@ -55,11 +55,11 @@ export default function GeneralStock() {
 
     const fetchInventory = async () => {
         try {
-            const res = await axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`);
+            const res = await axios.get(`/api/inventory?tenantId=${tenantId}`);
             setItems(res.data);
 
             if (isManager) {
-                const transRes = await axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`);
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
                 setRestockRequests(transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)));
             }
 
@@ -82,7 +82,7 @@ export default function GeneralStock() {
 
         // For Decline
         try {
-            await axios.put(`http://localhost:8080/api/inventory/transactions/${req.id}/status?status=${status}`);
+            await axios.put(`/api/inventory/transactions/${req.id}/status?status=${status}`);
             fetchInventory();
             showNotification(`Request ${status}`, 'success');
         } catch (e) {
@@ -93,7 +93,7 @@ export default function GeneralStock() {
     const handleConfirmApprove = async () => {
         if (!approveReq || !approveQty) return;
         try {
-            await axios.put(`http://localhost:8080/api/inventory/transactions/${approveReq.id}/status?status=APPROVED&quantity=${approveQty}`);
+            await axios.put(`/api/inventory/transactions/${approveReq.id}/status?status=APPROVED&quantity=${approveQty}`);
             setApproveOpen(false);
             fetchInventory();
             showNotification("Request APPROVED", 'success');
@@ -112,7 +112,7 @@ export default function GeneralStock() {
         if (!selectedItem) return;
         const newLevel = parseInt(bufferInput) || 0;
         try {
-            await axios.put(`http://localhost:8080/api/inventory/${selectedItem.id}/buffer`, newLevel, {
+            await axios.put(`/api/inventory/${selectedItem.id}/buffer`, newLevel, {
                 headers: { 'Content-Type': 'application/json' }
             });
             setEditOpen(false);
@@ -124,7 +124,7 @@ export default function GeneralStock() {
 
     const handleRestock = async () => {
         try {
-            await axios.post('http://localhost:8080/api/inventory/transaction', {
+            await axios.post('/api/inventory/transaction', {
                 itemId: restockItemId,
                 quantity: Number(transactionQty) || 0,
                 type: 'RECEIPT',

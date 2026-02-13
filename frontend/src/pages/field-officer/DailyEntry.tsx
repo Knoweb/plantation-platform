@@ -69,7 +69,7 @@ function DailyEntryTab() {
         setLoading(true);
         try {
             // Fetch Workers
-            const wRes = await axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`);
+            const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
             const wMap = new Map<string, string>();
             wRes.data.forEach((w: any) => {
                 if (w.workerId) wMap.set(w.workerId, w.name);
@@ -77,21 +77,21 @@ function DailyEntryTab() {
             });
 
             // Fetch Fields
-            const fRes = await axios.get(`http://localhost:8080/api/fields?tenantId=${tenantId}`);
+            const fRes = await axios.get(`/api/fields?tenantId=${tenantId}`);
             setFields(fRes.data);
 
             // Fetch All Divisions (for Name mapping)
-            const allDivRes = await axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`);
+            const allDivRes = await axios.get(`/api/divisions?tenantId=${tenantId}`);
             const divNameMap = new Map<string, string>();
             allDivRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
 
             // Fetch Today's Daily Work (Mappings)
-            const dwRes = await axios.get(`http://localhost:8080/api/tenants/daily-work?tenantId=${tenantId}&date=${today}`);
+            const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&date=${today}`);
             const dwMap = new Map<string, string>();
             dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
 
             // Fetch Today's Attendance
-            const attRes = await axios.get(`http://localhost:8080/api/tenants/attendance?tenantId=${tenantId}&date=${today}`);
+            const attRes = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}&date=${today}`);
 
             const enriched = attRes.data.map((rec: any) => ({
                 ...rec,
@@ -144,7 +144,7 @@ function DailyEntryTab() {
                 pm: Number(item.pmWeight) || null,
                 status: item.status
             }));
-            await axios.post(`http://localhost:8080/api/tenants/attendance/bulk`, updates);
+            await axios.post(`/api/tenants/attendance/bulk`, updates);
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
         } catch (e) {
             setNotification({ open: true, message: "Failed to save.", severity: 'error' });
@@ -480,7 +480,7 @@ function HistoryTab() {
             // Here, we fetch ALL attendance for the tenant and group by date client-side.
             // This works for small datasets but should be paginated in production.
             try {
-                const res = await axios.get(`http://localhost:8080/api/tenants/attendance?tenantId=${tenantId}`);
+                const res = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}`);
                 // Group by Date
                 const grouped = res.data.reduce((acc: any, item: any) => {
                     const date = item.workDate;

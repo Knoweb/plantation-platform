@@ -23,7 +23,7 @@ export default function MusterApproval() {
 
     const fetchMusters = async () => {
         try {
-            const res = await axios.get(`http://localhost:8084/api/operations/muster?tenantId=${tenantId}`);
+            const res = await axios.get(`/api/operations/muster?tenantId=${tenantId}`);
             // Filter for PENDING status
             const pending = res.data.filter((m: Muster) => m.status === 'PENDING');
             setPendingMusters(pending);
@@ -34,7 +34,7 @@ export default function MusterApproval() {
 
     const handleApprove = async (id: number) => {
         try {
-            await axios.put(`http://localhost:8084/api/operations/muster/${id}/approve`);
+            await axios.put(`/api/operations/muster/${id}/approve`);
             fetchMusters(); // Refresh list
         } catch (err) {
             alert("Approval Failed");
@@ -44,7 +44,7 @@ export default function MusterApproval() {
     const handleReject = async (id: number) => {
         if (!confirm("Are you sure you want to reject this muster? It will be deleted.")) return;
         try {
-            await axios.delete(`http://localhost:8084/api/operations/muster/${id}`);
+            await axios.delete(`/api/operations/muster/${id}`);
             fetchMusters();
         } catch (err) {
             alert("Rejection Failed");

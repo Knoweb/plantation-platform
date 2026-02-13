@@ -55,7 +55,7 @@ export default function StoreTransactionHistory() {
 
     const fetchTransactions = async () => {
         try {
-            const res = await axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`);
+            const res = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
             setTransactions(res.data);
             setFiltered(res.data);
         } catch (err) {

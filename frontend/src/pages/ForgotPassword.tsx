@@ -18,7 +18,7 @@ export default function ForgotPassword() {
         setMessage('');
 
         try {
-            await axios.post('http://localhost:8080/api/tenants/forgot-password', { email });
+            await axios.post('/api/tenants/forgot-password', { email });
             setMessage('If an account exists with this email, a reset link (token) has been sent.');
             // In a real app, the user checks their email. Here we might show the token in console for dev.
         } catch (err: any) {

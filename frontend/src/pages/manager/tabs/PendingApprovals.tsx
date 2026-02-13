@@ -60,8 +60,8 @@ export default function PendingApprovals() {
         try {
             // Fetch Daily Work and Divisions
             const [workRes, divRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
-                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`)
+                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`)
             ]);
 
             const divMap = new Map(divRes.data.map((d: any) => [d.divisionId, d.name]));
@@ -88,8 +88,8 @@ export default function PendingApprovals() {
         try {
             // Fetch Inventory items
             const [invRes, itemsRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`)
+                axios.get(`/api/inventory/transactions?tenantId=${tenantId}`),
+                axios.get(`/api/inventory?tenantId=${tenantId}`)
             ]);
             setInventoryItems(itemsRes.data);
 
@@ -118,7 +118,7 @@ export default function PendingApprovals() {
         if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this record?")) return;
         try {
             if (item.source === 'WORK') {
-                await axios.delete(`http://localhost:8080/api/tenants/daily-work/${item.id}`);
+                await axios.delete(`/api/tenants/daily-work/${item.id}`);
             } else {
                 // Future: Inventory delete endpoint
             }
@@ -144,7 +144,7 @@ export default function PendingApprovals() {
     const handleConfirmMusterApprove = async () => {
         if (!musterReviewItem) return;
         try {
-            await axios.put(`http://localhost:8080/api/tenants/daily-work/${musterReviewItem.id}/approve`);
+            await axios.put(`/api/tenants/daily-work/${musterReviewItem.id}/approve`);
             setMusterReviewItem(null);
             fetchPending();
             showNotification("Muster Approved", 'success');
@@ -156,7 +156,7 @@ export default function PendingApprovals() {
     const handleConfirmApprove = async () => {
         if (!approveItem || !approveQty) return;
         try {
-            await axios.put(`http://localhost:8080/api/inventory/transactions/${approveItem.id}/status?status=APPROVED&quantity=${approveQty}`);
+            await axios.put(`/api/inventory/transactions/${approveItem.id}/status?status=APPROVED&quantity=${approveQty}`);
             setApproveOpen(false);
             fetchPending();
             showNotification("Inventory Request Approved", 'success');

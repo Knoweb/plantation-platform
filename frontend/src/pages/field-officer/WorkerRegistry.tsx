@@ -68,7 +68,7 @@ export default function WorkerRegistry() {
     const fetchWorkers = async () => {
         try {
             setLoading(true);
-            const response = await axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`);
+            const response = await axios.get(`/api/workers?tenantId=${tenantId}`);
             setWorkers(response.data);
         } catch (error) {
             console.error("Error fetching workers", error);
@@ -82,9 +82,9 @@ export default function WorkerRegistry() {
             const payload = { ...currentWorker, tenantId };
 
             if (isEdit && currentWorker.id) {
-                await axios.put(`http://localhost:8080/api/workers/${currentWorker.id}`, payload);
+                await axios.put(`/api/workers/${currentWorker.id}`, payload);
             } else {
-                await axios.post(`http://localhost:8080/api/workers`, payload);
+                await axios.post(`/api/workers`, payload);
             }
             setOpenDialog(false);
             fetchWorkers();
@@ -118,7 +118,7 @@ export default function WorkerRegistry() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this worker?")) return;
         try {
-            await axios.delete(`http://localhost:8080/api/workers/${id}`);
+            await axios.delete(`/api/workers/${id}`);
             fetchWorkers();
         } catch (error) {
             console.error("Error deleting worker", error);

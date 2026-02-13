@@ -78,7 +78,7 @@ export default function FieldOfficerDashboard() {
             // Ideally fetch by division, but for now fetch all active workers for tenant if no specific division filter
             // Or if backend supports filtering by multiple divisions, we'd do that.
             // For now, let's just get all workers for the tenant to populate the dropdown.
-            const res = await axios.get(`http://localhost:8080/api/workers?tenantId=${tenantId}`);
+            const res = await axios.get(`/api/workers?tenantId=${tenantId}`);
             setWorkers(res.data);
         } catch (err) {
             console.error("Failed to fetch workers", err);
@@ -92,13 +92,13 @@ export default function FieldOfficerDashboard() {
             const primaryDivisionId = myDivisions.length > 0 ? myDivisions[0] : '';
 
             const [musterRes, harvestRes, invRes, divRes, fieldRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
-                axios.get(`http://localhost:8080/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
-                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
+                axios.get(`/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
+                axios.get(`/api/inventory?tenantId=${tenantId}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
                 axios.get(primaryDivisionId
-                    ? `http://localhost:8080/api/fields?divisionId=${primaryDivisionId}`
-                    : `http://localhost:8080/api/fields?tenantId=${tenantId}`)
+                    ? `/api/fields?divisionId=${primaryDivisionId}`
+                    : `/api/fields?tenantId=${tenantId}`)
             ]);
 
             setMusters(musterRes.data);
@@ -134,7 +134,7 @@ export default function FieldOfficerDashboard() {
     const handleCreateMuster = async () => {
         try {
             const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
-            await axios.post('http://localhost:8080/api/operations/muster', {
+            await axios.post('/api/operations/muster', {
                 ...newMuster,
                 tenantId,
                 divisionId,
@@ -152,7 +152,7 @@ export default function FieldOfficerDashboard() {
     const handleLogHarvest = async () => {
         try {
             const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
-            await axios.post('http://localhost:8080/api/operations/harvest', { ...newHarvest, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
+            await axios.post('/api/operations/harvest', { ...newHarvest, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
             setOpenHarvest(false);
             fetchData();
         } catch (e) {

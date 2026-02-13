@@ -68,8 +68,8 @@ export default function StoreKeeperDashboard() {
         try {
             // Connect to Gateway -> Inventory Service (Fetch Items and Transactions)
             const [itemsRes, transRes] = await Promise.all([
-                axios.get(`http://localhost:8080/api/inventory?tenantId=${tenantId}`),
-                axios.get(`http://localhost:8080/api/inventory/transactions?tenantId=${tenantId}`)
+                axios.get(`/api/inventory?tenantId=${tenantId}`),
+                axios.get(`/api/inventory/transactions?tenantId=${tenantId}`)
             ]);
 
             setItems(itemsRes.data);
@@ -102,7 +102,7 @@ export default function StoreKeeperDashboard() {
 
     const handleTransaction = async () => {
         try {
-            await axios.post('http://localhost:8080/api/inventory/transaction', {
+            await axios.post('/api/inventory/transaction', {
                 itemId: selectedItem,
                 quantity: Number(qty) || 0,
                 type: modalType,
@@ -135,7 +135,7 @@ export default function StoreKeeperDashboard() {
         try {
             if (isEditing && editId) {
                 // Update Item
-                await axios.put(`http://localhost:8080/api/inventory/${editId}`, {
+                await axios.put(`/api/inventory/${editId}`, {
                     ...newItem,
                     pricePerUnit: Number(newItem.pricePerUnit) || 0,
                     tenantId
@@ -143,7 +143,7 @@ export default function StoreKeeperDashboard() {
                 showNotification("Item Updated Successfully", 'success');
             } else {
                 // Create Item
-                await axios.post('http://localhost:8080/api/inventory', {
+                await axios.post('/api/inventory', {
                     ...newItem,
                     currentQuantity: Number(newItem.currentQuantity) || 0,
                     pricePerUnit: Number(newItem.pricePerUnit) || 0,
@@ -162,7 +162,7 @@ export default function StoreKeeperDashboard() {
     const handleDeleteItem = async (id: number) => {
         if (!window.confirm("Are you sure you want to delete this item?")) return;
         try {
-            await axios.delete(`http://localhost:8080/api/inventory/${id}`);
+            await axios.delete(`/api/inventory/${id}`);
             fetchInventory();
             showNotification("Item Deleted", 'success');
         } catch (err) {
