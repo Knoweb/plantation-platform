@@ -1,5 +1,5 @@
-$baseUrl = "http://localhost:8081/api"
-$tenantId = "f064941a-5ee8-46e7-8fc5-8d8742a1225d"
+$baseUrl = "http://localhost:8080/api"
+$tenantId = "653c31b9-b0d6-4a75-a546-a5f21c699c4e"
 
 # 1. Fetch Existing Divisions
 Write-Host "Fetching Divisions..." -ForegroundColor Cyan

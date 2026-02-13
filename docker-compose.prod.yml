@@ -1,0 +1,127 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: superman9
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      # Initialize multiple databases
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    networks:
+      - plantation-network
+    restart: always
+
+  discovery-server:
+    build: 
+      context: ./backend/discovery-server
+      dockerfile: Dockerfile
+    container_name: discovery-server
+    ports:
+      - "8761:8761"
+    networks:
+      - plantation-network
+    restart: always
+
+  api-gateway:
+    build: 
+      context: ./backend/api-gateway
+      dockerfile: Dockerfile
+    container_name: api-gateway
+    ports:
+      - "8080:8080"
+    environment:
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - discovery-server
+    networks:
+      - plantation-network
+    restart: always
+
+  tenant-service:
+    build: 
+      context: ./backend/tenant-service
+      dockerfile: Dockerfile
+    container_name: tenant-service
+    environment:
+      spring.datasource.url: jdbc:postgresql://postgres:5432/plantation_db
+      spring.datasource.username: postgres
+      spring.datasource.password: superman9
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - postgres
+      - discovery-server
+    networks:
+      - plantation-network
+    restart: always
+
+  inventory-service:
+    build: 
+      context: ./backend/inventory-service
+      dockerfile: Dockerfile
+    container_name: inventory-service
+    environment:
+      spring.datasource.url: jdbc:postgresql://postgres:5432/inventory_db
+      spring.datasource.username: postgres
+      spring.datasource.password: superman9
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - postgres
+      - discovery-server
+    networks:
+      - plantation-network
+    restart: always
+
+  operation-service:
+    build: 
+      context: ./backend/operation-service
+      dockerfile: Dockerfile
+    container_name: operation-service
+    environment:
+      spring.datasource.url: jdbc:postgresql://postgres:5432/operation_db
+      spring.datasource.username: postgres
+      spring.datasource.password: superman9
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+    depends_on:
+      - postgres
+      - discovery-server
+    networks:
+      - plantation-network
+    restart: always
+
+  frontend:
+    build: 
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: frontend
+    # Nginx config inside image handles SPA routing to local files
+    networks:
+      - plantation-network
+    restart: always
+
+  nginx:
+    image: nginx:alpine
+    container_name: nginx-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d
+      - ./certbot/conf:/etc/letsencrypt
+      - ./certbot/www:/var/www/certbot
+    depends_on:
+      - frontend
+      - api-gateway
+    networks:
+      - plantation-network
+    restart: always
+
+networks:
+  plantation-network:
+    driver: bridge
+
+volumes:
+  postgres_data:

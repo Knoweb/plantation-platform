@@ -1,5 +1,5 @@
-$tenantId = "f064941a-5ee8-46e7-8fc5-8d8742a1225d"
-$url = "http://localhost:8083/api/inventory"
+$tenantId = "653c31b9-b0d6-4a75-a546-a5f21c699c4e"
+$url = "http://localhost:8080/api/inventory"
 
 $items = @(
     @{ name = "Urea Fertilizer"; category = "FERTILIZER"; unit = "kg"; currentQuantity = 500; bufferLevel = 100; pricePerUnit = 120.50 },

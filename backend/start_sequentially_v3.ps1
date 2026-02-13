@@ -23,7 +23,7 @@ foreach ($service in $services) {
     Write-Host "Starting $serviceName..."
     
     # Start process strictly using Start-Process to handle spaces and redirection correctly
-    $p = Start-Process -FilePath $mvnPath -ArgumentList "spring-boot:run" -WorkingDirectory $servicePath -RedirectStandardOutput $logFile -RedirectStandardError $logFile -PassThru -NoNewWindow
+    $p = Start-Process -FilePath $mvnPath -ArgumentList "spring-boot:run" -WorkingDirectory $servicePath -RedirectStandardOutput $logFile -PassThru -NoNewWindow
     
     # Wait for success in log
     $started = $false

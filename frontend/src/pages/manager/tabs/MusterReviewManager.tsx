@@ -53,6 +53,7 @@ export default function MusterReviewManager() {
                     type: item.workType,
                     detailsRaw: item.details,
                     date: item.workDate,
+                    createdAt: item.createdAt, // Added field
                     quantity: item.workerCount,
                     divisionName: divMap.get(item.divisionId) || 'Unknown Division',
                     status: item.status
@@ -68,8 +69,8 @@ export default function MusterReviewManager() {
     const handleApprove = async () => {
         if (!selectedItem) return;
         try {
-            // Updated Endpoint for Approval
-            await axios.put(`http://localhost:8080/api/tenants/daily-work/${selectedItem.id}/status?status=APPROVED`);
+            // Updated Endpoint: /approve (Backend has @PutMapping("/{id}/approve"))
+            await axios.put(`http://localhost:8080/api/tenants/daily-work/${selectedItem.id}/approve`);
             setNotification({ open: true, message: "Muster Approved Successfully", severity: 'success' });
             setSelectedItem(null);
             fetchPending();
@@ -79,14 +80,14 @@ export default function MusterReviewManager() {
     };
 
     const handleReject = async () => {
-        if (!selectedItem || !window.confirm("Reject this muster?")) return;
+        if (!selectedItem || (viewStatus === 'PENDING' && !window.confirm("Reject this muster?")) || (viewStatus !== 'PENDING' && !window.confirm("Delete this record permanently?"))) return;
         try {
             await axios.delete(`http://localhost:8080/api/tenants/daily-work/${selectedItem.id}`);
-            setNotification({ open: true, message: "Muster Rejected", severity: 'success' });
+            setNotification({ open: true, message: viewStatus === 'PENDING' ? "Muster Rejected" : "Record Deleted", severity: 'success' });
             setSelectedItem(null);
             fetchPending();
         } catch (e) {
-            setNotification({ open: true, message: "Failed to Reject", severity: 'error' });
+            setNotification({ open: true, message: "Failed to Process", severity: 'error' });
         }
     };
 
@@ -107,7 +108,7 @@ export default function MusterReviewManager() {
                                 <TableCell>ID</TableCell>
                                 <TableCell>Type</TableCell>
                                 <TableCell>Division</TableCell>
-                                <TableCell>Date</TableCell>
+                                <TableCell>Date & Time</TableCell>
                                 <TableCell align="right">Workers</TableCell>
                                 <TableCell align="center">Action</TableCell>
                             </TableRow>
@@ -121,7 +122,10 @@ export default function MusterReviewManager() {
                                         <TableCell>{row.displayId}</TableCell>
                                         <TableCell><Chip label={row.type} size="small" color="primary" variant="outlined" /></TableCell>
                                         <TableCell>{row.divisionName}</TableCell>
-                                        <TableCell>{row.date}</TableCell>
+                                        <TableCell>
+                                            <Typography variant="body2">{row.date}</Typography>
+                                            {row.createdAt && <Typography variant="caption" color="text.secondary">{new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>}
+                                        </TableCell>
                                         <TableCell align="right">{row.quantity}</TableCell>
                                         <TableCell align="center">
                                             <Button
@@ -145,7 +149,7 @@ export default function MusterReviewManager() {
             {/* Review Dialog */}
             <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', display: 'flex', justifyContent: 'space-between' }}>
-                    <Typography variant="h6">Review Muster: {selectedItem?.divisionName} ({selectedItem?.date})</Typography>
+                    <Typography component="div" variant="h6">Review Muster: {selectedItem?.divisionName} ({selectedItem?.date})</Typography>
                     <Chip label={viewStatus} color={viewStatus === 'APPROVED' ? 'success' : 'warning'} />
                 </DialogTitle>
                 <DialogContent sx={{ bgcolor: '#f1f8e9', p: 3 }}>
@@ -162,11 +166,18 @@ export default function MusterReviewManager() {
                                             if (Array.isArray(details)) {
                                                 return details.map((d: any, idx: number) => (
                                                     <Box key={idx} mb={1} display="flex" justifyContent="space-between" borderBottom="1px dashed #ccc" pb={1}>
-                                                        <Box>
+                                                        <Box flex={1}>
+                                                            <Typography variant="caption" color="text.secondary">Work item</Typography>
                                                             <Typography variant="body2" fontWeight="bold">{d.task}</Typography>
-                                                            <Typography variant="caption">{d.field}</Typography>
                                                         </Box>
-                                                        <Typography variant="body2">{d.count || d.workers} Workers</Typography>
+                                                        <Box flex={1}>
+                                                            <Typography variant="caption" color="text.secondary">Field No</Typography>
+                                                            <Typography variant="body2">{d.field}</Typography>
+                                                        </Box>
+                                                        <Box flex={1} textAlign="right">
+                                                            <Typography variant="caption" color="text.secondary">No of Workers</Typography>
+                                                            <Typography variant="body2">{d.count || d.workers}</Typography>
+                                                        </Box>
                                                     </Box>
                                                 ));
                                             }
@@ -218,10 +229,15 @@ export default function MusterReviewManager() {
                 </DialogContent>
                 <DialogActions sx={{ p: 2, bgcolor: '#e8f5e9' }}>
                     <Button onClick={() => setSelectedItem(null)}>Close</Button>
-                    {viewStatus === 'PENDING' && (
+                    {viewStatus === 'PENDING' ? (
                         <>
                             <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Reject</Button>
                             <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={handleApprove}>Approve & Sign</Button>
+                        </>
+                    ) : (
+                        <>
+                            <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Delete Record (Reset)</Button>
+                            <Button onClick={() => setSelectedItem(null)}>Close</Button>
                         </>
                     )}
                 </DialogActions>

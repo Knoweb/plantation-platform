@@ -24,11 +24,14 @@ import {
     FormControl,
     InputLabel,
     Select,
-    OutlinedInput
+    OutlinedInput,
+    InputAdornment
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 
 // Roles Enum
@@ -44,6 +47,7 @@ export default function UserManagement() {
     const [loading, setLoading] = useState(true);
     const [open, setOpen] = useState(false);
     const [editingUser, setEditingUser] = useState<any>(null);
+    const [showPassword, setShowPassword] = useState(false);
 
     // User Session
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -256,10 +260,19 @@ export default function UserManagement() {
                             required={!editingUser}
                             fullWidth
                             label="Password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             value={formData.password}
                             onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                             helperText={editingUser ? "Leave blank to keep current password" : ""}
+                            InputProps={{
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                ),
+                            }}
                         />
 
                         {(formData.password || !editingUser) && (
@@ -297,8 +310,8 @@ export default function UserManagement() {
                             ))}
                         </TextField>
 
-                        {/* Division Assignment - Only if NOT Manager (Optional for manager, Mandatory for Field Officer) */}
-                        {formData.role !== 'ESTATE_ADMIN' && (
+                        {/* Division Assignment - Only for Field Officers and Managers (Not Store Keepers) */}
+                        {formData.role !== 'ESTATE_ADMIN' && formData.role !== 'STORE_KEEPER' && (
                             <FormControl fullWidth margin="normal">
                                 <InputLabel>Assigned Division(s)</InputLabel>
                                 <Select

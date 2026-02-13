@@ -37,6 +37,9 @@ public class DailyWork {
     @Column(name = "status") // PENDING, APPROVED
     private String status = "PENDING";
 
+    @Column(name = "created_at")
+    private java.time.LocalDateTime createdAt;
+
     // Constructors
     public DailyWork() {
     }
@@ -112,5 +115,13 @@ public class DailyWork {
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public java.time.LocalDateTime getCreatedAt() {
+        return createdAt;
+    }
+
+    public void setCreatedAt(java.time.LocalDateTime createdAt) {
+        this.createdAt = createdAt;
     }
 }

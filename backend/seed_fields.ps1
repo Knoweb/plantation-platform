@@ -1,16 +1,8 @@
-$baseUrl = "http://localhost:8081/api"
+$baseUrl = "http://localhost:8080/api"
 
-# 1. Get Tenant (Pedro Estate)
-$tenants = Invoke-RestMethod -Uri "$baseUrl/tenants" -Method Get
-$pedro = $tenants | Where-Object { $_.companyName -match "Pedro" }
-
-if (-not $pedro) {
-    Write-Host "Pedro Estate not found!" -ForegroundColor Red
-    exit
-}
-
-$tenantId = $pedro.tenantId
-Write-Host "Found Pedro Estate: $tenantId" -ForegroundColor Green
+# 1. Set Tenant ID (Hayleys Estate)
+$tenantId = "653c31b9-b0d6-4a75-a546-a5f21c699c4e"
+Write-Host "Using Tenant ID: $tenantId" -ForegroundColor Green
 
 # 2. Get Divisions
 $divisions = Invoke-RestMethod -Uri "$baseUrl/divisions?tenantId=$tenantId" -Method Get

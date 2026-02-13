@@ -32,6 +32,7 @@ interface Field {
     fieldId: string;
     name: string;
     divisionId: string;
+    cropType?: string; // e.g. 'Tea', 'Rubber'
 }
 
 interface Division {
@@ -193,17 +194,41 @@ export default function MorningMuster() {
     }, {} as Record<string, Muster[]>);
 
     // Calculate Summary for Left Panel (Muster Chit)
-    const summary = filteredMusters.reduce((acc, muster) => {
-        if (!acc[muster.taskType]) {
-            acc[muster.taskType] = { count: 0, fields: {} };
-        }
-        acc[muster.taskType].count += muster.workerCount;
-        if (!acc[muster.taskType].fields[muster.fieldName]) {
-            acc[muster.taskType].fields[muster.fieldName] = 0;
-        }
-        acc[muster.taskType].fields[muster.fieldName] += muster.workerCount;
-        return acc;
-    }, {} as Record<string, { count: number, fields: Record<string, number> }>);
+    // Categorized Summary Calculation for Muster Chit
+    const getCategorizedSummary = () => {
+        const categories: any = { Tea: {}, Rubber: {}, General: {} };
+
+        const activeMusters = musters.filter(m => {
+            if (m.divisionId) return m.divisionId === activeDivId;
+            const relatedField = fields.find(f => f.name === m.fieldName);
+            return relatedField ? relatedField.divisionId === activeDivId : true;
+        });
+
+        activeMusters.forEach(m => {
+            const field = fields.find(f => f.name === m.fieldName);
+            const crop = field?.cropType || 'General';
+
+            let catKey = 'General';
+            if (crop === 'Tea') catKey = 'Tea';
+            if (crop === 'Rubber') catKey = 'Rubber';
+
+            if (!categories[catKey][m.taskType]) {
+                categories[catKey][m.taskType] = { count: 0, fields: {} };
+            }
+
+            categories[catKey][m.taskType].count += m.workerCount;
+
+            if (!categories[catKey][m.taskType].fields[m.fieldName]) {
+                categories[catKey][m.taskType].fields[m.fieldName] = 0;
+            }
+            categories[catKey][m.taskType].fields[m.fieldName] += m.workerCount;
+        });
+        return categories;
+    };
+
+    const categorizedSummary = getCategorizedSummary();
+    const grandWorkerTotal = Object.values(categorizedSummary).reduce((acc: number, cat: any) =>
+        acc + Object.values(cat).reduce((cAcc: number, curr: any) => cAcc + curr.count, 0), 0);
 
     const getWorkerDetails = (id: string) => workers.find(w => w.id === id);
 
@@ -367,39 +392,95 @@ export default function MorningMuster() {
                                 <Table size="small">
                                     <TableHead sx={{ bgcolor: '#c8e6c9' }}>
                                         <TableRow>
-                                            <TableCell><strong>Work Item</strong></TableCell>
+                                            <TableCell><strong>Work item</strong></TableCell>
                                             <TableCell><strong>Field No</strong></TableCell>
-                                            <TableCell align="right"><strong>Workers</strong></TableCell>
+                                            <TableCell align="right"><strong>No of Workers</strong></TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {Object.entries(summary).map(([task, data]) => (
+                                        {/* Tea Section */}
+                                        {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
                                             <Fragment key={task}>
-                                                {Object.entries(data.fields).map(([field, count], idx) => (
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
                                                     <TableRow key={`${task}-${field}`}>
                                                         {idx === 0 && (
-                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>
-                                                                {task}
-                                                            </TableCell>
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
                                                         )}
                                                         <TableCell>{field}</TableCell>
                                                         <TableCell align="right">{count}</TableCell>
                                                     </TableRow>
                                                 ))}
-                                                <TableRow sx={{ bgcolor: '#f1f8e9' }}>
-                                                    <TableCell colSpan={2}><strong>Total {task}</strong></TableCell>
-                                                    <TableCell align="right"><strong>{data.count}</strong></TableCell>
-                                                </TableRow>
+                                                {task === 'Plucking' && (
+                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                        <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
+                                                        <TableCell align="right"><strong>{data.count}</strong></TableCell>
+                                                    </TableRow>
+                                                )}
                                             </Fragment>
                                         ))}
-                                        {Object.keys(summary).length === 0 && (
+                                        {Object.keys(categorizedSummary.Tea).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
+                                                <TableCell align="right"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {/* Rubber Section */}
+                                        {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
+                                            <Fragment key={task}>
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
+                                                    <TableRow key={`${task}-${field}`}>
+                                                        {idx === 0 && (
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                        )}
+                                                        <TableCell>{field}</TableCell>
+                                                        <TableCell align="right">{count}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {task === 'Tapping' && (
+                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                        <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
+                                                        <TableCell align="right"><strong>{data.count}</strong></TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </Fragment>
+                                        ))}
+                                        {Object.keys(categorizedSummary.Rubber).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
+                                                <TableCell align="right"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {/* General Section */}
+                                        {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
+                                            <Fragment key={task}>
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
+                                                    <TableRow key={`${task}-${field}`}>
+                                                        {idx === 0 && (
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                        )}
+                                                        <TableCell>{field}</TableCell>
+                                                        <TableCell align="right">{count}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </Fragment>
+                                        ))}
+                                        {Object.keys(categorizedSummary.General).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total General</strong></TableCell>
+                                                <TableCell align="right"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {grandWorkerTotal === 0 && (
                                             <TableRow>
                                                 <TableCell colSpan={3} align="center">No assignments today</TableCell>
                                             </TableRow>
                                         )}
-                                        <TableRow sx={{ bgcolor: '#81c784' }}>
-                                            <TableCell colSpan={2}><strong>Grand Total</strong></TableCell>
-                                            <TableCell align="right"><strong>{filteredMusters.reduce((sum, m) => sum + m.workerCount, 0)}</strong></TableCell>
+                                        <TableRow sx={{ bgcolor: '#66bb6a', borderTop: '3px double #1b5e20' }}>
+                                            <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
+                                            <TableCell align="right"><strong>{grandWorkerTotal}</strong></TableCell>
                                         </TableRow>
                                     </TableBody>
                                 </Table>

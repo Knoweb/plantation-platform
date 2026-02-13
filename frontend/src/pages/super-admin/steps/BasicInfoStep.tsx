@@ -1,4 +1,7 @@
-import { Box, TextField, Typography, Grid } from '@mui/material';
+import { Box, TextField, Typography, Grid, InputAdornment, IconButton } from '@mui/material';
+import { useState } from 'react';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
 
 interface Props {
     data: any;
@@ -6,6 +9,8 @@ interface Props {
 }
 
 export default function BasicInfoStep({ data, updateData }: Props) {
+    const [showPassword, setShowPassword] = useState(false);
+
     const handleChange = (field: string) => (e: React.ChangeEvent<HTMLInputElement>) => {
         updateData({ ...data, [field]: e.target.value });
     };
@@ -41,10 +46,19 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                     <TextField
                         required
                         fullWidth
-                        type="password"
+                        type={showPassword ? 'text' : 'password'}
                         label="Password"
                         value={data.adminPassword || ''}
                         onChange={handleChange('adminPassword')}
+                        InputProps={{
+                            endAdornment: (
+                                <InputAdornment position="end">
+                                    <IconButton onClick={() => setShowPassword(!showPassword)} edge="end">
+                                        {showPassword ? <VisibilityOff /> : <Visibility />}
+                                    </IconButton>
+                                </InputAdornment>
+                            ),
+                        }}
                     />
                     <Box sx={{ mt: 1, pl: 1 }}>
                         <Typography variant="caption" display="block" color={data.adminPassword?.length >= 8 ? "success.main" : "text.secondary"}>

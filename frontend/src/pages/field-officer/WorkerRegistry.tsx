@@ -118,7 +118,7 @@ export default function WorkerRegistry() {
     const handleDelete = async (id: string) => {
         if (!confirm("Are you sure you want to delete this worker?")) return;
         try {
-            await axios.delete(`http://localhost:8081/api/workers/${id}`);
+            await axios.delete(`http://localhost:8080/api/workers/${id}`);
             fetchWorkers();
         } catch (error) {
             console.error("Error deleting worker", error);

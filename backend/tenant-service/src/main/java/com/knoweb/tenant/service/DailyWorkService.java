@@ -33,6 +33,7 @@ public class DailyWorkService {
         work.setQuantity(request.getQuantity());
         work.setWorkerCount(request.getWorkerCount());
         work.setStatus("PENDING");
+        work.setCreatedAt(java.time.LocalDateTime.now());
         return dailyWorkRepository.save(work);
     }
 
