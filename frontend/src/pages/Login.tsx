@@ -47,7 +47,12 @@ export default function Login() {
                 config: response.data.config
             };
             sessionStorage.setItem('user', JSON.stringify(sessionData));
-            navigate('/dashboard');
+
+            if (response.data.role === 'SUPER_ADMIN') {
+                navigate('/super-admin');
+            } else {
+                navigate('/dashboard');
+            }
         } catch (err: any) {
             setError(err.response?.data?.message || "Invalid credentials.");
         } finally {

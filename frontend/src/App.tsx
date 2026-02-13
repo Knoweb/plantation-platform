@@ -34,6 +34,7 @@ const DashboardHome = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || '{}');
   const role = user.role;
 
+  if (role === 'SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
   if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
   if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
   if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
