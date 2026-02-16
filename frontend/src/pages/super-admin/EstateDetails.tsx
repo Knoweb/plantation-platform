@@ -129,7 +129,7 @@ export default function EstateDetails() {
                                 {tenant.companyName.charAt(0)}
                             </Avatar>
                             <Typography variant="h5" fontWeight="bold" gutterBottom>{tenant.companyName}</Typography>
-                            <Typography variant="body2" color="text.secondary" gutterBottom>{tenant.subDomain}.estateiq.com</Typography>
+                            <Typography variant="body2" color="text.secondary" gutterBottom>{tenant.subDomain}.wevili.com</Typography>
                             <Divider sx={{ my: 3 }} />
                             <Typography variant="h6" align="left" gutterBottom>Privileges</Typography>
                             <List dense>

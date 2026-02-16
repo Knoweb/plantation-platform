@@ -104,8 +104,8 @@ export default function Login() {
                         {/* Logo / Brand */}
                         <Box display="flex" alignItems="center" mb={4}>
                             <SpaIcon sx={{ color: '#2ecc71', fontSize: 36, mr: 1 }} />
-                            <Typography variant="h5" fontWeight="exrabold" color="#1b5e20" sx={{ letterSpacing: 1 }}>
-                                EstateIQ
+                            <Typography variant="h3" fontWeight="800" color="#1b5e20" sx={{ letterSpacing: 1, fontFamily: '"Abhaya Libre", serif' }}>
+                                වැවිලි
                             </Typography>
                         </Box>
 

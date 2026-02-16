@@ -88,7 +88,7 @@ export default function SuperAdminDashboard() {
             {/* Branding Header & Profile - Kept Same */}
             <Box mb={4} display="flex" justifyContent="space-between" alignItems="center">
                 <Box>
-                    <Typography variant="h4" fontWeight="bold" color="primary">EstateIQ</Typography>
+                    <Typography variant="h4" fontWeight="bold" color="primary" sx={{ fontFamily: '"Abhaya Libre", serif' }}>වැවිලි</Typography>
                     <Typography variant="subtitle1" color="text.secondary">Super Admin Dashboard</Typography>
                 </Box>
                 <Box display="flex" alignItems="center" gap={2}>
@@ -147,7 +147,7 @@ export default function SuperAdminDashboard() {
                                     <TableCell>
                                         <Typography fontWeight="bold">{tenant.companyName}</Typography>
                                     </TableCell>
-                                    <TableCell>{tenant.subDomain}.estateiq.com</TableCell>
+                                    <TableCell>{tenant.subDomain}.wevili.com</TableCell>
                                     <TableCell>
                                         <Chip
                                             label={tenant.subscriptionStatus}
