@@ -21,7 +21,12 @@ const menuItems = [
     // We can add more global settings here later
 ];
 
-export default function SuperAdminSidebar() {
+
+interface SuperAdminSidebarProps {
+    onNewEstateClick?: () => void;
+}
+
+export default function SuperAdminSidebar({ onNewEstateClick }: SuperAdminSidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -75,7 +80,13 @@ export default function SuperAdminSidebar() {
                 {/* Special 'Add Estate' Button in Sidebar */}
                 <ListItem disablePadding>
                     <ListItemButton
-                        onClick={() => navigate('/register', { state: { fromAdmin: true } })}
+                        onClick={() => {
+                            if (onNewEstateClick) {
+                                onNewEstateClick();
+                            } else {
+                                navigate('/super-admin/new-estate', { state: { fromAdmin: true } });
+                            }
+                        }}
                         sx={{
                             bgcolor: 'rgba(255, 255, 255, 0.15)', // White transparent
                             mx: 1,

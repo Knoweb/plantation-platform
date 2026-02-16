@@ -60,49 +60,53 @@ export default function ConfigurationStep({ data, updateData }: Props) {
             </Typography>
 
             <Grid container spacing={2}>
-                <Grid item xs={12}>
-                    <Card variant="outlined">
-                        <CardContent>
-                            <FormGroup>
+                <Grid size={{ xs: 12 }}>
+                    <Card variant="outlined" sx={{ p: 0 }}>
+                        <CardContent sx={{ p: 1, '&:last-child': { pb: 1 } }}>
+                            <FormGroup row>
                                 {/* Standard Crops */}
                                 <FormControlLabel
-                                    control={<Switch checked={!!data.configJson.tea} onChange={handleToggle('tea')} />}
+                                    control={<Switch size="small" checked={!!data.configJson.tea} onChange={handleToggle('tea')} />}
                                     label={
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            <GrassIcon color="primary" /> Tea
+                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                            <GrassIcon fontSize="small" color="primary" /> <Typography variant="body2">Tea</Typography>
                                         </Box>
                                     }
+                                    sx={{ mr: 2 }}
                                 />
                                 <FormControlLabel
-                                    control={<Switch checked={!!data.configJson.rubber} onChange={handleToggle('rubber')} />}
+                                    control={<Switch size="small" checked={!!data.configJson.rubber} onChange={handleToggle('rubber')} />}
                                     label={
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            <ForestIcon color="primary" /> Rubber
+                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                            <ForestIcon fontSize="small" color="primary" /> <Typography variant="body2">Rubber</Typography>
                                         </Box>
                                     }
+                                    sx={{ mr: 2 }}
                                 />
                                 <FormControlLabel
-                                    control={<Switch checked={!!data.configJson.cinnamon} onChange={handleToggle('cinnamon')} />}
+                                    control={<Switch size="small" checked={!!data.configJson.cinnamon} onChange={handleToggle('cinnamon')} />}
                                     label={
-                                        <Box display="flex" alignItems="center" gap={1}>
-                                            <SpaIcon color="error" /> Cinnamon
+                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                            <SpaIcon fontSize="small" color="error" /> <Typography variant="body2">Cinnamon</Typography>
                                         </Box>
                                     }
+                                    sx={{ mr: 2 }}
                                 />
 
-                                {/* Custom Crops (Rendered exactly like standard ones) */}
+                                {/* Custom Crops */}
                                 {getCustomCrops().map(crop => (
-                                    <Box key={crop} display="flex" alignItems="center" justifyContent="space-between" width="100%">
+                                    <Box key={crop} display="flex" alignItems="center" mr={2}>
                                         <FormControlLabel
-                                            control={<Switch checked={data.configJson[crop]} onChange={handleToggle(crop)} />}
+                                            control={<Switch size="small" checked={data.configJson[crop]} onChange={handleToggle(crop)} />}
                                             label={
-                                                <Box display="flex" alignItems="center" gap={1} textTransform="capitalize">
-                                                    <AgricultureIcon color="action" /> {crop}
+                                                <Box display="flex" alignItems="center" gap={0.5} textTransform="capitalize">
+                                                    <AgricultureIcon fontSize="small" color="action" /> <Typography variant="body2">{crop}</Typography>
                                                 </Box>
                                             }
+                                            sx={{ mr: 0 }}
                                         />
-                                        <IconButton size="small" onClick={() => handleDeleteCustom(crop)}>
-                                            <DeleteIcon fontSize="small" />
+                                        <IconButton size="small" onClick={() => handleDeleteCustom(crop)} sx={{ p: 0.5 }}>
+                                            <DeleteIcon fontSize="inherit" />
                                         </IconButton>
                                     </Box>
                                 ))}

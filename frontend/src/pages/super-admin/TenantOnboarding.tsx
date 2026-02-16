@@ -18,14 +18,20 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 const steps = ['Estate Details', 'Branding', 'Manage Divisions', 'Select Crops'];
 
-export default function TenantOnboarding() {
+
+interface TenantOnboardingProps {
+    isModal?: boolean;
+    onClose?: () => void;
+}
+
+export default function TenantOnboarding({ isModal = false, onClose }: TenantOnboardingProps) {
     const [activeStep, setActiveStep] = useState(0);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
 
     const location = useLocation();
     const navigate = useNavigate();
-    const fromAdmin = location.state?.fromAdmin;
+    const fromAdmin = location.state?.fromAdmin || isModal; // Force fromAdmin if in modal (Super Admin context)
 
     const [tenantData, setTenantData] = useState({
         companyName: '',
@@ -39,8 +45,30 @@ export default function TenantOnboarding() {
             tea: true,
             rubber: false,
             cinnamon: false
-        }
+        } as Record<string, boolean>
     });
+
+    const isStepValid = () => {
+        switch (activeStep) {
+            case 0: // Basic Info
+                return (
+                    tenantData.companyName?.trim() !== '' &&
+                    tenantData.adminEmail?.trim() !== '' &&
+                    tenantData.adminUsername?.trim() !== '' &&
+                    tenantData.adminPassword?.length >= 8
+                );
+            case 1: // Branding
+                return true; // Optional
+            case 2: // Divisions
+                return true; // Optional
+            case 3: // Configuration
+                // At least one crop selected
+                const keys = Object.keys(tenantData.configJson);
+                return keys.some(key => tenantData.configJson[key]);
+            default:
+                return false;
+        }
+    };
 
     const handleNext = async () => {
         // Final Step submission logic
@@ -111,13 +139,13 @@ export default function TenantOnboarding() {
     };
 
     return (
-        <Container maxWidth="md" sx={{ mt: 8, mb: 4 }}>
-            <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
-                <Typography component="h1" variant="h4" align="center" gutterBottom color="primary">
+        <Container maxWidth="md" sx={{ mt: isModal ? 0 : 8, mb: isModal ? 0 : 4, p: isModal ? 0 : 2 }}>
+            <Paper elevation={isModal ? 0 : 3} sx={{ p: isModal ? 2 : 4, borderRadius: 3 }}>
+                <Typography component="h1" variant={isModal ? "h5" : "h4"} align="center" gutterBottom color="primary">
                     Register Your Estate
                 </Typography>
 
-                <Stepper activeStep={activeStep} alternativeLabel sx={{ pt: 3, pb: 5 }}>
+                <Stepper activeStep={activeStep} alternativeLabel sx={{ pt: isModal ? 1 : 3, pb: isModal ? 2 : 5 }}>
                     {steps.map((label) => (
                         <Step key={label}>
                             <StepLabel>{label}</StepLabel>
@@ -148,7 +176,15 @@ export default function TenantOnboarding() {
                             </Typography>
 
                             <Button
-                                onClick={() => fromAdmin ? navigate('/super-admin') : navigate('/login')}
+                                onClick={() => {
+                                    if (onClose) {
+                                        onClose();
+                                    } else if (fromAdmin) {
+                                        navigate('/super-admin');
+                                    } else {
+                                        navigate('/login');
+                                    }
+                                }}
                                 variant="contained"
                                 sx={{ mt: 4 }}
                             >
@@ -174,7 +210,7 @@ export default function TenantOnboarding() {
                                 <Button
                                     variant="contained"
                                     onClick={handleNext}
-                                    disabled={loading}
+                                    disabled={loading || !isStepValid()}
                                     sx={{ borderRadius: 2, px: 4 }}
                                 >
                                     {loading ? 'Registering...' : (activeStep === steps.length - 1 ? 'Finish' : 'Next')}

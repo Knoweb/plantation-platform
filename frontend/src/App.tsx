@@ -97,6 +97,7 @@ function App() {
         <Route path="/super-admin" element={<SuperAdminLayout />}>
           <Route index element={<SuperAdminDashboard />} />
           <Route path="estate/:id" element={<EstateDetails />} />
+          <Route path="new-estate" element={<TenantOnboarding />} />
         </Route>
       </Routes>
     </Router>

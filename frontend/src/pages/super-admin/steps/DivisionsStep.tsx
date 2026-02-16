@@ -38,40 +38,41 @@ export default function DivisionsStep({ data, updateData }: Props) {
                 Define the operational divisions (e.g., "Glassaugh Division", "Factory Division").
             </Typography>
 
-            <Grid container spacing={2} alignItems="center">
-                <Grid item xs={7}>
+
+            <Grid container spacing={1} alignItems="center" sx={{ mt: 1 }}>
+                <Grid size={{ xs: 7 }}>
                     <TextField
                         fullWidth
+                        size="small"
                         label="Division Name"
                         value={newDivName}
                         onChange={(e) => setNewDivName(e.target.value)}
-                        placeholder="e.g. Upper Division"
-                        size="small"
+                        placeholder="Name"
                     />
                 </Grid>
-                <Grid item xs={3}>
+                <Grid size={{ xs: 3 }}>
                     <TextField
                         fullWidth
+                        size="small"
                         label="Code"
                         value={newDivCode}
                         onChange={(e) => setNewDivCode(e.target.value)}
-                        placeholder="e.g. UD"
-                        size="small"
+                        placeholder="Code"
                     />
                 </Grid>
-                <Grid item xs={2}>
+                <Grid size={{ xs: 2 }}>
                     <Button
                         variant="contained"
                         onClick={handleAdd}
                         disabled={!newDivName || !newDivCode}
-                        startIcon={<AddCircleOutlineIcon />}
+                        sx={{ minWidth: 'auto', px: 2 }}
                     >
-                        Add
+                        <AddCircleOutlineIcon />
                     </Button>
                 </Grid>
             </Grid>
 
-            <Box mt={3}>
+            <Box mt={2}>
                 <Typography variant="subtitle2" gutterBottom>
                     Added Divisions ({data.divisions?.length || 0})
                 </Typography>

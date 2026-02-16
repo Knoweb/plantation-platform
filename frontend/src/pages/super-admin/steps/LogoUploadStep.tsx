@@ -30,11 +30,11 @@ export default function LogoUploadStep({ data, updateData }: Props) {
                 Upload your estate logo. This will replace the default branding on all reports and dashboards.
             </Typography>
 
-            <Box display="flex" justifyContent="center" mt={4}>
+            <Box display="flex" justifyContent="center" mt={2}>
                 <Paper
                     variant="outlined"
                     sx={{
-                        p: 4,
+                        p: 2,
                         borderStyle: 'dashed',
                         borderColor: 'primary.main',
                         bgcolor: 'background.default',
