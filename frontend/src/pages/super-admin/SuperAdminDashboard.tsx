@@ -58,7 +58,8 @@ export default function SuperAdminDashboard() {
     const fetchTenants = async () => {
         try {
             const response = await axios.get('/api/tenants');
-            setTenants(response.data);
+            const filteredTenants = response.data.filter((t: any) => t.companyName !== 'System Admin');
+            setTenants(filteredTenants);
         } catch (error) {
             console.error('Failed to fetch tenants', error);
         }
