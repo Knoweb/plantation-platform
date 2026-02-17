@@ -33,7 +33,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER'] },
-    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['FIELD_OFFICER', 'MANAGER'] }, // Shared with Mgr
+    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['MANAGER'] }, // Shared with Mgr
 
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
