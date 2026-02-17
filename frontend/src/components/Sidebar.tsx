@@ -87,6 +87,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     // Alert Count for Manager
     const [alertCount, setAlertCount] = useState(0);
     const [restockCount, setRestockCount] = useState(0);
+    const [musterReviewCount, setMusterReviewCount] = useState(0);
 
     useEffect(() => {
         if (userSession.tenantId) {
@@ -105,11 +106,20 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             setAlertCount(count);
 
             // Restock Requests (Pending) - For Manager
+            // Restock Requests (Pending) - For Manager + Muster Review
             if (userRole === 'MANAGER') {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
                 // Count Pending Only
                 const reqCount = transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)).length;
                 setRestockCount(reqCount);
+
+                // Muster Review Count
+                const workRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
+                const pendingMusters = workRes.data.filter((item: any) =>
+                    (item.workType === 'Morning Muster' || item.workType === 'Evening Muster') &&
+                    (item.status === 'PENDING' || !item.status)
+                ).length;
+                setMusterReviewCount(pendingMusters);
             }
         } catch (err) {
             // Silently fail if inventory service is down
@@ -225,6 +235,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
                                 {item.text === 'General Stock' && (alertCount + restockCount) > 0 ? (
                                     <Badge badgeContent={alertCount + restockCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Muster Review' && musterReviewCount > 0 ? (
+                                    <Badge badgeContent={musterReviewCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : (
