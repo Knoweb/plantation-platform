@@ -1,4 +1,5 @@
-import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, OutlinedInput, Autocomplete, Checkbox } from '@mui/material';
+import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, Autocomplete, Checkbox } from '@mui/material';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
@@ -53,6 +54,9 @@ export default function FieldOfficerDashboard() {
     const [dailyYield, setDailyYield] = useState(0);
     const [workerTurnout, setWorkerTurnout] = useState(0);
     const [fertilizerStock, setFertilizerStock] = useState('Checking...');
+
+    const [weeklyYieldData, setWeeklyYieldData] = useState<any[]>([]);
+    const [groupedMuster, setGroupedMuster] = useState<any[]>([]);
 
     // Forms
     const [openMuster, setOpenMuster] = useState(false);
@@ -123,6 +127,32 @@ export default function FieldOfficerDashboard() {
                 .filter((i: any) => i.category === 'Fertilizer')
                 .reduce((sum: number, i: any) => sum + i.currentQuantity, 0);
             setFertilizerStock(fertStock > 0 ? `${fertStock} kg` : 'Low Stock');
+
+            // Calculate Weekly Yield (Last 7 Days)
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+                const d = new Date();
+                d.setDate(d.getDate() - (6 - i));
+                return d.toISOString().split('T')[0];
+            });
+
+            const weeklyData = last7Days.map(date => {
+                const dayYield = harvestRes.data
+                    .filter((h: HarvestLog) => h.date === date)
+                    .reduce((sum: number, h: HarvestLog) => sum + h.quantityKg, 0);
+                return { date: date.slice(5), yield: dayYield }; // MM-DD
+            });
+            setWeeklyYieldData(weeklyData);
+
+            // Group Muster by Field & Task
+            const grouped = musterRes.data
+                .filter((m: Muster) => m.date === today)
+                .reduce((acc: any, m: Muster) => {
+                    const key = `${m.fieldName}-${m.taskType}`;
+                    if (!acc[key]) acc[key] = { ...m, workerCount: 0 };
+                    acc[key].workerCount += m.workerCount;
+                    return acc;
+                }, {});
+            setGroupedMuster(Object.values(grouped));
 
             setLoading(false);
         } catch (error) {
@@ -206,71 +236,72 @@ export default function FieldOfficerDashboard() {
             </Grid>
 
             <Grid container spacing={3}>
-                {/* Recent Harvests */}
+                {/* Chart Section */}
                 <Grid item xs={12} md={8}>
-                    <Card sx={{ height: '100%' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <TrendingUpIcon color="primary" sx={{ mr: 1 }} />
-                                <Typography variant="h6">Recent Harvest Logs</Typography>
-                            </Box>
-                            <List dense>
-                                {harvestLogs.slice(0, 5).map((log) => (
-                                    <div key={log.id}>
-                                        <ListItem>
-                                            <ListItemText
-                                                primary={`${log.workerName} - ${log.quantityKg} kg (${log.cropType})`}
-                                                secondary={`Field: ${log.fieldName} • ${log.date}`}
-                                            />
-                                        </ListItem>
-                                        <Divider />
-                                    </div>
-                                ))}
-                                {harvestLogs.length === 0 && <Typography variant="body2" color="text.secondary">No harvest recorded yet.</Typography>}
-                            </List>
-                        </CardContent>
-                    </Card>
+                    <Paper elevation={2} sx={{ p: 3, height: 400 }}>
+                        <Typography variant="h6" gutterBottom color="primary">Weekly Yield Performance</Typography>
+                        <ResponsiveContainer width="100%" height="90%">
+                            <BarChart data={weeklyYieldData}>
+                                <CartesianGrid strokeDasharray="3 3" />
+                                <XAxis dataKey="date" />
+                                <YAxis />
+                                <RechartsTooltip />
+                                <Legend />
+                                <Bar dataKey="yield" fill="#4caf50" name="Yield (Kg)" radius={[4, 4, 0, 0]} />
+                            </BarChart>
+                        </ResponsiveContainer>
+                    </Paper>
                 </Grid>
 
-                {/* Muster List */}
+                {/* Divisional Assignments (Grouped Muster) */}
                 <Grid item xs={12} md={4}>
-                    <Card sx={{ height: '100%' }}>
+                    <Card sx={{ height: 400, overflow: 'auto' }}>
                         <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <GroupIcon color="secondary" sx={{ mr: 1 }} />
-                                <Typography variant="h6">Today's Muster</Typography>
+                            <Box display="flex" alignItems="center" mb={2} justifyContent="space-between">
+                                <Box display="flex" alignItems="center">
+                                    <GroupIcon color="secondary" sx={{ mr: 1 }} />
+                                    <Typography variant="h6">Today's Plan</Typography>
+                                </Box>
+                                <Chip label={`${workerTurnout} Workers`} size="small" color="success" variant="outlined" />
                             </Box>
+
                             <List dense>
-                                {musters.slice(0, 5).map((m) => (
-                                    <div key={m.id}>
+                                {groupedMuster.map((m: any, index) => (
+                                    <div key={index}>
                                         <ListItem
-                                            secondaryAction={
-                                                m.status === 'PENDING' && (
-                                                    <Chip label="Pending Approval" size="small" color="warning" />
-                                                )
-                                            }
+                                            sx={{
+                                                bgcolor: '#f5f5f5',
+                                                borderRadius: 2,
+                                                mb: 1,
+                                                borderLeft: `4px solid ${m.taskType === 'Plucking' ? '#4caf50' : '#ffa000'}`
+                                            }}
                                         >
                                             <ListItemText
-                                                primary={`${m.fieldName} - ${m.taskType}`}
-                                                secondary={
-                                                    <Box component="span">
-                                                        <Typography variant="body2" component="span">
-                                                            {m.workerCount} Workers • {m.status}
-                                                        </Typography>
-                                                        {/* Preview first few workers if ids exist */}
-                                                        {m.workerIds && m.workerIds.length > 0 && (
-                                                            <Typography variant="caption" display="block" color="text.secondary">
-                                                                Assigned: {m.workerIds.length} person(s)
-                                                            </Typography>
-                                                        )}
-                                                    </Box>
+                                                primary={
+                                                    <Typography variant="subtitle2" fontWeight="bold">
+                                                        {m.fieldName}
+                                                    </Typography>
                                                 }
+                                                secondary={m.taskType}
                                             />
+                                            <Chip label={m.workerCount} size="small" sx={{ fontWeight: 'bold' }} />
                                         </ListItem>
-                                        <Divider />
                                     </div>
                                 ))}
-                                {musters.length === 0 && <Typography variant="body2" color="text.secondary">No muster assignments.</Typography>}
+                                {groupedMuster.length === 0 && (
+                                    <Box textAlign="center" py={4}>
+                                        <Typography variant="body2" color="text.secondary">No Assignments Yet</Typography>
+                                        <Button
+                                            size="small"
+                                            variant="outlined"
+                                            sx={{ mt: 2 }}
+                                            onClick={() => setOpenMuster(true)}
+                                            startIcon={<AddIcon />}
+                                        >
+                                            Create Assignments
+                                        </Button>
+                                    </Box>
+                                )}
                             </List>
                         </CardContent>
                     </Card>
