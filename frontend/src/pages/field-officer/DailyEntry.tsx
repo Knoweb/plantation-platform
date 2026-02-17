@@ -653,7 +653,132 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
     );
 }
 
-// --- Tab 2: History with Side-by-Side Review ---
+
+// --- Shared Component: Muster Chit Summary ---
+const MusterChitSummary = ({ data, fields, label, includeAbsent = false }: any) => {
+    // Categorization Logic
+    const getSummary = () => {
+        const categories: any = { Tea: {}, Rubber: {}, General: {} };
+        data.forEach((m: any) => {
+            const field = fields.find((f: any) => f.name === m.fieldName || f.fieldId === m.fieldId);
+            const crop = field?.cropType || 'General';
+            let catKey = 'General';
+            if (crop === 'Tea') catKey = 'Tea';
+            if (crop === 'Rubber') catKey = 'Rubber';
+
+            if (!categories[catKey][m.workType]) categories[catKey][m.workType] = { count: 0, fields: {} };
+
+            if (includeAbsent || m.status !== 'ABSENT') {
+                categories[catKey][m.workType].count++;
+                if (!categories[catKey][m.workType].fields[m.fieldName]) categories[catKey][m.workType].fields[m.fieldName] = 0;
+                categories[catKey][m.workType].fields[m.fieldName]++;
+            }
+        });
+        return categories;
+    };
+    const summary = getSummary();
+    const grandTotal = data.filter((d: any) => includeAbsent || d.status !== 'ABSENT').length;
+
+    return (
+        <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, mb: 2 }}>
+            <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
+                <Typography variant="h6" align="center" fontWeight="bold">{label}</Typography>
+            </Box>
+            <Table size="small">
+                <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableRow>
+                        <TableCell><strong>Work item</strong></TableCell>
+                        <TableCell><strong>Field No</strong></TableCell>
+                        <TableCell align="center"><strong>No of Workers</strong></TableCell>
+                    </TableRow>
+                </TableHead>
+                <TableBody>
+                    {/* Tea Section */}
+                    {Object.entries(summary.Tea).map(([task, val]: any) => (
+                        <div key={task} style={{ display: 'contents' }}>
+                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
+                                <TableRow key={`${task}-${field}`}>
+                                    {idx === 0 && (
+                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                    )}
+                                    <TableCell>{field}</TableCell>
+                                    <TableCell align="center">{count}</TableCell>
+                                </TableRow>
+                            ))}
+                            {task === 'Plucking' && (
+                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                    <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
+                                    <TableCell align="center"><strong>{val.count}</strong></TableCell>
+                                </TableRow>
+                            )}
+                        </div>
+                    ))}
+                    {Object.keys(summary.Tea).length > 0 && (
+                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                            <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
+                            <TableCell align="center"><strong>{Object.values(summary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                        </TableRow>
+                    )}
+
+                    {/* Rubber Section */}
+                    {Object.entries(summary.Rubber).map(([task, val]: any) => (
+                        <div key={task} style={{ display: 'contents' }}>
+                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
+                                <TableRow key={`${task}-${field}`}>
+                                    {idx === 0 && (
+                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                    )}
+                                    <TableCell>{field}</TableCell>
+                                    <TableCell align="center">{count}</TableCell>
+                                </TableRow>
+                            ))}
+                            {task === 'Tapping' && (
+                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                    <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
+                                    <TableCell align="center"><strong>{val.count}</strong></TableCell>
+                                </TableRow>
+                            )}
+                        </div>
+                    ))}
+                    {Object.keys(summary.Rubber).length > 0 && (
+                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                            <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
+                            <TableCell align="center"><strong>{Object.values(summary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                        </TableRow>
+                    )}
+
+                    {/* General Section */}
+                    {Object.entries(summary.General).map(([task, val]: any) => (
+                        <div key={task} style={{ display: 'contents' }}>
+                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
+                                <TableRow key={`${task}-${field}`}>
+                                    {idx === 0 && (
+                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                    )}
+                                    <TableCell>{field}</TableCell>
+                                    <TableCell align="center">{count}</TableCell>
+                                </TableRow>
+                            ))}
+                        </div>
+                    ))}
+                    {Object.keys(summary.General).length > 0 && (
+                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                            <TableCell colSpan={2}><strong>Total General</strong></TableCell>
+                            <TableCell align="center"><strong>{Object.values(summary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                        </TableRow>
+                    )}
+
+                    <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
+                        <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
+                        <TableCell align="center"><strong>{grandTotal}</strong></TableCell>
+                    </TableRow>
+                </TableBody>
+            </Table>
+        </Paper>
+    );
+};
+
+// --- Tab 2: History (Past Musters) ---
 function HistoryTab() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
