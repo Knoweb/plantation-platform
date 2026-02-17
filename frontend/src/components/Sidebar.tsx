@@ -33,17 +33,18 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER'] },
+    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['FIELD_OFFICER', 'MANAGER'] }, // Shared with Mgr
 
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Workers', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['FIELD_OFFICER'] },
+    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
-    { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review', roles: ['FIELD_OFFICER'] },
-    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
-    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['FIELD_OFFICER', 'MANAGER'] }, // Shared with Mgr
+    // Muster Review removed for Field Officer
+
     { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
 
     // Manager Specific Tabs

@@ -61,4 +61,15 @@ public class FieldController {
         fieldService.deleteField(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PutMapping("/{id}")
+    public ResponseEntity<?> updateField(@PathVariable UUID id, @RequestBody Field field) {
+        try {
+            return ResponseEntity.ok(fieldService.updateField(id, field));
+        } catch (RuntimeException e) {
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

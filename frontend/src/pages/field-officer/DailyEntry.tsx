@@ -136,7 +136,18 @@ function DailyEntryTab() {
     };
 
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [isSubmitted, setIsSubmitted] = useState(false); // Track if submitted for this session/division
+    const [isSubmitted, setIsSubmitted] = useState(false);
+
+    // Persistence Key Helper
+    const getStorageKey = (divId: string) => `muster_submitted_${tenantId}_${today}_${divId}`;
+
+    // Check submission status on division change
+    useEffect(() => {
+        if (selectedDivision) {
+            const status = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
+            setIsSubmitted(status);
+        }
+    }, [selectedDivision, tenantId, today]);
 
     const handleSubmit = async () => {
         setConfirmOpen(true);
@@ -153,6 +164,9 @@ function DailyEntryTab() {
             }));
             await axios.post(`/api/tenants/attendance/bulk`, updates);
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
+
+            // Persist Submission
+            localStorage.setItem(getStorageKey(selectedDivision), 'true');
             setIsSubmitted(true); // Disable button
         } catch (e) {
             setNotification({ open: true, message: "Failed to save.", severity: 'error' });

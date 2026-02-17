@@ -29,3 +29,10 @@ logs/
 
 # OS
 Thumbs.db
+
+# Local seed scripts
+backend/seed_hayleys_inventory_local.ps1
+backend/seed_hayleys_inventory.ps1
+
+# Ignore all PowerShell scripts
+*.ps1

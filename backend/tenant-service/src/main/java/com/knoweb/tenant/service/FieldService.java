@@ -36,4 +36,15 @@ public class FieldService {
     public void deleteField(UUID fieldId) {
         fieldRepository.deleteById(fieldId);
     }
+
+    public Field updateField(UUID fieldId, Field updatedData) {
+        return fieldRepository.findById(fieldId).map(field -> {
+            if (updatedData.getName() != null) field.setName(updatedData.getName());
+            if (updatedData.getAcreage() != null) field.setAcreage(updatedData.getAcreage());
+            if (updatedData.getCropType() != null) field.setCropType(updatedData.getCropType());
+            if (updatedData.getPlantedDate() != null) field.setPlantedDate(updatedData.getPlantedDate());
+            if (updatedData.getDivisionId() != null) field.setDivisionId(updatedData.getDivisionId());
+            return fieldRepository.save(field);
+        }).orElseThrow(() -> new RuntimeException("Field not found with id " + fieldId));
+    }
 }
