@@ -29,6 +29,9 @@ public class Field {
     @Column(name = "crop_type", length = 50)
     private String cropType; // Tea, Rubber, etc.
 
+    @Column(name = "planted_date")
+    private java.time.LocalDate plantedDate;
+
     public Field() {
     }
 
@@ -87,5 +90,13 @@ public class Field {
 
     public void setCropType(String cropType) {
         this.cropType = cropType;
+    }
+
+    public java.time.LocalDate getPlantedDate() {
+        return plantedDate;
+    }
+
+    public void setPlantedDate(java.time.LocalDate plantedDate) {
+        this.plantedDate = plantedDate;
     }
 }

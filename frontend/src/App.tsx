@@ -18,6 +18,7 @@ import StoreTransactionHistory from './pages/store-keeper/StoreTransactionHistor
 import EstateAdminDashboard from './pages/estate-admin/EstateAdminDashboard';
 import DailyEntry from './pages/field-officer/DailyEntry';
 import CropAchievements from './pages/field-officer/tabs/CropAchievements';
+import CropAge from './pages/field-officer/tabs/CropAge';
 import MusterApproval from './pages/field-officer/tabs/MusterApproval';
 import MusterReview from './pages/field-officer/tabs/MusterReview';
 import GeneralStock from './pages/field-officer/tabs/GeneralStock';
@@ -80,6 +81,7 @@ function App() {
           <Route path="morning-muster" element={<MorningMuster />} />
           <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />
+          <Route path="crop-ages" element={<CropAge />} />
           <Route path="muster-approval" element={<MusterApproval />} />
           <Route path="muster-review" element={<MusterReview />} />
           <Route path="stock" element={<GeneralStock />} />

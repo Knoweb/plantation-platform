@@ -28,6 +28,7 @@ import MenuBookIcon from '@mui/icons-material/MenuBook';
 import HistoryIcon from '@mui/icons-material/History';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
+import ForestIcon from '@mui/icons-material/Forest';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
@@ -38,6 +39,7 @@ const menuItems = [
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Workers', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
+    { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review', roles: ['FIELD_OFFICER'] },
     { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
