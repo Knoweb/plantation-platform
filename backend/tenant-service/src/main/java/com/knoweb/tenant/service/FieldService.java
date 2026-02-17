@@ -24,6 +24,10 @@ public class FieldService {
     public List<Field> getFieldsByDivision(UUID divisionId) {
         return fieldRepository.findByDivisionId(divisionId);
     }
+    
+    public List<Field> getFieldsByDivisionIds(List<UUID> divisionIds) {
+        return fieldRepository.findByDivisionIdIn(divisionIds);
+    }
 
     public List<Field> getFieldsByTenant(UUID tenantId) {
         return fieldRepository.findByTenantId(tenantId);

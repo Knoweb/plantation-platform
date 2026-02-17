@@ -19,6 +19,7 @@ export default function GeneralStock() {
     const [editOpen, setEditOpen] = useState(false);
     const [selectedItem, setSelectedItem] = useState<any>(null);
     const [bufferInput, setBufferInput] = useState<string>('');
+    const [minimumInput, setMinimumInput] = useState<string>('');
 
     // Restock State (Manager Only)
     const [receiveOpen, setReceiveOpen] = useState(false);
@@ -105,20 +106,33 @@ export default function GeneralStock() {
     const handleEditClick = (item: any) => {
         setSelectedItem(item);
         setBufferInput(String(item.bufferLevel));
+        setMinimumInput(String(item.minimumLevel || 0));
         setEditOpen(true);
     };
 
     const handleSaveBuffer = async () => {
         if (!selectedItem) return;
-        const newLevel = parseInt(bufferInput) || 0;
+        const newBuffer = parseInt(bufferInput) || 0;
+        const newMin = parseInt(minimumInput) || 0;
+
         try {
-            await axios.put(`/api/inventory/${selectedItem.id}/buffer`, newLevel, {
+            // Update Buffer Level
+            await axios.put(`/api/inventory/${selectedItem.id}/buffer`, newBuffer, {
                 headers: { 'Content-Type': 'application/json' }
             });
+
+            // Update Minimum Level (via updateItem)
+            await axios.put(`/api/inventory/${selectedItem.id}`, {
+                ...selectedItem,
+                minimumLevel: newMin
+            });
+
             setEditOpen(false);
             fetchInventory();
+            showNotification("Stock levels updated successfully", 'success');
         } catch (err) {
-            showNotification("Failed to update buffer level", 'error');
+            console.error(err);
+            showNotification("Failed to update stock levels", 'error');
         }
     };
 
@@ -157,10 +171,9 @@ export default function GeneralStock() {
                 )}
             </Box>
             <Typography variant="body1" color="text.secondary" mb={4}>
-                Overview of current stock levels. Managers can set buffer thresholds here.
+                Overview of current stock levels. Managers can set buffer and minimum thresholds here.
             </Typography>
 
-            {/* Manager Alert Summary */}
             {/* Manager Alert Summary */}
             {isManager && items.some(i => i.bufferLevel === 0) && (
                 <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2, border: '1px solid #0288d1' }}>
@@ -224,6 +237,7 @@ export default function GeneralStock() {
                             <TableCell align="center"><strong>Unit</strong></TableCell>
                             <TableCell align="center"><strong>Current Qty</strong></TableCell>
                             <TableCell align="center"><strong>Buffer Level</strong></TableCell>
+                            <TableCell align="center"><strong>Minimum Level</strong></TableCell>
                             <TableCell align="center"><strong>Status</strong></TableCell>
                         </TableRow>
                     </TableHead>
@@ -244,6 +258,14 @@ export default function GeneralStock() {
                                             </IconButton>
                                         )}
                                     </TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', color: 'error.main' }}>
+                                        {item.minimumLevel || 0}
+                                        {isManager && (
+                                            <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 1 }}>
+                                                <EditIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                    </TableCell>
                                     <TableCell align="center">
                                         {item.bufferLevel === 0 ? (
                                             <Chip icon={<SettingsIcon />} label="Configure" color="info" size="small" variant="outlined" />
@@ -257,7 +279,7 @@ export default function GeneralStock() {
                             );
                         })}
                         {items.length === 0 && !loading && (
-                            <TableRow><TableCell colSpan={6} align="center">No inventory items found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} align="center">No inventory items found.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -265,17 +287,28 @@ export default function GeneralStock() {
 
             {/* Buffer Edit Dialog */}
             <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
-                <DialogTitle>Update Buffer Level</DialogTitle>
+                <DialogTitle>Update Stock Levels</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" mb={2}>
-                        Set the minimum stock level for <strong>{selectedItem?.name}</strong>.
+                        Set stock thresholds for <strong>{selectedItem?.name}</strong>.
                     </Typography>
                     <TextField
                         type="number"
-                        label="Buffer Level"
+                        label="Buffer Level (Reorder Point)"
                         fullWidth
+                        margin="normal"
                         value={bufferInput}
                         onChange={(e) => setBufferInput(e.target.value)}
+                        helperText="Stock level to trigger restock alerts"
+                    />
+                    <TextField
+                        type="number"
+                        label="Minimum Level (Blocking Point)"
+                        fullWidth
+                        margin="normal"
+                        value={minimumInput}
+                        onChange={(e) => setMinimumInput(e.target.value)}
+                        helperText="Absolute minimum. Issues below this are blocked."
                     />
                 </DialogContent>
                 <DialogActions>

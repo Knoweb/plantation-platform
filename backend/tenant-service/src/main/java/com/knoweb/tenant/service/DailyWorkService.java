@@ -86,6 +86,14 @@ public class DailyWorkService {
         return dailyWorkRepository.save(work);
     }
 
+    @Transactional
+    public DailyWork rejectWork(UUID workId) {
+        DailyWork work = dailyWorkRepository.findById(workId)
+                .orElseThrow(() -> new RuntimeException("Work record not found"));
+        work.setStatus("REJECTED");
+        return dailyWorkRepository.save(work);
+    }
+
     public List<DailyWork> getRecordsByTenant(UUID tenantId) {
         return dailyWorkRepository.findByTenantId(tenantId);
     }

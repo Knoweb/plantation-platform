@@ -18,7 +18,7 @@ import InventoryIcon from '@mui/icons-material/Inventory';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
-import DoneAllIcon from '@mui/icons-material/DoneAll';
+
 import GroupIcon from '@mui/icons-material/Group';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TerrainIcon from '@mui/icons-material/Terrain';
@@ -42,6 +42,7 @@ const menuItems = [
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review', roles: ['FIELD_OFFICER'] },
+    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['FIELD_OFFICER', 'MANAGER'] }, // Shared with Mgr
     { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
 
@@ -49,12 +50,11 @@ const menuItems = [
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
     { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review-manager', roles: ['MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER'] },
-    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['MANAGER'] },
 
 
     // Estate Admin / Manager
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/dashboard/users', roles: ['ESTATE_ADMIN'] }, // Removed MANAGER
-    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN', 'MANAGER'] },
+    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
@@ -80,32 +80,13 @@ export default function Sidebar() {
     const [alertCount, setAlertCount] = useState(0);
     const [restockCount, setRestockCount] = useState(0);
 
-    // State for Divisions
-    const [divisions, setDivisions] = useState<any[]>([]);
-
     useEffect(() => {
         if (userSession.tenantId) {
-            fetchDivisions();
             if (userRole === 'MANAGER') {
                 fetchAlerts();
             }
         }
     }, [userRole, userSession.tenantId]);
-
-    const fetchDivisions = async () => {
-        try {
-            const res = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
-            // Filter if user has restricted access (e.g. Field Officer with specific list)
-            // For now, load all or filter by session access
-            let loaded = res.data;
-            if (userSession.divisionAccess && userSession.divisionAccess.length > 0) {
-                loaded = loaded.filter((d: any) => userSession.divisionAccess.includes(d.divisionId));
-            }
-            setDivisions(loaded);
-        } catch (err) {
-            console.warn("Failed to fetch divisions for sidebar", err);
-        }
-    };
 
     const fetchAlerts = async () => {
         try {
@@ -135,24 +116,22 @@ export default function Sidebar() {
 
     // Integrate Divisions into Menu
     // For Managers, we put Divisions at the top like the reference image
-    const divisionItems = divisions.map(d => ({
-        text: d.name,
-        icon: <TerrainIcon />,
-        path: `/dashboard/division/${d.divisionId}`,
-        roles: ['MANAGER', 'ESTATE_ADMIN', 'FIELD_OFFICER'],
-        isDivision: true // Marker for styling
-    }));
 
-    const finalMenuItems = [
-        ...menuItems.filter(m => !m.text.includes('Divisions')), // Remove generic 'Divisions' link if we show list
-        ...((userRole === 'MANAGER' || userRole === 'ESTATE_ADMIN') ? [] : []) // Logic to insert divisions
-    ];
 
     // We'll just render Divisions manually in the list below
 
     const filteredMenuItems = menuItems.filter(item =>
         !item.roles || (userRole && item.roles.includes(userRole))
-    );
+    ).map(item => {
+        if (item.text === 'Dashboard') {
+            let dashboardPath = '/dashboard';
+            if (userRole === 'ESTATE_ADMIN') dashboardPath = '/dashboard/admin';
+            else if (userRole === 'MANAGER') dashboardPath = '/dashboard/manager';
+            else if (userRole === 'FIELD_OFFICER') dashboardPath = '/dashboard/field';
+            return { ...item, path: dashboardPath };
+        }
+        return item;
+    });
 
     return (
         <Drawer
@@ -201,38 +180,38 @@ export default function Sidebar() {
 
             <List sx={{ px: 2 }}>
 
+                {/* Dashboard - Always Top */}
+                <ListItem disablePadding sx={{ mb: 1 }}>
+                    <ListItemButton
+                        onClick={() => {
+                            let path = '/dashboard';
+                            if (userRole === 'ESTATE_ADMIN') path = '/dashboard/admin';
+                            else if (userRole === 'MANAGER') path = '/dashboard/manager';
+                            else if (userRole === 'FIELD_OFFICER') path = '/dashboard/field';
+                            navigate(path);
+                        }}
+                        selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field'}
+                        sx={{
+                            borderRadius: 2,
+                            mx: 1,
+                            minHeight: 48,
+                            justifyContent: 'initial',
+                            '&.Mui-selected': {
+                                bgcolor: 'rgba(255,255,255,0.2)',
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                            },
+                            '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                        }}
+                    >
+                        <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
+                            <DashboardIcon />
+                        </ListItemIcon>
+                        <ListItemText primary="Dashboard" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
+                    </ListItemButton>
+                </ListItem>
 
-                {/* Dynamic Divisions List - Hide for Store Keeper */}
-                {['MANAGER', 'ESTATE_ADMIN', 'FIELD_OFFICER'].includes(userRole) && divisions.map((d) => (
-                    <ListItem key={d.divisionId} disablePadding sx={{ mb: 1 }}>
-                        <ListItemButton
-                            onClick={() => navigate(`/dashboard?divisionId=${d.divisionId}`)}
-                            selected={location.search.includes(d.divisionId)}
-                            sx={{
-                                borderRadius: 2, // Match Menu Items
-                                mx: 1, // Match Menu Items margin
-                                minHeight: 48,
-                                justifyContent: 'initial',
-                                bgcolor: location.search.includes(d.divisionId) ? 'rgba(255,255,255,0.2)' : 'transparent',
-                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
-                                '&.Mui-selected:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
-                            }}
-                        >
-                            <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
-                                <TerrainIcon fontSize="medium" />
-                            </ListItemIcon>
-                            <ListItemText
-                                primary={d.name}
-                                primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} // Standardize
-                            />
-                        </ListItemButton>
-                    </ListItem>
-                ))}
-
-
-
-                {/* Standard Menu Items */}
-                {filteredMenuItems.map((item) => (
+                {/* Standard Menu Items (Excluding Dashboard) */}
+                {filteredMenuItems.filter(item => item.text !== 'Dashboard').map((item) => (
                     <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
                         <ListItemButton
                             onClick={() => navigate(item.path)}
@@ -273,6 +252,6 @@ export default function Sidebar() {
                     <ListItemText primary="Logout" />
                 </ListItemButton>
             </Box>
-        </Drawer>
+        </Drawer >
     );
 }

@@ -20,6 +20,12 @@ public class InventoryTransaction {
     private String status;
     private LocalDateTime approvedDate; // Track approval time
 
+    // New Fields for Division/Field tracking
+    private String divisionId;
+    private String divisionName;
+    private String fieldId;
+    private String fieldName;
+
     public Long getId() {
         return id;
     }
@@ -96,7 +102,41 @@ public class InventoryTransaction {
         return approvedDate;
     }
 
+
+
     public void setApprovedDate(LocalDateTime approvedDate) {
         this.approvedDate = approvedDate;
+    }
+
+    public String getDivisionId() {
+        return divisionId;
+    }
+
+    public void setDivisionId(String divisionId) {
+        this.divisionId = divisionId;
+    }
+
+    public String getDivisionName() {
+        return divisionName;
+    }
+
+    public void setDivisionName(String divisionName) {
+        this.divisionName = divisionName;
+    }
+
+    public String getFieldId() {
+        return fieldId;
+    }
+
+    public void setFieldId(String fieldId) {
+        this.fieldId = fieldId;
+    }
+
+    public String getFieldName() {
+        return fieldName;
+    }
+
+    public void setFieldName(String fieldName) {
+        this.fieldName = fieldName;
     }
 }

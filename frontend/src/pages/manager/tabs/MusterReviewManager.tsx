@@ -10,7 +10,7 @@ import axios from 'axios';
 export default function MusterReviewManager() {
     const [pendingItems, setPendingItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [viewStatus, setViewStatus] = useState<'PENDING' | 'APPROVED'>('PENDING');
+    const [viewStatus, setViewStatus] = useState<'PENDING' | 'HISTORY'>('PENDING');
     const [workerMap, setWorkerMap] = useState<Map<string, any>>(new Map());
 
     // Review Item State
@@ -19,7 +19,7 @@ export default function MusterReviewManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
-    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' } | null>(null);
+    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
     useEffect(() => {
         if (tenantId) fetchPending();
@@ -45,15 +45,32 @@ export default function MusterReviewManager() {
             setWorkerMap(wMap);
 
             // Filter ONLY 'Morning Muster' (and potentially 'Evening Muster' if backend supports status)
+            // Filter Logic:
+            // If PENDING view, backend returns PENDING (if endpoint supports it or we filter here).
+            // If HISTORY view, backend returns ALL (if status!=PENDING param).
+            // So we need to filter "non-Pending" for History view.
+
             const musters = workRes.data
-                .filter((item: any) => item.workType === 'Morning Muster' || item.workType === 'Evening Muster')
+                .filter((item: any) => {
+                    // Filter Morning/Evening Muster
+                    const isMuster = item.workType === 'Morning Muster' || item.workType === 'Evening Muster';
+                    if (!isMuster) return false;
+
+                    // Filter based on View Status
+                    if (viewStatus === 'PENDING') {
+                        return item.status === 'PENDING' || !item.status; // Default to pending if null
+                    } else {
+                        // History: Show Approved or Rejected
+                        return item.status === 'APPROVED' || item.status === 'REJECTED';
+                    }
+                })
                 .map((item: any) => ({
                     id: item.workId,
                     displayId: item.workId.substring(0, 8),
                     type: item.workType,
                     detailsRaw: item.details,
                     date: item.workDate,
-                    createdAt: item.createdAt, // Added field
+                    createdAt: item.createdAt,
                     quantity: item.workerCount,
                     divisionName: divMap.get(item.divisionId) || 'Unknown Division',
                     status: item.status
@@ -82,8 +99,13 @@ export default function MusterReviewManager() {
     const handleReject = async () => {
         if (!selectedItem || (viewStatus === 'PENDING' && !window.confirm("Reject this muster?")) || (viewStatus !== 'PENDING' && !window.confirm("Delete this record permanently?"))) return;
         try {
-            await axios.delete(`/api/tenants/daily-work/${selectedItem.id}`);
-            setNotification({ open: true, message: viewStatus === 'PENDING' ? "Muster Rejected" : "Record Deleted", severity: 'success' });
+            if (viewStatus === 'PENDING') {
+                await axios.put(`/api/tenants/daily-work/${selectedItem.id}/reject`);
+                setNotification({ open: true, message: "Muster Rejected", severity: 'warning' });
+            } else {
+                await axios.delete(`/api/tenants/daily-work/${selectedItem.id}`);
+                setNotification({ open: true, message: "Record Deleted", severity: 'success' });
+            }
             setSelectedItem(null);
             fetchPending();
         } catch (e) {
@@ -97,7 +119,7 @@ export default function MusterReviewManager() {
 
             <Box display="flex" gap={2} mb={3}>
                 <Button variant={viewStatus === 'PENDING' ? "contained" : "outlined"} onClick={() => setViewStatus('PENDING')}>Pending</Button>
-                <Button variant={viewStatus === 'APPROVED' ? "contained" : "outlined"} onClick={() => setViewStatus('APPROVED')}>History</Button>
+                <Button variant={viewStatus === 'HISTORY' ? "contained" : "outlined"} onClick={() => setViewStatus('HISTORY')}>History</Button>
             </Box>
 
             {loading ? <CircularProgress /> : (
@@ -109,6 +131,7 @@ export default function MusterReviewManager() {
                                 <TableCell>Type</TableCell>
                                 <TableCell>Division</TableCell>
                                 <TableCell>Date & Time</TableCell>
+                                <TableCell align="center">Status</TableCell>
                                 <TableCell align="right">Workers</TableCell>
                                 <TableCell align="center">Action</TableCell>
                             </TableRow>
@@ -125,6 +148,14 @@ export default function MusterReviewManager() {
                                         <TableCell>
                                             <Typography variant="body2">{row.date}</Typography>
                                             {row.createdAt && <Typography variant="caption" color="text.secondary">{new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Chip
+                                                label={row.status || 'PENDING'}
+                                                size="small"
+                                                color={row.status === 'APPROVED' ? 'success' : row.status === 'REJECTED' ? 'error' : 'warning'}
+                                                variant={row.status === 'PENDING' ? 'outlined' : 'filled'}
+                                            />
                                         </TableCell>
                                         <TableCell align="right">{row.quantity}</TableCell>
                                         <TableCell align="center">
@@ -150,7 +181,7 @@ export default function MusterReviewManager() {
             <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', display: 'flex', justifyContent: 'space-between' }}>
                     <Typography component="div" variant="h6">Review Muster: {selectedItem?.divisionName} ({selectedItem?.date})</Typography>
-                    <Chip label={viewStatus} color={viewStatus === 'APPROVED' ? 'success' : 'warning'} />
+                    <Chip label={viewStatus} color={viewStatus === 'HISTORY' ? 'success' : 'warning'} />
                 </DialogTitle>
                 <DialogContent sx={{ bgcolor: '#f1f8e9', p: 3 }}>
                     {selectedItem && (

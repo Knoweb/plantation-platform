@@ -9,7 +9,7 @@ export default function AttendanceReport() {
     const [attendance, setAttendance] = useState<any[]>([]);
     const [workers, setWorkers] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [selectedDate, setSelectedDate] = useState<string>(''); // YYYY-MM-DD
+    const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // Default to today
 
     // Fetch Workers (for name mapping)
     useEffect(() => {
@@ -20,7 +20,7 @@ export default function AttendanceReport() {
         }
     }, [tenantId]);
 
-    // Fetch Attendance
+    // Fetch Attendance & Daily Work
     useEffect(() => {
         if (tenantId) {
             fetchAttendance();
@@ -30,36 +30,62 @@ export default function AttendanceReport() {
     const fetchAttendance = async () => {
         setLoading(true);
         try {
-            let url = `/api/tenants/attendance?tenantId=${tenantId}`;
-            if (selectedDate) {
-                url += `&date=${selectedDate}`;
-            }
-            const res = await axios.get(url);
-            setAttendance(res.data);
+            // Fetch both Attendance and Daily Work for the selected date (or all if API supports)
+            // Ideally we filter by date on server to avoid over-fetching
+            const dateParam = selectedDate ? `&date=${selectedDate}` : '';
+
+            const [attRes, dwRes] = await Promise.all([
+                axios.get(`/api/tenants/attendance?tenantId=${tenantId}${dateParam}`),
+                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}${dateParam}`)
+            ]);
+
+            const dailyWorkMap = new Map();
+            dwRes.data.forEach((dw: any) => dailyWorkMap.set(dw.workId, dw));
+
+            // Join details
+            const joinedData = attRes.data.map((att: any) => {
+                const dw = dailyWorkMap.get(att.dailyWorkId);
+                return {
+                    ...att,
+                    workType: att.workType || dw?.workType || 'Unknown',
+                    fieldName: att.fieldName || dw?.fieldName || 'Unknown',
+                    divisionId: att.divisionId || dw?.divisionId || '',
+                };
+            });
+
+            // If we need to show filtered results based on task type, we can filter here. 
+            // Currently showing all gathered attendance.
+            setAttendance(joinedData);
         } catch (e) {
             console.error("Failed to fetch attendance", e);
         }
         setLoading(false);
     };
 
-    const getWorkerName = (id: string) => {
+    const getWorkerDetails = (id: string) => {
         const w = workers.find(worker => worker.id === id || worker.workerId === id);
-        return w ? w.name : id;
+        return w ? { name: w.name, regNo: w.registrationNumber } : { name: id, regNo: 'N/A' };
     };
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h5" color="primary" fontWeight="bold">Worker Attendance History</Typography>
-                <TextField
-                    type="date"
-                    size="small"
-                    label="Filter by Date"
-                    InputLabelProps={{ shrink: true }}
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    sx={{ width: 220 }}
-                />
+            {/* Header with Centered Date Filter */}
+            <Box display="flex" alignItems="center" mb={3} position="relative" height={40}>
+                <Typography variant="h5" color="primary" fontWeight="bold" sx={{ position: 'absolute', left: 0 }}>
+                    Attendance Report
+                </Typography>
+
+                <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                    <TextField
+                        type="date"
+                        size="small"
+                        label="Filter by Date"
+                        InputLabelProps={{ shrink: true }}
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        sx={{ width: 220, bgcolor: 'white' }}
+                    />
+                </Box>
             </Box>
 
             <Card>
@@ -72,7 +98,7 @@ export default function AttendanceReport() {
                                 <TableRow>
                                     <TableCell><strong>Date</strong></TableCell>
                                     <TableCell><strong>Worker Name</strong></TableCell>
-                                    <TableCell><strong>Worker ID</strong></TableCell>
+                                    <TableCell><strong>Workers RegNo</strong></TableCell>
                                     <TableCell><strong>Task</strong></TableCell>
                                     <TableCell><strong>Field</strong></TableCell>
                                     <TableCell><strong>Status</strong></TableCell>
@@ -80,20 +106,33 @@ export default function AttendanceReport() {
                             </TableHead>
                             <TableBody>
                                 {attendance.length > 0 ? (
-                                    attendance.map((record: any) => (
-                                        <TableRow key={record.id} hover>
-                                            <TableCell>{record.workDate}</TableCell>
-                                            <TableCell><strong>{getWorkerName(record.workerId)}</strong></TableCell>
-                                            <TableCell>{record.workerId}</TableCell>
-                                            <TableCell><Chip label={record.workType} size="small" color="primary" variant="outlined" /></TableCell>
-                                            <TableCell>{record.fieldName}</TableCell>
-                                            <TableCell><Chip label="Present" size="small" color="success" /></TableCell>
-                                        </TableRow>
-                                    ))
+                                    attendance.map((record: any) => {
+                                        const workerInfo = getWorkerDetails(record.workerId);
+                                        return (
+                                            <TableRow key={record.id || record.workId} hover>
+                                                <TableCell>{record.workDate}</TableCell>
+                                                <TableCell><strong>{workerInfo.name}</strong></TableCell>
+                                                <TableCell>{workerInfo.regNo}</TableCell>
+                                                <TableCell><Chip label={record.workType} size="small" color="primary" variant="outlined" /></TableCell>
+                                                <TableCell>{record.fieldName}</TableCell>
+                                                <TableCell>
+                                                    <Chip
+                                                        label={record.status || 'PENDING'}
+                                                        size="small"
+                                                        color={
+                                                            record.status === 'PRESENT' ? 'success' :
+                                                                record.status === 'ABSENT' ? 'error' :
+                                                                    record.status === 'HALF_DAY' ? 'warning' : 'default'
+                                                        }
+                                                    />
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })
                                 ) : (
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
-                                            <Typography color="text.secondary">No attendance records found for this selection.</Typography>
+                                            <Typography color="text.secondary">No attendance records found for this date.</Typography>
                                         </TableCell>
                                     </TableRow>
                                 )}

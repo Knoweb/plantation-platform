@@ -53,6 +53,20 @@ public class TenantController {
     public ResponseEntity<?> getTenantUsers(@PathVariable java.util.UUID id) {
         return ResponseEntity.ok(tenantService.getTenantUsers(id));
     }
+    
+    @GetMapping("/{id}/field-officers")
+    public ResponseEntity<?> getFieldOfficers(@PathVariable java.util.UUID id, @RequestParam String divisionIds) {
+        try {
+            java.util.List<java.util.UUID> ids = java.util.Arrays.stream(divisionIds.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .map(java.util.UUID::fromString)
+                .collect(java.util.stream.Collectors.toList());
+            return ResponseEntity.ok(tenantService.getFieldOfficers(id, ids));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", "Invalid UUID list format"));
+        }
+    }
 
     @PostMapping("/login")
     public ResponseEntity<?> login(@RequestBody AuthRequest request) {

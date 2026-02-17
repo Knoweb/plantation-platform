@@ -117,6 +117,10 @@ public class TenantService {
     public java.util.List<User> getTenantUsers(java.util.UUID tenantId) {
         return userRepository.findByTenantId(tenantId);
     }
+    
+    public java.util.List<User> getFieldOfficers(java.util.UUID tenantId, java.util.List<java.util.UUID> divisionIds) {
+        return userRepository.findDistinctByTenantIdAndRoleAndDivisions_DivisionIdIn(tenantId, "FIELD_OFFICER", divisionIds);
+    }
 
     public AuthResponse login(AuthRequest request) {
         System.out.println("DEBUG: Login Attempt for: " + request.getUsername());

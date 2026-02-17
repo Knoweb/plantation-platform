@@ -12,6 +12,8 @@ interface Transaction {
     approvedDate?: string; // Add approvedDate
     issuedTo?: string;
     status?: string;
+    divisionName?: string;
+    fieldName?: string;
 }
 
 export default function StoreTransactionHistory() {
@@ -33,8 +35,13 @@ export default function StoreTransactionHistory() {
 
         // Search Filter
         if (search) {
-            res = res.filter(t => t.itemName.toLowerCase().includes(search.toLowerCase()) ||
-                t.issuedTo?.toLowerCase().includes(search.toLowerCase()));
+            const s = search.toLowerCase();
+            res = res.filter(t =>
+                t.itemName.toLowerCase().includes(s) ||
+                t.issuedTo?.toLowerCase().includes(s) ||
+                t.divisionName?.toLowerCase().includes(s) ||
+                t.fieldName?.toLowerCase().includes(s)
+            );
         }
 
         // Date Filter
@@ -84,7 +91,7 @@ export default function StoreTransactionHistory() {
             {/* Filters */}
             <Box display="flex" gap={2} mb={3} flexWrap="wrap">
                 <TextField
-                    placeholder="Search Item or Receiver..."
+                    placeholder="Search Item, Division, Field..."
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     InputProps={{
@@ -119,6 +126,8 @@ export default function StoreTransactionHistory() {
                             <TableCell><strong>Item</strong></TableCell>
                             <TableCell><strong>Type</strong></TableCell>
                             <TableCell align="right"><strong>Quantity</strong></TableCell>
+                            <TableCell><strong>Division</strong></TableCell>
+                            <TableCell><strong>Field</strong></TableCell>
                             <TableCell><strong>Issued To / Notes</strong></TableCell>
                             <TableCell align="center"><strong>Status</strong></TableCell>
                         </TableRow>
@@ -141,6 +150,8 @@ export default function StoreTransactionHistory() {
                                         <Chip label={t.type} color={getTypeColor(t.type) as any} size="small" />
                                     </TableCell>
                                     <TableCell align="right">{t.quantity}</TableCell>
+                                    <TableCell>{t.divisionName || '-'}</TableCell>
+                                    <TableCell>{t.fieldName || '-'}</TableCell>
                                     <TableCell>{t.issuedTo || '-'}</TableCell>
                                     <TableCell align="center">
                                         {t.status ? (

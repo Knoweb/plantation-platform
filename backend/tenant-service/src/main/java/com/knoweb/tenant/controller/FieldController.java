@@ -35,13 +35,25 @@ public class FieldController {
 
     @GetMapping
     public ResponseEntity<?> getFields(@RequestParam(required = false) UUID divisionId,
+            @RequestParam(required = false) String divisionIds,
             @RequestParam(required = false) UUID tenantId) {
-        if (divisionId != null) {
+        if (divisionIds != null && !divisionIds.isEmpty()) {
+            try {
+                java.util.List<UUID> ids = java.util.Arrays.stream(divisionIds.split(","))
+                    .map(String::trim)
+                    .filter(s -> !s.isEmpty())
+                    .map(java.util.UUID::fromString)
+                    .collect(java.util.stream.Collectors.toList());
+                return ResponseEntity.ok(fieldService.getFieldsByDivisionIds(ids));
+            } catch (Exception e) {
+                 return ResponseEntity.badRequest().body(Map.of("message", "Invalid UUID list format: " + e.getMessage()));
+            }
+        } else if (divisionId != null) {
             return ResponseEntity.ok(fieldService.getFieldsByDivision(divisionId));
         } else if (tenantId != null) {
             return ResponseEntity.ok(fieldService.getFieldsByTenant(tenantId));
         }
-        return ResponseEntity.badRequest().body(Map.of("message", "Provide divisionId or tenantId"));
+        return ResponseEntity.badRequest().body(Map.of("message", "Provide divisionId, divisionIds or tenantId"));
     }
 
     @DeleteMapping("/{id}")

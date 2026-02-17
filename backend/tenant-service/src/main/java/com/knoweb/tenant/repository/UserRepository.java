@@ -15,4 +15,6 @@ public interface UserRepository extends JpaRepository<User, UUID> {
     Optional<User> findByEmailIgnoreCase(String email);
 
     Optional<User> findByResetToken(String resetToken);
+    
+    java.util.List<User> findDistinctByTenantIdAndRoleAndDivisions_DivisionIdIn(UUID tenantId, String role, java.util.List<UUID> divisionIds);
 }

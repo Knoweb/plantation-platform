@@ -79,7 +79,12 @@ export default function MorningMuster() {
 
     const checkApprovalStatus = async () => {
         try {
-            const today = new Date().toISOString().split('T')[0];
+            // Use local date for consistency
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
             const res = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
             // Check if TODAY'S work for this division is SUBMITTED (Pending or Approved)
             const submittedWork = res.data.find((w: any) => w.workDate === today && (w.status === 'APPROVED' || w.status === 'PENDING'));
@@ -98,7 +103,16 @@ export default function MorningMuster() {
                 axios.get(`/api/divisions?tenantId=${tenantId}`)
             ]);
 
-            setMusters(musterRes.data);
+            // Use local date to avoid UTC mismatches in early morning
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
+
+            const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
+
+            setMusters(todaysMusters);
             setWorkers(workerRes.data);
             setFields(fieldRes.data);
             setDivisions(divisionRes.data);
@@ -277,10 +291,17 @@ export default function MorningMuster() {
                     });
                 });
 
+                // Use local date for consistency
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const todayVal = `${year}-${month}-${day}`;
+
                 const payload = {
                     tenantId: tenantId,
                     divisionId: selectedDivisionId,
-                    workDate: new Date().toISOString().split('T')[0],
+                    workDate: todayVal,
                     workType: "Morning Muster",
                     workerCount: totalCount,
                     // Store structured data containing Task Type + Field + Workers + NAMES
@@ -289,6 +310,9 @@ export default function MorningMuster() {
                 };
 
                 await axios.post('/api/tenants/daily-work', payload);
+
+                setIsReadOnly(true);
+                checkApprovalStatus();
 
                 alert("Muster Submitted for Manager Approval!");
                 // Optionally disable editing here?
@@ -504,7 +528,7 @@ export default function MorningMuster() {
 
                             {isReadOnly && (
                                 <Alert severity="info" sx={{ mb: 2 }}>
-                                    This muster has been <strong>APPROVED</strong> by the Manager and is now Read-Only.
+                                    This muster has been <strong>SUBMITTED</strong> regarding manager approval and is now Read-Only.
                                 </Alert>
                             )}
 
@@ -591,10 +615,21 @@ export default function MorningMuster() {
                         <InputLabel>Task Type</InputLabel>
                         <Select value={newMuster.taskType} label="Task Type" onChange={(e) => setNewMuster({ ...newMuster, taskType: e.target.value })}>
                             <MenuItem value="Plucking">Plucking</MenuItem>
-                            <MenuItem value="Weeding">Weeding</MenuItem>
-                            <MenuItem value="Fertilizing">Fertilizing</MenuItem>
                             <MenuItem value="Tapping">Tapping</MenuItem>
-                            <MenuItem value="Welding">Welding</MenuItem>
+                            <MenuItem value="Kangani">Kangani</MenuItem>
+                            <MenuItem value="Sackcooli">Sackcooli</MenuItem>
+                            <MenuItem value="Transport">Transport</MenuItem>
+                            <MenuItem value="Fertilizer">Fertilizer</MenuItem>
+                            <MenuItem value="Chemical Weeding">Chemical Weeding</MenuItem>
+                            <MenuItem value="Manual Weeding">Manual Weeding</MenuItem>
+                            <MenuItem value="Roads & Boundaries">Roads & Boundaries</MenuItem>
+                            <MenuItem value="Drains">Drains</MenuItem>
+                            <MenuItem value="Terracing">Terracing</MenuItem>
+                            <MenuItem value="Tipping">Tipping</MenuItem>
+                            <MenuItem value="Pruning">Pruning</MenuItem>
+                            <MenuItem value="Mossing & Ferning">Mossing & Ferning</MenuItem>
+                            <MenuItem value="Lime Spray">Lime Spray</MenuItem>
+                            <MenuItem value="Blister Blight">Blister Blight</MenuItem>
                         </Select>
                     </FormControl>
 

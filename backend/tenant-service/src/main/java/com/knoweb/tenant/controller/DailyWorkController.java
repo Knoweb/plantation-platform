@@ -36,6 +36,15 @@ public class DailyWorkController {
         }
     }
 
+    @PutMapping("/{id}/reject")
+    public ResponseEntity<?> rejectWork(@PathVariable UUID id) {
+        try {
+            return ResponseEntity.ok(dailyWorkService.rejectWork(id));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteWork(@PathVariable UUID id) {
         try {

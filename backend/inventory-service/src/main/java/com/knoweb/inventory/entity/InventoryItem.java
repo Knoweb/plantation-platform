@@ -16,6 +16,8 @@ public class InventoryItem {
 
     private int currentQuantity;
     private int bufferLevel; // Set by Manager
+    @Column(columnDefinition = "integer default 0")
+    private int minimumLevel; // Absolute minimum before blocking issues
     private double pricePerUnit; // Added for Value Tracking
 
     private String tenantId;
@@ -66,6 +68,14 @@ public class InventoryItem {
 
     public void setBufferLevel(int bufferLevel) {
         this.bufferLevel = bufferLevel;
+    }
+
+    public int getMinimumLevel() {
+        return minimumLevel;
+    }
+
+    public void setMinimumLevel(int minimumLevel) {
+        this.minimumLevel = minimumLevel;
     }
 
     public double getPricePerUnit() {

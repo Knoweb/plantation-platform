@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar } from '@mui/material';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
 
@@ -29,6 +29,14 @@ export default function StoreKeeperDashboard() {
     const [issuedTo, setIssuedTo] = useState('');
     const [search, setSearch] = useState('');
 
+    // --- Division / Field Selection ---
+    const [divisions, setDivisions] = useState<any[]>([]);
+    const [fields, setFields] = useState<any[]>([]);
+    // const [officers, setOfficers] = useState<any[]>([]);
+    const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
+    const [selectedFields, setSelectedFields] = useState<string[]>([]);
+    // ----------------------------------
+
     // New Item / Edit Modal
     const [newItemOpen, setNewItemOpen] = useState(false);
     const [isEditing, setIsEditing] = useState(false);
@@ -39,6 +47,7 @@ export default function StoreKeeperDashboard() {
         unit: 'kg',
         currentQuantity: '' as any, // Allow string for input
         bufferLevel: 0,
+        minimumLevel: 0,
         pricePerUnit: '' as any
     });
 
@@ -61,7 +70,13 @@ export default function StoreKeeperDashboard() {
     const tenantId = userSession.tenantId;
 
     useEffect(() => {
-        fetchInventory();
+        if (tenantId) {
+            fetchInventory();
+            // Fetch Divisions for dropdown
+            axios.get(`/api/divisions?tenantId=${tenantId}`)
+                .then(res => setDivisions(res.data))
+                .catch(err => console.error("Failed to load divisions", err));
+        }
     }, [tenantId]);
 
     const fetchInventory = async () => {
@@ -98,32 +113,47 @@ export default function StoreKeeperDashboard() {
         setOpenModal(true);
         setQty('');
         setIssuedTo('');
+        setSelectedDivisions([]);
+        setSelectedFields([]);
     };
 
     const handleTransaction = async () => {
+        // Validation: Prevent issuing below buffer level
+        if (modalType === 'ISSUE') {
+            const item = items.find(i => i.id === selectedItem);
+            if (item) {
+                const requestQty = Number(qty) || 0;
+                const projectedQty = item.currentQuantity - requestQty;
+
+                // Use minimumLevel if defined, otherwise fallback to bufferLevel or 0
+                const minLevel = item.minimumLevel || 0;
+
+                if (projectedQty < minLevel) {
+                    showNotification(`Cannot issue stock! Remaining quantity (${projectedQty} ${item.unit}) would fall below the mandatory minimum level of ${minLevel} ${item.unit}.`, 'error');
+                    return;
+                }
+            }
+        }
+
         try {
             await axios.post('/api/inventory/transaction', {
                 itemId: selectedItem,
                 quantity: Number(qty) || 0,
                 type: modalType,
                 tenantId: tenantId,
-                issuedTo: (modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') ? issuedTo : undefined
+                issuedTo: (modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') ? issuedTo : undefined,
+                // Add Division / Field Info (Joined as comma-separated string)
+                divisionId: selectedDivisions.length > 0 ? selectedDivisions.join(',') : undefined,
+                divisionName: selectedDivisions.length > 0 ? selectedDivisions.map(id => divisions.find(d => d.divisionId === id)?.name).join(', ') : undefined,
+                fieldId: selectedFields.length > 0 ? selectedFields.join(',') : undefined,
+                fieldName: selectedFields.length > 0 ? selectedFields.map(id => fields.find(f => f.fieldId === id)?.name).join(', ') : undefined
             });
-
-            // Automated Low Stock Notification
-            if (modalType === 'ISSUE') {
-                const item = items.find(i => i.id === selectedItem);
-                if (item) {
-                    const newQty = item.currentQuantity - (Number(qty) || 0);
-                    if (newQty < item.bufferLevel) {
-                        showNotification(`Note: ${item.name} is below buffer level. System has auto-generated a refill request.`, 'warning');
-                    }
-                }
-            }
 
             setOpenModal(false);
             setQty('');
             setIssuedTo('');
+            setSelectedDivisions([]);
+            setSelectedFields([]);
             fetchInventory();
             showNotification("Transaction Successful", 'success');
         } catch (err: any) {
@@ -179,13 +209,14 @@ export default function StoreKeeperDashboard() {
             unit: item.unit,
             currentQuantity: item.currentQuantity,
             bufferLevel: item.bufferLevel,
+            minimumLevel: item.minimumLevel || 0,
             pricePerUnit: item.pricePerUnit
         });
         setNewItemOpen(true);
     };
 
     const resetForm = () => {
-        setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: '' as any, bufferLevel: 0, pricePerUnit: '' as any });
+        setNewItem({ name: '', category: 'FERTILIZER', unit: 'kg', currentQuantity: '' as any, bufferLevel: 0, minimumLevel: 0, pricePerUnit: '' as any });
         setIsEditing(false);
         setEditId(null);
     };
@@ -213,7 +244,7 @@ export default function StoreKeeperDashboard() {
                         startIcon={<RemoveShoppingCartIcon />}
                         variant="contained"
                         color="warning"
-                        onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); }}
+                        onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); setSelectedDivisions([]); setSelectedFields([]); }}
                     >
                         Issue Stock
                     </Button>
@@ -232,7 +263,7 @@ export default function StoreKeeperDashboard() {
                         </Box>
                         <Grid container spacing={2}>
                             {lowStockItems.map(item => (
-                                <Grid key={item.id} xs={12} md={4}>
+                                <Grid key={item.id} size={{ xs: 12, md: 4 }}>
                                     <Box bgcolor="white" p={2} borderRadius={1} border="1px solid #ffcdd2">
                                         <Typography variant="subtitle1" fontWeight="bold">{item.name}</Typography>
                                         <Typography variant="body2" color="error">
@@ -251,6 +282,9 @@ export default function StoreKeeperDashboard() {
                     </CardContent>
                 </Card>
             )}
+
+            {/* Full Inventory Table */}
+
 
             {/* Full Inventory Table */}
             <Card>
@@ -282,6 +316,7 @@ export default function StoreKeeperDashboard() {
                                 <TableCell align="right">Available Stock</TableCell>
                                 <TableCell align="right">Total Value (Rs)</TableCell>
                                 <TableCell align="right">Buffer Level</TableCell>
+                                <TableCell align="right">Minimum Level</TableCell>
                                 <TableCell align="center">Status</TableCell>
                                 <TableCell align="center">Action</TableCell>
                             </TableRow>
@@ -289,7 +324,7 @@ export default function StoreKeeperDashboard() {
                         <TableBody>
                             {loading ? (
                                 <TableRow>
-                                    <TableCell colSpan={7} align="center" sx={{ py: 10 }}>
+                                    <TableCell colSpan={8} align="center" sx={{ py: 10 }}>
                                         <Box display="flex" flexDirection="column" alignItems="center">
                                             <SpaIcon
                                                 sx={{
@@ -324,6 +359,9 @@ export default function StoreKeeperDashboard() {
                                     </TableCell>
                                     <TableCell align="right" sx={{ color: 'text.secondary' }}>
                                         {item.bufferLevel} {item.unit}
+                                    </TableCell>
+                                    <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                        {item.minimumLevel || 0} {item.unit}
                                     </TableCell>
                                     <TableCell align="center">
                                         {item.currentQuantity < item.bufferLevel ? (
@@ -364,7 +402,7 @@ export default function StoreKeeperDashboard() {
                             ))}
                             {!loading && items.length === 0 && !error && (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center">No inventory items found.</TableCell>
+                                    <TableCell colSpan={8} align="center">No inventory items found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -373,7 +411,7 @@ export default function StoreKeeperDashboard() {
             </Card>
 
             {/* Transaction Modal */}
-            <Dialog open={openModal} onClose={() => setOpenModal(false)}>
+            <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>
                     {modalType === 'RECEIPT' ? 'Receive New Stock' :
                         modalType === 'ISSUE' ? 'Issue Stock to Field' :
@@ -396,10 +434,106 @@ export default function StoreKeeperDashboard() {
                         value={qty}
                         onChange={(e) => setQty(e.target.value)}
                     />
-                    {(modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') && (
+
+                    {modalType === 'ISSUE' && (
+                        <>
+                            <Typography variant="subtitle1" sx={{ mt: 2, mb: 1, fontWeight: 'bold' }}>Select Issued Divisions & Fields</Typography>
+                            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 300, overflowY: 'auto', border: '1px solid #e0e0e0', p: 1, borderRadius: 1 }}>
+                                {divisions.map((d: any) => {
+                                    const isDivisionSelected = selectedDivisions.includes(d.divisionId);
+                                    const divisionFields = fields.filter((f: any) => f.divisionId === d.divisionId);
+
+                                    return (
+                                        <Box key={d.divisionId} sx={{ display: 'flex', flexDirection: 'column' }}>
+                                            <FormControlLabel
+                                                control={
+                                                    <Checkbox
+                                                        checked={isDivisionSelected}
+                                                        onChange={(e) => {
+                                                            let newSelectedDivisions;
+                                                            let newSelectedFields = [...selectedFields];
+
+                                                            if (e.target.checked) {
+                                                                newSelectedDivisions = [...selectedDivisions, d.divisionId];
+                                                            } else {
+                                                                newSelectedDivisions = selectedDivisions.filter(id => id !== d.divisionId);
+                                                                // When a division is unchecked, remove its fields from selectedFields
+                                                                const fieldsToRemove = fields.filter(f => f.divisionId === d.divisionId).map(f => f.fieldId);
+                                                                newSelectedFields = selectedFields.filter(fieldId => !fieldsToRemove.includes(fieldId));
+                                                            }
+
+                                                            setSelectedDivisions(newSelectedDivisions);
+                                                            setSelectedFields(newSelectedFields);
+
+                                                            if (newSelectedDivisions.length > 0) {
+                                                                const ids = newSelectedDivisions.join(',');
+                                                                axios.get(`/api/fields?divisionIds=${ids}`).then(res => setFields(res.data)).catch(() => setFields([]));
+                                                                axios.get(`/api/tenants/${tenantId}/field-officers?divisionIds=${ids}`).then(res => {
+                                                                    setOfficers(res.data);
+                                                                    setIssuedTo(res.data.map((u: any) => u.fullName).join(', '));
+                                                                }).catch(() => {
+                                                                    setOfficers([]);
+                                                                    setIssuedTo('');
+                                                                });
+                                                            } else {
+                                                                setFields([]);
+                                                                setOfficers([]);
+                                                                setIssuedTo('');
+                                                            }
+                                                        }}
+                                                    />
+                                                }
+                                                label={d.name}
+                                            />
+                                            {isDivisionSelected && (
+                                                <Box sx={{ ml: 4, display: 'flex', flexDirection: 'column', borderLeft: '2px solid #ccc', pl: 1 }}>
+                                                    {divisionFields.length > 0 ? divisionFields.map((f: any) => (
+                                                        <FormControlLabel
+                                                            key={f.fieldId}
+                                                            control={
+                                                                <Checkbox
+                                                                    checked={selectedFields.includes(f.fieldId)}
+                                                                    onChange={(e) => {
+                                                                        const newFields = e.target.checked
+                                                                            ? [...selectedFields, f.fieldId]
+                                                                            : selectedFields.filter(id => id !== f.fieldId);
+                                                                        setSelectedFields(newFields);
+                                                                    }}
+                                                                    size="small"
+                                                                />
+                                                            }
+                                                            label={f.name}
+                                                        />
+                                                    )) : (
+                                                        <Typography variant="caption" color="text.secondary">Loading fields...</Typography>
+                                                    )}
+                                                </Box>
+                                            )}
+                                        </Box>
+                                    );
+                                })}
+                            </Box>
+
+                            {selectedFields.length > 0 && (
+                                <TextField
+                                    fullWidth
+                                    margin="normal"
+                                    label="Assigned Field Officer(s)"
+                                    value={issuedTo}
+                                    InputProps={{
+                                        readOnly: true,
+                                    }}
+                                    helperText={issuedTo ? "Automatically assigned based on selected divisions" : "No Field Officer Found for these divisions"}
+                                    disabled={!issuedTo}
+                                />
+                            )}
+                        </>
+                    )}
+
+                    {(modalType === 'RESTOCK_REQUEST') && (
                         <TextField
                             fullWidth
-                            label={modalType === 'RESTOCK_REQUEST' ? "Notes / Reason" : "Issued To (Person / Field)"}
+                            label="Notes / Reason"
                             margin="normal"
                             value={issuedTo}
                             onChange={(e) => setIssuedTo(e.target.value)}
@@ -461,6 +595,26 @@ export default function StoreKeeperDashboard() {
                         value={newItem.currentQuantity}
                         onChange={(e) => setNewItem({ ...newItem, currentQuantity: e.target.value })}
                         disabled={isEditing} // Prevent stock edit here
+                    />
+                    <TextField
+                        fullWidth
+                        label="Buffer Level (Reorder Point)"
+                        type="number"
+                        margin="normal"
+                        value={newItem.bufferLevel}
+                        onChange={(e) => setNewItem({ ...newItem, bufferLevel: Number(e.target.value) })}
+                        helperText="Stock level to trigger restock alert (Manager Only)"
+                        disabled
+                    />
+                    <TextField
+                        fullWidth
+                        label="Minimum Level (Blocking Point)"
+                        type="number"
+                        margin="normal"
+                        value={newItem.minimumLevel}
+                        onChange={(e) => setNewItem({ ...newItem, minimumLevel: Number(e.target.value) })}
+                        helperText="Absolute minimum stock allowed (Manager Only)"
+                        disabled
                     />
                     <TextField
                         fullWidth

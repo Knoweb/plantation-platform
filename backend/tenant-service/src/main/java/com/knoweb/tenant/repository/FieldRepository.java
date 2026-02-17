@@ -9,4 +9,6 @@ public interface FieldRepository extends JpaRepository<Field, UUID> {
     List<Field> findByDivisionId(UUID divisionId);
 
     List<Field> findByTenantId(UUID tenantId);
+    
+    List<Field> findByDivisionIdIn(List<UUID> divisionIds);
 }

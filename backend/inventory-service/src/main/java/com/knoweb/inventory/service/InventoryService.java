@@ -85,6 +85,12 @@ public class InventoryService {
         trans.setDate(LocalDateTime.now());
         trans.setTenantId(req.getTenantId());
         trans.setIssuedTo(req.getIssuedTo());
+        
+        // Map Division/Field info
+        trans.setDivisionId(req.getDivisionId());
+        trans.setDivisionName(req.getDivisionName());
+        trans.setFieldId(req.getFieldId());
+        trans.setFieldName(req.getFieldName());
 
         if ("RESTOCK_REQUEST".equals(req.getType())) {
             trans.setStatus("PENDING");
@@ -165,6 +171,7 @@ public class InventoryService {
         item.setName(updates.getName());
         item.setCategory(updates.getCategory());
         item.setUnit(updates.getUnit());
+        item.setMinimumLevel(updates.getMinimumLevel());
         item.setPricePerUnit(updates.getPricePerUnit());
         // Buffer Level and Quantity are NOT updated here (Security/Process rule)
         return repository.save(item);

@@ -1,4 +1,4 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip } from '@mui/material';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import {
@@ -31,7 +31,7 @@ export default function EveningMusterPage() {
     return (
         <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white', px: 3, pt: 2 }}>
-                <Typography variant="h5" fontWeight="bold" gutterBottom color="primary">
+                <Typography variant="h4" fontWeight="bold" gutterBottom color="primary.dark">
                     Evening Muster & Harvest
                 </Typography>
                 <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)}>
@@ -135,8 +135,14 @@ function DailyEntryTab() {
         }));
     };
 
+    const [confirmOpen, setConfirmOpen] = useState(false);
+
     const handleSubmit = async () => {
-        if (!window.confirm("Confirm submission?")) return;
+        setConfirmOpen(true);
+    };
+
+    const handleConfirmSubmit = async () => {
+        setConfirmOpen(false);
         try {
             const updates = attendanceData.filter(item => item.divisionId === selectedDivision).map(item => ({
                 id: item.id,
@@ -310,7 +316,27 @@ function DailyEntryTab() {
                                 </TableBody>
                             </Table>
                         </Paper>
-                        <Button fullWidth variant="contained" color="success" size="large" sx={{ mt: 3, borderRadius: 20 }} onClick={handleSubmit}>Submit Muster</Button>
+                        <Button
+                            fullWidth
+                            variant="contained"
+                            size="large"
+                            onClick={handleSubmit}
+                            sx={{
+                                mt: 3,
+                                borderRadius: '30px',
+                                background: 'linear-gradient(45deg, #d32f2f 30%, #c62828 90%)',
+                                boxShadow: '0 3px 5px 2px rgba(211, 47, 47, .3)',
+                                fontWeight: 'bold',
+                                fontSize: '1.1rem',
+                                '&:hover': {
+                                    background: 'linear-gradient(45deg, #b71c1c 30%, #c62828 90%)',
+                                    transform: 'scale(1.02)'
+                                },
+                                transition: 'all 0.3s ease-in-out'
+                            }}
+                        >
+                            Submit Muster
+                        </Button>
                     </Box>
 
                     {/* Detailed List */}
@@ -324,6 +350,49 @@ function DailyEntryTab() {
             <Snackbar open={notification.open} autoHideDuration={4000} onClose={() => setNotification({ ...notification, open: false })}>
                 <Alert severity={notification.severity}>{notification.message}</Alert>
             </Snackbar>
+
+            {/* Confirmation Dialog - Plantation Vibe */}
+            <Dialog
+                open={confirmOpen}
+                onClose={() => setConfirmOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        bgcolor: '#f1f8e9', // Lighter green bg
+                        minWidth: 350,
+                        border: '2px solid #4caf50'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckIcon sx={{ color: '#4caf50' }} /> Confirm Submission
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" color="text.secondary">
+                        Are you sure you want to finalize the Evening Muster and Harvest data? This action will save all entries.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button
+                        onClick={() => setConfirmOpen(false)}
+                        variant="outlined" color="inherit"
+                        sx={{ borderRadius: 2, textTransform: 'none', borderColor: '#757575', color: '#757575' }}>
+                        Cancel
+                    </Button>
+                    <Button
+                        onClick={handleConfirmSubmit}
+                        variant="contained"
+                        autoFocus
+                        sx={{
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            bgcolor: '#2e7d32',
+                            '&:hover': { bgcolor: '#1b5e20' }
+                        }}>
+                        Yes, Submit Data
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
@@ -336,129 +405,206 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
     // Unique Fields for this task
     const uniqueFields = Array.from(new Set(items.map((i: any) => i.fieldName)));
 
+    // Common Input Style
+    const inputStyle = {
+        width: 60,
+        padding: '4px 8px',
+        border: '1px solid #cfd8dc',
+        borderRadius: 4,
+        textAlign: 'center' as const,
+        fontSize: '0.9rem',
+        fontWeight: 'bold',
+        outline: 'none',
+        transition: 'border-color 0.2s',
+    };
+
     return (
-        <Paper elevation={2} sx={{ mb: 3, overflow: 'visible', borderRadius: 2, position: 'relative' }}>
-            {/* Header - Plantation Green Theme */}
-            <Box bgcolor="#e8f5e9" borderBottom="2px solid #2e7d32" p={1.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
-                <Typography variant="h6" fontWeight="bold" color="#1b5e20" sx={{ minWidth: 150 }}>{task}</Typography>
-                {/* Harvest Inputs in Header */}
+        <Paper elevation={0} variant="outlined" sx={{ mb: 3, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
+            {/* Header */}
+            <Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={2} display="flex" alignItems="center" gap={3} flexWrap="wrap">
+                <Typography variant="h6" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 150 }}>{task}</Typography>
+
+                {/* Harvest Inputs in Header - Professional Outlined Look */}
                 {['Plucking', 'Harvest'].some(t => task.includes(t)) && (
-                    <>
-                        <Box display="flex" alignItems="center" bgcolor="#a5d6a7" px={1.5} py={0.5} borderRadius={1} border="1px solid #388e3c">
-                            <Typography variant="body2" fontWeight="bold" mr={1} color="#1b5e20">Field Weight</Typography>
+                    <Box display="flex" gap={2}>
+                        <Box display="flex" alignItems="center" bgcolor="white" px={1.5} py={0.5} borderRadius={1} border="1px solid #b0bec5">
+                            <Typography variant="body2" fontWeight="600" mr={1} color="#546e7a">Field Weight</Typography>
                             <input
-                                style={{ width: 70, padding: 5, border: '1px solid #81c784', borderRadius: 4, textAlign: 'center' }}
+                                type="number"
+                                min="0"
+                                style={inputStyle}
                                 placeholder="0"
                                 value={fieldWeight}
-                                onChange={(e) => setFieldWeight(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '' || Number(val) >= 0) setFieldWeight(val);
+                                }}
                             />
                         </Box>
-                        <Box display="flex" alignItems="center" bgcolor="#a5d6a7" px={1.5} py={0.5} borderRadius={1} border="1px solid #388e3c">
-                            <Typography variant="body2" fontWeight="bold" mr={1} color="#1b5e20">Factory Weight</Typography>
+                        <Box display="flex" alignItems="center" bgcolor="white" px={1.5} py={0.5} borderRadius={1} border="1px solid #b0bec5">
+                            <Typography variant="body2" fontWeight="600" mr={1} color="#546e7a">Factory Weight</Typography>
                             <input
-                                style={{ width: 70, padding: 5, border: '1px solid #81c784', borderRadius: 4, textAlign: 'center' }}
+                                type="number"
+                                min="0"
+                                style={inputStyle}
                                 placeholder="0"
                                 value={factoryWeight}
-                                onChange={(e) => setFactoryWeight(e.target.value)}
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === '' || Number(val) >= 0) setFactoryWeight(val);
+                                }}
                             />
                         </Box>
-                    </>
+                    </Box>
                 )}
 
-                {/* Green Box Summary (Floating) */}
-                <Card sx={{ ml: 'auto', bgcolor: '#c8e6c9', p: 1, minWidth: 160, border: '1px solid #388e3c', boxShadow: 3 }}>
+                {/* Summary Card */}
+                <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 2, py: 1, minWidth: 180 }}>
                     {uniqueFields.map((f: any) => (
-                        <Box key={f} display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                            <Typography variant="caption" fontWeight="bold" color="#1b5e20">{f} - </Typography>
-                            <Box display="flex" alignItems="center">
-                                <input style={{ width: 45, padding: 2, height: 22, border: '1px solid #81c784' }} />
-                                <Typography variant="caption" ml={0.5} color="#1b5e20" fontWeight="bold">Ac</Typography>
+                        <Box key={f} mb={1}>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
+                                <Typography variant="caption" fontWeight="bold" color="#33691e">{f}</Typography>
+                                <Box display="flex" alignItems="center" gap={0.5}>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                    />
+                                    <Typography variant="caption" color="#33691e" fontWeight="bold">Ac</Typography>
+                                </Box>
                             </Box>
+                            {task.toLowerCase().includes('chemical') && (
+                                <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
+                                    <Typography variant="caption" fontWeight="bold" color="#33691e">Chem. Qty</Typography>
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                    />
+                                </Box>
+                            )}
                         </Box>
                     ))}
                 </Card>
             </Box>
 
-            <Box p={2} display="flex" flexDirection="column" gap={2}>
-                {items.map((item: any) => (
-                    <Box key={item.id} display="flex" alignItems="center" justifyContent="space-between" p={1} borderBottom="1px solid #eee">
-                        <Box display="flex" alignItems="center" gap={1} flex={1}>
-                            <Avatar sx={{ bgcolor: 'black', width: 45, height: 45 }}><PersonIcon sx={{ fontSize: 28 }} /></Avatar>
-                            <Box>
-                                <Typography variant="subtitle1" fontWeight="bold" sx={{ fontSize: '1.25rem' }}>{item.workerName}</Typography>
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '1rem' }}>Field: {item.fieldName}</Typography>
+            <Box p={1} display="flex" flexDirection="column" gap={0.5}>
+                {items.map((item: any, index: number) => (
+                    <Box key={item.id}
+                        display="flex"
+                        alignItems="center"
+                        justifyContent="space-between"
+                        p={0.75}
+                        borderRadius={1}
+                        sx={{
+                            bgcolor: index % 2 === 0 ? '#fafafa' : 'white',
+                            border: '1px solid #eee',
+                            '&:hover': { bgcolor: '#f1f8e9', borderColor: '#c5e1a5' },
+                            transition: 'all 0.2s'
+                        }}
+                    >
+                        {/* Worker Info */}
+                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
+                            <Avatar sx={{ bgcolor: '#333', width: 28, height: 28 }}><PersonIcon sx={{ fontSize: 18 }} /></Avatar>
+                            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                                <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333">{item.workerName}</Typography>
+                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.65rem' }}>{item.fieldName}</Typography>
                             </Box>
                         </Box>
-                        {['Plucking', 'Tapping'].some(t => item.workType.includes(t)) && (
-                            <Box display="flex" alignItems="center" gap={2} mr={3}>
-                                {/* AM Box - Plantation Green */}
-                                <Box bgcolor="#2e7d32" p={0.5} borderRadius={2} display="flex" alignItems="center" boxShadow={2} width={110} justifyContent="space-between" px={1}>
-                                    <Typography variant="body2" color="white" fontWeight="bold" sx={{ fontSize: '1.1rem' }}>AM</Typography>
-                                    <input
-                                        type="number"
-                                        style={{ width: 60, height: 35, borderRadius: 4, border: 'none', padding: '0 5px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
-                                        value={item.amWeight}
-                                        onChange={(e) => onUpdate(item.id, 'amWeight', e.target.value)}
-                                    />
+
+                        {/* Right Side: Inputs & Actions */}
+                        <Box display="flex" alignItems="center" gap={2}>
+                            {['Plucking', 'Tapping'].some(t => item.workType.includes(t)) && (
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    {/* AM Input */}
+                                    <Box display="flex" flexDirection="column" alignItems="center">
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">AM</Typography>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                            style={{ ...inputStyle, width: 70, borderColor: '#a5d6a7' }}
+                                            value={item.amWeight}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
+                                            }}
+                                        />
+                                    </Box>
+                                    {/* PM Input */}
+                                    <Box display="flex" flexDirection="column" alignItems="center">
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">PM</Typography>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                            style={{ ...inputStyle, width: 70, borderColor: '#a5d6a7' }}
+                                            value={item.pmWeight}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
+                                            }}
+                                        />
+                                    </Box>
+                                    {/* Total Badge */}
+                                    <Box display="flex" flexDirection="column" alignItems="center">
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">Total</Typography>
+                                        <Box bgcolor="#2e7d32" color="white" borderRadius={1} width={60} height={27} display="flex" alignItems="center" justifyContent="center">
+                                            <Typography variant="body2" fontWeight="bold">
+                                                {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
+                                            </Typography>
+                                        </Box>
+                                    </Box>
                                 </Box>
-                                {/* PM Box - Plantation Green */}
-                                <Box bgcolor="#2e7d32" p={0.5} borderRadius={2} display="flex" alignItems="center" boxShadow={2} width={110} justifyContent="space-between" px={1}>
-                                    <Typography variant="body2" color="white" fontWeight="bold" sx={{ fontSize: '1.1rem' }}>PM</Typography>
-                                    <input
-                                        type="number"
-                                        style={{ width: 60, height: 35, borderRadius: 4, border: 'none', padding: '0 5px', textAlign: 'center', fontSize: '1.2rem', fontWeight: 'bold' }}
-                                        value={item.pmWeight}
-                                        onChange={(e) => onUpdate(item.id, 'pmWeight', e.target.value)}
-                                    />
-                                </Box>
-                                {/* Total Box - Square Badge */}
-                                <Box bgcolor="#1b5e20" color="white" borderRadius={2} width={50} height={45} display="flex" alignItems="center" justifyContent="center" boxShadow={2}>
-                                    <Typography variant="h6" fontWeight="bold" sx={{ fontSize: '1.3rem' }}>
-                                        {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
-                                    </Typography>
-                                </Box>
+                            )}
+
+                            {/* Actions - Blue Box */}
+                            <Box display="flex" gap={1} bgcolor="#1565c0" p={0.75} borderRadius={3} boxShadow={3}>
+                                <Tooltip title="Mark Half Day">
+                                    <IconButton
+                                        onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white', // Bright Yellow
+                                            border: item.status === 'HALF_DAY' ? '2px solid #ffea00' : '2px solid transparent',
+                                            color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                            transition: 'all 0.2s',
+                                            '&:hover': { bgcolor: '#ffea00', transform: 'scale(1.1)', color: '#000' }
+                                        }}>
+                                        <BlockIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Mark Present">
+                                    <IconButton
+                                        onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white', // Bright Green
+                                            border: item.status === 'PRESENT' ? '2px solid #00c853' : '2px solid transparent',
+                                            color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                            transition: 'all 0.2s',
+                                            '&:hover': { bgcolor: '#00c853', transform: 'scale(1.1)', color: '#000' }
+                                        }}>
+                                        <CheckIcon fontSize="small" sx={{ fontWeight: 'bold' }} />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Mark Absent">
+                                    <IconButton
+                                        onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
+                                        size="small"
+                                        sx={{
+                                            bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white', // Bright Red/Orange
+                                            border: item.status === 'ABSENT' ? '2px solid #dd2c00' : '2px solid transparent',
+                                            color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
+                                            transition: 'all 0.2s',
+                                            '&:hover': { bgcolor: '#ff3d00', transform: 'scale(1.1)', color: '#fff' }
+                                        }}>
+                                        <CloseIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
                             </Box>
-                        )}
-                        <Box display="flex" gap={1} ml={1}>
-                            <Tooltip title="Mark Half Day">
-                                <IconButton size="small" onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
-                                    sx={{
-                                        border: item.status === 'HALF_DAY' ? '2px solid #ffc107' : '1px solid #e0e0e0',
-                                        bgcolor: item.status === 'HALF_DAY' ? '#fff8e1' : 'transparent',
-                                        color: item.status === 'HALF_DAY' ? '#ffc107' : '#9e9e9e',
-                                        p: 0.5,
-                                        width: 32, height: 32,
-                                        '&:hover': { bgcolor: '#fff8e1' }
-                                    }}>
-                                    <BlockIcon />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Mark Present">
-                                <IconButton size="small" onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
-                                    sx={{
-                                        border: item.status === 'PRESENT' ? '2px solid #4caf50' : '1px solid #e0e0e0',
-                                        bgcolor: item.status === 'PRESENT' ? '#e8f5e9' : 'transparent',
-                                        color: item.status === 'PRESENT' ? '#4caf50' : '#9e9e9e',
-                                        p: 0.5,
-                                        width: 32, height: 32,
-                                        '&:hover': { bgcolor: '#e8f5e9' }
-                                    }}>
-                                    <CheckIcon sx={{ fontWeight: 'bold' }} />
-                                </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Mark Absent">
-                                <IconButton size="small" onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
-                                    sx={{
-                                        border: item.status === 'ABSENT' ? '2px solid #f44336' : '1px solid #e0e0e0',
-                                        bgcolor: item.status === 'ABSENT' ? '#ffebee' : 'transparent',
-                                        color: item.status === 'ABSENT' ? '#f44336' : '#9e9e9e',
-                                        p: 0.5,
-                                        width: 32, height: 32,
-                                        '&:hover': { bgcolor: '#ffebee' }
-                                    }}>
-                                    <CloseIcon />
-                                </IconButton>
-                            </Tooltip>
                         </Box>
                     </Box>
                 ))}
