@@ -136,6 +136,7 @@ function DailyEntryTab() {
     };
 
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [isSubmitted, setIsSubmitted] = useState(false); // Track if submitted for this session/division
 
     const handleSubmit = async () => {
         setConfirmOpen(true);
@@ -152,6 +153,7 @@ function DailyEntryTab() {
             }));
             await axios.post(`/api/tenants/attendance/bulk`, updates);
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
+            setIsSubmitted(true); // Disable button
         } catch (e) {
             setNotification({ open: true, message: "Failed to save.", severity: 'error' });
         }
@@ -202,10 +204,10 @@ function DailyEntryTab() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
                 <Typography variant="h6">Dunwatta Estate • {today}</Typography>
-                <Box display="flex" gap={2}>
-                    <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white' }}>
+                <Box display="flex" gap={2} width={{ xs: '100%', sm: 'auto' }}>
+                    <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', flex: 1 }}>
                         <InputLabel>Select Division</InputLabel>
                         <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
                             {divisions.map((d: any) => <MenuItem key={d.divisionId} value={d.divisionId}>{d.name}</MenuItem>)}
@@ -220,129 +222,132 @@ function DailyEntryTab() {
             ) : (
                 <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
                     {/* Muster Chit */}
-                    <Box flex={1.2} minWidth={350}>
+                    <Box flex={1.2} sx={{ width: '100%', overflowX: 'auto' }}>
                         <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2 }}>
                             <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
                                 <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
                             </Box>
-                            <Table size="small">
-                                <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                                    <TableRow>
-                                        <TableCell><strong>Work item</strong></TableCell>
-                                        <TableCell><strong>Field No</strong></TableCell>
-                                        <TableCell align="center"><strong>No of Workers</strong></TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {/* Tea Section */}
-                                    {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
-                                        <div key={task} style={{ display: 'contents' }}>
-                                            {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                <TableRow key={`${task}-${field}`}>
-                                                    {idx === 0 && (
-                                                        <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                                    )}
-                                                    <TableCell>{field}</TableCell>
-                                                    <TableCell align="center">{count}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                            {task === 'Plucking' && (
-                                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                    <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
-                                                    <TableCell align="center"><strong>{data.count}</strong></TableCell>
-                                                </TableRow>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {Object.keys(categorizedSummary.Tea).length > 0 && (
-                                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                            <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
-                                            <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                            <Box sx={{ overflowX: 'auto' }}>
+                                <Table size="small">
+                                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                                        <TableRow>
+                                            <TableCell><strong>Work item</strong></TableCell>
+                                            <TableCell><strong>Field No</strong></TableCell>
+                                            <TableCell align="center"><strong>No of Workers</strong></TableCell>
                                         </TableRow>
-                                    )}
+                                    </TableHead>
+                                    <TableBody>
+                                        {/* Tea Section */}
+                                        {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
+                                            <div key={task} style={{ display: 'contents' }}>
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
+                                                    <TableRow key={`${task}-${field}`}>
+                                                        {idx === 0 && (
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                        )}
+                                                        <TableCell>{field}</TableCell>
+                                                        <TableCell align="center">{count}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {task === 'Plucking' && (
+                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                        <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
+                                                        <TableCell align="center"><strong>{data.count}</strong></TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {Object.keys(categorizedSummary.Tea).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
+                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
 
-                                    {/* Rubber Section */}
-                                    {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
-                                        <div key={task} style={{ display: 'contents' }}>
-                                            {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                <TableRow key={`${task}-${field}`}>
-                                                    {idx === 0 && (
-                                                        <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                                    )}
-                                                    <TableCell>{field}</TableCell>
-                                                    <TableCell align="center">{count}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                            {task === 'Tapping' && (
-                                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                    <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
-                                                    <TableCell align="center"><strong>{data.count}</strong></TableCell>
-                                                </TableRow>
-                                            )}
-                                        </div>
-                                    ))}
-                                    {Object.keys(categorizedSummary.Rubber).length > 0 && (
-                                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                            <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
-                                            <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                        {/* Rubber Section */}
+                                        {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
+                                            <div key={task} style={{ display: 'contents' }}>
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
+                                                    <TableRow key={`${task}-${field}`}>
+                                                        {idx === 0 && (
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                        )}
+                                                        <TableCell>{field}</TableCell>
+                                                        <TableCell align="center">{count}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                                {task === 'Tapping' && (
+                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                        <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
+                                                        <TableCell align="center"><strong>{data.count}</strong></TableCell>
+                                                    </TableRow>
+                                                )}
+                                            </div>
+                                        ))}
+                                        {Object.keys(categorizedSummary.Rubber).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
+                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        {/* General Section */}
+                                        {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
+                                            <div key={task} style={{ display: 'contents' }}>
+                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
+                                                    <TableRow key={`${task}-${field}`}>
+                                                        {idx === 0 && (
+                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                        )}
+                                                        <TableCell>{field}</TableCell>
+                                                        <TableCell align="center">{count}</TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </div>
+                                        ))}
+                                        {Object.keys(categorizedSummary.General).length > 0 && (
+                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                <TableCell colSpan={2}><strong>Total General</strong></TableCell>
+                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
+                                            </TableRow>
+                                        )}
+
+                                        <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
+                                            <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
+                                            <TableCell align="center"><strong>{grandWorkerTotal}</strong></TableCell>
                                         </TableRow>
-                                    )}
-
-                                    {/* General Section */}
-                                    {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
-                                        <div key={task} style={{ display: 'contents' }}>
-                                            {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                <TableRow key={`${task}-${field}`}>
-                                                    {idx === 0 && (
-                                                        <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                                    )}
-                                                    <TableCell>{field}</TableCell>
-                                                    <TableCell align="center">{count}</TableCell>
-                                                </TableRow>
-                                            ))}
-                                        </div>
-                                    ))}
-                                    {Object.keys(categorizedSummary.General).length > 0 && (
-                                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                            <TableCell colSpan={2}><strong>Total General</strong></TableCell>
-                                            <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                                        </TableRow>
-                                    )}
-
-                                    <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
-                                        <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
-                                        <TableCell align="center"><strong>{grandWorkerTotal}</strong></TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
+                                    </TableBody>
+                                </Table>
+                            </Box>
                         </Paper>
                         <Button
                             fullWidth
                             variant="contained"
                             size="large"
                             onClick={handleSubmit}
+                            disabled={isSubmitted}
                             sx={{
                                 mt: 3,
                                 borderRadius: '30px',
-                                background: 'linear-gradient(45deg, #d32f2f 30%, #c62828 90%)',
-                                boxShadow: '0 3px 5px 2px rgba(211, 47, 47, .3)',
+                                background: isSubmitted ? '#e0e0e0' : 'linear-gradient(45deg, #d32f2f 30%, #c62828 90%)',
+                                boxShadow: isSubmitted ? 'none' : '0 3px 5px 2px rgba(211, 47, 47, .3)',
                                 fontWeight: 'bold',
                                 fontSize: '1.1rem',
                                 '&:hover': {
-                                    background: 'linear-gradient(45deg, #b71c1c 30%, #c62828 90%)',
-                                    transform: 'scale(1.02)'
+                                    background: isSubmitted ? '#e0e0e0' : 'linear-gradient(45deg, #b71c1c 30%, #c62828 90%)',
+                                    transform: isSubmitted ? 'none' : 'scale(1.02)'
                                 },
                                 transition: 'all 0.3s ease-in-out'
                             }}
                         >
-                            Submit Muster
+                            {isSubmitted ? 'Submitted' : 'Submit Muster'}
                         </Button>
                     </Box>
 
                     {/* Detailed List */}
                     <Box flex={2}>
                         {Object.entries(grouped).map(([task, items]: any) => (
-                            <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} />
+                            <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted} />
                         ))}
                     </Box>
                 </Box>
@@ -359,7 +364,8 @@ function DailyEntryTab() {
                     sx: {
                         borderRadius: 3,
                         bgcolor: '#f1f8e9', // Lighter green bg
-                        minWidth: 350,
+                        width: '100%',
+                        maxWidth: 350,
                         border: '2px solid #4caf50'
                     }
                 }}
@@ -398,7 +404,7 @@ function DailyEntryTab() {
 }
 
 // --- Task Section Component ---
-function TaskSection({ task, items, onUpdate }: { task: string, items: any[], onUpdate: any }) {
+function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean }) {
     const [fieldWeight, setFieldWeight] = useState('');
     const [factoryWeight, setFactoryWeight] = useState('');
 
@@ -416,6 +422,8 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
         fontWeight: 'bold',
         outline: 'none',
         transition: 'border-color 0.2s',
+        opacity: isSubmitted ? 0.6 : 1,
+        pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
     return (
@@ -439,6 +447,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                     const val = e.target.value;
                                     if (val === '' || Number(val) >= 0) setFieldWeight(val);
                                 }}
+                                disabled={isSubmitted}
                             />
                         </Box>
                         <Box display="flex" alignItems="center" bgcolor="white" px={1.5} py={0.5} borderRadius={1} border="1px solid #b0bec5">
@@ -453,6 +462,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                     const val = e.target.value;
                                     if (val === '' || Number(val) >= 0) setFactoryWeight(val);
                                 }}
+                                disabled={isSubmitted}
                             />
                         </Box>
                     </Box>
@@ -470,6 +480,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                         min="0"
                                         style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        disabled={isSubmitted}
                                     />
                                     <Typography variant="caption" color="#33691e" fontWeight="bold">Ac</Typography>
                                 </Box>
@@ -482,6 +493,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                         min="0"
                                         style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        disabled={isSubmitted}
                                     />
                                 </Box>
                             )}
@@ -502,7 +514,8 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                             bgcolor: index % 2 === 0 ? '#fafafa' : 'white',
                             border: '1px solid #eee',
                             '&:hover': { bgcolor: '#f1f8e9', borderColor: '#c5e1a5' },
-                            transition: 'all 0.2s'
+                            transition: 'all 0.2s',
+                            opacity: isSubmitted ? 0.7 : 1,
                         }}
                     >
                         {/* Worker Info */}
@@ -531,6 +544,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                                 const val = e.target.value;
                                                 if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
                                             }}
+                                            disabled={isSubmitted}
                                         />
                                     </Box>
                                     {/* PM Input */}
@@ -546,6 +560,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                                 const val = e.target.value;
                                                 if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
                                             }}
+                                            disabled={isSubmitted}
                                         />
                                     </Box>
                                     {/* Total Badge */}
@@ -561,11 +576,12 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                             )}
 
                             {/* Actions - Blue Box */}
-                            <Box display="flex" gap={1} bgcolor="#1565c0" p={0.75} borderRadius={3} boxShadow={3}>
+                            <Box display="flex" gap={1} bgcolor="#1565c0" p={0.75} borderRadius={3} boxShadow={3} sx={{ opacity: isSubmitted ? 0.5 : 1, pointerEvents: isSubmitted ? 'none' : 'auto' }}>
                                 <Tooltip title="Mark Half Day">
                                     <IconButton
                                         onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
                                         size="small"
+                                        disabled={isSubmitted}
                                         sx={{
                                             bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white', // Bright Yellow
                                             border: item.status === 'HALF_DAY' ? '2px solid #ffea00' : '2px solid transparent',
@@ -580,6 +596,7 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                     <IconButton
                                         onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
                                         size="small"
+                                        disabled={isSubmitted}
                                         sx={{
                                             bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white', // Bright Green
                                             border: item.status === 'PRESENT' ? '2px solid #00c853' : '2px solid transparent',
@@ -594,12 +611,13 @@ function TaskSection({ task, items, onUpdate }: { task: string, items: any[], on
                                     <IconButton
                                         onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
                                         size="small"
+                                        disabled={isSubmitted}
                                         sx={{
-                                            bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white', // Bright Red/Orange
-                                            border: item.status === 'ABSENT' ? '2px solid #dd2c00' : '2px solid transparent',
-                                            color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
+                                            bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white', // Bright Red-Orange
+                                            border: item.status === 'ABSENT' ? '2px solid #ff3d00' : '2px solid transparent',
+                                            color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
                                             transition: 'all 0.2s',
-                                            '&:hover': { bgcolor: '#ff3d00', transform: 'scale(1.1)', color: '#fff' }
+                                            '&:hover': { bgcolor: '#ff3d00', transform: 'scale(1.1)', color: '#000' }
                                         }}>
                                         <CloseIcon fontSize="small" />
                                     </IconButton>

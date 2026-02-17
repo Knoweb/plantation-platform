@@ -11,9 +11,14 @@ export default function AttendanceReport() {
     const [loading, setLoading] = useState(true);
     const [selectedDate, setSelectedDate] = useState<string>(new Date().toISOString().split('T')[0]); // Default to today
 
-    // Fetch Workers (for name mapping)
+    const [divisions, setDivisions] = useState<any[]>([]);
+
     useEffect(() => {
         if (tenantId) {
+            axios.get(`/api/divisions?tenantId=${tenantId}`)
+                .then(res => setDivisions(res.data))
+                .catch(err => console.error("Failed to fetch divisions", err));
+
             axios.get(`/api/workers?tenantId=${tenantId}`)
                 .then(res => setWorkers(res.data))
                 .catch(err => console.error("Failed to fetch workers", err));
@@ -26,6 +31,8 @@ export default function AttendanceReport() {
             fetchAttendance();
         }
     }, [tenantId, selectedDate]);
+
+
 
     const fetchAttendance = async () => {
         setLoading(true);
@@ -45,11 +52,12 @@ export default function AttendanceReport() {
             // Join details
             const joinedData = attRes.data.map((att: any) => {
                 const dw = dailyWorkMap.get(att.dailyWorkId);
+                const rawDivisionId = att.divisionId || dw?.divisionId || '';
                 return {
                     ...att,
                     workType: att.workType || dw?.workType || 'Unknown',
                     fieldName: att.fieldName || dw?.fieldName || 'Unknown',
-                    divisionId: att.divisionId || dw?.divisionId || '',
+                    divisionId: rawDivisionId,
                 };
             });
 
@@ -65,6 +73,12 @@ export default function AttendanceReport() {
     const getWorkerDetails = (id: string) => {
         const w = workers.find(worker => worker.id === id || worker.workerId === id);
         return w ? { name: w.name, regNo: w.registrationNumber } : { name: id, regNo: 'N/A' };
+    };
+
+    const getDivisionName = (id: string) => {
+        if (!id) return '-';
+        const div = divisions.find(d => d.divisionId === id);
+        return div ? div.name : id;
     };
 
     return (
@@ -100,6 +114,7 @@ export default function AttendanceReport() {
                                     <TableCell><strong>Worker Name</strong></TableCell>
                                     <TableCell><strong>Workers RegNo</strong></TableCell>
                                     <TableCell><strong>Task</strong></TableCell>
+                                    <TableCell><strong>Division</strong></TableCell>
                                     <TableCell><strong>Field</strong></TableCell>
                                     <TableCell><strong>Status</strong></TableCell>
                                 </TableRow>
@@ -114,6 +129,7 @@ export default function AttendanceReport() {
                                                 <TableCell><strong>{workerInfo.name}</strong></TableCell>
                                                 <TableCell>{workerInfo.regNo}</TableCell>
                                                 <TableCell><Chip label={record.workType} size="small" color="primary" variant="outlined" /></TableCell>
+                                                <TableCell>{getDivisionName(record.divisionId)}</TableCell>
                                                 <TableCell>{record.fieldName}</TableCell>
                                                 <TableCell>
                                                     <Chip
@@ -131,7 +147,7 @@ export default function AttendanceReport() {
                                     })
                                 ) : (
                                     <TableRow>
-                                        <TableCell colSpan={6} align="center" sx={{ py: 3 }}>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
                                             <Typography color="text.secondary">No attendance records found for this date.</Typography>
                                         </TableCell>
                                     </TableRow>

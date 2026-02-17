@@ -1,12 +1,16 @@
 import { AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SearchIcon from '@mui/icons-material/Search';
+import MenuIcon from '@mui/icons-material/Menu';
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 
-const drawerWidth = 260;
+interface HeaderProps {
+    handleDrawerToggle: () => void;
+    drawerWidth: number;
+}
 
-export default function Header() {
+export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps) {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
 
@@ -45,13 +49,23 @@ export default function Header() {
             color="default"
             elevation={0}
             sx={{
-                width: `calc(100% - ${drawerWidth}px)`,
-                ml: `${drawerWidth}px`,
+                width: { sm: `calc(100% - ${drawerWidth}px)` },
+                ml: { sm: `${drawerWidth}px` },
                 bgcolor: 'background.default', // Matches page background so it floats
                 borderBottom: '1px solid #e0e0e0'
             }}
         >
             <Toolbar>
+                <IconButton
+                    color="inherit"
+                    aria-label="open drawer"
+                    edge="start"
+                    onClick={handleDrawerToggle}
+                    sx={{ mr: 2, display: { sm: 'none' } }}
+                >
+                    <MenuIcon />
+                </IconButton>
+
                 <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 'bold', flexGrow: 1, textTransform: 'capitalize' }}>
                     {dashboardTitle}
                 </Typography>

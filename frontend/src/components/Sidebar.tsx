@@ -30,8 +30,6 @@ import EngineeringIcon from '@mui/icons-material/Engineering';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import { useNavigate, useLocation } from 'react-router-dom';
 
-const drawerWidth = 260;
-
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER'] },
 
@@ -66,7 +64,14 @@ const menuItems = [
     // Settings
     { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: ['ESTATE_ADMIN'] },
 ];
-export default function Sidebar() {
+
+interface SidebarProps {
+    mobileOpen: boolean;
+    handleDrawerToggle: () => void;
+    drawerWidth: number;
+}
+
+export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }: SidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
 
@@ -133,22 +138,8 @@ export default function Sidebar() {
         return item;
     });
 
-    return (
-        <Drawer
-            variant="permanent"
-            sx={{
-                width: drawerWidth,
-                flexShrink: 0,
-                [`& .MuiDrawer-paper`]: {
-                    width: drawerWidth,
-                    boxSizing: 'border-box',
-                    background: userRole === 'ESTATE_ADMIN' ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' : '#2e7d32',
-                    color: 'white',
-                    borderRight: 'none',
-                    boxShadow: 4
-                },
-            }}
-        >
+    const drawerContent = (
+        <>
             <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
                 <Box sx={{
                     width: 50,
@@ -252,6 +243,54 @@ export default function Sidebar() {
                     <ListItemText primary="Logout" />
                 </ListItemButton>
             </Box>
-        </Drawer >
+        </>
+    );
+
+    return (
+        <Box
+            component="nav"
+            sx={{ width: { sm: drawerWidth }, flexShrink: { sm: 0 } }}
+            aria-label="mailbox folders"
+        >
+            {/* Mobile Drawer */}
+            <Drawer
+                variant="temporary"
+                open={mobileOpen}
+                onClose={handleDrawerToggle}
+                ModalProps={{
+                    keepMounted: true, // Better open performance on mobile.
+                }}
+                sx={{
+                    display: { xs: 'block', sm: 'none' },
+                    '& .MuiDrawer-paper': {
+                        boxSizing: 'border-box',
+                        width: drawerWidth,
+                        background: userRole === 'ESTATE_ADMIN' ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' : '#2e7d32',
+                        color: 'white',
+                    },
+                }}
+            >
+                {drawerContent}
+            </Drawer>
+
+            {/* Desktop Drawer */}
+            <Drawer
+                variant="permanent"
+                sx={{
+                    display: { xs: 'none', sm: 'block' },
+                    '& .MuiDrawer-paper': {
+                        boxSizing: 'border-box',
+                        width: drawerWidth,
+                        background: userRole === 'ESTATE_ADMIN' ? 'linear-gradient(135deg, #2e7d32 0%, #66bb6a 100%)' : '#2e7d32',
+                        color: 'white',
+                        borderRight: 'none',
+                        boxShadow: 4
+                    },
+                }}
+                open
+            >
+                {drawerContent}
+            </Drawer>
+        </Box>
     );
 }
