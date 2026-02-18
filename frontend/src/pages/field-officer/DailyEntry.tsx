@@ -55,7 +55,11 @@ export default function EveningMusterPage() {
 function DailyEntryTab() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
-    const today = new Date().toISOString().split('T')[0];
+    const d = new Date();
+    const year = d.getFullYear();
+    const month = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    const today = `${year}-${month}-${day}`;
 
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
@@ -1189,7 +1193,7 @@ function HistoryTab() {
                                 <MusterChitSummary
                                     data={selectedRecords}
                                     fields={fields}
-                                    label="Evening Muster Chit"
+                                    label="Muster Chit"
                                     includeAbsent={false}
                                 />
                             </Box>
