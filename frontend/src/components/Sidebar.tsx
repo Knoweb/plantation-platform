@@ -265,23 +265,6 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     <Badge badgeContent={musterReviewCount} color="error">
                                         {item.icon}
                                     </Badge>
-                                ) : item.text === 'Evening Muster' && eveningPendingCount > 0 ? (
-                                    <Badge
-                                        badgeContent={eveningPendingCount}
-                                        color="error"
-                                        sx={{
-                                            '& .MuiBadge-badge': {
-                                                animation: 'blink 1.5s infinite',
-                                                '@keyframes blink': {
-                                                    '0%': { opacity: 1 },
-                                                    '50%': { opacity: 0.5 },
-                                                    '100%': { opacity: 1 }
-                                                }
-                                            }
-                                        }}
-                                    >
-                                        {item.icon}
-                                    </Badge>
                                 ) : (
                                     item.icon
                                 )}
