@@ -88,6 +88,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [alertCount, setAlertCount] = useState(0);
     const [restockCount, setRestockCount] = useState(0);
     const [musterReviewCount, setMusterReviewCount] = useState(0);
+    const [eveningPendingCount, setEveningPendingCount] = useState(0);
 
     useEffect(() => {
         if (userSession.tenantId) {
@@ -120,6 +121,29 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     (item.status === 'PENDING' || !item.status)
                 ).length;
                 setMusterReviewCount(pendingMusters);
+                setMusterReviewCount(pendingMusters);
+            }
+
+            // Field Officer Alerts
+            if (userRole === 'FIELD_OFFICER') {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const today = `${year}-${month}-${day}`;
+
+                const workRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
+                const morningWorks = workRes.data.filter((w: any) => w.workType === 'Morning Muster');
+                const divIds = Array.from(new Set(morningWorks.map((w: any) => w.divisionId)));
+
+                let pendingCount = 0;
+                divIds.forEach((divId: any) => {
+                    const key = `muster_submitted_${userSession.tenantId}_${today}_${divId}`;
+                    if (localStorage.getItem(key) !== 'true') {
+                        pendingCount++;
+                    }
+                });
+                setEveningPendingCount(pendingCount);
             }
         } catch (err) {
             // Silently fail if inventory service is down
@@ -247,8 +271,30 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             </ListItemIcon>
                             <ListItemText
                                 primary={item.text}
-                                primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} // Standardize
+                                primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }}
                             />
+                            {item.text === 'Evening Muster' && eveningPendingCount > 0 && (
+                                <Box sx={{
+                                    bgcolor: 'error.main',
+                                    color: 'white',
+                                    borderRadius: '50%',
+                                    width: 24,
+                                    height: 24,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    fontSize: '0.75rem',
+                                    fontWeight: 'bold',
+                                    animation: 'blink 1.5s infinite',
+                                    '@keyframes blink': {
+                                        '0%': { opacity: 1 },
+                                        '50%': { opacity: 0.5 },
+                                        '100%': { opacity: 1 }
+                                    }
+                                }}>
+                                    {eveningPendingCount}
+                                </Box>
+                            )}
                         </ListItemButton>
                     </ListItem>
                 ))}

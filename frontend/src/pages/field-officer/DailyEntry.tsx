@@ -219,17 +219,47 @@ function DailyEntryTab() {
 
     if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
+    // Calculate Pending Count
+    const pendingCount = divisions.filter((d: any) => localStorage.getItem(getStorageKey(d.divisionId)) !== 'true').length;
+
     return (
         <Box>
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
                 <Typography variant="h6">Dunwatta Estate • {today}</Typography>
                 <Box display="flex" gap={2} width={{ xs: '100%', sm: 'auto' }}>
-                    <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', flex: 1 }}>
-                        <InputLabel>Select Division</InputLabel>
-                        <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
-                            {divisions.map((d: any) => <MenuItem key={d.divisionId} value={d.divisionId}>{d.name}</MenuItem>)}
-                        </Select>
-                    </FormControl>
+                    <Badge
+                        badgeContent={pendingCount}
+                        color="error"
+                        invisible={pendingCount === 0}
+                        sx={{
+                            flex: 1,
+                            '& .MuiBadge-badge': {
+                                animation: 'blink 1.5s infinite',
+                                right: 10,
+                                top: 5,
+                                '@keyframes blink': {
+                                    '0%': { opacity: 1 },
+                                    '50%': { opacity: 0.5 },
+                                    '100%': { opacity: 1 }
+                                }
+                            }
+                        }}
+                    >
+                        <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', width: '100%' }}>
+                            <InputLabel>Select Division</InputLabel>
+                            <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
+                                {divisions.map((d: any) => {
+                                    const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
+                                    return (
+                                        <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            {d.name}
+                                            {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                        </MenuItem>
+                                    );
+                                })}
+                            </Select>
+                        </FormControl>
+                    </Badge>
                     <Button variant="contained" color="primary" onClick={() => fetchInitialData()}>Refresh</Button>
                 </Box>
             </Box>

@@ -1,4 +1,4 @@
-import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions, Autocomplete, Checkbox, TextField, Alert } from '@mui/material';
+import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions, Autocomplete, Checkbox, TextField, Alert, Snackbar } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import EditIcon from '@mui/icons-material/Edit';
@@ -69,6 +69,10 @@ export default function MorningMuster() {
 
     // Read-Only State
     const [isReadOnly, setIsReadOnly] = useState(false);
+
+    // Snackbar State
+    const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
+    const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
     useEffect(() => {
         fetchData();
@@ -143,7 +147,7 @@ export default function MorningMuster() {
     const handleCreateMuster = async () => {
         try {
             if (!selectedDivisionId) {
-                alert("Please select a division first.");
+                setSnackbar({ open: true, message: "Please select a division first.", severity: "warning" });
                 return;
             }
 
@@ -166,7 +170,7 @@ export default function MorningMuster() {
             setEditingMusterId(null);
             fetchData();
         } catch (e) {
-            alert("Failed to save Muster");
+            setSnackbar({ open: true, message: "Failed to save Muster", severity: "error" });
         }
     };
 
@@ -314,11 +318,11 @@ export default function MorningMuster() {
                 setIsReadOnly(true);
                 checkApprovalStatus();
 
-                alert("Muster Submitted for Manager Approval!");
+                setSnackbar({ open: true, message: "Muster Submitted for Manager Approval!", severity: "success" });
                 // Optionally disable editing here?
             } catch (error) {
                 console.error("Submission failed", error);
-                alert("Failed to submit muster. Please check backend connection.");
+                setSnackbar({ open: true, message: "Failed to submit muster. Please check backend connection.", severity: "error" });
             }
         });
         setConfirmOpen(true);
@@ -704,6 +708,13 @@ export default function MorningMuster() {
                     <Button onClick={handleConfirmProceed} color={confirmButtonColor} variant="contained">{confirmButtonText}</Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Global Snackbar */}
+            <Snackbar open={snackbar.open} autoHideDuration={6000} onClose={handleCloseSnackbar} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+                <Alert onClose={handleCloseSnackbar} severity={snackbar.severity} sx={{ width: '100%' }} variant="filled">
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
