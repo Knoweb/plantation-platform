@@ -205,28 +205,28 @@ export default function FieldOfficerDashboard() {
 
             {/* KPI Section */}
             <Grid container spacing={3} mb={4}>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #4caf50' }}>
                         <Typography variant="subtitle2" color="text.secondary">Daily Yield (Today)</Typography>
                         <Typography variant="h4" fontWeight="bold">{dailyYield} kg</Typography>
                         <Typography variant="caption" color="success.main">Live Updates</Typography>
                     </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #2196f3' }}>
                         <Typography variant="subtitle2" color="text.secondary">Worker Turnout</Typography>
                         <Typography variant="h4" fontWeight="bold">{workerTurnout}</Typography>
                         <Typography variant="caption" color="text.secondary">Workers Present</Typography>
                     </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #ff9800' }}>
                         <Typography variant="subtitle2" color="text.secondary">Avg Productivity</Typography>
                         <Typography variant="h4" fontWeight="bold">{workerTurnout > 0 ? (dailyYield / workerTurnout).toFixed(1) : 0} kg/p</Typography>
                         <Typography variant="caption" color="text.secondary">Target: 25 kg/p</Typography>
                     </Paper>
                 </Grid>
-                <Grid item xs={12} sm={6} md={3}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
                     <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #9c27b0' }}>
                         <Typography variant="subtitle2" color="text.secondary">Fertilizer Stock</Typography>
                         <Typography variant="h4" fontWeight="bold">{fertilizerStock}</Typography>
@@ -237,24 +237,26 @@ export default function FieldOfficerDashboard() {
 
             <Grid container spacing={3}>
                 {/* Chart Section */}
-                <Grid item xs={12} md={8}>
+                <Grid size={{ xs: 12, md: 8 }}>
                     <Paper elevation={2} sx={{ p: 3, height: 400 }}>
                         <Typography variant="h6" gutterBottom color="primary">Weekly Yield Performance</Typography>
-                        <ResponsiveContainer width="100%" height="90%">
-                            <BarChart data={weeklyYieldData}>
-                                <CartesianGrid strokeDasharray="3 3" />
-                                <XAxis dataKey="date" />
-                                <YAxis />
-                                <RechartsTooltip />
-                                <Legend />
-                                <Bar dataKey="yield" fill="#4caf50" name="Yield (Kg)" radius={[4, 4, 0, 0]} />
-                            </BarChart>
-                        </ResponsiveContainer>
+                        <Box sx={{ width: '100%', height: 320 }}>
+                            <ResponsiveContainer width="100%" height="100%">
+                                <BarChart data={weeklyYieldData}>
+                                    <CartesianGrid strokeDasharray="3 3" />
+                                    <XAxis dataKey="date" />
+                                    <YAxis />
+                                    <RechartsTooltip />
+                                    <Legend />
+                                    <Bar dataKey="yield" fill="#4caf50" name="Yield (Kg)" radius={[4, 4, 0, 0]} />
+                                </BarChart>
+                            </ResponsiveContainer>
+                        </Box>
                     </Paper>
                 </Grid>
 
                 {/* Divisional Assignments (Grouped Muster) */}
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ height: 400, overflow: 'auto' }}>
                         <CardContent>
                             <Box display="flex" alignItems="center" mb={2} justifyContent="space-between">

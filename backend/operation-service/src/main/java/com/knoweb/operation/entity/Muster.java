@@ -25,7 +25,7 @@ public class Muster {
     }
     private String fieldName;
     private String taskType;
-    private int workerCount;
+    private Integer workerCount;
     private String status; // PENDING, APPROVED
 
     public Long getId() {
@@ -68,11 +68,11 @@ public class Muster {
         this.taskType = taskType;
     }
 
-    public int getWorkerCount() {
+    public Integer getWorkerCount() {
         return workerCount;
     }
 
-    public void setWorkerCount(int workerCount) {
+    public void setWorkerCount(Integer workerCount) {
         this.workerCount = workerCount;
     }
 

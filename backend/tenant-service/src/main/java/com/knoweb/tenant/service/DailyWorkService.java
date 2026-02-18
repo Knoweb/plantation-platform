@@ -83,6 +83,7 @@ public class DailyWorkService {
         }
 
         work.setStatus("APPROVED");
+        work.setActionAt(java.time.LocalDateTime.now());
         return dailyWorkRepository.save(work);
     }
 
@@ -91,6 +92,7 @@ public class DailyWorkService {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
         work.setStatus("REJECTED");
+        work.setActionAt(java.time.LocalDateTime.now());
         return dailyWorkRepository.save(work);
     }
 

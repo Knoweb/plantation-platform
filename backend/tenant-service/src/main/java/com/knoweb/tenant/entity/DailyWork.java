@@ -124,4 +124,15 @@ public class DailyWork {
     public void setCreatedAt(java.time.LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
+
+    @Column(name = "action_at")
+    private java.time.LocalDateTime actionAt;
+
+    public java.time.LocalDateTime getActionAt() {
+        return actionAt;
+    }
+
+    public void setActionAt(java.time.LocalDateTime actionAt) {
+        this.actionAt = actionAt;
+    }
 }

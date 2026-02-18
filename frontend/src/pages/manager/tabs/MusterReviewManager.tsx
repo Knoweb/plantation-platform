@@ -71,6 +71,7 @@ export default function MusterReviewManager() {
                     detailsRaw: item.details,
                     date: item.workDate,
                     createdAt: item.createdAt,
+                    actionAt: item.actionAt, // Include action timestamp
                     quantity: item.workerCount,
                     divisionName: divMap.get(item.divisionId) || 'Unknown Division',
                     status: item.status
@@ -147,7 +148,16 @@ export default function MusterReviewManager() {
                                         <TableCell>{row.divisionName}</TableCell>
                                         <TableCell>
                                             <Typography variant="body2">{row.date}</Typography>
-                                            {row.createdAt && <Typography variant="caption" color="text.secondary">{new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Typography>}
+                                            {/* Show Action Time if available (History), else Submission Time (Pending) */}
+                                            {row.actionAt ? (
+                                                <Typography variant="caption" color="primary" fontWeight="bold">
+                                                    {row.status === 'APPROVED' ? 'Approved' : 'Rejected'}: {new Date(row.actionAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            ) : (
+                                                row.createdAt && <Typography variant="caption" color="text.secondary">
+                                                    Submitted: {new Date(row.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                                </Typography>
+                                            )}
                                         </TableCell>
                                         <TableCell align="center">
                                             <Chip

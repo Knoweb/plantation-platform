@@ -8,7 +8,8 @@ import {
     Person as PersonIcon,
     History as HistoryIcon,
     EditCalendar as EditStartIcon,
-    Visibility as VisibilityIcon
+    Visibility as VisibilityIcon,
+    Delete as DeleteIcon
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -420,7 +421,7 @@ function DailyEntryTab() {
 }
 
 // --- Task Section Component ---
-function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean }) {
+function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean }) {
     const [fieldWeight, setFieldWeight] = useState('');
     const [factoryWeight, setFactoryWeight] = useState('');
 
@@ -429,30 +430,29 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
 
     // Common Input Style
     const inputStyle = {
-        width: 60,
-        padding: '4px 8px',
+        width: 50, // Smaller width
+        padding: '2px 4px',
         border: '1px solid #cfd8dc',
         borderRadius: 4,
         textAlign: 'center' as const,
-        fontSize: '0.9rem',
+        fontSize: '0.8rem', // Smaller font
         fontWeight: 'bold',
         outline: 'none',
         transition: 'border-color 0.2s',
-        opacity: isSubmitted ? 0.6 : 1,
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
     return (
-        <Paper elevation={0} variant="outlined" sx={{ mb: 3, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
+        <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
             {/* Header */}
-            <Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={2} display="flex" alignItems="center" gap={3} flexWrap="wrap">
-                <Typography variant="h6" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 150 }}>{task}</Typography>
+            <Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+                <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 120 }}>{task}</Typography>
 
-                {/* Harvest Inputs in Header - Professional Outlined Look */}
-                {['Plucking', 'Harvest'].some(t => task.includes(t)) && (
-                    <Box display="flex" gap={2}>
-                        <Box display="flex" alignItems="center" bgcolor="white" px={1.5} py={0.5} borderRadius={1} border="1px solid #b0bec5">
-                            <Typography variant="body2" fontWeight="600" mr={1} color="#546e7a">Field Weight</Typography>
+                {/* Harvest Inputs in Header - Hide if hideOutput is true */}
+                {!hideOutput && ['Plucking', 'Harvest'].some(t => task.includes(t)) && (
+                    <Box display="flex" gap={1}>
+                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #b0bec5">
+                            <Typography variant="caption" fontWeight="600" mr={0.5} color="#546e7a">Field Wt</Typography>
                             <input
                                 type="number"
                                 min="0"
@@ -466,8 +466,8 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                                 disabled={isSubmitted}
                             />
                         </Box>
-                        <Box display="flex" alignItems="center" bgcolor="white" px={1.5} py={0.5} borderRadius={1} border="1px solid #b0bec5">
-                            <Typography variant="body2" fontWeight="600" mr={1} color="#546e7a">Factory Weight</Typography>
+                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #b0bec5">
+                            <Typography variant="caption" fontWeight="600" mr={0.5} color="#546e7a">Factory Wt</Typography>
                             <input
                                 type="number"
                                 min="0"
@@ -485,29 +485,31 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                 )}
 
                 {/* Summary Card */}
-                <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 2, py: 1, minWidth: 180 }}>
+                <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 1, py: 0.5, minWidth: 150 }}>
                     {uniqueFields.map((f: any) => (
-                        <Box key={f} mb={1}>
-                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={0.5}>
-                                <Typography variant="caption" fontWeight="bold" color="#33691e">{f}</Typography>
-                                <Box display="flex" alignItems="center" gap={0.5}>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        disabled={isSubmitted}
-                                    />
-                                    <Typography variant="caption" color="#33691e" fontWeight="bold">Ac</Typography>
-                                </Box>
+                        <Box key={f} mb={0.5}>
+                            <Box display="flex" alignItems="center" justifyContent="space-between">
+                                <Typography variant="caption" fontWeight="bold" color="#33691e" sx={{ fontSize: '0.7rem' }}>{f}</Typography>
+                                {!hideOutput && (
+                                    <Box display="flex" alignItems="center" gap={0.5}>
+                                        <input
+                                            type="number"
+                                            min="0"
+                                            style={{ ...inputStyle, width: 40, height: 20, padding: '1px' }}
+                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                            disabled={isSubmitted}
+                                        />
+                                        <Typography variant="caption" color="#33691e" fontWeight="bold" sx={{ fontSize: '0.7rem' }}>Ac</Typography>
+                                    </Box>
+                                )}
                             </Box>
-                            {task.toLowerCase().includes('chemical') && (
+                            {!hideOutput && task.toLowerCase().includes('chemical') && (
                                 <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                                    <Typography variant="caption" fontWeight="bold" color="#33691e">Chem. Qty</Typography>
+                                    <Typography variant="caption" fontWeight="bold" color="#33691e" sx={{ fontSize: '0.7rem' }}>Chem. Qty</Typography>
                                     <input
                                         type="number"
                                         min="0"
-                                        style={{ ...inputStyle, width: 45, height: 24, padding: '2px' }}
+                                        style={{ ...inputStyle, width: 40, height: 20, padding: '1px' }}
                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
                                         disabled={isSubmitted}
                                     />
@@ -518,43 +520,42 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                 </Card>
             </Box>
 
-            <Box p={1} display="flex" flexDirection="column" gap={0.5}>
+            <Box p={0.5} display="flex" flexDirection="column" gap={0.5}>
                 {items.map((item: any, index: number) => (
                     <Box key={item.id}
                         display="flex"
                         alignItems="center"
                         justifyContent="space-between"
-                        p={0.75}
+                        p={0.5}
                         borderRadius={1}
                         sx={{
                             bgcolor: index % 2 === 0 ? '#fafafa' : 'white',
                             border: '1px solid #eee',
                             '&:hover': { bgcolor: '#f1f8e9', borderColor: '#c5e1a5' },
                             transition: 'all 0.2s',
-                            opacity: isSubmitted ? 0.7 : 1,
                         }}
                     >
                         {/* Worker Info */}
-                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
-                            <Avatar sx={{ bgcolor: '#333', width: 28, height: 28 }}><PersonIcon sx={{ fontSize: 18 }} /></Avatar>
+                        <Box display="flex" alignItems="center" gap={1} flex={1} minWidth={0}>
+                            <Avatar sx={{ bgcolor: '#333', width: 24, height: 24 }}><PersonIcon sx={{ fontSize: 16 }} /></Avatar>
                             <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
-                                <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333">{item.workerName}</Typography>
+                                <Typography variant="caption" fontWeight="600" noWrap lineHeight={1.2} color="#333" display="block">{item.workerName}</Typography>
                                 <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.65rem' }}>{item.fieldName}</Typography>
                             </Box>
                         </Box>
 
                         {/* Right Side: Inputs & Actions */}
-                        <Box display="flex" alignItems="center" gap={2}>
-                            {['Plucking', 'Tapping'].some(t => item.workType.includes(t)) && (
-                                <Box display="flex" alignItems="center" gap={1}>
+                        <Box display="flex" alignItems="center" gap={1}>
+                            {!hideOutput && ['Plucking', 'Tapping'].some(t => item.workType.includes(t)) && (
+                                <Box display="flex" alignItems="center" gap={0.5}>
                                     {/* AM Input */}
                                     <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">AM</Typography>
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">AM</Typography>
                                         <input
                                             type="number"
                                             min="0"
                                             onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                            style={{ ...inputStyle, width: 70, borderColor: '#a5d6a7' }}
+                                            style={{ ...inputStyle, width: 50, borderColor: '#a5d6a7' }}
                                             value={item.amWeight}
                                             onChange={(e) => {
                                                 const val = e.target.value;
@@ -565,12 +566,12 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                                     </Box>
                                     {/* PM Input */}
                                     <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">PM</Typography>
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">PM</Typography>
                                         <input
                                             type="number"
                                             min="0"
                                             onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                            style={{ ...inputStyle, width: 70, borderColor: '#a5d6a7' }}
+                                            style={{ ...inputStyle, width: 50, borderColor: '#a5d6a7' }}
                                             value={item.pmWeight}
                                             onChange={(e) => {
                                                 const val = e.target.value;
@@ -581,9 +582,9 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                                     </Box>
                                     {/* Total Badge */}
                                     <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.7rem">Total</Typography>
-                                        <Box bgcolor="#2e7d32" color="white" borderRadius={1} width={60} height={27} display="flex" alignItems="center" justifyContent="center">
-                                            <Typography variant="body2" fontWeight="bold">
+                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">Tot</Typography>
+                                        <Box bgcolor="#2e7d32" color="white" borderRadius={1} width={40} height={22} display="flex" alignItems="center" justifyContent="center">
+                                            <Typography variant="caption" fontWeight="bold">
                                                 {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
                                             </Typography>
                                         </Box>
@@ -591,60 +592,90 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
                                 </Box>
                             )}
 
-                            {/* Actions - Blue Box */}
-                            <Box display="flex" gap={1} bgcolor="#1565c0" p={0.75} borderRadius={3} boxShadow={3} sx={{ opacity: isSubmitted ? 0.5 : 1, pointerEvents: isSubmitted ? 'none' : 'auto' }}>
-                                <Tooltip title="Mark Half Day">
-                                    <span style={{ display: 'inline-block' }}>
-                                        <IconButton
-                                            onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
+                            {/* Actions - Blue Box (Attendance) - Should usually be visible in both, but if hideOutput means pure assignment plan, maybe keep? 
+                                User wants Morning to reflect "Divisional View" (assignments). 
+                                Attendance is part of the morning routine. Weights are evening.
+                            {/* Status Display (Review Mode) or Actions (Entry Mode) */}
+                            {isSubmitted ? (
+                                <Box display="flex" alignItems="center" justifyContent="flex-end" minWidth={80}>
+                                    {item.status === 'PRESENT' && (
+                                        <Chip
+                                            label="Present"
                                             size="small"
-                                            disabled={isSubmitted}
-                                            sx={{
-                                                bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white', // Bright Yellow
-                                                border: item.status === 'HALF_DAY' ? '2px solid #ffea00' : '2px solid transparent',
-                                                color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { bgcolor: '#ffea00', transform: 'scale(1.1)', color: '#000' }
-                                            }}>
-                                            <BlockIcon fontSize="small" />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-                                <Tooltip title="Mark Present">
-                                    <span style={{ display: 'inline-block' }}>
-                                        <IconButton
-                                            onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
+                                            sx={{ bgcolor: '#00e676', color: '#000', fontWeight: 'bold', height: 24 }}
+                                            icon={<CheckIcon sx={{ fontSize: '1rem !important' }} />}
+                                        />
+                                    )}
+                                    {item.status === 'ABSENT' && (
+                                        <Chip
+                                            label="Absent"
                                             size="small"
-                                            disabled={isSubmitted}
-                                            sx={{
-                                                bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white', // Bright Green
-                                                border: item.status === 'PRESENT' ? '2px solid #00c853' : '2px solid transparent',
-                                                color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { bgcolor: '#00c853', transform: 'scale(1.1)', color: '#000' }
-                                            }}>
-                                            <CheckIcon fontSize="small" sx={{ fontWeight: 'bold' }} />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-                                <Tooltip title="Mark Absent">
-                                    <span style={{ display: 'inline-block' }}>
-                                        <IconButton
-                                            onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
+                                            sx={{ bgcolor: '#ff3d00', color: 'white', fontWeight: 'bold', height: 24 }}
+                                        />
+                                    )}
+                                    {item.status === 'HALF_DAY' && (
+                                        <Chip
+                                            label="Half Day"
                                             size="small"
-                                            disabled={isSubmitted}
-                                            sx={{
-                                                bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white', // Bright Red-Orange
-                                                border: item.status === 'ABSENT' ? '2px solid #ff3d00' : '2px solid transparent',
-                                                color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
-                                                transition: 'all 0.2s',
-                                                '&:hover': { bgcolor: '#ff3d00', transform: 'scale(1.1)', color: '#000' }
-                                            }}>
-                                            <CloseIcon fontSize="small" />
-                                        </IconButton>
-                                    </span>
-                                </Tooltip>
-                            </Box>
+                                            sx={{ bgcolor: '#ffd600', color: '#000', fontWeight: 'bold', height: 24 }}
+                                        />
+                                    )}
+                                    {(!item.status || item.status === 'PENDING') && (
+                                        <Chip label="-" size="small" variant="outlined" sx={{ height: 24 }} />
+                                    )}
+                                </Box>
+                            ) : (
+                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                    <Tooltip title="Mark Half Day">
+                                        <span style={{ display: 'inline-block' }}>
+                                            <IconButton
+                                                onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
+                                                size="small"
+                                                disabled={isSubmitted}
+                                                sx={{
+                                                    padding: 0.5,
+                                                    bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                    color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                    '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                }}>
+                                                <BlockIcon sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                    <Tooltip title="Mark Present">
+                                        <span style={{ display: 'inline-block' }}>
+                                            <IconButton
+                                                onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
+                                                size="small"
+                                                disabled={isSubmitted}
+                                                sx={{
+                                                    padding: 0.5,
+                                                    bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                    color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                    '&:hover': { bgcolor: '#00c853', color: '#000' }
+                                                }}>
+                                                <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                    <Tooltip title="Mark Absent">
+                                        <span style={{ display: 'inline-block' }}>
+                                            <IconButton
+                                                onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
+                                                size="small"
+                                                disabled={isSubmitted}
+                                                sx={{
+                                                    padding: 0.5,
+                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                    color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
+                                                    '&:hover': { bgcolor: '#ff3d00', color: '#000' }
+                                                }}>
+                                                <CloseIcon sx={{ fontSize: 16 }} />
+                                            </IconButton>
+                                        </span>
+                                    </Tooltip>
+                                </Box>
+                            )}
                         </Box>
                     </Box>
                 ))}
@@ -655,10 +686,11 @@ function TaskSection({ task, items, onUpdate, isSubmitted }: { task: string, ite
 
 
 // --- Shared Component: Muster Chit Summary ---
-const MusterChitSummary = ({ data, fields, label, includeAbsent = false }: any) => {
+const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = false }: any) => {
     // Categorization Logic
     const getSummary = () => {
         const categories: any = { Tea: {}, Rubber: {}, General: {} };
+        if (!data || !Array.isArray(data)) return categories;
         data.forEach((m: any) => {
             const field = fields.find((f: any) => f.name === m.fieldName || f.fieldId === m.fieldId);
             const crop = field?.cropType || 'General';
@@ -677,14 +709,14 @@ const MusterChitSummary = ({ data, fields, label, includeAbsent = false }: any) 
         return categories;
     };
     const summary = getSummary();
-    const grandTotal = data.filter((d: any) => includeAbsent || d.status !== 'ABSENT').length;
+    const grandTotal = (data || []).filter((d: any) => includeAbsent || d.status !== 'ABSENT').length;
 
     return (
-        <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, mb: 2 }}>
-            <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
-                <Typography variant="h6" align="center" fontWeight="bold">{label}</Typography>
+        <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, mb: 2, maxWidth: 350, mx: 'auto' }}>
+            <Box bgcolor="#e0e0e0" p={0.5} borderBottom="1px solid #ccc">
+                <Typography variant="subtitle2" align="center" fontWeight="bold">{label}</Typography>
             </Box>
-            <Table size="small">
+            <Table size="small" sx={{ '& .MuiTableCell-root': { padding: '4px 8px', fontSize: '0.8rem' } }}>
                 <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                     <TableRow>
                         <TableCell><strong>Work item</strong></TableCell>
@@ -778,255 +810,352 @@ const MusterChitSummary = ({ data, fields, label, includeAbsent = false }: any) 
     );
 };
 
+// --- Morning Plan Display (Uses Submitted JSON Snapshot) ---
+function MorningPlanDisplay({ plans }: { plans: any[] }) {
+    // Group by Task
+
+    const groupedByTask = plans.reduce((acc: any, plan: any) => {
+        if (!acc[plan.task]) acc[plan.task] = [];
+        acc[plan.task].push(plan);
+        return acc;
+    }, {});
+
+    return (
+        <Box>
+            {Object.entries(groupedByTask).map(([task, fieldPlans]: any) => (
+                <Paper key={task} elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#c5e1a5' }}>
+                    {/* Header - Green Theme for Morning (User Preferred) */}
+                    <Box bgcolor="#f1f8e9" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center">
+                        <Typography variant="subtitle2" fontWeight="bold" color="#33691e" sx={{ minWidth: 120 }}>{task}</Typography>
+                    </Box>
+
+                    <Box p={1}>
+                        {fieldPlans.map((plan: any, idx: number) => (
+                            <Box key={`${task}-${plan.field}-${idx}`} mb={1} last-child={{ mb: 0 }}>
+                                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'white', border: '1px solid #eee' }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
+                                            Field: <span style={{ color: '#333' }}>{plan.field}</span>
+                                        </Typography>
+                                        <Typography variant="caption" color="primary" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
+                                            {plan.count} Assigned
+                                        </Typography>
+                                    </Box>
+
+                                    <Box display="flex" flexWrap="wrap" gap={0.5}>
+                                        {plan.assigned && plan.assigned.map((w: any) => (
+                                            <Chip
+                                                key={w.id}
+                                                avatar={<Avatar sx={{ bgcolor: '#66bb6a', width: 24, height: 24 }}><PersonIcon sx={{ fontSize: 16 }} /></Avatar>}
+                                                label={w.name}
+                                                variant="outlined"
+                                                size="small"
+                                                sx={{
+                                                    fontSize: '0.75rem',
+                                                    height: 28,
+                                                    bgcolor: '#f9fbe7',
+                                                    borderColor: '#c5e1a5',
+                                                    '& .MuiChip-label': { color: '#33691e', fontWeight: 500 }
+                                                }}
+                                            />
+                                        ))}
+                                    </Box>
+                                </Paper>
+                            </Box>
+                        ))}
+                    </Box>
+                </Paper>
+            ))}
+            {plans.length === 0 && (
+                <Typography variant="body2" color="text.secondary" align="center" sx={{ py: 4, fontStyle: 'italic' }}>
+                    No Morning Plan Found
+                </Typography>
+            )}
+        </Box>
+    );
+}
+
 // --- Tab 2: History (Past Musters) ---
 function HistoryTab() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const [history, setHistory] = useState<any[]>([]);
     const [rawData, setRawData] = useState<any[]>([]);
+    const [fields, setFields] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Review Modal State
     const [reviewOpen, setReviewOpen] = useState(false);
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
+    const [morningPlan, setMorningPlan] = useState<any[]>([]);
 
     useEffect(() => {
-        const fetchHistory = async () => {
+        const fetchData = async () => {
             try {
-                const res = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}`);
-                setRawData(res.data);
+                // Fetch Metadata
+                const [fRes, wRes, divRes] = await Promise.all([
+                    axios.get(`/api/fields?tenantId=${tenantId}`),
+                    axios.get(`/api/workers?tenantId=${tenantId}`),
+                    axios.get(`/api/divisions?tenantId=${tenantId}`)
+                ]);
+                setFields(fRes.data);
 
-                // Group by Date for Summary
-                const grouped = res.data.reduce((acc: any, item: any) => {
-                    const date = item.workDate;
-                    if (!acc[date]) {
-                        acc[date] = {
-                            date,
-                            assigned: 0,
-                            attended: 0,
-                            totalWeight: 0,
-                            types: new Set()
-                        };
+                const divMap = new Map<string, string>();
+                divRes.data.forEach((d: any) => divMap.set(d.divisionId, d.name));
+
+                const wMap = new Map<string, any>();
+                wRes.data.forEach((w: any) => {
+                    if (w.workerId) wMap.set(w.workerId, w);
+                    wMap.set(w.id, w);
+                });
+
+                // Fetch WORK History (The source of truth for Musters)
+                const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}`);
+                const morningMusters = dwRes.data.filter((dw: any) => dw.workType === 'Morning Muster');
+
+                // Fetch Attendance
+                const attRes = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}`);
+
+                // Map Attendance to Divisions via DailyWork ID (or infer)
+                // We build a helper map: DailyWorkID -> DivisionID
+                const dwDivMap = new Map<string, string>();
+                dwRes.data.forEach((dw: any) => dwDivMap.set(dw.id, dw.divisionId)); // Assuming dw.id is the link
+
+                const enrichedAttendance = attRes.data.map((rec: any) => {
+                    // Try to resolve division from dailyWork link or field
+                    let divId = 'UNKNOWN';
+                    if (rec.dailyWorkId) divId = dwDivMap.get(rec.dailyWorkId) || 'UNKNOWN';
+                    if (divId === 'UNKNOWN') {
+                        // Fallback: try field mapping
+                        const f = fRes.data.find((field: any) => field.name === rec.fieldName);
+                        if (f) divId = f.divisionId;
                     }
 
-                    // Morning Muster (All Assignments)
-                    acc[date].assigned++;
+                    return {
+                        ...rec,
+                        workerName: wMap.get(rec.workerId)?.name || rec.workerName || 'Unknown',
+                        gender: wMap.get(rec.workerId)?.gender || 'MALE',
+                        divisionId: divId
+                    };
+                });
 
-                    // Evening Muster (Actual Stats)
-                    if (item.status === 'PRESENT' || item.status === 'HALF_DAY' || item.status === 'COMPLETED') {
-                        acc[date].attended++;
-                        acc[date].totalWeight += (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
-                    }
+                setRawData(enrichedAttendance); // Global store of attendance
 
-                    acc[date].types.add(item.workType);
-                    return acc;
-                }, {});
+                // Construct History Rows from Morning Muster DailyWorks
+                const historyRows = morningMusters.map((mm: any) => {
+                    const date = mm.workDate;
+                    const divId = mm.divisionId;
 
-                setHistory(Object.values(grouped).sort((a: any, b: any) => b.date.localeCompare(a.date)));
+                    // Filter attendance for this specific muster (Date + Division)
+                    const musterAtt = enrichedAttendance.filter((a: any) =>
+                        a.workDate === date && a.divisionId === divId
+                    );
+
+                    let attended = 0;
+                    let totalWeight = 0;
+                    musterAtt.forEach((item: any) => {
+                        if (item.status === 'PRESENT' || item.status === 'HALF_DAY' || item.status === 'COMPLETED') {
+                            attended++;
+                            totalWeight += (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+                        }
+                    });
+
+                    return {
+                        id: mm.workId, // Correct field from backend (DailyWork entity)
+                        date: date,
+                        divisionId: divId,
+                        divisionName: divMap.get(divId) || 'Unknown',
+                        submittedAt: mm.createdAt,
+                        assigned: mm.workerCount,
+                        attended: attended,
+                        totalWeight: totalWeight,
+                        types: ['Morning Muster'],
+                        details: mm.details // Store the snapshot JSON here!
+                    };
+                });
+
+                setHistory(historyRows.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+
             } catch (e) {
                 console.error("History fetch failed", e);
             }
             setLoading(false);
         };
-        fetchHistory();
+        fetchData();
     }, [tenantId]);
 
-    const handleReview = (date: string) => {
-        const records = rawData.filter(r => r.workDate === date);
+    const handleReview = async (row: any) => {
+        setSelectedDate(`${row.date} - ${row.divisionName}`);
+
+        // Filter attendance for this specific Division + Date
+        const records = rawData.filter((r: any) => r.workDate === row.date && r.divisionId === row.divisionId);
         setSelectedRecords(records);
-        setSelectedDate(date);
+
+        // Use the snapshot directly from the row
+        if (row.details) {
+            try {
+                setMorningPlan(JSON.parse(row.details));
+            } catch (e) { setMorningPlan([]); }
+        } else {
+            setMorningPlan([]);
+        }
+
         setReviewOpen(true);
     };
 
-    // Calculate details for the Review Modal
-    const getMorningStats = () => {
-        // Assignments Grouped by Task
-        const grouped = selectedRecords.reduce((acc: any, curr) => {
-            const key = curr.workType;
-            if (!acc[key]) acc[key] = 0;
-            acc[key]++;
-            return acc;
-        }, {});
-        return Object.keys(grouped).map(key => ({ name: key, value: grouped[key] }));
+    const handleDelete = async (row: any) => {
+        if (!row.id) {
+            console.error("Cannot delete: Row ID is missing", row);
+            alert(`Error: Row ID is missing. Available fields: ${Object.keys(row).join(", ")}`);
+            return;
+        }
+        if (window.confirm(`Are you sure you want to delete the report for ${row.date} - ${row.divisionName}?`)) {
+            try {
+                await axios.delete(`/api/tenants/daily-work/${row.id}?tenantId=${tenantId}`);
+                setHistory(prev => prev.filter(h => h.id !== row.id));
+            } catch (e) {
+                console.error("Delete failed", e);
+                alert("Failed to delete report");
+            }
+        }
     };
 
-    const getEveningStats = () => {
-        // Completed Harvest Grouped by Field
-        const grouped = selectedRecords.filter(r => r.status === 'PRESENT' || r.status === 'HALF_DAY').reduce((acc: any, curr) => {
-            const key = curr.fieldName;
-            if (!acc[key]) acc[key] = { field: key, harvest: 0, workers: 0 };
-            acc[key].harvest += (Number(curr.amWeight) || 0) + (Number(curr.pmWeight) || 0);
-            acc[key].workers++;
-            return acc;
-        }, {});
-        return Object.values(grouped);
-    };
+    const groupedRecords = selectedRecords.reduce((acc: any, item) => {
+        const key = item.workType;
+        if (!acc[key]) acc[key] = [];
+        acc[key].push(item);
+        return acc;
+    }, {});
 
-    const morningData = getMorningStats();
-    const eveningData = getEveningStats();
-    const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
-
-    if (loading) return <Box display="flex" justifyContent="center" p={3}><CircularProgress /></Box>;
+    if (loading) return <Box display="flex" justifyItems="center" p={3}><CircularProgress /></Box>;
 
     return (
-        <Box>
-            <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary', mb: 2 }}>
-                Consolidated Log (Click 'Review' for Details)
-            </Typography>
-            <TableContainer component={Paper} elevation={0} variant="outlined">
-                <Table>
-                    <TableHead>
-                        <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold' }}>Activities</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1565c0' }}>Morning (Plan)</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#2e7d32' }}>Evening (Actual)</TableCell>
-                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>Harvest (Kg)</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>Action</TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {history.map((row: any) => (
-                            <TableRow key={row.date} hover>
-                                <TableCell>{row.date}</TableCell>
-                                <TableCell>
-                                    {Array.from(row.types).map((t: any) => (
-                                        <Chip key={t} label={t} size="small" sx={{ mr: 0.5, mb: 0.5 }} />
-                                    ))}
-                                </TableCell>
-                                <TableCell align="center" sx={{ color: '#1565c0', fontWeight: 'bold' }}>{row.assigned}</TableCell>
-                                <TableCell align="center" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>{row.attended}</TableCell>
-                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>{row.totalWeight > 0 ? row.totalWeight.toFixed(1) : '-'}</TableCell>
-                                <TableCell align="center">
-                                    <Button
-                                        variant="contained"
-                                        size="small"
-                                        color="success"
-                                        startIcon={<VisibilityIcon />}
-                                        onClick={() => handleReview(row.date)}
-                                        sx={{ textTransform: 'none', borderRadius: 2 }}
-                                    >
-                                        Review
-                                    </Button>
-                                </TableCell>
+        <Box sx={{ maxWidth: 1000, mx: 'auto', mt: 4 }}>
+            <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
+                    <Box display="flex" alignItems="center" gap={2}>
+                        <HistoryIcon color="primary" sx={{ fontSize: 30 }} />
+                        <Typography variant="h5" fontWeight="bold" color="text.primary">
+                            Muster History
+                        </Typography>
+                    </Box>
+                    <Chip label={`${history.length} Records`} color="primary" variant="outlined" size="small" />
+                </Box>
+
+                <TableContainer sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
+                    <Table>
+                        <TableHead>
+                            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Division</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Submitted At</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Action</TableCell>
                             </TableRow>
-                        ))}
-                        {history.length === 0 && (
-                            <TableRow><TableCell colSpan={6} align="center" sx={{ py: 3, color: 'text.secondary' }}>No Muster History Found</TableCell></TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {history.map((row: any) => (
+                                <TableRow key={`${row.date}-${row.divisionId}`} hover>
+                                    <TableCell sx={{ fontWeight: 500 }}>{row.date}</TableCell>
+                                    <TableCell>
+                                        <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
+                                    </TableCell>
+                                    <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
+                                        {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                    </TableCell>
+                                    <TableCell align="center">
+                                        <Button
+                                            variant="outlined"
+                                            size="small"
+                                            color="primary"
+                                            startIcon={<VisibilityIcon />}
+                                            onClick={() => handleReview(row)}
+                                            sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
+                                        >
+                                            View
+                                        </Button>
+                                        <Tooltip title="Delete Report">
+                                            <IconButton
+                                                size="small"
+                                                color="error"
+                                                onClick={() => handleDelete(row)}
+                                                sx={{ bgcolor: '#ffebee', '&:hover': { bgcolor: '#ffcdd2' } }}
+                                            >
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        </Tooltip>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                            {history.length === 0 && (
+                                <TableRow><TableCell colSpan={4} align="center" sx={{ py: 6, color: 'text.secondary', fontStyle: 'italic' }}>No muster records found.</TableCell></TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
 
             {/* FULL REVIEW MODAL */}
             <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }}>
                     Muster Review: {selectedDate}
                 </DialogTitle>
-                <DialogContent sx={{ mt: 2 }}>
-                    <Grid container spacing={4}>
-                        {/* LEFT: MORNING PLAN */}
-                        <Grid item xs={12} md={6} sx={{ borderRight: { md: '1px solid #e0e0e0' } }}>
-                            <Typography variant="h6" color="primary" gutterBottom>🌞 Morning Plan (Assignments)</Typography>
+                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: 1 }}>
+                    <Grid container spacing={3}>
+                        {/* LEFT: MORNING PLAN (Strict 6 columns) */}
+                        <Grid size={{ xs: 12, md: 6 }} sx={{ borderRight: { md: '2px dashed #bdbdbd' } }}>
+                            <Box mb={3}>
+                                <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
+                                    <Avatar sx={{ bgcolor: 'orange', width: 24, height: 24 }}>🌞</Avatar>
+                                    <Typography variant="h6" color="primary.main" fontWeight="bold">Morning Assignments (Plan)</Typography>
+                                </Box>
+                                <MusterChitSummary
+                                    data={selectedRecords}
+                                    fields={fields}
+                                    label="Muster Chit"
+                                    includeAbsent={true}
+                                />
+                            </Box>
 
-                            {/* Detailed List */}
-                            <Paper variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: '#e3f2fd' }}>
-                                        <TableRow>
-                                            <TableCell><strong>Task</strong></TableCell>
-                                            <TableCell><strong>Field</strong></TableCell>
-                                            <TableCell align="right"><strong>Workers</strong></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {/* Group by Task/Field */}
-                                        {Object.entries(selectedRecords.reduce((acc: any, r) => {
-                                            const key = `${r.workType}-${r.fieldName}`;
-                                            if (!acc[key]) acc[key] = { task: r.workType, field: r.fieldName, count: 0 };
-                                            acc[key].count++;
-                                            return acc;
-                                        }, {})).map(([key, val]: any) => (
-                                            <TableRow key={key}>
-                                                <TableCell>{val.task}</TableCell>
-                                                <TableCell>{val.field}</TableCell>
-                                                <TableCell align="right">{val.count}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                    </TableBody>
-                                </Table>
-                            </Paper>
-
-                            {/* Allocation Chart */}
-                            <Box height={250} mt={2}>
-                                <Typography variant="subtitle2" align="center">Task Distribution</Typography>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <PieChart>
-                                        <Pie
-                                            data={morningData}
-                                            innerRadius={60}
-                                            outerRadius={80}
-                                            fill="#8884d8"
-                                            paddingAngle={5}
-                                            dataKey="value"
-                                        >
-                                            {morningData.map((entry: any, index: number) => (
-                                                <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                                            ))}
-                                        </Pie>
-                                        <RechartsTooltip />
-                                        <Legend />
-                                    </PieChart>
-                                </ResponsiveContainer>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Field Assignments</Typography>
+                                <MorningPlanDisplay plans={morningPlan} />
                             </Box>
                         </Grid>
 
-                        {/* RIGHT: EVENING ACTUAL */}
-                        <Grid item xs={12} md={6}>
-                            <Typography variant="h6" color="success.main" gutterBottom>🌙 Evening Result (Actual)</Typography>
+                        {/* RIGHT: EVENING ACTUAL (Strict 6 columns) */}
+                        <Grid size={{ xs: 12, md: 6 }}>
+                            <Box mb={3}>
+                                <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
+                                    <Avatar sx={{ bgcolor: '#bdbdbd', width: 24, height: 24 }}>🌙</Avatar>
+                                    <Typography variant="h6" color="success.main" fontWeight="bold">Evening Results (Actual)</Typography>
+                                </Box>
+                                <MusterChitSummary
+                                    data={selectedRecords}
+                                    fields={fields}
+                                    label="Evening Muster Chit"
+                                    includeAbsent={false}
+                                />
+                            </Box>
 
-                            {/* Detailed List */}
-                            <Paper variant="outlined" sx={{ mb: 2, overflow: 'hidden' }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: '#e8f5e9' }}>
-                                        <TableRow>
-                                            <TableCell><strong>Field</strong></TableCell>
-                                            <TableCell align="right"><strong>Workers</strong></TableCell>
-                                            <TableCell align="right"><strong>Harvest (Kg)</strong></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {eveningData.map((d: any) => (
-                                            <TableRow key={d.field}>
-                                                <TableCell>{d.field}</TableCell>
-                                                <TableCell align="right">{d.workers}</TableCell>
-                                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>{d.harvest.toFixed(1)}</TableCell>
-                                            </TableRow>
-                                        ))}
-                                        {eveningData.length === 0 && <TableRow><TableCell colSpan={3} align="center">No Completed Work</TableCell></TableRow>}
-                                    </TableBody>
-                                </Table>
-                            </Paper>
-
-                            {/* Harvest Chart */}
-                            <Box height={250} mt={2}>
-                                <Typography variant="subtitle2" align="center">Harvest Output by Field</Typography>
-                                <ResponsiveContainer width="100%" height="100%">
-                                    <BarChart data={eveningData}>
-                                        <CartesianGrid strokeDasharray="3 3" />
-                                        <XAxis dataKey="field" />
-                                        <YAxis />
-                                        <RechartsTooltip />
-                                        <Bar dataKey="harvest" fill="#2e7d32" name="Harvest (Kg)" radius={[4, 4, 0, 0]} />
-                                    </BarChart>
-                                </ResponsiveContainer>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Harvest & Output</Typography>
+                                {Object.entries(groupedRecords).map(([task, items]: any) => (
+                                    <TaskSection
+                                        key={`evening-${task}`}
+                                        task={task}
+                                        items={items}
+                                        onUpdate={() => { }}
+                                        isSubmitted={true}
+                                        hideOutput={false}
+                                    />
+                                ))}
                             </Box>
                         </Grid>
                     </Grid>
                 </DialogContent>
-                <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5' }}>
-                    <Button onClick={() => setReviewOpen(false)} variant="outlined" color="inherit">Close Review</Button>
+                <DialogActions sx={{ p: 2, bgcolor: '#fff' }}>
+                    <Button onClick={() => setReviewOpen(false)} variant="contained" color="primary" size="large">Close Review</Button>
                 </DialogActions>
             </Dialog>
         </Box>
