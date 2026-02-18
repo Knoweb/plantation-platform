@@ -134,7 +134,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
                 const workRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
                 const morningWorks = workRes.data.filter((w: any) => w.workType === 'Morning Muster');
-                const divIds = Array.from(new Set(morningWorks.map((w: any) => w.divisionId)));
+                let divIds = Array.from(new Set(morningWorks.map((w: any) => w.divisionId)));
+
+                // Filter by User Access (Field Officer)
+                if (userSession.divisionAccess && userSession.divisionAccess.length > 0) {
+                    divIds = divIds.filter((id: any) => userSession.divisionAccess.includes(id));
+                }
 
                 let pendingCount = 0;
                 divIds.forEach((divId: any) => {
