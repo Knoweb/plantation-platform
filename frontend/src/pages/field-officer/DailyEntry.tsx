@@ -1,4 +1,4 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge } from '@mui/material';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import {
@@ -175,6 +175,9 @@ function DailyEntryTab() {
             // Persist Submission
             localStorage.setItem(getStorageKey(selectedDivision), 'true');
             setIsSubmitted(true); // Disable button
+
+            // Trigger Sidebar Update
+            window.dispatchEvent(new Event('muster-update'));
         } catch (e) {
             setNotification({ open: true, message: "Failed to save.", severity: 'error' });
         }
@@ -477,7 +480,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
-    const showInputs = !hideOutput && ['Plucking', 'Tapping'].some(t => task.includes(t));
+    const showInputs = !hideOutput && ['Plucking', 'Tapping', 'Fertilizer', 'Transport'].some(t => task.includes(t));
 
     return (
         <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >

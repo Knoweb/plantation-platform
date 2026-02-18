@@ -9,6 +9,7 @@ import {
     Typography,
     Divider,
     Badge, // Import Badge
+    Tooltip, // Import Tooltip
 } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -89,11 +90,24 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [restockCount, setRestockCount] = useState(0);
     const [musterReviewCount, setMusterReviewCount] = useState(0);
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
+    const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
 
     useEffect(() => {
         if (userSession.tenantId) {
             if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER') {
                 fetchAlerts();
+
+                // Poll every 10 seconds for real-time updates
+                const interval = setInterval(fetchAlerts, 10000);
+
+                // Listen for immediate local updates
+                const handleUpdate = () => fetchAlerts();
+                window.addEventListener('muster-update', handleUpdate);
+
+                return () => {
+                    clearInterval(interval);
+                    window.removeEventListener('muster-update', handleUpdate);
+                };
             }
         }
     }, [userRole, userSession.tenantId]);
@@ -141,14 +155,26 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     divIds = divIds.filter((id: any) => userSession.divisionAccess.includes(id));
                 }
 
+                // Fetch Division Names map
+                const divRes = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
+                const divMap = new Map();
+                divRes.data.forEach((d: any) => divMap.set(d.divisionId, d.name));
+
+                // Filter out Ghost Divisions (Morning Work exists but Division doesn't)
+                divIds = divIds.filter((id: any) => divMap.has(id));
+
                 let pendingCount = 0;
+                const pDivs: string[] = [];
+
                 divIds.forEach((divId: any) => {
                     const key = `muster_submitted_${userSession.tenantId}_${today}_${divId}`;
                     if (localStorage.getItem(key) !== 'true') {
                         pendingCount++;
+                        pDivs.push(divMap.get(divId) || 'Unknown Division');
                     }
                 });
                 setEveningPendingCount(pendingCount);
+                setPendingDivisions(pDivs);
             }
         } catch (err) {
             // Silently fail if inventory service is down
@@ -279,26 +305,28 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                 primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }}
                             />
                             {item.text === 'Evening Muster' && eveningPendingCount > 0 && (
-                                <Box sx={{
-                                    bgcolor: 'error.main',
-                                    color: 'white',
-                                    borderRadius: '50%',
-                                    width: 24,
-                                    height: 24,
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    justifyContent: 'center',
-                                    fontSize: '0.75rem',
-                                    fontWeight: 'bold',
-                                    animation: 'blink 1.5s infinite',
-                                    '@keyframes blink': {
-                                        '0%': { opacity: 1 },
-                                        '50%': { opacity: 0.5 },
-                                        '100%': { opacity: 1 }
-                                    }
-                                }}>
-                                    {eveningPendingCount}
-                                </Box>
+                                <Tooltip title={`Pending: ${pendingDivisions.join(', ')}`} arrow placement="right">
+                                    <Box sx={{
+                                        bgcolor: 'error.main',
+                                        color: 'white',
+                                        borderRadius: '50%',
+                                        width: 24,
+                                        height: 24,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        fontSize: '0.75rem',
+                                        fontWeight: 'bold',
+                                        animation: 'blink 1.5s infinite',
+                                        '@keyframes blink': {
+                                            '0%': { opacity: 1 },
+                                            '50%': { opacity: 0.5 },
+                                            '100%': { opacity: 1 }
+                                        }
+                                    }}>
+                                        {eveningPendingCount}
+                                    </Box>
+                                </Tooltip>
                             )}
                         </ListItemButton>
                     </ListItem>

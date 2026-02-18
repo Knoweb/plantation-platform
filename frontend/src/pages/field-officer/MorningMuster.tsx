@@ -318,6 +318,9 @@ export default function MorningMuster() {
                 setIsReadOnly(true);
                 checkApprovalStatus();
 
+                // Trigger Sidebar Update
+                window.dispatchEvent(new Event('muster-update'));
+
                 setSnackbar({ open: true, message: "Muster Submitted for Manager Approval!", severity: "success" });
                 // Optionally disable editing here?
             } catch (error) {
