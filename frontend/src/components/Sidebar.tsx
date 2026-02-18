@@ -92,7 +92,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
     useEffect(() => {
         if (userSession.tenantId) {
-            if (userRole === 'MANAGER') {
+            if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER') {
                 fetchAlerts();
             }
         }
@@ -263,6 +263,23 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     </Badge>
                                 ) : item.text === 'Muster Review' && musterReviewCount > 0 ? (
                                     <Badge badgeContent={musterReviewCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Evening Muster' && eveningPendingCount > 0 ? (
+                                    <Badge
+                                        badgeContent={eveningPendingCount}
+                                        color="error"
+                                        sx={{
+                                            '& .MuiBadge-badge': {
+                                                animation: 'blink 1.5s infinite',
+                                                '@keyframes blink': {
+                                                    '0%': { opacity: 1 },
+                                                    '50%': { opacity: 0.5 },
+                                                    '100%': { opacity: 1 }
+                                                }
+                                            }
+                                        }}
+                                    >
                                         {item.icon}
                                     </Badge>
                                 ) : (

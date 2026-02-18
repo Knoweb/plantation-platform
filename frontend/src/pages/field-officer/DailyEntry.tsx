@@ -1,5 +1,5 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge } from '@mui/material';
+import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import {
     Check as CheckIcon,
@@ -286,7 +286,7 @@ function DailyEntryTab() {
                                     <TableBody>
                                         {/* Tea Section */}
                                         {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
-                                            <div key={task} style={{ display: 'contents' }}>
+                                            <Fragment key={task}>
                                                 {Object.entries(data.fields).map(([field, count]: any, idx) => (
                                                     <TableRow key={`${task}-${field}`}>
                                                         {idx === 0 && (
@@ -302,7 +302,7 @@ function DailyEntryTab() {
                                                         <TableCell align="center"><strong>{data.count}</strong></TableCell>
                                                     </TableRow>
                                                 )}
-                                            </div>
+                                            </Fragment>
                                         ))}
                                         {Object.keys(categorizedSummary.Tea).length > 0 && (
                                             <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
@@ -313,7 +313,7 @@ function DailyEntryTab() {
 
                                         {/* Rubber Section */}
                                         {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
-                                            <div key={task} style={{ display: 'contents' }}>
+                                            <Fragment key={task}>
                                                 {Object.entries(data.fields).map(([field, count]: any, idx) => (
                                                     <TableRow key={`${task}-${field}`}>
                                                         {idx === 0 && (
@@ -329,7 +329,7 @@ function DailyEntryTab() {
                                                         <TableCell align="center"><strong>{data.count}</strong></TableCell>
                                                     </TableRow>
                                                 )}
-                                            </div>
+                                            </Fragment>
                                         ))}
                                         {Object.keys(categorizedSummary.Rubber).length > 0 && (
                                             <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
@@ -340,7 +340,7 @@ function DailyEntryTab() {
 
                                         {/* General Section */}
                                         {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
-                                            <div key={task} style={{ display: 'contents' }}>
+                                            <Fragment key={task}>
                                                 {Object.entries(data.fields).map(([field, count]: any, idx) => (
                                                     <TableRow key={`${task}-${field}`}>
                                                         {idx === 0 && (
@@ -350,7 +350,7 @@ function DailyEntryTab() {
                                                         <TableCell align="center">{count}</TableCell>
                                                     </TableRow>
                                                 ))}
-                                            </div>
+                                            </Fragment>
                                         ))}
                                         {Object.keys(categorizedSummary.General).length > 0 && (
                                             <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
@@ -460,59 +460,64 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
 
     // Common Input Style
     const inputStyle = {
-        width: 50, // Smaller width
-        padding: '2px 4px',
-        border: '1px solid #cfd8dc',
+        width: 55,
+        padding: '2px',
+        height: 30,
+        border: '1px solid #b0bec5',
         borderRadius: 4,
         textAlign: 'center' as const,
-        fontSize: '0.8rem', // Smaller font
+        fontSize: '0.9rem',
         fontWeight: 'bold',
         outline: 'none',
-        transition: 'border-color 0.2s',
+        transition: 'all 0.2s',
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
+    const showInputs = !hideOutput && ['Plucking', 'Tapping'].some(t => task.includes(t));
+
     return (
-        <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
+        <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >
             {/* Header */}
-            <Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+            < Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap" >
                 <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 120 }}>{task}</Typography>
 
                 {/* Harvest Inputs in Header - Hide if hideOutput is true */}
-                {!hideOutput && ['Plucking', 'Harvest'].some(t => task.includes(t)) && (
-                    <Box display="flex" gap={1}>
-                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #b0bec5">
-                            <Typography variant="caption" fontWeight="600" mr={0.5} color="#546e7a">Field Wt</Typography>
-                            <input
-                                type="number"
-                                min="0"
-                                style={inputStyle}
-                                placeholder="0"
-                                value={fieldWeight}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === '' || Number(val) >= 0) setFieldWeight(val);
-                                }}
-                                disabled={isSubmitted}
-                            />
+                {
+                    !hideOutput && ['Plucking', 'Harvest'].some(t => task.includes(t)) && (
+                        <Box display="flex" gap={1}>
+                            <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                <Typography variant="caption" fontWeight="bold" mr={0.5} color="#455a64">Field Wt</Typography>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    style={{ ...inputStyle, width: 70, height: 32, fontSize: '0.9rem' }}
+                                    placeholder="0"
+                                    value={fieldWeight}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '' || Number(val) >= 0) setFieldWeight(val);
+                                    }}
+                                    disabled={isSubmitted}
+                                />
+                            </Box>
+                            <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                <Typography variant="caption" fontWeight="bold" mr={0.5} color="#455a64">Factory Wt</Typography>
+                                <input
+                                    type="number"
+                                    min="0"
+                                    style={{ ...inputStyle, width: 70, height: 32, fontSize: '0.9rem' }}
+                                    placeholder="0"
+                                    value={factoryWeight}
+                                    onChange={(e) => {
+                                        const val = e.target.value;
+                                        if (val === '' || Number(val) >= 0) setFactoryWeight(val);
+                                    }}
+                                    disabled={isSubmitted}
+                                />
+                            </Box>
                         </Box>
-                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #b0bec5">
-                            <Typography variant="caption" fontWeight="600" mr={0.5} color="#546e7a">Factory Wt</Typography>
-                            <input
-                                type="number"
-                                min="0"
-                                style={inputStyle}
-                                placeholder="0"
-                                value={factoryWeight}
-                                onChange={(e) => {
-                                    const val = e.target.value;
-                                    if (val === '' || Number(val) >= 0) setFactoryWeight(val);
-                                }}
-                                disabled={isSubmitted}
-                            />
-                        </Box>
-                    </Box>
-                )}
+                    )
+                }
 
                 {/* Summary Card */}
                 <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 1, py: 0.5, minWidth: 150 }}>
@@ -548,16 +553,31 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                         </Box>
                     ))}
                 </Card>
-            </Box>
+            </Box >
 
-            <Box p={0.5} display="flex" flexDirection="column" gap={0.5}>
+            {/* Column Headers */}
+            {showInputs && (
+                <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f1f8e9" borderBottom="1px solid #e0e0e0">
+                    <Box flex={1} minWidth={0}>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center">
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>AM</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>PM</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>TOT</Typography>
+                        <Box sx={{ width: 110 }} /> {/* Spacer for Actions */}
+                    </Box>
+                </Box>
+            )}
+
+            <Box p={1} display="flex" flexDirection="column" gap={0.5}>
                 {items.map((item: any, index: number) => (
                     <Box key={item.id}
                         display="flex"
                         alignItems="center"
                         justifyContent="space-between"
-                        p={0.5}
-                        borderRadius={1}
+                        p={1} // Reduced padding
+                        borderRadius={2}
                         sx={{
                             bgcolor: index % 2 === 0 ? '#fafafa' : 'white',
                             border: '1px solid #eee',
@@ -566,68 +586,73 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                         }}
                     >
                         {/* Worker Info */}
-                        <Box display="flex" alignItems="center" gap={1} flex={1} minWidth={0}>
-                            <Avatar sx={{ bgcolor: '#333', width: 24, height: 24 }}><PersonIcon sx={{ fontSize: 16 }} /></Avatar>
+                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
+                            <Avatar sx={{ bgcolor: '#333', width: 32, height: 32 }}><PersonIcon sx={{ fontSize: 18 }} /></Avatar>
                             <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
-                                <Typography variant="caption" fontWeight="600" noWrap lineHeight={1.2} color="#333" display="block">{item.workerName}</Typography>
-                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.65rem' }}>{item.fieldName}</Typography>
+                                <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333" display="block">{item.workerName}</Typography>
+                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem' }}>{item.fieldName}</Typography>
                             </Box>
                         </Box>
 
-                        {/* Right Side: Inputs & Actions */}
-                        <Box display="flex" alignItems="center" gap={1}>
-                            {!hideOutput && ['Plucking', 'Tapping'].some(t => item.workType.includes(t)) && (
-                                <Box display="flex" alignItems="center" gap={0.5}>
-                                    {/* AM Input */}
-                                    <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">AM</Typography>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                            style={{ ...inputStyle, width: 50, borderColor: '#a5d6a7' }}
-                                            value={item.amWeight}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
-                                            }}
-                                            disabled={isSubmitted}
-                                        />
-                                    </Box>
-                                    {/* PM Input */}
-                                    <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">PM</Typography>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                            style={{ ...inputStyle, width: 50, borderColor: '#a5d6a7' }}
-                                            value={item.pmWeight}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
-                                            }}
-                                            disabled={isSubmitted}
-                                        />
-                                    </Box>
-                                    {/* Total Badge */}
-                                    <Box display="flex" flexDirection="column" alignItems="center">
-                                        <Typography variant="caption" color="#546e7a" fontWeight="bold" fontSize="0.6rem">Tot</Typography>
-                                        <Box bgcolor="#2e7d32" color="white" borderRadius={1} width={40} height={22} display="flex" alignItems="center" justifyContent="center">
-                                            <Typography variant="caption" fontWeight="bold">
-                                                {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
-                                            </Typography>
-                                        </Box>
+                        {/* Right Side: Inputs */}
+                        {showInputs && (
+                            <Box display="flex" alignItems="center">
+                                {/* AM Input */}
+                                <Box width={65} display="flex" justifyContent="center">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        style={{ ...inputStyle, borderColor: '#81c784' }}
+                                        value={item.amWeight}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
+                                        }}
+                                        disabled={isSubmitted}
+                                    />
+                                </Box>
+                                {/* PM Input */}
+                                <Box width={65} display="flex" justifyContent="center">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        style={{ ...inputStyle, borderColor: '#81c784' }}
+                                        value={item.pmWeight}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
+                                        }}
+                                        disabled={isSubmitted}
+                                    />
+                                </Box>
+                                {/* Total Badge */}
+                                <Box width={65} display="flex" justifyContent="center">
+                                    <Box
+                                        bgcolor="#2e7d32"
+                                        color="white"
+                                        borderRadius={1}
+                                        width={55}
+                                        height={30}
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="center"
+                                        border="1px solid #1b5e20"
+                                        sx={{ boxShadow: 1 }}
+                                    >
+                                        <Typography variant="body2" fontWeight="bold" fontSize="0.9rem">
+                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
+                                        </Typography>
                                     </Box>
                                 </Box>
-                            )}
+                            </Box>
+                        )}
 
-                            {/* Actions - Blue Box (Attendance) - Should usually be visible in both, but if hideOutput means pure assignment plan, maybe keep? 
-                                User wants Morning to reflect "Divisional View" (assignments). 
-                                Attendance is part of the morning routine. Weights are evening.
-                            {/* Status Display (Review Mode) or Actions (Entry Mode) */}
+                        {/* Actions */}
+                        <Box width={110} display="flex" justifyContent="flex-end" alignItems="center">
                             {isSubmitted ? (
-                                <Box display="flex" alignItems="center" justifyContent="flex-end" minWidth={80}>
+                                <>
                                     {item.status === 'PRESENT' && (
                                         <Chip
                                             label="Present"
@@ -653,7 +678,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                                     {(!item.status || item.status === 'PENDING') && (
                                         <Chip label="-" size="small" variant="outlined" sx={{ height: 24 }} />
                                     )}
-                                </Box>
+                                </>
                             ) : (
                                 <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
                                     <Tooltip title="Mark Half Day">
@@ -709,8 +734,9 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                         </Box>
                     </Box>
                 ))}
-            </Box>
-        </Paper>
+            </Box >
+
+        </Paper >
     );
 }
 
