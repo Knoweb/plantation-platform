@@ -33,7 +33,7 @@ public class DailyWorkService {
         work.setQuantity(request.getQuantity());
         work.setWorkerCount(request.getWorkerCount());
         work.setStatus("PENDING");
-        work.setCreatedAt(java.time.LocalDateTime.now());
+        work.setCreatedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
         return dailyWorkRepository.save(work);
     }
 
@@ -83,7 +83,7 @@ public class DailyWorkService {
         }
 
         work.setStatus("APPROVED");
-        work.setActionAt(java.time.LocalDateTime.now());
+        work.setActionAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
         return dailyWorkRepository.save(work);
     }
 
@@ -92,7 +92,7 @@ public class DailyWorkService {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
         work.setStatus("REJECTED");
-        work.setActionAt(java.time.LocalDateTime.now());
+        work.setActionAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
         return dailyWorkRepository.save(work);
     }
 
