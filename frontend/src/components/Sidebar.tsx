@@ -30,6 +30,7 @@ import HistoryIcon from '@mui/icons-material/History';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ForestIcon from '@mui/icons-material/Forest';
+import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
@@ -43,6 +44,7 @@ const menuItems = [
     { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
+    { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
@@ -146,22 +148,31 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 const day = String(d.getDate()).padStart(2, '0');
                 const today = `${year}-${month}-${day}`;
 
-                const workRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
-                const morningWorks = workRes.data.filter((w: any) => w.workType === 'Morning Muster');
-                let divIds = Array.from(new Set(morningWorks.map((w: any) => w.divisionId)));
+                // Fetch Today's Daily Work (Mappings)
+                const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
+                const dwMap = new Map();
+                dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
 
-                // Filter by User Access (Field Officer)
-                if (userSession.divisionAccess && userSession.divisionAccess.length > 0) {
-                    divIds = divIds.filter((id: any) => userSession.divisionAccess.includes(id));
-                }
+                // Fetch Today's Attendance to find active divisions (Mirroring DailyEntry.tsx logic)
+                const attRes = await axios.get(`/api/tenants/attendance?tenantId=${userSession.tenantId}&date=${today}`);
+                const activeDivIds = new Set();
+
+                attRes.data.forEach((rec: any) => {
+                    // Find division for this attendance record
+                    const divId = dwMap.get(rec.dailyWorkId);
+                    if (divId) activeDivIds.add(divId);
+                });
+
+                let divIds = Array.from(activeDivIds);
 
                 // Fetch Division Names map
                 const divRes = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
-                const divMap = new Map();
-                divRes.data.forEach((d: any) => divMap.set(d.divisionId, d.name));
+                const divNameMap = new Map();
+                divRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
 
-                // Filter out Ghost Divisions (Morning Work exists but Division doesn't)
-                divIds = divIds.filter((id: any) => divMap.has(id));
+                // DO NOT Filter out Ghost Divisions - Keep them to match DailyEntry logic
+                // If DailyEntry shows it (even as unknown), Sidebar should alert it.
+                // divIds = divIds.filter((id: any) => divMap.has(id)); 
 
                 let pendingCount = 0;
                 const pDivs: string[] = [];
@@ -170,7 +181,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     const key = `muster_submitted_${userSession.tenantId}_${today}_${divId}`;
                     if (localStorage.getItem(key) !== 'true') {
                         pendingCount++;
-                        pDivs.push(divMap.get(divId) || 'Unknown Division');
+                        pDivs.push(divNameMap.get(divId) || 'Unknown Division');
                     }
                 });
                 setEveningPendingCount(pendingCount);

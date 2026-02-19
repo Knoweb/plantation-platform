@@ -1,6 +1,6 @@
 package com.knoweb.tenant.entity;
 
-import com.knoweb.tenant.enums.JobRole;
+
 import com.knoweb.tenant.enums.WorkerGender;
 import com.knoweb.tenant.enums.WorkerStatus;
 import jakarta.persistence.*;
@@ -27,9 +27,8 @@ public class Worker {
     @Column(name = "gender", nullable = false)
     private WorkerGender gender;
 
-    @Enumerated(EnumType.STRING)
     @Column(name = "job_role", nullable = false)
-    private JobRole jobRole;
+    private String jobRole;
 
     @Column(name = "epf_number")
     private String epfNumber;
@@ -49,7 +48,7 @@ public class Worker {
     public Worker() {
     }
 
-    public Worker(String registrationNumber, String name, WorkerGender gender, JobRole jobRole, String epfNumber,
+    public Worker(String registrationNumber, String name, WorkerGender gender, String jobRole, String epfNumber,
             String tenantId, WorkerStatus status) {
         this.registrationNumber = registrationNumber;
         this.name = name;
@@ -94,11 +93,11 @@ public class Worker {
         this.gender = gender;
     }
 
-    public JobRole getJobRole() {
+    public String getJobRole() {
         return jobRole;
     }
 
-    public void setJobRole(JobRole jobRole) {
+    public void setJobRole(String jobRole) {
         this.jobRole = jobRole;
     }
 

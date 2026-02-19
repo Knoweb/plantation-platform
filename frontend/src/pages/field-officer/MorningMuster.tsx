@@ -74,6 +74,8 @@ export default function MorningMuster() {
     const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({ open: false, message: '', severity: 'info' });
     const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
+    const [availableTasks, setAvailableTasks] = useState<string[]>([]);
+
     useEffect(() => {
         fetchData();
         if (tenantId && selectedDivisionId) {
@@ -100,11 +102,12 @@ export default function MorningMuster() {
 
     const fetchData = async () => {
         try {
-            const [musterRes, workerRes, fieldRes, divisionRes] = await Promise.all([
+            const [musterRes, workerRes, fieldRes, divisionRes, taskRes] = await Promise.all([
                 axios.get(`/api/operations/muster?tenantId=${tenantId}`),
                 axios.get(`/api/workers?tenantId=${tenantId}`),
                 axios.get(`/api/fields?tenantId=${tenantId}`),
-                axios.get(`/api/divisions?tenantId=${tenantId}`)
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/tenants/task-types?tenantId=${tenantId}`)
             ]);
 
             // Use local date to avoid UTC mismatches in early morning
@@ -115,6 +118,10 @@ export default function MorningMuster() {
             const today = `${year}-${month}-${day}`;
 
             const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
+
+            // Set Available Tasks
+            const tasks = taskRes.data.map((t: any) => t.name);
+            setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
 
             setMusters(todaysMusters);
             setWorkers(workerRes.data);
@@ -621,22 +628,9 @@ export default function MorningMuster() {
                     <FormControl fullWidth margin="dense">
                         <InputLabel>Task Type</InputLabel>
                         <Select value={newMuster.taskType} label="Task Type" onChange={(e) => setNewMuster({ ...newMuster, taskType: e.target.value })}>
-                            <MenuItem value="Plucking">Plucking</MenuItem>
-                            <MenuItem value="Tapping">Tapping</MenuItem>
-                            <MenuItem value="Kangani">Kangani</MenuItem>
-                            <MenuItem value="Sackcooli">Sackcooli</MenuItem>
-                            <MenuItem value="Transport">Transport</MenuItem>
-                            <MenuItem value="Fertilizer">Fertilizer</MenuItem>
-                            <MenuItem value="Chemical Weeding">Chemical Weeding</MenuItem>
-                            <MenuItem value="Manual Weeding">Manual Weeding</MenuItem>
-                            <MenuItem value="Roads & Boundaries">Roads & Boundaries</MenuItem>
-                            <MenuItem value="Drains">Drains</MenuItem>
-                            <MenuItem value="Terracing">Terracing</MenuItem>
-                            <MenuItem value="Tipping">Tipping</MenuItem>
-                            <MenuItem value="Pruning">Pruning</MenuItem>
-                            <MenuItem value="Mossing & Ferning">Mossing & Ferning</MenuItem>
-                            <MenuItem value="Lime Spray">Lime Spray</MenuItem>
-                            <MenuItem value="Blister Blight">Blister Blight</MenuItem>
+                            {availableTasks.map((task) => (
+                                <MenuItem key={task} value={task}>{task}</MenuItem>
+                            ))}
                         </Select>
                     </FormControl>
 

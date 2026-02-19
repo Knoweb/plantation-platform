@@ -195,68 +195,76 @@ export default function MusterReviewManager() {
                 </DialogTitle>
                 <DialogContent sx={{ bgcolor: '#f1f8e9', p: 3 }}>
                     {selectedItem && (
-                        <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }} mt={2}>
-                            {/* Detailed View Logic (Reused from PendingApprovals) */}
-                            <Box flex={1}>
-                                <Card variant="outlined" sx={{ p: 2 }}>
-                                    <Typography variant="h6" gutterBottom>Summary</Typography>
-                                    {/* Parse Details RAW */}
+                        <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }} mt={1} sx={{ height: '60vh' }}>
+                            {/* Left Pane: Muster Chit */}
+                            <Box flex={1} display="flex" flexDirection="column">
+                                <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Muster Chit</Typography>
+                                <Card variant="outlined" sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#ffffff', borderRadius: 2 }}>
                                     {(() => {
                                         try {
                                             const details = JSON.parse(selectedItem.detailsRaw);
                                             if (Array.isArray(details)) {
                                                 return details.map((d: any, idx: number) => (
-                                                    <Box key={idx} mb={1} display="flex" justifyContent="space-between" borderBottom="1px dashed #ccc" pb={1}>
+                                                    <Box key={idx} mb={1.5} display="flex" justifyContent="space-between" borderBottom="1px dashed #e0e0e0" pb={1}>
                                                         <Box flex={1}>
-                                                            <Typography variant="caption" color="text.secondary">Work item</Typography>
-                                                            <Typography variant="body2" fontWeight="bold">{d.task}</Typography>
+                                                            <Typography variant="caption" color="text.secondary" display="block">Work item</Typography>
+                                                            <Typography variant="body2" fontWeight="600" color="#424242">{d.task}</Typography>
                                                         </Box>
                                                         <Box flex={1}>
-                                                            <Typography variant="caption" color="text.secondary">Field No</Typography>
-                                                            <Typography variant="body2">{d.field}</Typography>
+                                                            <Typography variant="caption" color="text.secondary" display="block">Field No</Typography>
+                                                            <Typography variant="body2" color="#424242">{d.field}</Typography>
                                                         </Box>
-                                                        <Box flex={1} textAlign="right">
-                                                            <Typography variant="caption" color="text.secondary">No of Workers</Typography>
-                                                            <Typography variant="body2">{d.count || d.workers}</Typography>
+                                                        <Box flex={0.5} textAlign="right">
+                                                            <Typography variant="caption" color="text.secondary" display="block">Workers</Typography>
+                                                            <Typography variant="body2" fontWeight="600" color="#2e7d32">{d.count || d.workers}</Typography>
                                                         </Box>
                                                     </Box>
                                                 ));
                                             }
-                                        } catch (e) { return "No details available."; }
+                                        } catch (e) { return <Typography color="text.secondary" align="center">No details available.</Typography>; }
                                     })()}
-                                    <Box mt={2} pt={2} borderTop="2px solid #ddd" display="flex" justifyContent="space-between">
-                                        <Typography fontWeight="bold">Total Workers</Typography>
-                                        <Typography fontWeight="bold">{selectedItem.quantity}</Typography>
+                                    <Box mt={2} pt={2} borderTop="2px solid #edeff1" display="flex" justifyContent="space-between" bgcolor="#f9fbe7" p={1} borderRadius={1}>
+                                        <Typography fontWeight="bold" color="#2e7d32">Total Workers</Typography>
+                                        <Typography fontWeight="bold" color="#2e7d32">{selectedItem.quantity}</Typography>
                                     </Box>
                                 </Card>
                             </Box>
-                            <Box flex={2}>
-                                <Typography variant="h6" gutterBottom>Worker Assignments</Typography>
-                                <Box maxHeight={400} overflow="auto">
+
+                            {/* Right Pane: Worker Assignments */}
+                            <Box flex={2} display="flex" flexDirection="column">
+                                <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Worker Assignments</Typography>
+                                <Box sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
                                     {(() => {
                                         try {
                                             const details = JSON.parse(selectedItem.detailsRaw);
                                             if (Array.isArray(details)) {
                                                 return details.map((d: any, idx: number) => (
-                                                    <Box key={idx} mb={2} p={2} bgcolor="white" borderRadius={2} boxShadow={1}>
-                                                        <Typography variant="subtitle2" color="primary">{d.task} - {d.field}</Typography>
-                                                        <Box display="flex" gap={1} flexWrap="wrap" mt={1}>
-                                                            {d.assigned && d.assigned.map((w: any, i: number) => {
-                                                                // Find worker gender
+                                                    <Box key={idx} mb={2} p={2} bgcolor="white" borderRadius={3} border="1px solid #e0e0e0" sx={{ '&:hover': { borderColor: '#a5d6a7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
+                                                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} borderBottom="1px solid #f0f0f0" pb={1}>
+                                                            <Typography variant="subtitle1" fontWeight="bold" color="#37474f">{d.task}</Typography>
+                                                            <Chip label={d.field} size="small" variant="outlined" color="primary" sx={{ borderRadius: 1 }} />
+                                                        </Box>
+                                                        <Box display="flex" gap={1} flexWrap="wrap">
+                                                            {d.assigned && d.assigned.length > 0 ? d.assigned.map((w: any, i: number) => {
                                                                 const worker = workerMap.get(w.id);
                                                                 const isFemale = worker?.gender === 'FEMALE';
                                                                 return (
                                                                     <Chip
                                                                         key={i}
-                                                                        avatar={<Avatar sx={{ bgcolor: isFemale ? '#f48fb1' : '#90caf9', color: 'white' }}>
-                                                                            {isFemale ? <WomanIcon /> : <ManIcon />}
-                                                                        </Avatar>}
+                                                                        avatar={
+                                                                            <Avatar sx={{ bgcolor: isFemale ? '#f8bbd0' : '#bbdefb', color: isFemale ? '#c2185b' : '#0d47a1', width: 24, height: 24 }}>
+                                                                                {isFemale ? <WomanIcon sx={{ fontSize: 16 }} /> : <ManIcon sx={{ fontSize: 16 }} />}
+                                                                            </Avatar>
+                                                                        }
                                                                         label={w.name}
                                                                         variant="outlined"
-                                                                        sx={{ borderRadius: 2 }}
+                                                                        size="small"
+                                                                        sx={{ borderRadius: 4, bgcolor: '#fafafa', border: '1px solid #eeeeee' }}
                                                                     />
                                                                 );
-                                                            })}
+                                                            }) : (
+                                                                <Typography variant="body2" color="text.secondary" fontStyle="italic">No specific workers assigned</Typography>
+                                                            )}
                                                         </Box>
                                                     </Box>
                                                 ));

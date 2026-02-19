@@ -45,6 +45,7 @@ public class AttendanceService {
                     if (update.containsKey("status")) {
                         att.setStatus((String) update.get("status"));
                     }
+                    att.setUpdatedAt(java.time.LocalDateTime.now());
                     attendanceRepository.save(att);
                 }
             } catch (Exception e) {

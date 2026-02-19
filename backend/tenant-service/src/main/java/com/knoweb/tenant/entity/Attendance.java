@@ -42,6 +42,9 @@ public class Attendance {
     @Column(name = "status")
     private String status = "PRESENT"; // PRESENT, ABSENT, HALF_DAY
 
+    @Column(name = "updated_at")
+    private java.time.LocalDateTime updatedAt;
+
     // Constructors
     public Attendance() {}
 
@@ -64,6 +67,9 @@ public class Attendance {
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }
+
+    public java.time.LocalDateTime getUpdatedAt() { return updatedAt; }
+    public void setUpdatedAt(java.time.LocalDateTime updatedAt) { this.updatedAt = updatedAt; }
 
     // Getters and Setters
     public UUID getId() { return id; }

@@ -29,6 +29,7 @@ import CropBook from './pages/manager/tabs/CropBook';
 import AttendanceReport from './pages/manager/tabs/AttendanceReport';
 import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 import MorningMuster from './pages/field-officer/MorningMuster';
+import DistributionOfWorks from './pages/field-officer/tabs/DistributionOfWorks';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -73,15 +74,12 @@ function App() {
           <Route path="harvest" element={<DailyEntry />} />
           <Route path="muster" element={<DailyEntry />} />
 
-          import MorningMuster from './pages/field-officer/MorningMuster';
-
-          // ... (existing imports)
-
           {/* Field Officer Tabs */}
           <Route path="morning-muster" element={<MorningMuster />} />
           <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />
           <Route path="crop-ages" element={<CropAge />} />
+          <Route path="distribution-works" element={<DistributionOfWorks />} />
           <Route path="muster-approval" element={<MusterApproval />} />
           <Route path="muster-review" element={<MusterReview />} />
           <Route path="stock" element={<GeneralStock />} />

@@ -1,4 +1,4 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge } from '@mui/material';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import {
@@ -25,6 +25,7 @@ interface AttendanceRecord {
     workerName?: string;
     divisionId?: string;
     workDate: string; // "YYYY-MM-DD"
+    updatedAt?: string; // ISO DateTime
 }
 
 // --- Main Component ---
@@ -143,6 +144,25 @@ function DailyEntryTab() {
     };
 
     const [confirmOpen, setConfirmOpen] = useState(false);
+    const [dailyWeights, setDailyWeights] = useState<any>({}); // { [divId]: { [field]: { fieldWt, factoryWt } } }
+
+    // Persist dailyWeights
+    useEffect(() => {
+        if (tenantId && today) {
+            const key = `dailyWeights_${tenantId}_${today}`;
+            const saved = localStorage.getItem(key);
+            if (saved) {
+                try { setDailyWeights(JSON.parse(saved)); } catch (e) { }
+            }
+        }
+    }, [tenantId, today]);
+
+    useEffect(() => {
+        if (tenantId && today) {
+            const key = `dailyWeights_${tenantId}_${today}`;
+            localStorage.setItem(key, JSON.stringify(dailyWeights));
+        }
+    }, [dailyWeights, tenantId, today]);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
     // Persistence Key Helper
@@ -400,8 +420,161 @@ function DailyEntryTab() {
 
                     {/* Detailed List */}
                     <Box flex={2}>
+                        {/* Daily Harvest Summary Component - Top Right */}
+                        {(() => {
+                            // Identify Harvest Fields
+                            const harvestFields = { Tea: [] as string[], Rubber: [] as string[] };
+                            Object.entries(grouped).forEach(([task, items]: any) => {
+                                const lower = task.toLowerCase();
+                                if (lower.includes('pluck') || lower.includes('harvest') || lower.includes('tap')) {
+                                    const firstItem = items[0];
+                                    const fName = firstItem?.fieldName;
+                                    const fieldObj = fields.find((f: any) => f.name === fName);
+                                    // Use same logic as TaskSection
+                                    const crop = (fieldObj?.cropType || 'General').toLowerCase();
+
+                                    const uniqueF = Array.from(new Set(items.map((i: any) => i.fieldName)));
+                                    if (crop === 'tea') harvestFields.Tea.push(...uniqueF as string[]);
+                                    if (crop === 'rubber') harvestFields.Rubber.push(...uniqueF as string[]);
+                                }
+                            });
+                            // De-duplicate
+                            harvestFields.Tea = Array.from(new Set(harvestFields.Tea));
+                            harvestFields.Rubber = Array.from(new Set(harvestFields.Rubber));
+
+                            if (harvestFields.Tea.length === 0 && harvestFields.Rubber.length === 0) return null;
+
+                            // Simplified Green Theme Layout
+                            return (
+                                <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: '#f1f8e9', border: '1px solid #c5e1a5' }}>
+                                    <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+                                        <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ mr: 1 }}>
+                                            Yield:
+                                        </Typography>
+
+                                        {/* Tea Section */}
+                                        {harvestFields.Tea.length > 0 && (
+                                            <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
+                                                {harvestFields.Tea.map(field => (
+                                                    <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                        <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
+                                                        <TextField
+                                                            variant="standard"
+                                                            InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                            placeholder="0"
+                                                            type="number"
+                                                            disabled={isSubmitted}
+                                                            sx={{ width: 50 }}
+                                                            value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (val === '' || Number(val) >= 0) {
+                                                                    setDailyWeights((prev: any) => ({
+                                                                        ...prev,
+                                                                        [selectedDivision]: {
+                                                                            ...prev[selectedDivision],
+                                                                            [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
+                                                                        }
+                                                                    }));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Typography variant="caption" color="text.secondary">kg</Typography>
+                                                    </Box>
+                                                ))}
+                                                {/* Single Factory Weight for Tea */}
+                                                <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                    <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
+                                                    <TextField
+                                                        variant="standard"
+                                                        InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                        placeholder="0"
+                                                        type="number"
+                                                        disabled={isSubmitted}
+                                                        sx={{ width: 50 }}
+                                                        value={dailyWeights[selectedDivision]?.['Tea_Factory']?.factoryWt || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || Number(val) >= 0) {
+                                                                setDailyWeights((prev: any) => ({
+                                                                    ...prev,
+                                                                    [selectedDivision]: {
+                                                                        ...prev[selectedDivision],
+                                                                        ['Tea_Factory']: { ...prev[selectedDivision]?.['Tea_Factory'], factoryWt: val }
+                                                                    }
+                                                                }));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Typography variant="caption" color="text.secondary">kg</Typography>
+                                                </Box>
+                                            </Box>
+                                        )}
+
+                                        {/* Rubber Section */}
+                                        {harvestFields.Rubber.length > 0 && (
+                                            <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ borderLeft: harvestFields.Tea.length > 0 ? '1px solid #bdbdbd' : 'none', pl: harvestFields.Tea.length > 0 ? 2 : 0 }}>
+                                                {harvestFields.Rubber.map(field => (
+                                                    <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                        <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
+                                                        <TextField
+                                                            variant="standard"
+                                                            InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                            placeholder="0"
+                                                            type="number"
+                                                            disabled={isSubmitted}
+                                                            sx={{ width: 50 }}
+                                                            value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (val === '' || Number(val) >= 0) {
+                                                                    setDailyWeights((prev: any) => ({
+                                                                        ...prev,
+                                                                        [selectedDivision]: {
+                                                                            ...prev[selectedDivision],
+                                                                            [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
+                                                                        }
+                                                                    }));
+                                                                }
+                                                            }}
+                                                        />
+                                                        <Typography variant="caption" color="text.secondary">L</Typography>
+                                                    </Box>
+                                                ))}
+                                                {/* Single Factory Weight for Rubber */}
+                                                <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                    <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
+                                                    <TextField
+                                                        variant="standard"
+                                                        InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                        placeholder="0"
+                                                        type="number"
+                                                        disabled={isSubmitted}
+                                                        sx={{ width: 50 }}
+                                                        value={dailyWeights[selectedDivision]?.['Rubber_Factory']?.factoryWt || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || Number(val) >= 0) {
+                                                                setDailyWeights((prev: any) => ({
+                                                                    ...prev,
+                                                                    [selectedDivision]: {
+                                                                        ...prev[selectedDivision],
+                                                                        ['Rubber_Factory']: { ...prev[selectedDivision]?.['Rubber_Factory'], factoryWt: val }
+                                                                    }
+                                                                }));
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Typography variant="caption" color="text.secondary">L</Typography>
+                                                </Box>
+                                            </Box>
+                                        )}
+                                    </Box>
+                                </Paper>
+                            );
+                        })()}
                         {Object.entries(grouped).map(([task, items]: any) => (
-                            <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted} />
+                            <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted} fields={fields} />
                         ))}
                     </Box>
                 </Box>
@@ -458,9 +631,50 @@ function DailyEntryTab() {
 }
 
 // --- Task Section Component ---
-function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean }) {
-    const [fieldWeight, setFieldWeight] = useState('');
-    const [factoryWeight, setFactoryWeight] = useState('');
+function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[] }) {
+    // State for weights managed in parent now (or TBD)
+
+    // Task Configuration Logic
+    // Task Configuration Logic
+    const getTaskConfig = (taskName: string) => {
+        const lower = taskName.toLowerCase();
+
+        // Find crop type from first item's field
+        const firstItem = items[0];
+        const fieldName = firstItem?.fieldName;
+        const field = fields?.find((f: any) => f.name === fieldName);
+        const cropType = (field?.cropType || 'General'); // Keep original casing for now to match UI, but check lower
+
+        const cropLower = String(cropType).toLowerCase();
+
+        if (lower.includes('pluck') || (lower.includes('harvest') && cropLower === 'tea')) return { label: 'Green Leaf', unit: 'kg', type: 'input' };
+        if (lower.includes('tap') || (lower.includes('harvest') && cropLower === 'rubber')) return { label: 'Latex', unit: 'L', type: 'input' };
+
+        // Fallback or explicit mapping if task name implies crop but field might be missing (unlikely)
+        if (lower.includes('pluck')) return { label: 'Green Leaf', unit: 'kg', type: 'input' };
+        if (lower.includes('tap')) return { label: 'Latex', unit: 'L', type: 'input' };
+
+        if (lower.includes('sack')) return { label: 'Sacks', unit: 'Count', type: 'input' };
+        if (lower.includes('transport')) return { label: 'Weight', unit: 'kg', type: 'input' };
+        if (lower.includes('fertilizer')) return { label: 'Area', unit: 'Ha', type: 'input' };
+        if (lower.includes('chemical')) return { label: 'Area', unit: 'Ac', type: 'input' };
+        if (lower.includes('manual')) return { label: 'Area', unit: 'Ac', type: 'input' };
+
+        if (lower.includes('pruning') || lower.includes('prun')) {
+            if (cropLower === 'tea') return { label: 'Bushes', unit: 'Count', type: 'input' };
+            if (cropLower === 'rubber') return { label: 'Trees', unit: 'Count', type: 'input' };
+            return { label: 'Plants', unit: 'Count', type: 'input' }; // Default
+        }
+
+        // Attendance Only roles
+        if (lower.includes('kangani') || lower.includes('watch') || lower.includes('sundry') || lower.includes('other')) return { label: 'Attendance', unit: '', type: 'none' };
+
+        // Default
+        return { label: 'Amount', unit: '', type: 'none' }; // Default to attendance only for unknown
+    };
+
+    const taskConfig = getTaskConfig(task);
+    const showInputs = !hideOutput && taskConfig.type === 'input';
 
     // Unique Fields for this task
     const uniqueFields = Array.from(new Set(items.map((i: any) => i.fieldName)));
@@ -480,51 +694,13 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
-    const showInputs = !hideOutput && ['Plucking', 'Tapping', 'Fertilizer', 'Transport'].some(t => task.includes(t));
-
     return (
         <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >
             {/* Header */}
             < Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap" >
                 <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 120 }}>{task}</Typography>
 
-                {/* Harvest Inputs in Header - Hide if hideOutput is true */}
-                {
-                    !hideOutput && ['Plucking', 'Harvest'].some(t => task.includes(t)) && (
-                        <Box display="flex" gap={1}>
-                            <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                <Typography variant="caption" fontWeight="bold" mr={0.5} color="#455a64">Field Wt</Typography>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    style={{ ...inputStyle, width: 70, height: 32, fontSize: '0.9rem' }}
-                                    placeholder="0"
-                                    value={fieldWeight}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === '' || Number(val) >= 0) setFieldWeight(val);
-                                    }}
-                                    disabled={isSubmitted}
-                                />
-                            </Box>
-                            <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                <Typography variant="caption" fontWeight="bold" mr={0.5} color="#455a64">Factory Wt</Typography>
-                                <input
-                                    type="number"
-                                    min="0"
-                                    style={{ ...inputStyle, width: 70, height: 32, fontSize: '0.9rem' }}
-                                    placeholder="0"
-                                    value={factoryWeight}
-                                    onChange={(e) => {
-                                        const val = e.target.value;
-                                        if (val === '' || Number(val) >= 0) setFactoryWeight(val);
-                                    }}
-                                    disabled={isSubmitted}
-                                />
-                            </Box>
-                        </Box>
-                    )
-                }
+                {/* Harvest Inputs Moved to Top Right - Removed from here */}
 
                 {/* Summary Card */}
                 <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 1, py: 0.5, minWidth: 150 }}>
@@ -569,9 +745,9 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                         <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
                     </Box>
                     <Box display="flex" alignItems="center">
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>AM</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>PM</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>TOT</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} ({taskConfig.unit})</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} ({taskConfig.unit})</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>TOTAL ({taskConfig.unit})</Typography>
                         <Box sx={{ width: 110 }} /> {/* Spacer for Actions */}
                     </Box>
                 </Box>
@@ -617,6 +793,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                                             if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
                                         }}
                                         disabled={isSubmitted}
+                                        placeholder="AM"
                                     />
                                 </Box>
                                 {/* PM Input */}
@@ -632,6 +809,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false }:
                                             if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
                                         }}
                                         disabled={isSubmitted}
+                                        placeholder="PM"
                                     />
                                 </Box>
                                 {/* Total Badge */}
@@ -1017,10 +1195,18 @@ function HistoryTab() {
 
                     let attended = 0;
                     let totalWeight = 0;
+                    let latestUpdate: string | null = null;
+
                     musterAtt.forEach((item: any) => {
                         if (item.status === 'PRESENT' || item.status === 'HALF_DAY' || item.status === 'COMPLETED') {
                             attended++;
                             totalWeight += (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+                        }
+                        // Track latest update time
+                        if (item.updatedAt) {
+                            if (!latestUpdate || new Date(item.updatedAt) > new Date(latestUpdate)) {
+                                latestUpdate = item.updatedAt;
+                            }
                         }
                     });
 
@@ -1029,7 +1215,7 @@ function HistoryTab() {
                         date: date,
                         divisionId: divId,
                         divisionName: divMap.get(divId) || 'Unknown',
-                        submittedAt: mm.createdAt,
+                        submittedAt: latestUpdate || mm.createdAt,
                         assigned: mm.workerCount,
                         attended: attended,
                         totalWeight: totalWeight,
@@ -1208,9 +1394,10 @@ function HistoryTab() {
                                         key={`evening-${task}`}
                                         task={task}
                                         items={items}
-                                        onUpdate={() => { }}
+                                        onUpdate={() => { }} // Read-only
                                         isSubmitted={true}
-                                        hideOutput={false}
+                                        hideOutput={false} // Show outputs
+                                        fields={fields} // Pass fields
                                     />
                                 ))}
                             </Box>
