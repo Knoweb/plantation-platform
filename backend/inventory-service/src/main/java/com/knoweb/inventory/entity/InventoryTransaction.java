@@ -25,6 +25,9 @@ public class InventoryTransaction {
     private String divisionName;
     private String fieldId;
     private String fieldName;
+    
+    // Approval remarks
+    private String managerRemarks;
 
     public Long getId() {
         return id;
@@ -138,5 +141,13 @@ public class InventoryTransaction {
 
     public void setFieldName(String fieldName) {
         this.fieldName = fieldName;
+    }
+
+    public String getManagerRemarks() {
+        return managerRemarks;
+    }
+
+    public void setManagerRemarks(String managerRemarks) {
+        this.managerRemarks = managerRemarks;
     }
 }

@@ -22,6 +22,13 @@ public class InventoryController {
         return service.getAllItems(tenantId);
     }
 
+    @GetMapping("/divisional")
+    public ResponseEntity<List<com.knoweb.inventory.entity.DivisionalStock>> getDivisionalStock(
+            @RequestParam String tenantId,
+            @RequestParam String divisionId) {
+        return ResponseEntity.ok(service.getDivisionalStock(tenantId, divisionId));
+    }
+
     @PostMapping
     public InventoryItem createItem(@RequestBody InventoryItem item) {
         return service.createItem(item);
@@ -50,8 +57,9 @@ public class InventoryController {
     @PutMapping("/transactions/{id}/status")
     public InventoryTransaction updateStatus(@PathVariable Long id,
             @RequestParam String status,
-            @RequestParam(required = false) Integer quantity) {
-        return service.updateTransactionStatus(id, status, quantity);
+            @RequestParam(required = false) Integer quantity,
+            @RequestParam(required = false) String remarks) {
+        return service.updateTransactionStatus(id, status, quantity, remarks);
     }
 
     @DeleteMapping("/{id}")

@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel } from '@mui/material';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
 
@@ -14,12 +14,20 @@ import { IconButton } from '@mui/material';
 import { useState, useEffect } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 
 export default function StoreKeeperDashboard() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     const [pendingItems, setPendingItems] = useState<Map<number, number>>(new Map());
+    const [approvedOrders, setApprovedOrders] = useState<any[]>([]);
+
+    // Tab Navigation via URL route
+    const location = useLocation();
+    let currentTab = 1; // Default to inventory
+    if (location.pathname.includes('main')) currentTab = 0;
+    else if (location.pathname.includes('approvals')) currentTab = 2;
 
     // Transaction Modal
     const [openModal, setOpenModal] = useState(false);
@@ -32,7 +40,7 @@ export default function StoreKeeperDashboard() {
     // --- Division / Field Selection ---
     const [divisions, setDivisions] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
-    // const [officers, setOfficers] = useState<any[]>([]);
+    const [officers, setOfficers] = useState<any[]>([]);
     const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     // ----------------------------------
@@ -99,6 +107,11 @@ export default function StoreKeeperDashboard() {
             });
             setPendingItems(pending);
 
+            const approvedFoOrders = transRes.data.filter((t: any) =>
+                t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
+            );
+            setApprovedOrders(approvedFoOrders);
+
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch inventory. Ensure Inventory Service is running.");
@@ -115,6 +128,17 @@ export default function StoreKeeperDashboard() {
         setIssuedTo('');
         setSelectedDivisions([]);
         setSelectedFields([]);
+    };
+
+    const handleIssueOrder = async (orderId: number) => {
+        if (!window.confirm("Confirm issuance of stock to the Field Officer?")) return;
+        try {
+            await axios.put(`/api/inventory/transactions/${orderId}/status?status=ISSUED`);
+            fetchInventory();
+            showNotification('Stock Successfully Issued to Field Officer', 'success');
+        } catch (err: any) {
+            showNotification('Failed to issue order: ' + (err.response?.data || err.message), 'error');
+        }
     };
 
     const handleTransaction = async () => {
@@ -225,190 +249,261 @@ export default function StoreKeeperDashboard() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                    Dashboard
+                    {currentTab === 0 ? "Dashboard & Messages" : currentTab === 1 ? "Inventory Records" : "Pending Approvals"}
                 </Typography>
-                <Box>
-                    <Button
-                        startIcon={<AddIcon />}
-                        variant="contained"
-                        sx={{ mr: 2, bgcolor: '#424242' }}
-                        onClick={() => { resetForm(); setNewItemOpen(true); }}
-                    >
-                        New Item
-                    </Button>
 
+                {currentTab === 1 && (
+                    <Box>
+                        <Button
+                            startIcon={<AddIcon />}
+                            variant="contained"
+                            sx={{ mr: 2, bgcolor: '#424242' }}
+                            onClick={() => { resetForm(); setNewItemOpen(true); }}
+                        >
+                            New Item
+                        </Button>
 
-                    <Button
-                        startIcon={<RemoveShoppingCartIcon />}
-                        variant="contained"
-                        color="warning"
-                        onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); setSelectedDivisions([]); setSelectedFields([]); }}
-                    >
-                        Issue Stock
-                    </Button>
-                </Box>
+                        <Button
+                            startIcon={<RemoveShoppingCartIcon />}
+                            variant="contained"
+                            color="warning"
+                            onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); setSelectedDivisions([]); setSelectedFields([]); }}
+                        >
+                            Issue Stock
+                        </Button>
+                    </Box>
+                )}
             </Box>
+            <Typography variant="body1" color="text.secondary" mb={4}>
+                {currentTab === 0 ? "View your critical stock alerts and internal messages." :
+                    currentTab === 1 ? "Manage plantation materials, add new items, or issue stock manually." :
+                        "Review and dispatch approved Field Officer requests."}
+            </Typography>
 
-            {/* Stop Pilferage / Low Stock Alerts */}
-            {lowStockItems.length > 0 && (
-                <Card sx={{ mb: 4, borderLeft: '6px solid #d32f2f', bgcolor: '#ffebee' }}>
-                    <CardContent>
-                        <Box display="flex" alignItems="center" mb={1}>
-                            <WarningIcon color="error" sx={{ mr: 1, fontSize: 30 }} />
-                            <Typography variant="h6" color="error" fontWeight="bold">
-                                CRITICAL STOCK ALERTS (Below Buffer Level)
-                            </Typography>
-                        </Box>
-                        <Grid container spacing={2}>
-                            {lowStockItems.map(item => (
-                                <Grid key={item.id} size={{ xs: 12, md: 4 }}>
-                                    <Box bgcolor="white" p={2} borderRadius={1} border="1px solid #ffcdd2">
-                                        <Typography variant="subtitle1" fontWeight="bold">{item.name}</Typography>
-                                        <Typography variant="body2" color="error">
-                                            Current: {item.currentQuantity} {item.unit} (Buffer: {item.bufferLevel} {item.unit})
-                                        </Typography>
-                                        <LinearProgress
-                                            variant="determinate"
-                                            value={(item.currentQuantity / item.bufferLevel) * 100}
-                                            color="error"
-                                            sx={{ mt: 1 }}
-                                        />
-                                    </Box>
+            {/* Stop Pilferage / Low Stock Alerts -> DASHBOARD TAB */}
+            {currentTab === 0 && (
+                <Box>
+                    {lowStockItems.length > 0 ? (
+                        <Card sx={{ mb: 4, borderLeft: '6px solid #d32f2f', bgcolor: '#ffebee' }}>
+                            <CardContent>
+                                <Box display="flex" alignItems="center" mb={1}>
+                                    <WarningIcon color="error" sx={{ mr: 1, fontSize: 30 }} />
+                                    <Typography variant="h6" color="error" fontWeight="bold">
+                                        CRITICAL STOCK ALERTS (Below Buffer Level)
+                                    </Typography>
+                                </Box>
+                                <Grid container spacing={2}>
+                                    {lowStockItems.map(item => (
+                                        <Grid key={item.id} size={{ xs: 12, md: 4 }}>
+                                            <Box bgcolor="white" p={2} borderRadius={1} border="1px solid #ffcdd2">
+                                                <Typography variant="subtitle1" fontWeight="bold">{item.name}</Typography>
+                                                <Typography variant="body2" color="error">
+                                                    Current: {item.currentQuantity} {item.unit} (Buffer: {item.bufferLevel} {item.unit})
+                                                </Typography>
+                                                <LinearProgress
+                                                    variant="determinate"
+                                                    value={(item.currentQuantity / item.bufferLevel) * 100}
+                                                    color="error"
+                                                    sx={{ mt: 1 }}
+                                                />
+                                            </Box>
+                                        </Grid>
+                                    ))}
                                 </Grid>
-                            ))}
-                        </Grid>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Alert severity="success" sx={{ mb: 4 }}>
+                            No critical stock alerts or messages at this time. All inventory is well-stocked!
+                        </Alert>
+                    )}
+                </Box>
+            )}
+
+            {/* Approved Field Officer Orders Ready for Collection -> PENDING APPROVALS TAB */}
+            {currentTab === 2 && (
+                <Box>
+                    {approvedOrders.length > 0 ? (
+                        <Card sx={{ mb: 4, borderLeft: '6px solid #2e7d32', bgcolor: '#f1f8e9' }}>
+                            <CardContent>
+                                <Box display="flex" alignItems="center" mb={2}>
+                                    <InventoryIcon color="success" sx={{ mr: 1, fontSize: 30 }} />
+                                    <Typography variant="h6" color="success" fontWeight="bold">
+                                        Approved Field Orders (Ready for Dispatch)
+                                    </Typography>
+                                </Box>
+                                <TableContainer>
+                                    <Table size="small">
+                                        <TableHead>
+                                            <TableRow>
+                                                <TableCell><strong>Item</strong></TableCell>
+                                                <TableCell><strong>Quantity</strong></TableCell>
+                                                <TableCell><strong>Division</strong></TableCell>
+                                                <TableCell><strong>Requested By</strong></TableCell>
+                                                <TableCell><strong>Manager Remarks</strong></TableCell>
+                                                <TableCell align="center"><strong>Action</strong></TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {approvedOrders.map((order) => (
+                                                <TableRow key={order.id}>
+                                                    <TableCell>{order.itemName}</TableCell>
+                                                    <TableCell sx={{ fontWeight: 'bold' }}>{order.quantity}</TableCell>
+                                                    <TableCell>{order.divisionName || '-'}</TableCell>
+                                                    <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
+                                                    <TableCell>{order.managerRemarks || '-'}</TableCell>
+                                                    <TableCell align="center">
+                                                        <Button
+                                                            variant="contained"
+                                                            color="success"
+                                                            size="small"
+                                                            onClick={() => handleIssueOrder(order.id)}
+                                                        >
+                                                            Issue Stock
+                                                        </Button>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </CardContent>
+                        </Card>
+                    ) : (
+                        <Alert severity="info" sx={{ mb: 4 }}>
+                            There are no pending manager approvals waiting to be dispatched.
+                        </Alert>
+                    )}
+                </Box>
+            )}
+
+            {/* Full Inventory Table -> INVENTORY TAB */}
+            {currentTab === 1 && (
+                <Card>
+                    <CardContent>
+                        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                            <Box display="flex" alignItems="center">
+                                <InventoryIcon color="action" sx={{ mr: 1 }} />
+                                <Typography variant="h6">Current Inventory</Typography>
+                            </Box>
+                            <TextField
+                                placeholder="Search Items..."
+                                size="small"
+                                value={search}
+                                onChange={(e) => setSearch(e.target.value)}
+                                InputProps={{
+                                    startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                }}
+                                sx={{ width: 300, bgcolor: 'white' }}
+                            />
+                        </Box>
+
+                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+                        <Table>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell>Item Name</TableCell>
+                                    <TableCell>Category</TableCell>
+                                    <TableCell align="right">Available Stock</TableCell>
+                                    <TableCell align="right">Total Value (Rs)</TableCell>
+                                    <TableCell align="right">Buffer Level</TableCell>
+                                    <TableCell align="right">Minimum Level</TableCell>
+                                    <TableCell align="center">Status</TableCell>
+                                    <TableCell align="center">Action</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {loading ? (
+                                    <TableRow>
+                                        <TableCell colSpan={8} align="center" sx={{ py: 10 }}>
+                                            <Box display="flex" flexDirection="column" alignItems="center">
+                                                <SpaIcon
+                                                    sx={{
+                                                        fontSize: 60,
+                                                        color: '#2e7d32',
+                                                        animation: 'pulse 1.5s infinite ease-in-out',
+                                                        '@keyframes pulse': {
+                                                            '0%': { transform: 'scale(1)', opacity: 0.7 },
+                                                            '50%': { transform: 'scale(1.2)', opacity: 1 },
+                                                            '100%': { transform: 'scale(1)', opacity: 0.7 }
+                                                        }
+                                                    }}
+                                                />
+                                                <Typography variant="h6" color="primary" mt={2} fontWeight="bold">
+                                                    Loading Plantation Inventory...
+                                                </Typography>
+                                                <Typography variant="body2" color="text.secondary">
+                                                    Fetching fertilizers, tools, and harvest data.
+                                                </Typography>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
+                                    <TableRow key={item.id}>
+                                        <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
+                                        <TableCell><Chip label={item.category} size="small" /></TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                            {item.currentQuantity} {item.unit}
+                                        </TableCell>
+                                        <TableCell align="right">
+                                            {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                                            {item.bufferLevel} {item.unit}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                            {item.minimumLevel || 0} {item.unit}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {item.currentQuantity < item.bufferLevel ? (
+                                                <Chip label="LOW STOCK" color="error" size="small" />
+                                            ) : (
+                                                <Chip label="Good" color="success" size="small" />
+                                            )}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            {pendingItems.has(item.id) ? (
+                                                <Chip
+                                                    label={`Pending: ${pendingItems.get(item.id)} ${item.unit}`}
+                                                    color="warning"
+                                                    variant="outlined"
+                                                    size="small"
+                                                />
+                                            ) : (
+                                                <Button
+                                                    variant="outlined"
+                                                    color="warning"
+                                                    size="small"
+                                                    startIcon={<AddAlertIcon />}
+                                                    onClick={() => handleRestockRequest(item)}
+                                                >
+                                                    Restock
+                                                </Button>
+                                            )}
+                                            <Box display="inline-flex" ml={1}>
+                                                <IconButton size="small" onClick={() => handleEditItem(item)} title="Edit Details">
+                                                    <EditIcon fontSize="small" />
+                                                </IconButton>
+                                                <IconButton size="small" onClick={() => handleDeleteItem(item.id)} color="error" title="Delete Item">
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {!loading && items.length === 0 && !error && (
+                                    <TableRow>
+                                        <TableCell colSpan={8} align="center">No inventory items found.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
                     </CardContent>
                 </Card>
             )}
-
-            {/* Full Inventory Table */}
-
-
-            {/* Full Inventory Table */}
-            <Card>
-                <CardContent>
-                    <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                        <Box display="flex" alignItems="center">
-                            <InventoryIcon color="action" sx={{ mr: 1 }} />
-                            <Typography variant="h6">Current Inventory</Typography>
-                        </Box>
-                        <TextField
-                            placeholder="Search Items..."
-                            size="small"
-                            value={search}
-                            onChange={(e) => setSearch(e.target.value)}
-                            InputProps={{
-                                startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
-                            }}
-                            sx={{ width: 300, bgcolor: 'white' }}
-                        />
-                    </Box>
-
-                    {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Item Name</TableCell>
-                                <TableCell>Category</TableCell>
-                                <TableCell align="right">Available Stock</TableCell>
-                                <TableCell align="right">Total Value (Rs)</TableCell>
-                                <TableCell align="right">Buffer Level</TableCell>
-                                <TableCell align="right">Minimum Level</TableCell>
-                                <TableCell align="center">Status</TableCell>
-                                <TableCell align="center">Action</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {loading ? (
-                                <TableRow>
-                                    <TableCell colSpan={8} align="center" sx={{ py: 10 }}>
-                                        <Box display="flex" flexDirection="column" alignItems="center">
-                                            <SpaIcon
-                                                sx={{
-                                                    fontSize: 60,
-                                                    color: '#2e7d32',
-                                                    animation: 'pulse 1.5s infinite ease-in-out',
-                                                    '@keyframes pulse': {
-                                                        '0%': { transform: 'scale(1)', opacity: 0.7 },
-                                                        '50%': { transform: 'scale(1.2)', opacity: 1 },
-                                                        '100%': { transform: 'scale(1)', opacity: 0.7 }
-                                                    }
-                                                }}
-                                            />
-                                            <Typography variant="h6" color="primary" mt={2} fontWeight="bold">
-                                                Loading Plantation Inventory...
-                                            </Typography>
-                                            <Typography variant="body2" color="text.secondary">
-                                                Fetching fertilizers, tools, and harvest data.
-                                            </Typography>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
-                                <TableRow key={item.id}>
-                                    <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
-                                    <TableCell><Chip label={item.category} size="small" /></TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                                        {item.currentQuantity} {item.unit}
-                                    </TableCell>
-                                    <TableCell align="right">
-                                        {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                                        {item.bufferLevel} {item.unit}
-                                    </TableCell>
-                                    <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                        {item.minimumLevel || 0} {item.unit}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {item.currentQuantity < item.bufferLevel ? (
-                                            <Chip label="LOW STOCK" color="error" size="small" />
-                                        ) : (
-                                            <Chip label="Good" color="success" size="small" />
-                                        )}
-                                    </TableCell>
-                                    <TableCell align="center">
-                                        {pendingItems.has(item.id) ? (
-                                            <Chip
-                                                label={`Pending: ${pendingItems.get(item.id)} ${item.unit}`}
-                                                color="warning"
-                                                variant="outlined"
-                                                size="small"
-                                            />
-                                        ) : (
-                                            <Button
-                                                variant="outlined"
-                                                color="warning"
-                                                size="small"
-                                                startIcon={<AddAlertIcon />}
-                                                onClick={() => handleRestockRequest(item)}
-                                            >
-                                                Restock
-                                            </Button>
-                                        )}
-                                        <Box display="inline-flex" ml={1}>
-                                            <IconButton size="small" onClick={() => handleEditItem(item)} title="Edit Details">
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                            <IconButton size="small" onClick={() => handleDeleteItem(item.id)} color="error" title="Delete Item">
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Box>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                            {!loading && items.length === 0 && !error && (
-                                <TableRow>
-                                    <TableCell colSpan={8} align="center">No inventory items found.</TableCell>
-                                </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </CardContent>
-            </Card>
 
             {/* Transaction Modal */}
             <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>

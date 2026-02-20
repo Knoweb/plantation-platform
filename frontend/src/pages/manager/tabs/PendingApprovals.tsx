@@ -1,4 +1,4 @@
-import { Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, ToggleButton, ToggleButtonGroup, Grid } from '@mui/material';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -8,7 +8,6 @@ import axios from 'axios';
 export default function PendingApprovals() {
     // Data State
     const [pendingItems, setPendingItems] = useState<any[]>([]);
-    const [divisions, setDivisions] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
@@ -24,6 +23,7 @@ export default function PendingApprovals() {
     const [approveOpen, setApproveOpen] = useState(false);
     const [approveItem, setApproveItem] = useState<any>(null);
     const [approveQty, setApproveQty] = useState('');
+    const [approveRemarks, setApproveRemarks] = useState('');
 
     // Muster Review State (Morning Muster)
     const [musterReviewItem, setMusterReviewItem] = useState<any>(null);
@@ -65,7 +65,6 @@ export default function PendingApprovals() {
             ]);
 
             const divMap = new Map(divRes.data.map((d: any) => [d.divisionId, d.name]));
-            setDivisions(divRes.data);
 
             workItems = workRes.data
                 .filter((item: any) => item.workType !== 'Morning Muster' && item.workType !== 'Evening Muster')
@@ -76,12 +75,14 @@ export default function PendingApprovals() {
                     details: item.details && item.details.startsWith('[') ? 'Detailed Muster Plan' : `${item.details || ''}`,
                     detailsRaw: item.details,
                     date: item.workDate,
+                    time: '-',
+                    status: item.status || 'PENDING',
                     source: 'WORK',
                     quantity: item.workerCount,
                     divisionId: item.divisionId,
                     divisionName: divMap.get(item.divisionId) || item.divisionId || 'N/A'
                 }));
-        } catch (e) {
+        } catch (e: any) {
             console.error("Failed to load work items", e);
         }
 
@@ -94,17 +95,23 @@ export default function PendingApprovals() {
             setInventoryItems(itemsRes.data);
 
             invItems = invRes.data
-                .filter((t: any) => t.type === 'RESTOCK_REQUEST' && t.status === viewStatus)
+                .filter((t: any) => (t.type === 'RESTOCK_REQUEST' || t.type === 'FO_REQUISITION') && t.status === viewStatus)
                 .map((t: any) => ({
                     id: t.id,
                     displayId: `INV-${t.id}`,
-                    type: 'Stock Refill',
+                    type: t.type === 'FO_REQUISITION' ? 'FO Requisition' : 'Stock Refill',
                     details: `${t.itemName}`,
                     itemId: t.itemId,
                     quantity: t.quantity,
                     issuedTo: t.issuedTo,
                     date: t.date?.split('T')[0],
-                    source: 'INVENTORY'
+                    time: t.date?.split('T')[1]?.substring(0, 5) || '-',
+                    status: t.status || 'PENDING',
+                    divisionId: t.divisionId,
+                    divisionName: t.divisionName || t.divisionId || '-',
+                    fieldName: t.fieldName || t.fieldId || '-',
+                    source: 'INVENTORY',
+                    actualType: t.type
                 }));
         } catch (e) {
             console.warn("Inventory service unavailable", e);
@@ -132,14 +139,24 @@ export default function PendingApprovals() {
 
     const handleApprove = (item: any) => {
         if (item.source === 'INVENTORY') {
-            const isAuto = item.issuedTo && (item.issuedTo.includes('Auto-Refill') || item.issuedTo.includes('SYSTEM'));
-            setApproveItem({ ...item, isAuto });
-            setApproveQty(isAuto ? '' : item.quantity);
-            setApproveOpen(true);
+            if (item.actualType === 'FO_REQUISITION') {
+                setApproveItem({ ...item, isFORequisition: true, isAuto: false });
+                setApproveQty(item.quantity);
+                setApproveRemarks('');
+                setApproveOpen(true);
+            } else {
+                const isAuto = item.issuedTo && (item.issuedTo.includes('Auto-Refill') || item.issuedTo.includes('SYSTEM'));
+                setApproveItem({ ...item, isAuto, isFORequisition: false });
+                setApproveQty(isAuto ? '' : item.quantity);
+                setApproveRemarks('');
+                setApproveOpen(true);
+            }
         } else {
             setMusterReviewItem(item);
         }
     };
+
+
 
     const handleConfirmMusterApprove = async () => {
         if (!musterReviewItem) return;
@@ -156,12 +173,25 @@ export default function PendingApprovals() {
     const handleConfirmApprove = async () => {
         if (!approveItem || !approveQty) return;
         try {
-            await axios.put(`/api/inventory/transactions/${approveItem.id}/status?status=APPROVED&quantity=${approveQty}`);
+            await axios.put(`/api/inventory/transactions/${approveItem.id}/status?status=APPROVED&quantity=${approveQty}&remarks=${encodeURIComponent(approveRemarks)}`);
             setApproveOpen(false);
             fetchPending();
             showNotification("Inventory Request Approved", 'success');
-        } catch (e) {
+        } catch (e: any) {
             showNotification("Failed to approve inventory.", 'error');
+        }
+    };
+
+    const handleRejectInv = async (item: any) => {
+        if (!window.confirm("Are you sure you want to REJECT this request?")) return;
+        try {
+            await axios.put(`/api/inventory/transactions/${item.id}/status?status=DECLINED&remarks=${encodeURIComponent(approveRemarks)}`);
+            fetchPending();
+            showNotification("Request Rejected", "success");
+            setApproveOpen(false);
+        } catch (e) {
+            console.error("Reject failed", e);
+            showNotification("Failed to reject request", "error");
         }
     };
 
@@ -181,7 +211,7 @@ export default function PendingApprovals() {
                         <ToggleButtonGroup
                             value={viewStatus}
                             exclusive
-                            onChange={(e, newStatus) => { if (newStatus) setViewStatus(newStatus); }}
+                            onChange={(_e, newStatus) => { if (newStatus) setViewStatus(newStatus); }}
                             size="small"
                         >
                             <ToggleButton value="PENDING">Pending</ToggleButton>
@@ -205,8 +235,11 @@ export default function PendingApprovals() {
                             <TableRow>
                                 <TableCell>ID</TableCell>
                                 <TableCell>Type</TableCell>
+                                <TableCell>Requested By</TableCell>
                                 <TableCell>Division</TableCell>
                                 <TableCell>Date</TableCell>
+                                <TableCell>Time</TableCell>
+                                <TableCell>Status</TableCell>
                                 <TableCell>Details</TableCell>
                                 <TableCell align="right">Action</TableCell>
                             </TableRow>
@@ -228,34 +261,34 @@ export default function PendingApprovals() {
                                         <TableCell>{item.displayId}</TableCell>
                                         <TableCell>{item.type}</TableCell>
                                         <TableCell>
-                                            {item.source === 'WORK' ? <Chip label={item.divisionName} size="small" variant="outlined" /> : '-'}
+                                            <span style={{ fontWeight: 600 }}>{item.source === 'INVENTORY' && item.issuedTo ? item.issuedTo.split(' - ')[0] : 'System/Manager'}</span>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Chip label={item.divisionName || '-'} size="small" variant="outlined" />
                                         </TableCell>
                                         <TableCell>{item.date}</TableCell>
+                                        <TableCell>{item.time}</TableCell>
+                                        <TableCell>
+                                            <Chip label={item.status} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} />
+                                        </TableCell>
                                         <TableCell><Typography variant="body2">{item.details}</Typography></TableCell>
                                         <TableCell align="right">
-                                            {item.source === 'WORK' ? (
-                                                <Box display="flex" gap={1} justifyContent="flex-end">
+                                            <Box display="flex" gap={1} justifyContent="flex-end">
+                                                {viewStatus === 'PENDING' && (
                                                     <IconButton size="small" color="error" onClick={() => handleDelete(item)} title="Delete Record">
                                                         <DeleteIcon />
                                                     </IconButton>
-                                                    <Button
-                                                        size="small"
-                                                        variant="contained"
-                                                        color={viewStatus === 'APPROVED' ? 'inherit' : 'primary'}
-                                                        startIcon={<VisibilityIcon />}
-                                                        onClick={() => setMusterReviewItem(item)}
-                                                    >
-                                                        {viewStatus === 'APPROVED' ? 'View' : 'Review'}
-                                                    </Button>
-                                                </Box>
-                                            ) : (
-                                                viewStatus === 'PENDING' && (
-                                                    <>
-                                                        <Button size="small" variant="outlined" color="error" sx={{ mr: 1 }} onClick={() => handleDelete(item)}>Reject</Button>
-                                                        <Button size="small" variant="contained" color="primary" onClick={() => handleApprove(item)}>Approve</Button>
-                                                    </>
-                                                )
-                                            )}
+                                                )}
+                                                <Button
+                                                    size="small"
+                                                    variant="contained"
+                                                    color={viewStatus === 'APPROVED' ? 'inherit' : 'primary'}
+                                                    startIcon={<VisibilityIcon />}
+                                                    onClick={() => handleApprove(item)}
+                                                >
+                                                    View
+                                                </Button>
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))}
@@ -270,51 +303,115 @@ export default function PendingApprovals() {
             </Card>
 
             {/* Inventory Approval Dialog */}
-            <Dialog open={approveOpen} onClose={() => setApproveOpen(false)}>
-                <DialogTitle>Approve Refill Request</DialogTitle>
-                <DialogContent sx={{ minWidth: 350, pt: 2 }}>
-                    <Typography variant="body1" gutterBottom>
-                        Refilling for: <strong>{approveItem?.details}</strong>
+            <Dialog open={approveOpen} onClose={() => setApproveOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', borderBottom: '1px solid #c8e6c9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6" fontWeight="bold">
+                        {approveItem?.actualType === 'FO_REQUISITION' ? 'Review Order Request' : 'Approve Refill Request'}
                     </Typography>
-                    {(() => {
-                        const invItem = inventoryItems.find(i => i.id === approveItem?.itemId);
-                        return invItem ? (
-                            <Box sx={{ mb: 2, p: 1, bgcolor: '#f0faff', borderRadius: 1 }}>
-                                <Typography variant="caption" display="block">Buffer Level: <strong>{invItem.bufferLevel} {invItem.unit}</strong></Typography>
-                                <Typography variant="caption" display="block">Current Stock: <strong>{invItem.currentQuantity} {invItem.unit}</strong></Typography>
-                            </Box>
-                        ) : null;
-                    })()}
-                    {approveItem?.isAuto ? (
-                        <TextField
-                            autoFocus
-                            fullWidth
-                            label="Quantity to Refill"
-                            type="number"
-                            value={approveQty}
-                            onChange={(e) => setApproveQty(e.target.value)}
-                            placeholder="Enter amount"
-                            helperText="System Auto-Request: Please specify refill amount."
-                        />
+                    <Chip label={approveItem?.status || 'PENDING'} color={approveItem?.status === 'APPROVED' ? "success" : "warning"} size="small" />
+                </DialogTitle>
+                <DialogContent sx={{ minWidth: 350, pt: 3 }}>
+                    {approveItem?.actualType === 'FO_REQUISITION' ? (
+                        <Grid container spacing={2}>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Item</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.details}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Quantity Request</Typography>
+                                <Typography variant="body1" fontWeight="bold">
+                                    {approveItem?.quantity} {inventoryItems.find((i: any) => i.id === approveItem?.itemId)?.unit}
+                                </Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Division</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.divisionName || '-'}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Field</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.fieldName || '-'}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Date & Time</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.date} {approveItem?.time !== '-' ? approveItem?.time : ''}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 6 }}>
+                                <Typography variant="caption" color="text.secondary">Requested By</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[0] || '-'}</Typography>
+                            </Grid>
+                            <Grid size={{ xs: 12 }}>
+                                <Typography variant="caption" color="text.secondary">Remarks</Typography>
+                                <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[1] || '-'}</Typography>
+                            </Grid>
+                        </Grid>
                     ) : (
-                        <Box mt={2}>
-                            <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary' }}>
-                                Store Keeper Requested Amount:
+                        <>
+                            <Typography variant="body1" gutterBottom>
+                                Refilling for: <strong>{approveItem?.details}</strong>
                             </Typography>
-                            <Typography variant="h5" color="primary" fontWeight="bold">
-                                {approveQty} {inventoryItems.find(i => i.id === approveItem?.itemId)?.unit}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                Click 'Confirm Approval' to accept this request.
-                            </Typography>
+                            {(() => {
+                                const invItem = inventoryItems.find(i => i.id === approveItem?.itemId);
+                                return invItem ? (
+                                    <Box sx={{ mb: 2, p: 1, bgcolor: '#f0faff', borderRadius: 1 }}>
+                                        <Typography variant="caption" display="block">Buffer Level: <strong>{invItem.bufferLevel} {invItem.unit}</strong></Typography>
+                                        <Typography variant="caption" display="block">Current Stock: <strong>{invItem.currentQuantity} {invItem.unit}</strong></Typography>
+                                    </Box>
+                                ) : null;
+                            })()}
+                            {approveItem?.isAuto ? (
+                                <TextField
+                                    autoFocus
+                                    fullWidth
+                                    label="Quantity to Refill"
+                                    type="number"
+                                    value={approveQty}
+                                    onChange={(e) => setApproveQty(e.target.value)}
+                                    placeholder="Enter amount"
+                                    helperText="System Auto-Request: Please specify refill amount."
+                                />
+                            ) : (
+                                <Box mt={2}>
+                                    <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary' }}>
+                                        Store Keeper Requested Amount:
+                                    </Typography>
+                                    <Typography variant="h5" color="primary" fontWeight="bold">
+                                        {approveQty} {inventoryItems.find(i => i.id === approveItem?.itemId)?.unit}
+                                    </Typography>
+                                    <Typography variant="caption" color="text.secondary">
+                                        Click 'Confirm Approval' to accept this request.
+                                    </Typography>
+                                </Box>
+                            )}
+                        </>
+                    )}
+                    {approveItem?.status !== 'APPROVED' && (
+                        <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
+                            <TextField
+                                fullWidth
+                                label="Manager Remarks (Optional)"
+                                multiline
+                                rows={2}
+                                value={approveRemarks}
+                                onChange={(e) => setApproveRemarks(e.target.value)}
+                                placeholder="Add notes, reasons for rejection, or delivery instructions..."
+                            />
                         </Box>
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setApproveOpen(false)}>Cancel</Button>
-                    <Button variant="contained" color="success" onClick={handleConfirmApprove}>
-                        Confirm Approval
-                    </Button>
+                <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', justifyContent: approveItem?.status === 'APPROVED' ? 'flex-end' : 'space-between' }}>
+                    {approveItem?.status !== 'APPROVED' ? (
+                        <>
+                            <Button variant="outlined" color="error" onClick={() => handleRejectInv(approveItem)}>Reject</Button>
+                            <Box>
+                                <Button onClick={() => setApproveOpen(false)} sx={{ mr: 1 }}>Cancel</Button>
+                                <Button variant="contained" color="success" onClick={handleConfirmApprove}>
+                                    {approveItem?.isFORequisition ? 'Approve' : 'Confirm Approval'}
+                                </Button>
+                            </Box>
+                        </>
+                    ) : (
+                        <Button onClick={() => setApproveOpen(false)}>Close</Button>
+                    )}
                 </DialogActions>
             </Dialog>
 

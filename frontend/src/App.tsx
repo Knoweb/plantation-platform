@@ -32,6 +32,8 @@ import MorningMuster from './pages/field-officer/MorningMuster';
 import DistributionOfWorks from './pages/field-officer/tabs/DistributionOfWorks';
 import LeaveApplication from './pages/field-officer/tabs/LeaveApplication';
 import LeaveManagement from './pages/manager/tabs/LeaveManagement';
+import OrderRequest from './pages/field-officer/tabs/OrderRequest';
+import PendingOrders from './pages/field-officer/tabs/PendingOrders';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -42,7 +44,7 @@ const DashboardHome = () => {
   if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
   if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
   if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
-  if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/inventory" replace />;
+  if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/store/main" replace />;
 
   return <Navigate to="/dashboard/admin" replace />;
 };
@@ -66,8 +68,11 @@ function App() {
           <Route path="manager" element={<ManagerDashboard />} />
           <Route path="field" element={<FieldOfficerDashboard />} />
           <Route path="store" element={<StoreKeeperDashboard />} />
+          <Route path="store/main" element={<StoreKeeperDashboard />} />
+          <Route path="store/inventory" element={<StoreKeeperDashboard />} />
+          <Route path="store/approvals" element={<StoreKeeperDashboard />} />
           <Route path="store/history" element={<StoreTransactionHistory />} />
-          <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Legacy/Direct link */}
+          <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Legacy */}
 
           {/* Feature Routes */}
           <Route path="users" element={<UserManagement />} />
@@ -85,6 +90,8 @@ function App() {
           <Route path="leave-application" element={<LeaveApplication />} />
           <Route path="muster-approval" element={<MusterApproval />} />
           <Route path="muster-review" element={<MusterReview />} />
+          <Route path="order-request" element={<OrderRequest />} />
+          <Route path="pending-orders" element={<PendingOrders />} />
           <Route path="stock" element={<GeneralStock />} />
           <Route path="kpis" element={<KPIs />} />
           <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Main Store Keeper View */}

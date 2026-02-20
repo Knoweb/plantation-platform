@@ -48,6 +48,8 @@ const menuItems = [
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
     { text: 'Leave Application', icon: <EventNoteIcon />, path: '/dashboard/leave-application', roles: ['FIELD_OFFICER'] },
+    { text: 'Order Request', icon: <InventoryIcon />, path: '/dashboard/order-request', roles: ['FIELD_OFFICER'] },
+    { text: 'Request / Pending Orders', icon: <HistoryIcon />, path: '/dashboard/pending-orders', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
@@ -70,7 +72,9 @@ const menuItems = [
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
 
     // Store Keeper
-    { text: 'Inventory', icon: <InventoryIcon />, path: '/dashboard/inventory', roles: ['STORE_KEEPER'] },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/store/main', roles: ['STORE_KEEPER'] },
+    { text: 'Inventory', icon: <InventoryIcon />, path: '/dashboard/store/inventory', roles: ['STORE_KEEPER'] },
+    { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/store/approvals', roles: ['STORE_KEEPER'] },
     { text: 'Recent Transactions', icon: <HistoryIcon />, path: '/dashboard/store/history', roles: ['STORE_KEEPER'] },
 
     // Settings
@@ -98,11 +102,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [restockCount, setRestockCount] = useState(0);
     const [musterReviewCount, setMusterReviewCount] = useState(0);
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
+    const [storePendingCount, setStorePendingCount] = useState(0); // Store Keeper Approved FOs count
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
 
     useEffect(() => {
         if (userSession.tenantId) {
-            if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER') {
+            if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER' || userRole === 'STORE_KEEPER') {
                 fetchAlerts();
 
                 // Poll every 10 seconds for real-time updates
@@ -132,8 +137,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             // Restock Requests (Pending) - For Manager + Muster Review
             if (userRole === 'MANAGER') {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
-                // Count Pending Only
-                const reqCount = transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)).length;
+                // Count Pending Restocks OR FO Requisitions
+                const reqCount = transRes.data.filter((t: any) =>
+                    (t.type === 'RESTOCK_REQUEST' || t.type === 'FO_REQUISITION') &&
+                    (t.status === 'PENDING' || t.status === null)
+                ).length;
                 setRestockCount(reqCount);
 
                 // Muster Review Count
@@ -143,6 +151,15 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     (item.status === 'PENDING' || !item.status)
                 ).length;
                 setMusterReviewCount(pendingMusters);
+            }
+
+            // Store Keeper Alerts
+            if (userRole === 'STORE_KEEPER') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const approvedCount = transRes.data.filter((t: any) =>
+                    t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
+                ).length;
+                setStorePendingCount(approvedCount);
             }
 
             // Field Officer Alerts
@@ -304,8 +321,16 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             }}
                         >
                             <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
-                                {item.text === 'General Stock' && (alertCount + restockCount) > 0 ? (
+                                {item.text === 'Pending Approvals' && userRole === 'MANAGER' && (alertCount + restockCount) > 0 ? (
                                     <Badge badgeContent={alertCount + restockCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Pending Approvals' && userRole === 'STORE_KEEPER' && storePendingCount > 0 ? (
+                                    <Badge badgeContent={storePendingCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Dashboard' && userRole === 'STORE_KEEPER' && alertCount > 0 ? (
+                                    <Badge badgeContent={alertCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : item.text === 'Muster Review' && musterReviewCount > 0 ? (

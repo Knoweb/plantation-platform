@@ -144,16 +144,37 @@ export default function Login() {
                     </Box>
 
                     {/* Header */}
-                    <Box mt={2}>
-                        <Typography variant="h4" fontWeight="bold" color="text.primary" gutterBottom>
+                    <Box mt={3} textAlign="center" mb={2}>
+                        <Typography variant="h4" sx={{
+                            fontWeight: 900,
+                            letterSpacing: '-0.5px',
+                            mb: 1.5,
+                            fontFamily: '"Inter", "Roboto", sans-serif',
+                            background: 'linear-gradient(to right, #1b5e20 0%, #4caf50 100%)',
+                            WebkitBackgroundClip: 'text',
+                            WebkitTextFillColor: 'transparent',
+                        }}>
                             Welcome Back
                         </Typography>
-                        <Typography variant="body1" color="text.secondary">
-                            Enter your details to access your workspace.
+                        <Typography variant="body1" sx={{ color: '#555', fontWeight: 500, letterSpacing: '0.2px' }}>
+                            Enter your credentials to access your workspace.
                         </Typography>
                     </Box>
 
-                    {error && <Alert severity="error" variant="outlined" sx={{ borderRadius: 2 }}>{error}</Alert>}
+                    {error && (
+                        <Alert
+                            severity="error"
+                            variant="filled"
+                            sx={{
+                                borderRadius: 3,
+                                bgcolor: '#d32f2f',
+                                color: '#fff',
+                                boxShadow: '0 4px 12px rgba(211, 47, 47, 0.2)'
+                            }}
+                        >
+                            {error}
+                        </Alert>
+                    )}
 
                     {/* Form */}
                     <Box component="form" onSubmit={handleLogin} noValidate width="100%">
@@ -169,12 +190,21 @@ export default function Login() {
                             value={formData.username}
                             onChange={handleChange}
                             variant="outlined"
+                            InputLabelProps={{ sx: { color: '#888', fontWeight: 500 } }}
                             sx={{
-                                mb: 2,
+                                mb: 2.5,
                                 '& .MuiOutlinedInput-root': {
-                                    borderRadius: 3,
-                                    bgcolor: 'grey.50',
-                                    '&.Mui-focused': { bgcolor: 'background.paper' }
+                                    borderRadius: '12px',
+                                    bgcolor: '#f4fbf5',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    '& fieldset': { borderColor: '#d1e3d3', borderWidth: '1px' },
+                                    '&:hover fieldset': { borderColor: '#81c784' },
+                                    '&.Mui-focused': {
+                                        bgcolor: '#ffffff',
+                                        boxShadow: '0 4px 24px rgba(76, 175, 80, 0.12)',
+                                        '& fieldset': { borderColor: '#2e7d32', borderWidth: '1.5px' },
+                                    },
+                                    '& input': { py: 2, px: 2 }
                                 }
                             }}
                         />
@@ -191,12 +221,21 @@ export default function Login() {
                             value={formData.password}
                             onChange={handleChange}
                             variant="outlined"
+                            InputLabelProps={{ sx: { color: '#888', fontWeight: 500 } }}
                             sx={{
-                                mb: 1,
+                                mb: 1.5,
                                 '& .MuiOutlinedInput-root': {
-                                    borderRadius: 3,
-                                    bgcolor: 'grey.50',
-                                    '&.Mui-focused': { bgcolor: 'background.paper' }
+                                    borderRadius: '12px',
+                                    bgcolor: '#f4fbf5',
+                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    '& fieldset': { borderColor: '#d1e3d3', borderWidth: '1px' },
+                                    '&:hover fieldset': { borderColor: '#81c784' },
+                                    '&.Mui-focused': {
+                                        bgcolor: '#ffffff',
+                                        boxShadow: '0 4px 24px rgba(76, 175, 80, 0.12)',
+                                        '& fieldset': { borderColor: '#2e7d32', borderWidth: '1.5px' },
+                                    },
+                                    '& input': { py: 2, px: 2 }
                                 }
                             }}
                             InputProps={{
@@ -207,6 +246,7 @@ export default function Login() {
                                             onClick={() => setShowPassword(!showPassword)}
                                             onMouseDown={(e) => e.preventDefault()}
                                             edge="end"
+                                            sx={{ color: '#888', '&:hover': { color: '#1a1a1a' } }}
                                         >
                                             {showPassword ? <VisibilityOff /> : <Visibility />}
                                         </IconButton>
@@ -215,8 +255,8 @@ export default function Login() {
                             }}
                         />
 
-                        <Box display="flex" justifyContent="flex-end" mb={2}>
-                            <Link href="/forgot-password" underline="hover" color="primary" variant="body2" fontWeight="600">
+                        <Box display="flex" justifyContent="flex-end" mb={3}>
+                            <Link href="/forgot-password" underline="hover" sx={{ color: '#2e7d32', fontSize: '0.875rem', fontWeight: 600 }}>
                                 Forgot Password?
                             </Link>
                         </Box>
@@ -227,26 +267,33 @@ export default function Login() {
                             variant="contained"
                             disabled={loading}
                             sx={{
-                                mt: 1,
-                                mb: 3,
-                                py: 1.8,
-                                borderRadius: 3,
+                                mb: 4,
+                                py: '16px',
+                                borderRadius: '12px',
                                 fontSize: '1rem',
-                                fontWeight: 'bold',
+                                fontWeight: '700',
                                 textTransform: 'none',
-                                bgcolor: '#2e7d32',
-                                '&:hover': { bgcolor: '#1b5e20' },
-                                boxShadow: '0 8px 16px rgba(46, 125, 50, 0.24)'
+                                letterSpacing: '0.5px',
+                                background: 'linear-gradient(135deg, #2e7d32 0%, #1b5e20 100%)',
+                                transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                '&:hover': {
+                                    background: 'linear-gradient(135deg, #1b5e20 0%, #0d3b10 100%)',
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 12px 24px rgba(46, 125, 50, 0.3)'
+                                },
+                                '&:active': { transform: 'translateY(1px)' },
+                                boxShadow: '0 6px 16px rgba(46, 125, 50, 0.2)'
                             }}
                         >
                             {loading ? 'Signing in...' : 'Sign In'}
                         </Button>
 
                         <Box display="flex" justifyContent="center">
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography variant="body2" sx={{ color: '#666' }}>
                                 New on our platform?{' '}
-                                <Link href="/register" underline="hover" color="primary" fontWeight="bold">
+                                <Link href="/register" underline="hover" sx={{ color: '#2e7d32', fontWeight: 700 }}>
                                     Create an account
+
                                 </Link>
                             </Typography>
                         </Box>
@@ -289,10 +336,10 @@ export default function Login() {
                 {/* Hero Content Overlay (Bottom Left) */}
                 <Box sx={{ position: 'absolute', bottom: 60, left: 60, maxWidth: 520, color: 'white', zIndex: 2 }}>
                     <Typography variant="h3" fontWeight="800" letterSpacing="-0.5px" gutterBottom sx={{ textShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>
-                        Cultivating Future Growth.
+                        Rooted in Tradition. Powered by Data.
                     </Typography>
-                    <Typography variant="h6" sx={{ opacity: 0.9, textShadow: '0 2px 8px rgba(0,0,0,0.5)', fontWeight: 400 }}>
-                        Smart management for modern tea and rubber estates. Monitor yields, manage field officers, and optimize production.
+                    <Typography variant="h6" sx={{ opacity: 0.9, textShadow: '0 2px 8px rgba(0,0,0,0.5)', fontWeight: 400, lineHeight: 1.5 }}>
+                        Elevate your estate's potential with end-to-end digital mastery. From harvest tracking to seamless inventory, redefine what your plantation can achieve.
                     </Typography>
                 </Box>
             </Grid>

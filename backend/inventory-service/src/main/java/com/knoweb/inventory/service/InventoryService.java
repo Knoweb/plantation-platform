@@ -1,8 +1,10 @@
 package com.knoweb.inventory.service;
 
 import com.knoweb.inventory.dto.StockTransactionRequest;
+import com.knoweb.inventory.entity.DivisionalStock;
 import com.knoweb.inventory.entity.InventoryItem;
 import com.knoweb.inventory.entity.InventoryTransaction;
+import com.knoweb.inventory.repository.DivisionalStockRepository;
 import com.knoweb.inventory.repository.InventoryItemRepository;
 import com.knoweb.inventory.repository.InventoryTransactionRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -20,12 +22,19 @@ public class InventoryService {
     @Autowired
     private InventoryTransactionRepository transactionRepository;
 
+    @Autowired
+    private DivisionalStockRepository divisionalStockRepository;
+
     public List<InventoryItem> getAllItems(String tenantId) {
         // Ensure new items are seeded
         // if (repository.findByTenantIdAndName(tenantId, "Glyphosate 360").isEmpty()) {
         // seedData(tenantId);
         // }
         return repository.findByTenantId(tenantId);
+    }
+    
+    public List<DivisionalStock> getDivisionalStock(String tenantId, String divisionId) {
+        return divisionalStockRepository.findByTenantIdAndDivisionId(tenantId, divisionId);
     }
 
     public InventoryItem createItem(InventoryItem item) {
@@ -51,27 +60,9 @@ public class InventoryService {
             item.setCurrentQuantity(item.getCurrentQuantity() - req.getQuantity());
 
             // Automated Low Stock Alert Check
-            if (item.getCurrentQuantity() < item.getBufferLevel()) {
-                boolean pendingExists = transactionRepository.findByTenantIdOrderByDateDesc(req.getTenantId())
-                        .stream()
-                        .anyMatch(t -> t.getItemId().equals(item.getId())
-                                && "RESTOCK_REQUEST".equals(t.getType())
-                                && "PENDING".equals(t.getStatus()));
-
-                if (!pendingExists) {
-                    InventoryTransaction autoReq = new InventoryTransaction();
-                    autoReq.setItemId(item.getId());
-                    autoReq.setItemName(item.getName());
-                    autoReq.setType("RESTOCK_REQUEST");
-                    autoReq.setQuantity(item.getBufferLevel()); // Default: Refill a buffer's worth
-                    autoReq.setDate(LocalDateTime.now());
-                    autoReq.setTenantId(req.getTenantId());
-                    autoReq.setIssuedTo("SYSTEM (Low Stock Auto-Refill)");
-                    autoReq.setStatus("PENDING");
-                    transactionRepository.save(autoReq);
-                    System.out.println("Auto-generated Restock Request for " + item.getName());
-                }
-            }
+            checkLowStockAlert(item, req.getTenantId());
+        } else if ("FO_REQUISITION".equals(req.getType())) {
+            // Just created, no stock deducted yet
         }
 
         InventoryItem savedItem = repository.save(item);
@@ -92,7 +83,7 @@ public class InventoryService {
         trans.setFieldId(req.getFieldId());
         trans.setFieldName(req.getFieldName());
 
-        if ("RESTOCK_REQUEST".equals(req.getType())) {
+        if ("RESTOCK_REQUEST".equals(req.getType()) || "FO_REQUISITION".equals(req.getType())) {
             trans.setStatus("PENDING");
         } else {
             trans.setStatus("COMPLETED");
@@ -107,12 +98,16 @@ public class InventoryService {
         return transactionRepository.findByTenantIdOrderByDateDesc(tenantId);
     }
 
-    public InventoryTransaction updateTransactionStatus(Long id, String status, Integer quantity) {
+    public InventoryTransaction updateTransactionStatus(Long id, String status, Integer quantity, String remarks) {
         InventoryTransaction trans = transactionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
         if (quantity != null && quantity > 0) {
             trans.setQuantity(quantity);
+        }
+        
+        if (remarks != null) {
+            trans.setManagerRemarks(remarks);
         }
 
         if ("APPROVED".equals(status) && "PENDING".equals(trans.getStatus())
@@ -124,10 +119,66 @@ public class InventoryService {
             repository.save(item);
             trans.setApprovedDate(LocalDateTime.now()); // Keep track of approval time
             trans.setDate(LocalDateTime.now()); // Update official transaction date to approval time
+        } else if ("ISSUED".equals(status) && "APPROVED".equals(trans.getStatus())
+                && "FO_REQUISITION".equals(trans.getType())) {
+            
+            // Issue to Division
+            InventoryItem item = repository.findById(trans.getItemId())
+                    .orElseThrow(() -> new RuntimeException("Item not found"));
+            
+            if (item.getCurrentQuantity() < trans.getQuantity()) {
+                throw new RuntimeException("Insufficient Stock to issue FO Requisition!");
+            }
+            
+            item.setCurrentQuantity(item.getCurrentQuantity() - trans.getQuantity());
+            repository.save(item);
+            
+            if (trans.getDivisionId() != null) {
+                DivisionalStock divStock = divisionalStockRepository
+                    .findByTenantIdAndDivisionIdAndItemId(trans.getTenantId(), trans.getDivisionId(), trans.getItemId())
+                    .orElseGet(() -> {
+                        DivisionalStock ds = new DivisionalStock();
+                        ds.setItemId(trans.getItemId());
+                        ds.setItemName(trans.getItemName());
+                        ds.setDivisionId(trans.getDivisionId());
+                        ds.setDivisionName(trans.getDivisionName());
+                        ds.setTenantId(trans.getTenantId());
+                        ds.setQuantity(0);
+                        return ds;
+                    });
+                divStock.setQuantity(divStock.getQuantity() + trans.getQuantity());
+                divisionalStockRepository.save(divStock);
+            }
+            
+            checkLowStockAlert(item, trans.getTenantId());
         }
 
         trans.setStatus(status);
         return transactionRepository.save(trans);
+    }
+    
+    private void checkLowStockAlert(InventoryItem item, String tenantId) {
+        if (item.getCurrentQuantity() < item.getBufferLevel()) {
+            boolean pendingExists = transactionRepository.findByTenantIdOrderByDateDesc(tenantId)
+                    .stream()
+                    .anyMatch(t -> t.getItemId().equals(item.getId())
+                            && "RESTOCK_REQUEST".equals(t.getType())
+                            && "PENDING".equals(t.getStatus()));
+
+            if (!pendingExists) {
+                InventoryTransaction autoReq = new InventoryTransaction();
+                autoReq.setItemId(item.getId());
+                autoReq.setItemName(item.getName());
+                autoReq.setType("RESTOCK_REQUEST");
+                autoReq.setQuantity(item.getBufferLevel()); // Default: Refill a buffer's worth
+                autoReq.setDate(LocalDateTime.now());
+                autoReq.setTenantId(tenantId);
+                autoReq.setIssuedTo("SYSTEM (Low Stock Auto-Refill)");
+                autoReq.setStatus("PENDING");
+                transactionRepository.save(autoReq);
+                System.out.println("Auto-generated Restock Request for " + item.getName());
+            }
+        }
     }
 
     private void seedData(String tenantId) {
