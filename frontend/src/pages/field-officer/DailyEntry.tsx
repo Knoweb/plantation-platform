@@ -787,7 +787,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         min="0"
                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
                                         style={{ ...inputStyle, borderColor: '#81c784' }}
-                                        value={item.amWeight}
+                                        value={item.amWeight ?? ''}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
@@ -803,7 +803,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         min="0"
                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
                                         style={{ ...inputStyle, borderColor: '#81c784' }}
-                                        value={item.pmWeight}
+                                        value={item.pmWeight ?? ''}
                                         onChange={(e) => {
                                             const val = e.target.value;
                                             if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
@@ -968,7 +968,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
                 <TableBody>
                     {/* Tea Section */}
                     {Object.entries(summary.Tea).map(([task, val]: any) => (
-                        <div key={task} style={{ display: 'contents' }}>
+                        <Fragment key={task}>
                             {Object.entries(val.fields).map(([field, count]: any, idx) => (
                                 <TableRow key={`${task}-${field}`}>
                                     {idx === 0 && (
@@ -984,7 +984,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
                                     <TableCell align="center"><strong>{val.count}</strong></TableCell>
                                 </TableRow>
                             )}
-                        </div>
+                        </Fragment>
                     ))}
                     {Object.keys(summary.Tea).length > 0 && (
                         <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
@@ -995,7 +995,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
 
                     {/* Rubber Section */}
                     {Object.entries(summary.Rubber).map(([task, val]: any) => (
-                        <div key={task} style={{ display: 'contents' }}>
+                        <Fragment key={task}>
                             {Object.entries(val.fields).map(([field, count]: any, idx) => (
                                 <TableRow key={`${task}-${field}`}>
                                     {idx === 0 && (
@@ -1011,7 +1011,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
                                     <TableCell align="center"><strong>{val.count}</strong></TableCell>
                                 </TableRow>
                             )}
-                        </div>
+                        </Fragment>
                     ))}
                     {Object.keys(summary.Rubber).length > 0 && (
                         <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
@@ -1022,7 +1022,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
 
                     {/* General Section */}
                     {Object.entries(summary.General).map(([task, val]: any) => (
-                        <div key={task} style={{ display: 'contents' }}>
+                        <Fragment key={task}>
                             {Object.entries(val.fields).map(([field, count]: any, idx) => (
                                 <TableRow key={`${task}-${field}`}>
                                     {idx === 0 && (
@@ -1032,7 +1032,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
                                     <TableCell align="center">{count}</TableCell>
                                 </TableRow>
                             ))}
-                        </div>
+                        </Fragment>
                     ))}
                     {Object.keys(summary.General).length > 0 && (
                         <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
