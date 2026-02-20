@@ -1,7 +1,7 @@
-package com.knoweb.tenant.controller;
+package com.knoweb.operation.controller;
 
-import com.knoweb.tenant.dto.DailyWorkRequest;
-import com.knoweb.tenant.service.DailyWorkService;
+import com.knoweb.operation.dto.DailyWorkRequest;
+import com.knoweb.operation.service.DailyWorkService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -9,7 +9,7 @@ import java.util.UUID;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/api/tenants/daily-work")
+@RequestMapping("/api/operations/daily-work")
 public class DailyWorkController {
 
     private final DailyWorkService dailyWorkService;

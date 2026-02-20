@@ -42,8 +42,8 @@ export default function AttendanceReport() {
             const dateParam = selectedDate ? `&date=${selectedDate}` : '';
 
             const [attRes, dwRes] = await Promise.all([
-                axios.get(`/api/tenants/attendance?tenantId=${tenantId}${dateParam}`),
-                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}${dateParam}`)
+                axios.get(`/api/operations/attendance?tenantId=${tenantId}${dateParam}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}${dateParam}`)
             ]);
 
             const dailyWorkMap = new Map();

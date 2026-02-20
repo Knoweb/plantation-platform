@@ -1,4 +1,4 @@
-package com.knoweb.tenant.dto;
+package com.knoweb.operation.dto;
 
 import java.time.LocalDate;
 import java.util.UUID;
@@ -12,7 +12,6 @@ public class DailyWorkRequest {
     private Double quantity;
     private Integer workerCount;
 
-    // Getters and Setters
     public UUID getTenantId() {
         return tenantId;
     }

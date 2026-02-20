@@ -29,7 +29,7 @@ export default function MusterReviewManager() {
         setLoading(true);
         try {
             const [workRes, divRes, workerRes] = await Promise.all([
-                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
                 axios.get(`/api/divisions?tenantId=${tenantId}`),
                 axios.get(`/api/workers?tenantId=${tenantId}`)
             ]);
@@ -88,7 +88,7 @@ export default function MusterReviewManager() {
         if (!selectedItem) return;
         try {
             // Updated Endpoint: /approve (Backend has @PutMapping("/{id}/approve"))
-            await axios.put(`/api/tenants/daily-work/${selectedItem.id}/approve`);
+            await axios.put(`/api/operations/daily-work/${selectedItem.id}/approve`);
             setNotification({ open: true, message: "Muster Approved Successfully", severity: 'success' });
             setSelectedItem(null);
             fetchPending();
@@ -101,10 +101,10 @@ export default function MusterReviewManager() {
         if (!selectedItem || (viewStatus === 'PENDING' && !window.confirm("Reject this muster?")) || (viewStatus !== 'PENDING' && !window.confirm("Delete this record permanently?"))) return;
         try {
             if (viewStatus === 'PENDING') {
-                await axios.put(`/api/tenants/daily-work/${selectedItem.id}/reject`);
+                await axios.put(`/api/operations/daily-work/${selectedItem.id}/reject`);
                 setNotification({ open: true, message: "Muster Rejected", severity: 'warning' });
             } else {
-                await axios.delete(`/api/tenants/daily-work/${selectedItem.id}`);
+                await axios.delete(`/api/operations/daily-work/${selectedItem.id}`);
                 setNotification({ open: true, message: "Record Deleted", severity: 'success' });
             }
             setSelectedItem(null);

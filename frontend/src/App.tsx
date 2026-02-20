@@ -30,6 +30,8 @@ import AttendanceReport from './pages/manager/tabs/AttendanceReport';
 import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 import MorningMuster from './pages/field-officer/MorningMuster';
 import DistributionOfWorks from './pages/field-officer/tabs/DistributionOfWorks';
+import LeaveApplication from './pages/field-officer/tabs/LeaveApplication';
+import LeaveManagement from './pages/manager/tabs/LeaveManagement';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -80,6 +82,7 @@ function App() {
           <Route path="crop-achievements" element={<CropAchievements />} />
           <Route path="crop-ages" element={<CropAge />} />
           <Route path="distribution-works" element={<DistributionOfWorks />} />
+          <Route path="leave-application" element={<LeaveApplication />} />
           <Route path="muster-approval" element={<MusterApproval />} />
           <Route path="muster-review" element={<MusterReview />} />
           <Route path="stock" element={<GeneralStock />} />
@@ -91,6 +94,7 @@ function App() {
           <Route path="muster-review-manager" element={<MusterReviewManager />} />
           <Route path="crop-book" element={<CropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
+          <Route path="leave-management" element={<LeaveManagement />} />
         </Route>
 
         {/* Super Admin Routes */}

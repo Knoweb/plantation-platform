@@ -60,7 +60,7 @@ export default function PendingApprovals() {
         try {
             // Fetch Daily Work and Divisions
             const [workRes, divRes] = await Promise.all([
-                axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
                 axios.get(`/api/divisions?tenantId=${tenantId}`)
             ]);
 
@@ -118,7 +118,7 @@ export default function PendingApprovals() {
         if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this record?")) return;
         try {
             if (item.source === 'WORK') {
-                await axios.delete(`/api/tenants/daily-work/${item.id}`);
+                await axios.delete(`/api/operations/daily-work/${item.id}`);
             } else {
                 // Future: Inventory delete endpoint
             }
@@ -144,7 +144,7 @@ export default function PendingApprovals() {
     const handleConfirmMusterApprove = async () => {
         if (!musterReviewItem) return;
         try {
-            await axios.put(`/api/tenants/daily-work/${musterReviewItem.id}/approve`);
+            await axios.put(`/api/operations/daily-work/${musterReviewItem.id}/approve`);
             setMusterReviewItem(null);
             fetchPending();
             showNotification("Muster Approved", 'success');

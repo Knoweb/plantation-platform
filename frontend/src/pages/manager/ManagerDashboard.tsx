@@ -17,7 +17,7 @@ export default function ManagerDashboard() {
 
     const fetchPending = async () => {
         try {
-            const res = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&status=PENDING`);
+            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=PENDING`);
             setPendingItems(res.data);
         } catch (err) {
             console.error(err);
@@ -28,7 +28,7 @@ export default function ManagerDashboard() {
 
     const handleApprove = async (id: string) => {
         try {
-            await axios.put(`/api/tenants/daily-work/${id}/approve`);
+            await axios.put(`/api/operations/daily-work/${id}/approve`);
             fetchPending(); // Refresh
         } catch (err) {
             alert("Failed to approve.");

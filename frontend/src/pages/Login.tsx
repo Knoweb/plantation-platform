@@ -38,6 +38,7 @@ export default function Login() {
             const response = await axios.post('/api/tenants/login', formData);
             const sessionData = {
                 username: response.data.username,
+                fullName: response.data.fullName,
                 role: response.data.role,
                 estateName: response.data.companyName,
                 estateLogo: response.data.logoUrl,

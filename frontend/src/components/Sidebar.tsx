@@ -18,6 +18,7 @@ import SpaIcon from '@mui/icons-material/Spa';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
+import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 
 import GroupIcon from '@mui/icons-material/Group';
@@ -31,6 +32,7 @@ import EngineeringIcon from '@mui/icons-material/Engineering';
 import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ForestIcon from '@mui/icons-material/Forest';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
+import EventNoteIcon from '@mui/icons-material/EventNote';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
@@ -45,6 +47,7 @@ const menuItems = [
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
+    { text: 'Leave Application', icon: <EventNoteIcon />, path: '/dashboard/leave-application', roles: ['FIELD_OFFICER'] },
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
@@ -56,9 +59,12 @@ const menuItems = [
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER'] },
 
 
+    // Manager
+    { text: 'Leave Management', icon: <EventAvailableIcon />, path: '/dashboard/leave-management', roles: ['MANAGER'] },
+
     // Estate Admin / Manager
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/dashboard/users', roles: ['ESTATE_ADMIN'] }, // Removed MANAGER
-    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
+    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN', 'MANAGER'] },
 
     // Common Operational
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
@@ -131,12 +137,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 setRestockCount(reqCount);
 
                 // Muster Review Count
-                const workRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
+                const workRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
                 const pendingMusters = workRes.data.filter((item: any) =>
                     (item.workType === 'Morning Muster' || item.workType === 'Evening Muster') &&
                     (item.status === 'PENDING' || !item.status)
                 ).length;
-                setMusterReviewCount(pendingMusters);
                 setMusterReviewCount(pendingMusters);
             }
 
@@ -149,12 +154,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 const today = `${year}-${month}-${day}`;
 
                 // Fetch Today's Daily Work (Mappings)
-                const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
+                const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
                 const dwMap = new Map();
                 dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
 
                 // Fetch Today's Attendance to find active divisions (Mirroring DailyEntry.tsx logic)
-                const attRes = await axios.get(`/api/tenants/attendance?tenantId=${userSession.tenantId}&date=${today}`);
+                const attRes = await axios.get(`/api/operations/attendance?tenantId=${userSession.tenantId}&date=${today}`);
                 const activeDivIds = new Set();
 
                 attRes.data.forEach((rec: any) => {

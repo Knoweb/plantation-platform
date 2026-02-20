@@ -39,7 +39,12 @@ interface Worker {
     jobRole: string;
 }
 
+import { useNavigate } from 'react-router-dom';
+import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
+import EventNoteIcon from '@mui/icons-material/EventNote';
+
 export default function FieldOfficerDashboard() {
+    const navigate = useNavigate();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -232,6 +237,53 @@ export default function FieldOfficerDashboard() {
                         <Typography variant="h4" fontWeight="bold">{fertilizerStock}</Typography>
                         <Typography variant="caption" color="error.main">Store Level</Typography>
                     </Paper>
+                </Grid>
+            </Grid>
+
+            {/* Quick Actions */}
+            <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>Quick Actions</Typography>
+            <Grid container spacing={3} mb={4}>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card
+                        sx={{
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                            borderLeft: '4px solid #1b5e20'
+                        }}
+                        onClick={() => navigate('/dashboard/distribution-works')}
+                    >
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e8f5e9', mr: 2 }}>
+                                <WorkHistoryIcon sx={{ color: '#1b5e20', fontSize: 30 }} />
+                            </Box>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight="bold">Distribution of Works</Typography>
+                                <Typography variant="caption" color="text.secondary">Manage Monthly Plan</Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card
+                        sx={{
+                            cursor: 'pointer',
+                            transition: 'transform 0.2s, box-shadow 0.2s',
+                            '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
+                            borderLeft: '4px solid #fbc02d'
+                        }}
+                        onClick={() => navigate('/dashboard/leave-application')}
+                    >
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#fff9c4', mr: 2 }}>
+                                <EventNoteIcon sx={{ color: '#f57f17', fontSize: 30 }} />
+                            </Box>
+                            <Box>
+                                <Typography variant="subtitle1" fontWeight="bold">Leave Application</Typography>
+                                <Typography variant="caption" color="text.secondary">Apply & View Status</Typography>
+                            </Box>
+                        </CardContent>
+                    </Card>
                 </Grid>
             </Grid>
 

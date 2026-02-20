@@ -82,7 +82,7 @@ export default function WorkerRegistry() {
 
     const fetchJobRoles = async () => {
         try {
-            const taskRes = await axios.get(`/api/tenants/task-types?tenantId=${tenantId}`);
+            const taskRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
             let tasks = taskRes.data.map((t: any) => t.name);
             if (tasks.length === 0) tasks = ['Plucking', 'Sundry', 'Other'];
             setJobRoles(tasks);
@@ -144,7 +144,7 @@ export default function WorkerRegistry() {
         if (!newRole.trim()) return;
         setRoleLoading(true);
         try {
-            await axios.post(`/api/tenants/task-types?tenantId=${tenantId}`, newRole, {
+            await axios.post(`/api/operations/task-types?tenantId=${tenantId}`, newRole, {
                 headers: { 'Content-Type': 'text/plain' }
             });
             setNewRole('');
@@ -157,10 +157,10 @@ export default function WorkerRegistry() {
 
     const handleDeleteRole = async (roleName: string) => {
         try {
-            const allRes = await axios.get(`/api/tenants/task-types?tenantId=${tenantId}`);
+            const allRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
             const taskObj = allRes.data.find((t: any) => t.name === roleName);
             if (taskObj) {
-                await axios.delete(`/api/tenants/task-types/${taskObj.id}`);
+                await axios.delete(`/api/operations/task-types/${taskObj.id}`);
                 fetchJobRoles();
             }
         } catch (e) {

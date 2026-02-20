@@ -1,14 +1,14 @@
-package com.knoweb.tenant.controller;
+package com.knoweb.operation.controller;
 
-import com.knoweb.tenant.entity.TaskType;
-import com.knoweb.tenant.service.TaskTypeService;
+import com.knoweb.operation.entity.TaskType;
+import com.knoweb.operation.service.TaskTypeService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/tenants/task-types")
+@RequestMapping("/api/operations/task-types")
 public class TaskTypeController {
 
     private final TaskTypeService service;

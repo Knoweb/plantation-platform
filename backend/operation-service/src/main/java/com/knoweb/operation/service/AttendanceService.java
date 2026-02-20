@@ -1,9 +1,8 @@
-package com.knoweb.tenant.service;
+package com.knoweb.operation.service;
 
-import com.knoweb.tenant.entity.Attendance;
-import com.knoweb.tenant.repository.AttendanceRepository;
+import com.knoweb.operation.entity.Attendance;
+import com.knoweb.operation.repository.AttendanceRepository;
 import org.springframework.stereotype.Service;
-
 import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
@@ -49,7 +48,6 @@ public class AttendanceService {
                     attendanceRepository.save(att);
                 }
             } catch (Exception e) {
-                // Log and continue? Or fail? Usually fail for important updates.
                 throw new RuntimeException("Failed to update attendance record: " + e.getMessage());
             }
         }

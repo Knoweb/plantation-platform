@@ -1,4 +1,4 @@
-package com.knoweb.tenant.entity;
+package com.knoweb.operation.entity;
 
 import jakarta.persistence.*;
 import java.util.UUID;

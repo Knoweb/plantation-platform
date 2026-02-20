@@ -1,7 +1,7 @@
-package com.knoweb.tenant.service;
+package com.knoweb.operation.service;
 
-import com.knoweb.tenant.entity.TaskType;
-import com.knoweb.tenant.repository.TaskTypeRepository;
+import com.knoweb.operation.entity.TaskType;
+import com.knoweb.operation.repository.TaskTypeRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.Arrays;
@@ -14,7 +14,6 @@ public class TaskTypeService {
 
     private final TaskTypeRepository repository;
 
-    // Default tasks to seed
     private static final List<String> DEFAULT_TASKS = Arrays.asList(
             "Plucking", "Sack cooli", "Kangani", "Chemical Weeding", "Manual Weeding",
             "Fertilizer application", "Blister Blight", "Folior Spray", "Dolomites application",

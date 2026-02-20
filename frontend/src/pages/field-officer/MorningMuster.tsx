@@ -91,7 +91,7 @@ export default function MorningMuster() {
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${year}-${month}-${day}`;
-            const res = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
+            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
             // Check if TODAY'S work for this division is SUBMITTED (Pending or Approved)
             const submittedWork = res.data.find((w: any) => w.workDate === today && (w.status === 'APPROVED' || w.status === 'PENDING'));
             setIsReadOnly(!!submittedWork);
@@ -107,7 +107,7 @@ export default function MorningMuster() {
                 axios.get(`/api/workers?tenantId=${tenantId}`),
                 axios.get(`/api/fields?tenantId=${tenantId}`),
                 axios.get(`/api/divisions?tenantId=${tenantId}`),
-                axios.get(`/api/tenants/task-types?tenantId=${tenantId}`)
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`)
             ]);
 
             // Use local date to avoid UTC mismatches in early morning
@@ -320,7 +320,7 @@ export default function MorningMuster() {
                     quantity: 0
                 };
 
-                await axios.post('/api/tenants/daily-work', payload);
+                await axios.post('/api/operations/daily-work', payload);
 
                 setIsReadOnly(true);
                 checkApprovalStatus();

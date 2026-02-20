@@ -1,7 +1,7 @@
-package com.knoweb.tenant.controller;
+package com.knoweb.operation.controller;
 
-import com.knoweb.tenant.entity.Attendance;
-import com.knoweb.tenant.service.AttendanceService;
+import com.knoweb.operation.entity.Attendance;
+import com.knoweb.operation.service.AttendanceService;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -11,7 +11,7 @@ import java.util.List;
 import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/tenants/attendance")
+@RequestMapping("/api/operations/attendance")
 public class AttendanceController {
 
     private final AttendanceService attendanceService;

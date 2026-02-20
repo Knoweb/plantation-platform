@@ -1,4 +1,4 @@
-package com.knoweb.tenant.entity;
+package com.knoweb.operation.entity;
 
 import jakarta.persistence.*;
 import java.time.LocalDate;
@@ -17,34 +17,35 @@ public class DailyWork {
     private UUID tenantId;
 
     @Column(name = "division_id", nullable = false)
-    private String divisionId; // Linking to Division ID (String/UUID depending on Division Entity)
+    private String divisionId;
 
     @Column(name = "work_date", nullable = false)
     private LocalDate workDate;
 
-    @Column(name = "work_type", nullable = false) // HARVEST, MAINTENANCE
+    @Column(name = "work_type", nullable = false)
     private String workType;
 
-    @Column(name = "details_v2", columnDefinition = "TEXT") // Version 2 for larger JSON payload
+    @Column(name = "details_v2", columnDefinition = "TEXT")
     private String details;
 
     @Column(name = "quantity")
-    private Double quantity; // kg or acres
+    private Double quantity;
 
     @Column(name = "worker_count")
     private Integer workerCount;
 
-    @Column(name = "status") // PENDING, APPROVED
+    @Column(name = "status")
     private String status = "PENDING";
 
     @Column(name = "created_at")
     private java.time.LocalDateTime createdAt;
 
-    // Constructors
+    @Column(name = "action_at")
+    private java.time.LocalDateTime actionAt;
+
     public DailyWork() {
     }
 
-    // Getters and Setters
     public UUID getWorkId() {
         return workId;
     }
@@ -124,9 +125,6 @@ public class DailyWork {
     public void setCreatedAt(java.time.LocalDateTime createdAt) {
         this.createdAt = createdAt;
     }
-
-    @Column(name = "action_at")
-    private java.time.LocalDateTime actionAt;
 
     public java.time.LocalDateTime getActionAt() {
         return actionAt;

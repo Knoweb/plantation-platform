@@ -1,8 +1,10 @@
-package com.knoweb.tenant.service;
+package com.knoweb.operation.service;
 
-import com.knoweb.tenant.dto.DailyWorkRequest;
-import com.knoweb.tenant.entity.DailyWork;
-import com.knoweb.tenant.repository.DailyWorkRepository;
+import com.knoweb.operation.dto.DailyWorkRequest;
+import com.knoweb.operation.entity.DailyWork;
+import com.knoweb.operation.repository.DailyWorkRepository;
+import com.knoweb.operation.repository.AttendanceRepository;
+import com.knoweb.operation.entity.Attendance;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -13,10 +15,10 @@ import java.util.UUID;
 public class DailyWorkService {
 
     private final DailyWorkRepository dailyWorkRepository;
-    private final com.knoweb.tenant.repository.AttendanceRepository attendanceRepository;
+    private final AttendanceRepository attendanceRepository;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-    public DailyWorkService(DailyWorkRepository dailyWorkRepository, com.knoweb.tenant.repository.AttendanceRepository attendanceRepository, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    public DailyWorkService(DailyWorkRepository dailyWorkRepository, AttendanceRepository attendanceRepository, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
         this.dailyWorkRepository = dailyWorkRepository;
         this.attendanceRepository = attendanceRepository;
         this.objectMapper = objectMapper;
@@ -59,7 +61,7 @@ public class DailyWorkService {
                             for (com.fasterxml.jackson.databind.JsonNode workerNode : taskNode.get("assigned")) {
                                  String workerId = workerNode.has("id") ? workerNode.get("id").asText() : null;
                                  if (workerId != null) {
-                                     com.knoweb.tenant.entity.Attendance att = new com.knoweb.tenant.entity.Attendance(
+                                     Attendance att = new Attendance(
                                          work.getTenantId(), 
                                          workerId, 
                                          work.getWorkDate(), 
@@ -75,10 +77,6 @@ public class DailyWorkService {
                 }
             }
         } catch (Exception e) {
-            // Log logic here if logging existed
-            System.err.println("Failed to sync attendance for workId: " + workId + " Error: " + e.getMessage());
-            // We proceed with Approval even if sync fails, OR throw?
-            // Safer to throw to ensure data consistency
             throw new RuntimeException("Failed to sync attendance: " + e.getMessage());
         }
 

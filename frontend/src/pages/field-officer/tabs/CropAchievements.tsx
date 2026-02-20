@@ -11,11 +11,10 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Chip
+    Chip,
+    TextField
 } from '@mui/material';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import AccessTimeIcon from '@mui/icons-material/AccessTime';
-import SpaIcon from '@mui/icons-material/Spa';
+
 
 interface CropStats {
     today: number;
@@ -106,7 +105,7 @@ export default function CropAchievements() {
             }
 
             const responses = await Promise.all(dates.map(date =>
-                axios.get(`/api/tenants/attendance?tenantId=${tenantId}&date=${date}`)
+                axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${date}`)
                     .then(res => ({ date, data: res.data }))
                     .catch(() => ({ date, data: [] }))
             ));
@@ -147,20 +146,25 @@ export default function CropAchievements() {
                             newStats[cropKey].transportToDate += total;
                             if (isToday) newStats[cropKey].transportToday += total;
                         } else {
-                            // Assume Harvest/Crop if not specialized activity
-                            // (Plucking, Tapping, Harvesting, Peeling)
-                            // Or default catch-all
-                            newStats[cropKey].toDate += total;
-                            if (isWorker) {
-                                newStats[cropKey].workersToDate += 1;
-                                newStats[cropKey].budgetToDate += (NORMS[cropKey] || NORMS.DEFAULT);
-                            }
+                            // Yield Logic: Filter strictly for Harvest activities
+                            const isHarvest = workType.includes('pluck') ||
+                                workType.includes('tap') ||
+                                workType.includes('harvest') ||
+                                workType.includes('peel');
 
-                            if (isToday) {
-                                newStats[cropKey].today += total;
+                            if (isHarvest) {
+                                newStats[cropKey].toDate += total;
                                 if (isWorker) {
-                                    newStats[cropKey].workersToday += 1;
-                                    newStats[cropKey].budgetToday += (NORMS[cropKey] || NORMS.DEFAULT);
+                                    newStats[cropKey].workersToDate += 1;
+                                    newStats[cropKey].budgetToDate += (NORMS[cropKey] || NORMS.DEFAULT);
+                                }
+
+                                if (isToday) {
+                                    newStats[cropKey].today += total;
+                                    if (isWorker) {
+                                        newStats[cropKey].workersToday += 1;
+                                        newStats[cropKey].budgetToday += (NORMS[cropKey] || NORMS.DEFAULT);
+                                    }
                                 }
                             }
                         }
@@ -229,21 +233,28 @@ export default function CropAchievements() {
 
     return (
         <Box p={2}>
+            {/* Title Header */}
+            <Box mb={2}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                    Crop Achievements
+                </Typography>
+            </Box>
+
             {/* Header Section */}
             <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#dcedc8', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'space-between', border: '1px solid #aed581' }}>
-                <Box display="flex" gap={3}>
-                    <Box display="flex" alignItems="center" gap={1} bgcolor="white" px={2} py={0.5} borderRadius={4}>
-                        <CalendarTodayIcon fontSize="small" color="success" />
-                        <Typography variant="body2" fontWeight="bold">
-                            Date: {reportDate.toISOString().split('T')[0]}
-                        </Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center" gap={1} bgcolor="white" px={2} py={0.5} borderRadius={4}>
-                        <AccessTimeIcon fontSize="small" color="success" />
-                        <Typography variant="body2" fontWeight="bold">
-                            Time: {reportDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                        </Typography>
-                    </Box>
+                <Box display="flex" alignItems="center" gap={2}>
+                    <Typography variant="body1" fontWeight="bold" color="#33691e">Select Date:</Typography>
+                    <TextField
+                        type="date"
+                        variant="outlined"
+                        size="small"
+                        value={reportDate.toISOString().split('T')[0]}
+                        onChange={(e) => {
+                            const d = new Date(e.target.value);
+                            if (!isNaN(d.getTime())) setReportDate(d);
+                        }}
+                        sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    />
                 </Box>
                 <Chip label="Daily Crop Report" color="success" sx={{ fontWeight: 'bold' }} />
             </Paper>

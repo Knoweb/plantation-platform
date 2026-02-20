@@ -1,6 +1,6 @@
-package com.knoweb.tenant.repository;
+package com.knoweb.operation.repository;
 
-import com.knoweb.tenant.entity.TaskType;
+import com.knoweb.operation.entity.TaskType;
 import org.springframework.data.jpa.repository.JpaRepository;
 import java.util.List;
 import java.util.Optional;

@@ -94,12 +94,12 @@ function DailyEntryTab() {
             allDivRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
 
             // Fetch Today's Daily Work (Mappings)
-            const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}&date=${today}`);
+            const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`);
             const dwMap = new Map<string, string>();
             dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
 
             // Fetch Today's Attendance
-            const attRes = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}&date=${today}`);
+            const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
 
             const enriched = attRes.data.map((rec: any) => ({
                 ...rec,
@@ -189,7 +189,7 @@ function DailyEntryTab() {
                 pm: Number(item.pmWeight) || null,
                 status: item.status
             }));
-            await axios.post(`/api/tenants/attendance/bulk`, updates);
+            await axios.post(`/api/operations/attendance/bulk`, updates);
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
 
             // Persist Submission
@@ -1152,11 +1152,11 @@ function HistoryTab() {
                 });
 
                 // Fetch WORK History (The source of truth for Musters)
-                const dwRes = await axios.get(`/api/tenants/daily-work?tenantId=${tenantId}`);
+                const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
                 const morningMusters = dwRes.data.filter((dw: any) => dw.workType === 'Morning Muster');
 
                 // Fetch Attendance
-                const attRes = await axios.get(`/api/tenants/attendance?tenantId=${tenantId}`);
+                const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}`);
 
                 // Map Attendance to Divisions via DailyWork ID (or infer)
                 // We build a helper map: DailyWorkID -> DivisionID
