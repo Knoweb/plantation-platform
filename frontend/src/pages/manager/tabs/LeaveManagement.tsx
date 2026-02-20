@@ -19,13 +19,17 @@ import {
     Snackbar,
     Chip,
     Avatar,
-    CircularProgress
+    CircularProgress,
+    Badge
 } from '@mui/material';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PersonIcon from '@mui/icons-material/Person';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export default function LeaveManagement() {
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const tenantId = userSession.tenantId;
+
     const [tabIndex, setTabIndex] = useState(0);
     const [staffMembers, setStaffMembers] = useState<any[]>([]);
     const [selectedStaff, setSelectedStaff] = useState<string>('');
@@ -35,20 +39,79 @@ export default function LeaveManagement() {
         annual: 14,
         casual: 7
     });
-    const [pendingLeaves, setPendingLeaves] = useState([
-        {
-            id: 'req-001',
-            name: 'Mr. R.S. Wickramasinghe',
-            type: 'Annual',
-            date: '2024-06-20', // keeping original mock data structure mostly
-            from: '2024-06-20',
-            to: '2024-06-21',
-            days: 2,
-            reason: 'Personal Matter'
-        }
-    ]);
+    const [pendingLeaves, setPendingLeaves] = useState<any[]>([]); // Future: Fetch real pending leaves
 
-    // ... (existing code)
+    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' }>({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
+
+    // 1. Fetch Staff (Field Officers)
+    useEffect(() => {
+        const fetchStaff = async () => {
+            if (!tenantId) return;
+            try {
+                const res = await axios.get(`/api/tenants/${tenantId}/users`);
+                // Filter for Field Officers
+                const officers = res.data
+                    .filter((u: any) => u.role === 'FIELD_OFFICER' || u.role === 'ASST_FIELD_OFFICER')
+                    .map((u: any) => ({
+                        id: u.userId,
+                        name: u.fullName || u.username,
+                        role: u.role === 'FIELD_OFFICER' ? 'Field Officer' : (u.role === 'ASST_FIELD_OFFICER' ? 'Asst. Field Officer' : u.role)
+                    }));
+                setStaffMembers(officers);
+                setLoading(false);
+            } catch (error) {
+                console.error("Failed to fetch staff", error);
+                setLoading(false);
+            }
+        };
+        fetchStaff();
+    }, [tenantId]);
+
+    // 2. Fetch Quota when Staff Selected
+    useEffect(() => {
+        if (!selectedStaff) return;
+        const fetchQuota = async () => {
+            try {
+                const res = await axios.get(`/api/operations/leaves/users/${selectedStaff}/quota`);
+                if (res.data) {
+                    setQuotas({
+                        duty: res.data.dutyLeave,
+                        annual: res.data.annualLeave,
+                        casual: res.data.casualLeave
+                    });
+                }
+            } catch (error) {
+                // Determine if 404 (Not Found) -> Use Defaults, otherwise error
+                // For now, default to 5/14/7 if no record exists
+                setQuotas({ duty: 5, annual: 14, casual: 7 });
+            }
+        };
+        fetchQuota();
+    }, [selectedStaff]);
+
+    const handleSaveQuota = async () => {
+        if (!selectedStaff || !tenantId) return;
+        try {
+            const payload = {
+                tenantId,
+                userId: selectedStaff,
+                dutyLeave: quotas.duty,
+                annualLeave: quotas.annual,
+                casualLeave: quotas.casual
+            };
+            await axios.put(`/api/operations/leaves/users/${selectedStaff}/quota`, payload);
+
+            const staffName = staffMembers.find(s => s.id === selectedStaff)?.name || 'Staff';
+            setNotification({ open: true, message: `Quotas updated for ${staffName}`, severity: 'success' });
+        } catch (error) {
+            console.error("Failed to save quota", error);
+            setNotification({ open: true, message: 'Failed to update quotas', severity: 'error' });
+        }
+    };
 
     return (
         <Box p={3}>

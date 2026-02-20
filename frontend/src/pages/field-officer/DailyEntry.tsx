@@ -1169,7 +1169,7 @@ function HistoryTab() {
                     if (rec.dailyWorkId) divId = dwDivMap.get(rec.dailyWorkId) || 'UNKNOWN';
                     if (divId === 'UNKNOWN') {
                         // Fallback: try field mapping
-                        const f = fRes.data.find((field: any) => field.name === rec.fieldName);
+                        const f = fRes.data.find((field: any) => field.name && rec.fieldName && field.name.toLowerCase() === rec.fieldName.toLowerCase());
                         if (f) divId = f.divisionId;
                     }
 
@@ -1310,7 +1310,7 @@ function HistoryTab() {
                                         <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
                                     </TableCell>
                                     <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                        {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        {row.submittedAt ? new Date(row.submittedAt.endsWith('Z') ? row.submittedAt : row.submittedAt + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                                     </TableCell>
                                     <TableCell align="center">
                                         <Button

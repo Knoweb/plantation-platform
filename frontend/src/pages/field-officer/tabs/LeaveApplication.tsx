@@ -15,7 +15,12 @@ import {
     TableRow,
     Chip,
     Divider,
-    Avatar
+    Avatar,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogContentText,
+    DialogActions
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -38,7 +43,7 @@ export default function LeaveApplication() {
     const [reason, setReason] = useState('');
     const [address, setAddress] = useState('');
     const [contactNo, setContactNo] = useState('');
-    const [actingPerson, setActingPerson] = useState('');
+    const [actingPerson, setActingPerson] = useState('NONE');
     const [actingOfficers, setActingOfficers] = useState<any[]>([]);
 
     useEffect(() => {
@@ -127,10 +132,22 @@ export default function LeaveApplication() {
         }
     }, [fromDate, toDate]);
 
+    const [openSuccess, setOpenSuccess] = useState(false);
+
     // Handle Submit
     const handleSubmit = () => {
-        alert("Leave Application Submitted!");
-        // Logic to clear form or update status
+        // Here you would typically send data to backend
+        setOpenSuccess(true);
+    };
+
+    const handleCloseSuccess = () => {
+        setOpenSuccess(false);
+        // Reset form logic if desired
+        setReason('');
+        setFromDate('');
+        setToDate('');
+        setDaysApplying(0);
+        setActingPerson('NONE');
     };
 
     return (
@@ -368,7 +385,7 @@ export default function LeaveApplication() {
                                         value={actingPerson} onChange={(e) => setActingPerson(e.target.value)}
                                         size="small"
                                     >
-                                        <MenuItem value="">
+                                        <MenuItem value="NONE">
                                             <em>None</em>
                                         </MenuItem>
                                         {actingOfficers.length > 0 ? (
@@ -402,6 +419,30 @@ export default function LeaveApplication() {
                     </Grid>
                 </Grid>
             </Box>
-        </Box>
+
+            {/* Success Dialog */}
+            <Dialog
+                open={openSuccess}
+                onClose={handleCloseSuccess}
+                aria-labelledby="success-dialog-title"
+            >
+                <DialogTitle id="success-dialog-title" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckCircleIcon color="success" /> Application Submitted
+                </DialogTitle>
+                <DialogContent sx={{ mt: 2 }}>
+                    <DialogContentText color="text.primary">
+                        Your leave application has been successfully submitted for approval.
+                    </DialogContentText>
+                    <DialogContentText variant="body2" sx={{ mt: 1 }}>
+                        You will be notified once the Manager reviews your request.
+                    </DialogContentText>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={handleCloseSuccess} variant="contained" color="success" autoFocus>
+                        Okay, Got it
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </Box >
     );
 }
