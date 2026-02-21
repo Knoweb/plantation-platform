@@ -13,12 +13,13 @@ jobs:
         uses: appleboy/ssh-action@v1.0.0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          BRANCH_NAME: ${{ github.ref_name }}
         with:
           host: ${{ secrets.DO_HOST }}
           username: root
           password: ${{ secrets.DO_PASSWORD }}
           port: 22
-          envs: GITHUB_TOKEN
+          envs: GITHUB_TOKEN,BRANCH_NAME
           script: |
             # Stop existing containers if running
             # docker compose -f /root/plantation-platform/docker-compose.prod.yml down || true
@@ -28,7 +29,7 @@ jobs:
 
             # Check if directory exists, if not, clone it (First run mostly)
             if [ ! -d "/root/plantation-platform" ]; then
-              git clone -b dev-isuru $REPO_URL /root/plantation-platform
+              git clone -b $BRANCH_NAME $REPO_URL /root/plantation-platform
             else
               # If exists, ensure remote is correct for auth
               cd /root/plantation-platform
@@ -39,8 +40,8 @@ jobs:
             cd /root/plantation-platform
             
             # Fetch latest
-            git fetch origin dev-isuru
-            git reset --hard origin/dev-isuru
+            git fetch origin $BRANCH_NAME
+            git reset --hard origin/$BRANCH_NAME
             
             # Start/Restart Services
             # Using --build to ensure code changes are reflected in images
