@@ -34,6 +34,9 @@ import LeaveApplication from './pages/field-officer/tabs/LeaveApplication';
 import LeaveManagement from './pages/manager/tabs/LeaveManagement';
 import OrderRequest from './pages/field-officer/tabs/OrderRequest';
 import PendingOrders from './pages/field-officer/tabs/PendingOrders';
+import Correspondence from './pages/field-officer/tabs/Correspondence';
+import CostAnalysis from './pages/field-officer/tabs/CostAnalysis';
+import FOCropBook from './pages/field-officer/tabs/CropBook';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -82,6 +85,9 @@ function App() {
           <Route path="muster" element={<DailyEntry />} />
 
           {/* Field Officer Tabs */}
+          <Route path="correspondence" element={<Correspondence />} />
+          <Route path="cost-analysis" element={<CostAnalysis />} />
+          <Route path="crop-book-fo" element={<FOCropBook />} />
           <Route path="morning-muster" element={<MorningMuster />} />
           <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />

@@ -5,6 +5,10 @@ import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
+import ChatIcon from '@mui/icons-material/Chat';
+import ForestIcon from '@mui/icons-material/Forest';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import HistoryIcon from '@mui/icons-material/History';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -282,6 +286,38 @@ export default function FieldOfficerDashboard() {
                                 <Typography variant="subtitle1" fontWeight="bold">Leave Application</Typography>
                                 <Typography variant="caption" color="text.secondary">Apply & View Status</Typography>
                             </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #1976d2' }} onClick={() => navigate('/dashboard/correspondence')}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e3f2fd', mr: 2 }}><ChatIcon sx={{ color: '#1976d2', fontSize: 30 }} /></Box>
+                            <Box><Typography variant="subtitle1" fontWeight="bold">Correspondence</Typography><Typography variant="caption" color="text.secondary">Team Messages</Typography></Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #388e3c' }} onClick={() => navigate('/dashboard/crop-ages')}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e8f5e9', mr: 2 }}><ForestIcon sx={{ color: '#388e3c', fontSize: 30 }} /></Box>
+                            <Box><Typography variant="subtitle1" fontWeight="bold">Crop Ages</Typography><Typography variant="caption" color="text.secondary">Field Maturities</Typography></Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #7b1fa2' }} onClick={() => navigate('/dashboard/order-request')}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f3e5f5', mr: 2 }}><InventoryIcon sx={{ color: '#7b1fa2', fontSize: 30 }} /></Box>
+                            <Box><Typography variant="subtitle1" fontWeight="bold">Order Request</Typography><Typography variant="caption" color="text.secondary">Store Requisitions</Typography></Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #d32f2f' }} onClick={() => navigate('/dashboard/pending-orders')}>
+                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
+                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#ffebee', mr: 2 }}><HistoryIcon sx={{ color: '#d32f2f', fontSize: 30 }} /></Box>
+                            <Box><Typography variant="subtitle1" fontWeight="bold">Pending Orders</Typography><Typography variant="caption" color="text.secondary">Status History</Typography></Box>
                         </CardContent>
                     </Card>
                 </Grid>

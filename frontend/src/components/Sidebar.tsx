@@ -24,6 +24,8 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 import TerrainIcon from '@mui/icons-material/Terrain';
+import ChatIcon from '@mui/icons-material/Chat';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import SettingsIcon from '@mui/icons-material/Settings';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
@@ -54,6 +56,9 @@ const menuItems = [
     // Muster Review removed for Field Officer
 
     { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
+    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER'] },
+    { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER'] },
+    { text: 'Correspondence', icon: <Badge badgeContent={3} color="error"><ChatIcon /></Badge>, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER'] },
 
     // Manager Specific Tabs
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
