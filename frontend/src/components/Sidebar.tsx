@@ -20,6 +20,7 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ScienceIcon from '@mui/icons-material/Science';
 
 import GroupIcon from '@mui/icons-material/Group';
 import AssessmentIcon from '@mui/icons-material/Assessment';
@@ -49,6 +50,7 @@ const menuItems = [
     { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
+    { text: 'Fertilizer Programme', icon: <ScienceIcon />, path: '/dashboard/fertilizer-programme', roles: ['FIELD_OFFICER'] },
     { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
     { text: 'Leave Application', icon: <EventNoteIcon />, path: '/dashboard/leave-application', roles: ['FIELD_OFFICER'] },
     { text: 'Order Request', icon: <InventoryIcon />, path: '/dashboard/order-request', roles: ['FIELD_OFFICER'] },
@@ -62,7 +64,7 @@ const menuItems = [
     { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
 
     // Chief Clerk Specific Tabs
-    { text: 'Norms & Aththama', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK'] },
+    { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },

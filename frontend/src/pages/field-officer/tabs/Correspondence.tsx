@@ -43,7 +43,7 @@ export default function Correspondence() {
 
     const fetchMessages = async () => {
         try {
-            const res = await axios.get(`http://localhost:8080/api/messages?userId=${myId}&userRole=${myRole}`, {
+            const res = await axios.get(`/api/messages?userId=${myId}&userRole=${myRole}`, {
                 headers: { 'X-Tenant-ID': tenantId }
             });
 
@@ -67,7 +67,7 @@ export default function Correspondence() {
             // Auto mark received messages from currently active chat as read
             filtered.forEach((m: any) => {
                 if (m.senderId === selectedChatId && m.receiverId === myId && !m.read) {
-                    axios.put(`http://localhost:8080/api/messages/${m.id}/read`, {}, {
+                    axios.put(`/api/messages/${m.id}/read`, {}, {
                         headers: { 'X-Tenant-ID': tenantId }
                     }).catch(err => console.error("Failed to mark read", err));
                 }
@@ -80,7 +80,7 @@ export default function Correspondence() {
     // Fetch all users for this tenant to provide direct messaging
     useEffect(() => {
         if (!tenantId) return;
-        axios.get(`http://localhost:8080/api/tenants/${tenantId}/users`)
+        axios.get(`/api/tenants/${tenantId}/users`)
             .then(res => {
                 const fetchedUsers = res.data
                     .filter((u: any) => u.userId !== myId) // Exclude myself
@@ -126,7 +126,7 @@ export default function Correspondence() {
         setInputText(''); // optimistic clear
         setAttachedImage(null);
         try {
-            await axios.post('http://localhost:8080/api/messages', newMsg, {
+            await axios.post('/api/messages', newMsg, {
                 headers: { 'X-Tenant-ID': tenantId }
             });
             fetchMessages(); // refresh immediately after post
@@ -148,7 +148,7 @@ export default function Correspondence() {
     const handleBroadcastSend = async () => {
         if (!broadcastText.trim()) return;
         const promises = chats.map(chat => {
-            return axios.post('http://localhost:8080/api/messages', {
+            return axios.post('/api/messages', {
                 senderId: myId,
                 senderName: myName,
                 senderRole: myRole,
@@ -173,7 +173,7 @@ export default function Correspondence() {
     const fetchRecentRecords = async () => {
         try {
             const today = new Date().toISOString().split('T')[0];
-            const res = await axios.get(`http://localhost:8080/api/operations/daily-work?tenantId=${tenantId}&date=${today}`);
+            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`);
             setRecentRecords(res.data || []);
             setRecordDialogOpen(true);
         } catch (error) {

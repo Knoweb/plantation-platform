@@ -37,6 +37,7 @@ import PendingOrders from './pages/field-officer/tabs/PendingOrders';
 import Correspondence from './pages/field-officer/tabs/Correspondence';
 import CostAnalysis from './pages/field-officer/tabs/CostAnalysis';
 import FOCropBook from './pages/field-officer/tabs/CropBook';
+import Fertilizer from './pages/field-officer/tabs/Fertilizer';
 
 // Chief Clerk specific imports
 import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
@@ -98,6 +99,7 @@ function App() {
           <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />
           <Route path="crop-ages" element={<CropAge />} />
+          <Route path="fertilizer-programme" element={<Fertilizer />} />
           <Route path="distribution-works" element={<DistributionOfWorks />} />
           <Route path="leave-application" element={<LeaveApplication />} />
           <Route path="muster-approval" element={<MusterApproval />} />

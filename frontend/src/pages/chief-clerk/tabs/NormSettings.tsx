@@ -16,10 +16,10 @@ export default function NormSettings() {
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20', mb: 2 }}>
-                Estate Norms & Aththama (25th Planning)
+                Operational Targets & Norms
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Set the minimum biological yield (Norm) required for workers to achieve their daily wage (Aththama).
+                Set the required daily targets (Plucking Norms, Fertilizer amounts, Weeding goals, Transport quotas) for Estate divisions.
             </Typography>
 
             {saved && <Alert severity="success" sx={{ mb: 3 }}>Monthly Norm Successfully Updated!</Alert>}
@@ -42,19 +42,22 @@ export default function NormSettings() {
                         <TextField
                             select
                             fullWidth
-                            label="Crop Type"
+                            label="Target/Task Mode"
                             value={cropType}
                             onChange={(e) => setCropType(e.target.value)}
                         >
-                            <MenuItem value="TEA">Tea (Plucking)</MenuItem>
-                            <MenuItem value="RUBBER">Rubber (Tapping)</MenuItem>
+                            <MenuItem value="TEA">Tea (Plucking Norm)</MenuItem>
+                            <MenuItem value="RUBBER">Rubber (Tapping Norm)</MenuItem>
+                            <MenuItem value="FERTILIZER">Fertilizing (Kg per Day)</MenuItem>
+                            <MenuItem value="WEEDING">Weeding (Acreage/SqFt per Day)</MenuItem>
+                            <MenuItem value="TRANSPORT">Transport/Sundry</MenuItem>
                         </TextField>
                     </Grid>
                     <Grid item xs={12} md={6}>
                         <TextField
                             fullWidth
                             type="number"
-                            label={cropType === 'TEA' ? 'Norm Target (Kg)' : 'Norm Target (Taps/Liters)'}
+                            label={cropType === 'TEA' ? 'Norm Target (Kg)' : cropType === 'RUBBER' ? 'Norm Target (Taps)' : 'Target Amount / Quota'}
                             value={normValue}
                             onChange={(e) => setNormValue(e.target.value)}
                             placeholder={cropType === 'TEA' ? 'e.g., 18' : 'e.g., 250'}
@@ -69,7 +72,7 @@ export default function NormSettings() {
                             onClick={handleSave}
                             disabled={!normValue}
                         >
-                            Lock in {cropType} Norm target
+                            Lock in {cropType.toLowerCase().replace('_', ' ')} target
                         </Button>
                     </Grid>
                 </Grid>
