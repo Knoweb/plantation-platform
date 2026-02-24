@@ -54,9 +54,24 @@ export default function Divisions() {
             const response = await axios.get(`/api/divisions?tenantId=${tenantId}`);
             let data = response.data;
 
+            // Fetch latest user details to bypass stale sessionStorage
+            let latestAccess = assignedDivisions;
+            if (isManager) {
+                try {
+                    const myId = user.userId || user.id;
+                    const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
+                    const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                    if (me && me.divisionAccess) {
+                        latestAccess = me.divisionAccess;
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch latest user details, falling back to session");
+                }
+            }
+
             // Filter for Manager
-            if (isManager && assignedDivisions.length > 0) {
-                data = data.filter((d: any) => assignedDivisions.includes(d.divisionId));
+            if (isManager && latestAccess.length > 0) {
+                data = data.filter((d: any) => latestAccess.includes(d.divisionId));
             } else if (isManager) {
                 // If manager has no assigned divisions, show empty
                 data = [];

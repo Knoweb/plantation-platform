@@ -62,7 +62,7 @@ const menuItems = [
     { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
 
     // Chief Clerk Specific Tabs
-    { text: 'Norms & Aththama', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK', 'MANAGER'] },
+    { text: 'Norms & Aththama', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
@@ -75,7 +75,7 @@ const menuItems = [
 
     // Estate Admin / Manager
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/dashboard/users', roles: ['ESTATE_ADMIN'] }, // Removed MANAGER
-    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN', 'MANAGER'] },
+    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
@@ -115,6 +115,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
+    const [sidebarDivisions, setSidebarDivisions] = useState<any[]>([]);
 
     useEffect(() => {
         if (userSession.tenantId) {
@@ -133,6 +134,42 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     window.removeEventListener('muster-update', handleUpdate);
                 };
             }
+        }
+    }, [userRole, userSession.tenantId]);
+
+    useEffect(() => {
+        if (userSession.tenantId && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) {
+            const fetchManagerDivisions = async () => {
+                try {
+                    // Fetch latest user details dynamically to prevent stale session cache
+                    const myId = userSession.userId || userSession.id;
+                    let latestAccess = userSession.divisionAccess || [];
+                    try {
+                        const usersRes = await axios.get(`/api/tenants/${userSession.tenantId}/users`);
+                        const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                        if (me && me.divisionAccess) {
+                            latestAccess = me.divisionAccess;
+                        }
+                    } catch (e) {
+                        console.warn("Could not fetch latest user details, falling back to session");
+                    }
+
+                    const res = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
+                    let divs = res.data;
+
+                    if (latestAccess.length > 0) {
+                        divs = divs.filter((d: any) => latestAccess.includes(d.divisionId));
+                    }
+                    setSidebarDivisions(divs);
+                } catch (err) {
+                    console.error("Failed to load divisions for sidebar");
+                }
+            };
+            fetchManagerDivisions();
+
+            // Poll for dynamic updates
+            const divInterval = setInterval(fetchManagerDivisions, 10000);
+            return () => clearInterval(divInterval);
         }
     }, [userRole, userSession.tenantId]);
 
@@ -331,6 +368,36 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         <ListItemText primary="Dashboard" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
                     </ListItemButton>
                 </ListItem>
+
+                {/* Manager Divisions */}
+                {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && sidebarDivisions.length > 0 && (
+                    <Box sx={{ mt: 1, mb: 1 }}>
+                        <Typography variant="overline" sx={{ px: 3, color: 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>
+                            Divisions
+                        </Typography>
+                        {sidebarDivisions.map((div: any) => (
+                            <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
+                                <ListItemButton
+                                    onClick={() => navigate(`/dashboard/divisions`)}
+                                    selected={location.pathname === `/dashboard/divisions`}
+                                    sx={{
+                                        borderRadius: 2,
+                                        mx: 2,
+                                        minHeight: 36,
+                                        justifyContent: 'initial',
+                                        '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.2)' },
+                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                                    }}
+                                >
+                                    <ListItemIcon sx={{ color: 'white', minWidth: 32, justifyContent: 'center', mr: 1 }}>
+                                        <TerrainIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={div.name} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 400 }} />
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    </Box>
+                )}
 
                 {/* Standard Menu Items (Excluding Dashboard) */}
                 {filteredMenuItems.filter(item => item.text !== 'Dashboard').map((item) => (

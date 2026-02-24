@@ -544,24 +544,28 @@ export default function WorkerRegistry() {
                             onChange={(e) => setFilterDate(e.target.value)}
                         />
                     )}
-                    {activeTab === 1 && (
-                        <Button
-                            variant="outlined"
-                            startIcon={<Diversity3Icon />}
-                            onClick={() => setOpenAddTeamDialog(true)}
-                            sx={{ color: '#1a5e20', borderColor: '#1a5e20', '&:hover': { backgroundColor: '#e8f5e9', borderColor: '#144a19' } }}
-                        >
-                            Add Contractor
-                        </Button>
+                    {userRole === 'CHIEF_CLERK' && (
+                        <>
+                            {activeTab === 1 && (
+                                <Button
+                                    variant="outlined"
+                                    startIcon={<Diversity3Icon />}
+                                    onClick={() => setOpenAddTeamDialog(true)}
+                                    sx={{ color: '#1a5e20', borderColor: '#1a5e20', '&:hover': { backgroundColor: '#e8f5e9', borderColor: '#144a19' } }}
+                                >
+                                    Add Contractor
+                                </Button>
+                            )}
+                            <Button
+                                variant="contained"
+                                startIcon={activeTab === 1 ? <GroupsIcon /> : <AddIcon />}
+                                onClick={() => activeTab === 1 ? setOpenDailyDialog(true) : handleAddNew()}
+                                sx={{ backgroundColor: '#1a5e20', '&:hover': { backgroundColor: '#144a19' } }}
+                            >
+                                {activeTab === 1 ? "Log Daily Attendance" : "Add workers"}
+                            </Button>
+                        </>
                     )}
-                    <Button
-                        variant="contained"
-                        startIcon={activeTab === 1 ? <GroupsIcon /> : <AddIcon />}
-                        onClick={() => activeTab === 1 ? setOpenDailyDialog(true) : handleAddNew()}
-                        sx={{ backgroundColor: '#1a5e20', '&:hover': { backgroundColor: '#144a19' } }}
-                    >
-                        {activeTab === 1 ? "Log Daily Attendance" : "Add workers"}
-                    </Button>
                 </Box>
             </Box>
 
