@@ -38,13 +38,14 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER'] },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER', 'CHIEF_CLERK'] },
     { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['MANAGER'] }, // Shared with Mgr
 
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
-    { text: 'Workers', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['FIELD_OFFICER'] },
+    // Workers moved to Chief Clerk / Manager
+    { text: 'Worker Registry', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['CHIEF_CLERK', 'MANAGER'] },
     { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
@@ -58,7 +59,10 @@ const menuItems = [
     { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER'] },
     { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER'] },
-    { text: 'Correspondence', icon: <Badge badgeContent={3} color="error"><ChatIcon /></Badge>, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER'] },
+    { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
+
+    // Chief Clerk Specific Tabs
+    { text: 'Norms & Aththama', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK', 'MANAGER'] },
 
     // Manager Specific Tabs
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
@@ -109,10 +113,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
     const [storePendingCount, setStorePendingCount] = useState(0); // Store Keeper Approved FOs count
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
 
     useEffect(() => {
         if (userSession.tenantId) {
-            if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER' || userRole === 'STORE_KEEPER') {
+            if (['MANAGER', 'FIELD_OFFICER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK', 'MANAGER_CLERK'].includes(userRole)) {
                 fetchAlerts();
 
                 // Poll every 10 seconds for real-time updates
@@ -132,6 +138,17 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
     const fetchAlerts = async () => {
         try {
+            // Fetch Messages Alerts (For all roles)
+            try {
+                const myId = userSession.userId || userSession.id;
+                const msgRes = await axios.get(`/api/messages?userId=${myId}&userRole=${userRole}`, {
+                    headers: { 'X-Tenant-ID': userSession.tenantId }
+                });
+                const unread = msgRes.data.filter((m: any) => m.receiverId === myId && !m.read).length;
+                setUnreadChatCount(unread);
+            } catch (err) {
+                console.warn("Message alerts unavailable", err);
+            }
             // Stock Alerts
             const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
             const items = res.data;
@@ -140,7 +157,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
             // Restock Requests (Pending) - For Manager
             // Restock Requests (Pending) - For Manager + Muster Review
-            if (userRole === 'MANAGER') {
+            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
                 // Count Pending Restocks OR FO Requisitions
                 const reqCount = transRes.data.filter((t: any) =>
@@ -156,6 +173,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     (item.status === 'PENDING' || !item.status)
                 ).length;
                 setMusterReviewCount(pendingMusters);
+
+                // Manager Worker Approvals Count
+                const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
+                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL').length;
+                setWorkerApprovalCount(pendingWorkers);
             }
 
             // Store Keeper Alerts
@@ -230,15 +252,17 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
 
     // We'll just render Divisions manually in the list below
+    const effectiveRoles = userRole === 'MANAGER_CLERK' ? ['MANAGER', 'CHIEF_CLERK'] : [userRole];
 
     const filteredMenuItems = menuItems.filter(item =>
-        !item.roles || (userRole && item.roles.includes(userRole))
+        !item.roles || (effectiveRoles.some(r => item.roles.includes(r)))
     ).map(item => {
         if (item.text === 'Dashboard') {
             let dashboardPath = '/dashboard';
             if (userRole === 'ESTATE_ADMIN') dashboardPath = '/dashboard/admin';
-            else if (userRole === 'MANAGER') dashboardPath = '/dashboard/manager';
+            else if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') dashboardPath = '/dashboard/manager';
             else if (userRole === 'FIELD_OFFICER') dashboardPath = '/dashboard/field';
+            else if (userRole === 'CHIEF_CLERK') dashboardPath = '/dashboard/chief';
             return { ...item, path: dashboardPath };
         }
         return item;
@@ -283,11 +307,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         onClick={() => {
                             let path = '/dashboard';
                             if (userRole === 'ESTATE_ADMIN') path = '/dashboard/admin';
-                            else if (userRole === 'MANAGER') path = '/dashboard/manager';
+                            else if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') path = '/dashboard/manager';
                             else if (userRole === 'FIELD_OFFICER') path = '/dashboard/field';
+                            else if (userRole === 'CHIEF_CLERK') path = '/dashboard/chief';
                             navigate(path);
                         }}
-                        selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field'}
+                        selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field' || location.pathname === '/dashboard/chief'}
                         sx={{
                             borderRadius: 2,
                             mx: 1,
@@ -326,7 +351,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             }}
                         >
                             <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
-                                {item.text === 'Pending Approvals' && userRole === 'MANAGER' && (alertCount + restockCount) > 0 ? (
+                                {item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && (alertCount + restockCount) > 0 ? (
                                     <Badge badgeContent={alertCount + restockCount} color="error">
                                         {item.icon}
                                     </Badge>
@@ -340,6 +365,14 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     </Badge>
                                 ) : item.text === 'Muster Review' && musterReviewCount > 0 ? (
                                     <Badge badgeContent={musterReviewCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Correspondence' && unreadChatCount > 0 ? (
+                                    <Badge badgeContent={unreadChatCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && workerApprovalCount > 0 ? (
+                                    <Badge badgeContent={workerApprovalCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : (

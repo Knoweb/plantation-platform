@@ -23,6 +23,8 @@ spring:
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       routes:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
@@ -35,7 +37,7 @@ spring:
         - id: operation-service
           uri: lb://OPERATION-SERVICE
           predicates:
-            - Path=/api/operations/**
+            - Path=/api/operations/**,/api/messages/**
 
 eureka:
   client:

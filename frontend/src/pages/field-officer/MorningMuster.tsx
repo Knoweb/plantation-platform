@@ -1,4 +1,4 @@
-import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions, Autocomplete, Checkbox, TextField, Alert, Snackbar } from '@mui/material';
+import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, Autocomplete, Checkbox, TextField, Alert, Snackbar } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,8 +23,8 @@ interface Muster {
 interface Worker {
     id: string;
     name: string;
-    jobRole: string;
     gender: string;
+    status?: string;
     divisionIds?: string[]; // Worker assigned divisions
 }
 
@@ -205,8 +205,8 @@ export default function MorningMuster() {
         return relatedField ? relatedField.divisionId === activeDivId : true; // Show if unknown
     });
 
-    // Workers are available across all divisions (Floating Pool)
-    const filteredWorkers = workers;
+    // Workers are available across all divisions (Floating Pool) and must be ACTIVE to be assigned
+    const filteredWorkers = workers.filter(w => w.status === 'ACTIVE');
 
     const filteredFields = fields.filter(f => f.divisionId === activeDivId);
 
@@ -639,11 +639,10 @@ export default function MorningMuster() {
                     <Autocomplete
                         multiple
                         id="worker-select-grouped-muster"
-                        options={filteredWorkers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
-                        groupBy={(option) => option.jobRole}
+                        options={filteredWorkers.sort((a, b) => a.name.localeCompare(b.name))}
                         getOptionLabel={(option) => option.name}
                         value={filteredWorkers.filter(w => newMuster.workerIds.includes(w.id))}
-                        onChange={(event, newValue) => {
+                        onChange={(_event, newValue) => {
                             setNewMuster({ ...newMuster, workerIds: newValue.map(w => w.id) });
                         }}
                         disableCloseOnSelect
@@ -674,9 +673,6 @@ export default function MorningMuster() {
                                     <Box sx={{ opacity: isUnavailable ? 0.5 : 1 }}>
                                         <Typography variant="body2">
                                             {option.name} {isUnavailable ? '(Assigned)' : ''}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {option.jobRole}
                                         </Typography>
                                     </Box>
                                 </li>
@@ -712,6 +708,6 @@ export default function MorningMuster() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </Box>
+        </Box >
     );
 }

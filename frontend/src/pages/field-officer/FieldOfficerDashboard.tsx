@@ -40,7 +40,7 @@ interface Field {
 interface Worker {
     id: string;
     name: string;
-    jobRole: string;
+    name: string;
 }
 
 import { useNavigate } from 'react-router-dom';
@@ -431,8 +431,7 @@ export default function FieldOfficerDashboard() {
                     <Autocomplete
                         multiple
                         id="worker-select-grouped"
-                        options={workers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
-                        groupBy={(option) => option.jobRole}
+                        options={workers.sort((a, b) => a.name.localeCompare(b.name))}
                         getOptionLabel={(option) => option.name}
                         value={workers.filter(w => newMuster.workerIds.includes(w.id))}
                         onChange={(event, newValue) => {
@@ -455,11 +454,7 @@ export default function FieldOfficerDashboard() {
                                 />
                                 <Box>
                                     <Typography variant="body2">{option.name}</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Reg: {option.id ? '...' : '' /* Should use RegNo but interface defines name/jobRole only */}
-                                        {/* Wait, Interface Worker only has id, name, jobRole. Need to add RegNo to interface? */}
-                                        {option.jobRole}
-                                    </Typography>
+                                    Reg: {option.id ? '...' : ''}
                                 </Box>
                             </li>
                         )}

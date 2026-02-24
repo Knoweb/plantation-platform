@@ -38,6 +38,10 @@ import Correspondence from './pages/field-officer/tabs/Correspondence';
 import CostAnalysis from './pages/field-officer/tabs/CostAnalysis';
 import FOCropBook from './pages/field-officer/tabs/CropBook';
 
+// Chief Clerk specific imports
+import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
+import NormSettings from './pages/chief-clerk/tabs/NormSettings';
+
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
   const user = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -45,7 +49,8 @@ const DashboardHome = () => {
 
   if (role === 'SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
   if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
-  if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
+  if (role === 'MANAGER' || role === 'MANAGER_CLERK') return <Navigate to="/dashboard/manager" replace />;
+  if (role === 'CHIEF_CLERK') return <Navigate to="/dashboard/chief" replace />;
   if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
   if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/store/main" replace />;
 
@@ -69,6 +74,7 @@ function App() {
           {/* Explicit Role Dashboards */}
           <Route path="admin" element={<EstateAdminDashboard />} />
           <Route path="manager" element={<ManagerDashboard />} />
+          <Route path="chief" element={<ChiefClerkDashboard />} />
           <Route path="field" element={<FieldOfficerDashboard />} />
           <Route path="store" element={<StoreKeeperDashboard />} />
           <Route path="store/main" element={<StoreKeeperDashboard />} />
@@ -108,6 +114,9 @@ function App() {
           <Route path="crop-book" element={<CropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
           <Route path="leave-management" element={<LeaveManagement />} />
+
+          {/* Chief Clerk Tabs */}
+          <Route path="norms" element={<NormSettings />} />
         </Route>
 
         {/* Super Admin Routes */}
