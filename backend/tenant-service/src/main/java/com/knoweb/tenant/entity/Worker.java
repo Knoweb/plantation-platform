@@ -33,6 +33,9 @@ public class Worker {
     @Column(name = "epf_number")
     private String epfNumber;
 
+    @Column(name = "etf_number")
+    private String etfNumber;
+
     @Column(name = "employment_type", length = 30)
     private String employmentType; // PERMANENT, CASUAL, CONTRACT
 
@@ -44,6 +47,9 @@ public class Worker {
 
     @Column(name = "date_of_birth")
     private LocalDate dateOfBirth;
+
+    @Column(name = "joined_date")
+    private LocalDate joinedDate;
 
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
@@ -117,6 +123,14 @@ public class Worker {
         this.epfNumber = epfNumber;
     }
 
+    public String getEtfNumber() {
+        return etfNumber;
+    }
+
+    public void setEtfNumber(String etfNumber) {
+        this.etfNumber = etfNumber;
+    }
+
     public String getEmploymentType() {
         return employmentType;
     }
@@ -147,6 +161,14 @@ public class Worker {
 
     public void setDateOfBirth(LocalDate dateOfBirth) {
         this.dateOfBirth = dateOfBirth;
+    }
+
+    public LocalDate getJoinedDate() {
+        return joinedDate;
+    }
+
+    public void setJoinedDate(LocalDate joinedDate) {
+        this.joinedDate = joinedDate;
     }
 
     public String getTenantId() {

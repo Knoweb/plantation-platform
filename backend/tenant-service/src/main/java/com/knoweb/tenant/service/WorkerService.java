@@ -65,10 +65,12 @@ public class WorkerService {
         worker.setRegistrationNumber(workerDetails.getRegistrationNumber());
         worker.setGender(workerDetails.getGender());
         worker.setEpfNumber(workerDetails.getEpfNumber());
+        worker.setEtfNumber(workerDetails.getEtfNumber());
         worker.setEmploymentType(workerDetails.getEmploymentType());
         worker.setContractorName(workerDetails.getContractorName());
         worker.setNicNumber(workerDetails.getNicNumber());
         worker.setDateOfBirth(workerDetails.getDateOfBirth());
+        worker.setJoinedDate(workerDetails.getJoinedDate());
         worker.setDivisionIds(workerDetails.getDivisionIds());
         worker.setStatus(workerDetails.getStatus());
 

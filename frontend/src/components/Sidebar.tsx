@@ -176,7 +176,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
                 // Manager Worker Approvals Count
                 const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
-                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL').length;
+                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL' && item.employmentType !== 'CONTRACT_MEMBER').length;
                 setWorkerApprovalCount(pendingWorkers);
             }
 
