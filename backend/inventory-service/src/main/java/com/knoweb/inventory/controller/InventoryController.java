@@ -58,8 +58,9 @@ public class InventoryController {
     public InventoryTransaction updateStatus(@PathVariable Long id,
             @RequestParam String status,
             @RequestParam(required = false) Integer quantity,
-            @RequestParam(required = false) String remarks) {
-        return service.updateTransactionStatus(id, status, quantity, remarks);
+            @RequestParam(required = false) String remarks,
+            @RequestParam(required = false) String issuedTo) {
+        return service.updateTransactionStatus(id, status, quantity, remarks, issuedTo);
     }
 
     @DeleteMapping("/{id}")

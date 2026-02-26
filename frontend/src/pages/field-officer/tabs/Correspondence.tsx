@@ -5,6 +5,7 @@ import SendIcon from '@mui/icons-material/Send';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
+import DownloadIcon from '@mui/icons-material/Download';
 import axios from 'axios';
 
 // Shared correspondence component logic
@@ -39,6 +40,16 @@ export default function Correspondence() {
 
     const scrollToBottom = () => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    };
+
+    const handleDownloadImage = () => {
+        if (!zoomedImage) return;
+        const link = document.createElement('a');
+        link.href = zoomedImage;
+        link.download = `correspondence-attachment-${Date.now()}.png`;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
     };
 
     const fetchMessages = async () => {
@@ -408,9 +419,15 @@ export default function Correspondence() {
                 <DialogContent sx={{ p: 0, bgcolor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
                     <IconButton
                         onClick={() => setZoomedImage(null)}
-                        sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)' }}
+                        sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)', zIndex: 10 }}
                     >
                         <Typography variant="h6" sx={{ lineHeight: 0.5 }}>×</Typography>
+                    </IconButton>
+                    <IconButton
+                        onClick={handleDownloadImage}
+                        sx={{ position: 'absolute', top: 8, right: 52, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)', zIndex: 10 }}
+                    >
+                        <DownloadIcon />
                     </IconButton>
                     {zoomedImage && (
                         <img src={zoomedImage} alt="Zoomed" style={{ width: '100%', height: 'auto', maxHeight: '90vh', objectFit: 'contain' }} />

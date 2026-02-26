@@ -11,6 +11,7 @@ interface Transaction {
     date: string;
     approvedDate?: string; // Add approvedDate
     issuedTo?: string;
+    managerRemarks?: string; // We map this to "Approver Remarks" in UI
     status?: string;
     divisionName?: string;
     fieldName?: string;
@@ -72,7 +73,8 @@ export default function StoreTransactionHistory() {
 
     const getTypeColor = (type: string) => {
         switch (type) {
-            case 'ISSUE': return 'warning';
+            case 'ISSUE':
+            case 'FO_REQUISITION': return 'warning';
             case 'RECEIPT': return 'success';
             case 'RESTOCK_REQUEST': return 'info';
             default: return 'default';
@@ -128,7 +130,9 @@ export default function StoreTransactionHistory() {
                             <TableCell align="right"><strong>Quantity</strong></TableCell>
                             <TableCell><strong>Division</strong></TableCell>
                             <TableCell><strong>Field</strong></TableCell>
-                            <TableCell><strong>Issued To / Notes</strong></TableCell>
+                            <TableCell><strong>Requested By</strong></TableCell>
+                            <TableCell><strong>Requester Remarks</strong></TableCell>
+                            <TableCell><strong>Manager Remarks</strong></TableCell>
                             <TableCell align="center"><strong>Status</strong></TableCell>
                         </TableRow>
                     </TableHead>
@@ -147,12 +151,30 @@ export default function StoreTransactionHistory() {
                                     </TableCell>
                                     <TableCell>{t.itemName}</TableCell>
                                     <TableCell>
-                                        <Chip label={t.type} color={getTypeColor(t.type) as any} size="small" />
+                                        <Chip
+                                            label={
+                                                t.type === 'FO_REQUISITION' ? 'FIELD ISSUANCE' :
+                                                    t.type === 'RESTOCK_REQUEST' ? 'Auto-Refill Request' :
+                                                        t.type.replace(/_/g, ' ')
+                                            }
+                                            color={getTypeColor(t.type) as any}
+                                            size="small"
+                                        />
                                     </TableCell>
                                     <TableCell align="right">{t.quantity}</TableCell>
                                     <TableCell>{t.divisionName || '-'}</TableCell>
                                     <TableCell>{t.fieldName || '-'}</TableCell>
-                                    <TableCell>{t.issuedTo || '-'}</TableCell>
+                                    <TableCell>
+                                        {t.type === 'FO_REQUISITION' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[0] :
+                                            t.type === 'RESTOCK_REQUEST' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[0] :
+                                                t.type === 'RESTOCK_REQUEST' && t.issuedTo && !t.issuedTo.includes('SYSTEM') ? 'Chief Clerk' : t.issuedTo || '-'}
+                                    </TableCell>
+                                    <TableCell>
+                                        {t.type === 'FO_REQUISITION' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[1] :
+                                            t.type === 'RESTOCK_REQUEST' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[1] :
+                                                t.type === 'RESTOCK_REQUEST' && t.issuedTo && !t.issuedTo.includes('SYSTEM') ? t.issuedTo : '-'}
+                                    </TableCell>
+                                    <TableCell>{t.managerRemarks || '-'}</TableCell>
                                     <TableCell align="center">
                                         {t.status ? (
                                             <Chip label={t.status} color={t.status === 'APPROVED' ? 'success' : t.status === 'DECLINED' ? 'error' : 'warning'} size="small" variant="outlined" />

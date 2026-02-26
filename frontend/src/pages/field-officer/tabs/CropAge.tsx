@@ -167,8 +167,8 @@ export default function CropAge() {
         <Box p={3}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Box>
-                    <Typography variant="h4" fontWeight="bold" color="primary">Crop Age Registry</Typography>
-                    <Typography variant="body1" color="text.secondary">Detailed crop lifecycle management by division.</Typography>
+                    <Typography variant="h4" fontWeight="bold" color="primary">Field Log</Typography>
+                    <Typography variant="body1" color="text.secondary">Detailed field tracking and lifecycle management by division.</Typography>
                 </Box>
                 {/* Global Add Button (optional, but requested per division mostly) */}
             </Box>

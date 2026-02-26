@@ -119,6 +119,7 @@ function App() {
 
           {/* Chief Clerk Tabs */}
           <Route path="norms" element={<NormSettings />} />
+          <Route path="chief-inventory" element={<StoreKeeperDashboard />} />
         </Route>
 
         {/* Super Admin Routes */}

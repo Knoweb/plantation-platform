@@ -49,7 +49,7 @@ const menuItems = [
     { text: 'Worker Registry', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['CHIEF_CLERK', 'MANAGER'] },
     { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
-    { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
+    { text: 'Field log', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     { text: 'Fertilizer Programme', icon: <ScienceIcon />, path: '/dashboard/fertilizer-programme', roles: ['FIELD_OFFICER'] },
     { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
     { text: 'Leave Application', icon: <EventNoteIcon />, path: '/dashboard/leave-application', roles: ['FIELD_OFFICER'] },
@@ -65,6 +65,7 @@ const menuItems = [
 
     // Chief Clerk Specific Tabs
     { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK'] },
+    { text: 'Inventory Management', icon: <InventoryIcon />, path: '/dashboard/chief-inventory', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
@@ -114,6 +115,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [musterReviewCount, setMusterReviewCount] = useState(0);
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
     const [storePendingCount, setStorePendingCount] = useState(0); // Store Keeper Approved FOs count
+    const [chiefClerkPendingCount, setChiefClerkPendingCount] = useState(0);
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
@@ -188,22 +190,28 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             } catch (err) {
                 console.warn("Message alerts unavailable", err);
             }
-            // Stock Alerts
-            const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
-            const items = res.data;
-            const count = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
-            setAlertCount(count);
-
-            // Restock Requests (Pending) - For Manager
             // Restock Requests (Pending) - For Manager + Muster Review
             if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
                 // Count Pending Restocks OR FO Requisitions
-                const reqCount = transRes.data.filter((t: any) =>
-                    (t.type === 'RESTOCK_REQUEST' || t.type === 'FO_REQUISITION') &&
+                const foCount = transRes.data.filter((t: any) =>
+                    t.type === 'FO_REQUISITION' &&
                     (t.status === 'PENDING' || t.status === null)
                 ).length;
-                setRestockCount(reqCount);
+                setAlertCount(foCount);
+
+                const restockC = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    (t.status === 'PENDING' || t.status === null) &&
+                    !(t.issuedTo && t.issuedTo.includes('SYSTEM')) // Hide auto-refills from Manager sidebar count
+                ).length;
+
+                // Count items below buffer level
+                const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
+                const items = res.data;
+                const lowStockCount = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
+
+                setRestockCount(restockC + lowStockCount);
 
                 // Muster Review Count
                 const workRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
@@ -226,6 +234,16 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
                 ).length;
                 setStorePendingCount(approvedCount);
+            }
+
+            // Chief Clerk Alerts
+            if (userRole === 'CHIEF_CLERK') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const ccPending = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
+                ).length;
+                setChiefClerkPendingCount(ccPending);
             }
 
             // Field Officer Alerts
@@ -420,12 +438,20 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             }}
                         >
                             <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
-                                {item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && (alertCount + restockCount) > 0 ? (
-                                    <Badge badgeContent={alertCount + restockCount} color="error">
+                                {item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && alertCount > 0 ? (
+                                    <Badge badgeContent={alertCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'General Stock' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && restockCount > 0 ? (
+                                    <Badge badgeContent={restockCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : item.text === 'Pending Approvals' && userRole === 'STORE_KEEPER' && storePendingCount > 0 ? (
                                     <Badge badgeContent={storePendingCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Inventory Management' && userRole === 'CHIEF_CLERK' && chiefClerkPendingCount > 0 ? (
+                                    <Badge badgeContent={chiefClerkPendingCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : item.text === 'Dashboard' && userRole === 'STORE_KEEPER' && alertCount > 0 ? (

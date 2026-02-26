@@ -22,14 +22,12 @@ export default function GeneralStock() {
     const [minimumInput, setMinimumInput] = useState<string>('');
 
     // Restock State (Manager Only)
-    const [receiveOpen, setReceiveOpen] = useState(false);
-    const [restockItemId, setRestockItemId] = useState('');
-    const [transactionQty, setTransactionQty] = useState<string>('');
     const [restockRequests, setRestockRequests] = useState<any[]>([]); // New state
     // Approval Dialog State
     const [approveOpen, setApproveOpen] = useState(false);
     const [approveReq, setApproveReq] = useState<any>(null);
     const [approveQty, setApproveQty] = useState('');
+    const [approveRemarks, setApproveRemarks] = useState('');
 
     // Notification State
     const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({
@@ -61,7 +59,11 @@ export default function GeneralStock() {
 
             if (isManager) {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
-                setRestockRequests(transRes.data.filter((t: any) => t.type === 'RESTOCK_REQUEST' && (t.status === 'PENDING' || t.status === null)));
+                setRestockRequests(transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    (t.status === 'PENDING' || t.status === null) &&
+                    !(t.issuedTo && t.issuedTo.includes('SYSTEM')) // Hide auto-refills from Manager
+                ));
             }
 
             setLoading(false);
@@ -72,34 +74,27 @@ export default function GeneralStock() {
         }
     };
 
-    const handleRequestAction = async (req: any, status: string) => {
-        if (status === 'APPROVED') {
-            const isAuto = req.issuedTo && (req.issuedTo.includes('Auto-Refill') || req.issuedTo.includes('SYSTEM'));
-            setApproveReq({ ...req, isAuto });
-            setApproveQty(isAuto ? '' : req.quantity); // Pre-fill for manual, empty for auto
-            setApproveOpen(true);
-            return;
-        }
-
-        // For Decline
-        try {
-            await axios.put(`/api/inventory/transactions/${req.id}/status?status=${status}`);
-            fetchInventory();
-            showNotification(`Request ${status}`, 'success');
-        } catch (e) {
-            showNotification("Action failed", 'error');
-        }
+    const handleRequestAction = async (req: any) => {
+        const isAuto = req.issuedTo && (req.issuedTo.includes('Auto-Refill') || req.issuedTo.includes('SYSTEM'));
+        setApproveReq({ ...req, isAuto });
+        setApproveQty(req.quantity ? String(req.quantity) : '');
+        setApproveRemarks('');
+        setApproveOpen(true);
     };
 
-    const handleConfirmApprove = async () => {
-        if (!approveReq || !approveQty) return;
+    const handleConfirmApprove = async (status: 'APPROVED' | 'DECLINED') => {
+        if (!approveReq) return;
+        if (status === 'APPROVED' && !approveQty) {
+            showNotification("Quantity is required for approval.", 'error');
+            return;
+        }
         try {
-            await axios.put(`/api/inventory/transactions/${approveReq.id}/status?status=APPROVED&quantity=${approveQty}`);
+            await axios.put(`/api/inventory/transactions/${approveReq.id}/status?status=${status}&quantity=${approveQty || approveReq.quantity}&remarks=${encodeURIComponent(approveRemarks || (status === 'APPROVED' ? "Manager approved." : "Manager declined."))}`);
             setApproveOpen(false);
             fetchInventory();
-            showNotification("Request APPROVED", 'success');
-        } catch (e) {
-            showNotification("Approval Failed", 'error');
+            showNotification(status === 'APPROVED' ? "Restock Approved and Stock Updated" : "Restock Request Declined", 'success');
+        } catch (e: any) {
+            showNotification("Action Failed: " + (e.response?.data || e.message), 'error');
         }
     };
 
@@ -136,39 +131,12 @@ export default function GeneralStock() {
         }
     };
 
-    const handleRestock = async () => {
-        try {
-            await axios.post('/api/inventory/transaction', {
-                itemId: restockItemId,
-                quantity: Number(transactionQty) || 0,
-                type: 'RECEIPT',
-                tenantId: tenantId
-            });
-            setReceiveOpen(false);
-            setTransactionQty('');
-            fetchInventory();
-            showNotification("Stock Received Successfully", 'success');
-        } catch (err) {
-            showNotification("Transaction Failed", 'error');
-        }
-    };
-
     return (
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center">
                 <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
                     General Stock & Inventory Level
                 </Typography>
-                {isManager && (
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<AddShoppingCartIcon />}
-                        onClick={() => { setReceiveOpen(true); setTransactionQty(''); }}
-                    >
-                        Receive Stock (Refill)
-                    </Button>
-                )}
             </Box>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Overview of current stock levels. Managers can set buffer and minimum thresholds here.
@@ -193,7 +161,7 @@ export default function GeneralStock() {
                     <Box display="flex" alignItems="center" mb={2}>
                         <InfoIcon color="warning" sx={{ mr: 1 }} />
                         <Typography variant="h6" color="warning.dark" fontWeight="bold">
-                            Pending Restock Requests (From Store Keeper)
+                            Pending Restock Requests (From Chief Clerk)
                         </Typography>
                     </Box>
                     <Table size="small">
@@ -214,12 +182,14 @@ export default function GeneralStock() {
                                     <TableCell>{req.quantity || '-'}</TableCell>
                                     <TableCell>{req.issuedTo || '-'}</TableCell>
                                     <TableCell align="center">
-                                        <IconButton size="small" color="success" onClick={() => handleRequestAction(req, 'APPROVED')} title="Approve & Refill">
-                                            <CheckCircleIcon />
-                                        </IconButton>
-                                        <IconButton size="small" color="error" onClick={() => handleRequestAction(req, 'DECLINED')} title="Decline">
-                                            <CancelIcon />
-                                        </IconButton>
+                                        <Button
+                                            size="small"
+                                            variant="contained"
+                                            color="success"
+                                            onClick={() => handleRequestAction(req)}
+                                        >
+                                            Review Request
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                             ))}
@@ -317,42 +287,9 @@ export default function GeneralStock() {
                 </DialogActions>
             </Dialog>
 
-            {/* Restock Dialog */}
-            <Dialog open={receiveOpen} onClose={() => setReceiveOpen(false)}>
-                <DialogTitle>Receive New Stock (Refill)</DialogTitle>
-                <DialogContent sx={{ minWidth: 400, pt: 2 }}>
-                    <FormControl fullWidth margin="normal">
-                        <InputLabel>Select Item</InputLabel>
-                        <Select
-                            value={restockItemId}
-                            label="Select Item"
-                            onChange={(e) => setRestockItemId(e.target.value)}
-                        >
-                            {items.map(i => (
-                                <MenuItem key={i.id} value={i.id}>{i.name} ({i.currentQuantity} {i.unit})</MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                    <TextField
-                        fullWidth
-                        label="Quantity to Add"
-                        type="number"
-                        margin="normal"
-                        value={transactionQty}
-                        onChange={(e) => setTransactionQty(e.target.value)}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setReceiveOpen(false)}>Cancel</Button>
-                    <Button variant="contained" color="success" onClick={handleRestock}>
-                        Confirm Receipt
-                    </Button>
-                </DialogActions>
-            </Dialog>
-
             {/* Approval Confirmation Dialog */}
             <Dialog open={approveOpen} onClose={() => setApproveOpen(false)}>
-                <DialogTitle>Approve Refill Request</DialogTitle>
+                <DialogTitle>Review Refill Request</DialogTitle>
                 <DialogContent sx={{ minWidth: 350, pt: 2 }}>
                     <Typography variant="body1" gutterBottom>
                         Refilling for: <strong>{approveReq?.itemName}</strong>
@@ -369,37 +306,53 @@ export default function GeneralStock() {
 
 
 
-                    {approveReq?.isAuto ? (
-                        <TextField
-                            autoFocus
-                            fullWidth
-                            label={`Quantity to Refill`}
-                            type="number"
-                            value={approveQty}
-                            onChange={(e) => setApproveQty(e.target.value)}
-                            variant="outlined"
-                            placeholder="Enter amount"
-                            helperText="System Auto-Request: Please specify refill amount."
-                        />
-                    ) : (
-                        <Box mt={2}>
-                            <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary' }}>
-                                Store Keeper Requested Amount:
-                            </Typography>
-                            <Typography variant="h5" color="primary" fontWeight="bold">
-                                {approveQty} {items.find(i => i.id === approveReq?.itemId)?.unit}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                Click 'Confirm Approval' to accept this request.
-                            </Typography>
-                        </Box>
-                    )}
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mb: 2 }}>
+                        {approveReq?.isAuto
+                            ? "System Auto-Request: Please verify the quantity before adding to stock."
+                            : `Requested Amount: ${approveReq?.quantity || '-'} ${items.find(i => i.id === approveReq?.itemId)?.unit || ''}. You can adjust this below.`}
+                    </Typography>
+
+                    <TextField
+                        autoFocus
+                        fullWidth
+                        label="Quantity to Refill"
+                        type="number"
+                        value={approveQty}
+                        onChange={(e) => setApproveQty(e.target.value)}
+                        variant="outlined"
+                        margin="normal"
+                        sx={{ mb: 2 }}
+                    />
+
+                    <TextField
+                        fullWidth
+                        multiline
+                        rows={2}
+                        label="Manager Remarks (Optional)"
+                        value={approveRemarks}
+                        onChange={(e) => setApproveRemarks(e.target.value)}
+                        variant="outlined"
+                        placeholder="Add reason or notes..."
+                    />
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
                     <Button onClick={() => setApproveOpen(false)}>Cancel</Button>
-                    <Button variant="contained" color="success" onClick={handleConfirmApprove}>
-                        Confirm Approval
-                    </Button>
+                    <Box gap={1} display="flex">
+                        <Button
+                            variant="contained"
+                            color="error"
+                            onClick={() => handleConfirmApprove('DECLINED')}
+                        >
+                            Reject Request
+                        </Button>
+                        <Button
+                            variant="contained"
+                            color="success"
+                            onClick={() => handleConfirmApprove('APPROVED')}
+                        >
+                            Final Approve & Refill
+                        </Button>
+                    </Box>
                 </DialogActions>
             </Dialog>
 

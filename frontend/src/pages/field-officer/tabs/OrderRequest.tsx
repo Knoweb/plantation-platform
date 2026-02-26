@@ -94,7 +94,7 @@ export default function OrderRequest() {
                 divisionName: divName,
                 fieldId: selectedField,
                 fieldName: fieldName,
-                issuedTo: `${userFullName} - ${remarks}`
+                issuedTo: `${userFullName} (Field Officer) - ${remarks}`
             });
 
             showNotification("Order Request Submitted Successfully", "success");

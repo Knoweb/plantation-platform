@@ -98,7 +98,7 @@ public class InventoryService {
         return transactionRepository.findByTenantIdOrderByDateDesc(tenantId);
     }
 
-    public InventoryTransaction updateTransactionStatus(Long id, String status, Integer quantity, String remarks) {
+    public InventoryTransaction updateTransactionStatus(Long id, String status, Integer quantity, String remarks, String issuedTo) {
         InventoryTransaction trans = transactionRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Transaction not found"));
 
@@ -110,8 +110,11 @@ public class InventoryService {
             trans.setManagerRemarks(remarks);
         }
 
-        if ("APPROVED".equals(status) && "PENDING".equals(trans.getStatus())
-                && "RESTOCK_REQUEST".equals(trans.getType())) {
+        if (issuedTo != null) {
+            trans.setIssuedTo(issuedTo);
+        }
+
+        if ("APPROVED".equals(status) && "RESTOCK_REQUEST".equals(trans.getType())) {
             // Refill Stock
             InventoryItem item = repository.findById(trans.getItemId())
                     .orElseThrow(() -> new RuntimeException("Item not found"));
