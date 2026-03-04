@@ -436,8 +436,8 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         {sidebarDivisions.map((div: any) => (
                             <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
                                 <ListItemButton
-                                    onClick={() => navigate(`/dashboard/divisions`)}
-                                    selected={location.pathname === `/dashboard/divisions`}
+                                    onClick={() => navigate(`/dashboard/division-view/${div.divisionId}`)}
+                                    selected={location.pathname === `/dashboard/division-view/${div.divisionId}`}
                                     sx={{
                                         borderRadius: 2,
                                         mx: 2,

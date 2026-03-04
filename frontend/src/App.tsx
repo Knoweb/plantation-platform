@@ -43,6 +43,7 @@ import Fertilizer from './pages/field-officer/tabs/Fertilizer';
 import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
 import NormSettings from './pages/manager/tabs/NormSettings';
 import TaskTypeSettings from './pages/chief-clerk/tabs/TaskTypeSettings';
+import DivisionView from './pages/manager/DivisionView';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -117,6 +118,7 @@ function App() {
           <Route path="crop-book" element={<CropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
           <Route path="leave-management" element={<LeaveManagement />} />
+          <Route path="division-view/:divisionId" element={<DivisionView />} />
 
           {/* Chief Clerk Tabs */}
           <Route path="norms" element={<NormSettings />} />
