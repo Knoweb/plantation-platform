@@ -1,5 +1,5 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField } from '@mui/material';
-import { useState, useEffect, Fragment } from 'react';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox } from '@mui/material';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import axios from 'axios';
 import {
     Check as CheckIcon,
@@ -9,7 +9,8 @@ import {
     History as HistoryIcon,
     EditCalendar as EditStartIcon,
     Visibility as VisibilityIcon,
-    Delete as DeleteIcon
+    Delete as DeleteIcon,
+    Refresh as RefreshIcon
 } from '@mui/icons-material';
 import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
@@ -19,13 +20,19 @@ interface AttendanceRecord {
     workerId: string;
     workType: string;
     fieldName: string;
-    amWeight?: number;
-    pmWeight?: number;
+    amWeight?: number | string;
+    pmWeight?: number | string;
+    overKilos?: number | string;
+    otHours?: number | string;
     status: string;
     workerName?: string;
     divisionId?: string;
     workDate: string; // "YYYY-MM-DD"
     updatedAt?: string; // ISO DateTime
+    session?: string;
+    tenantId?: string;
+    dailyWorkId?: string;
+    workerType?: string;
 }
 
 // --- Main Component ---
@@ -35,8 +42,11 @@ export default function EveningMusterPage() {
     return (
         <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh' }}>
             <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white', px: 3, pt: 2 }}>
-                <Typography variant="h4" fontWeight="bold" gutterBottom color="primary.dark">
+                <Typography variant="h4" fontWeight="bold" color="primary.dark">
                     Evening Muster & Harvest
+                </Typography>
+                <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </Typography>
                 <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)}>
                     <Tab label="Daily Entry (Today)" icon={<EditStartIcon />} iconPosition="start" />
@@ -68,21 +78,52 @@ function DailyEntryTab() {
     const [fields, setFields] = useState<any[]>([]); // To store field mapping
     const [selectedDivision, setSelectedDivision] = useState<string>('ALL'); // Default to ALL or first available
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+    const [norms, setNorms] = useState<any[]>([]);
+    const [dailyWorks, setDailyWorks] = useState<any[]>([]);
+    const [isEditMode, setIsEditMode] = useState(false);
+    const isEditModeRef = useRef(false);
+    const [confirmSaveDraftOpen, setConfirmSaveDraftOpen] = useState(false);
+    const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
+
+    // For assigning an evening worker
+    const [allWorkers, setAllWorkers] = useState<any[]>([]);
+    const [availableTasks, setAvailableTasks] = useState<string[]>([]);
+    const [addWorkerOpen, setAddWorkerOpen] = useState(false);
+    const [addWorkerTask, setAddWorkerTask] = useState<string>('');
+    const [addWorkerField, setAddWorkerField] = useState<string>('');
 
     useEffect(() => {
-        if (tenantId) fetchInitialData();
+        isEditModeRef.current = isEditMode;
+    }, [isEditMode]);
+
+    useEffect(() => {
+        let interval: any;
+        if (tenantId) {
+            fetchInitialData();
+            // Automatically poll for remarks and updates every 10 seconds
+            interval = setInterval(() => {
+                fetchInitialData(true); // silent fetch
+            }, 10000);
+        }
+        return () => clearInterval(interval);
     }, [tenantId]);
 
-    const fetchInitialData = async () => {
-        setLoading(true);
+    const fetchInitialData = async (silent = false) => {
+        if (!silent) setLoading(true);
         try {
             // Fetch Workers
             const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
             const wMap = new Map<string, string>();
+            const wTypeMap = new Map<string, string>();
             wRes.data.forEach((w: any) => {
-                if (w.workerId) wMap.set(w.workerId, w.name);
+                if (w.workerId) {
+                    wMap.set(w.workerId, w.name);
+                    wTypeMap.set(w.workerId, w.employmentType || 'PERMANENT');
+                }
                 wMap.set(w.id, w.name);
+                wTypeMap.set(w.id, w.employmentType || 'PERMANENT');
             });
+            if (!isEditModeRef.current) setAllWorkers(wRes.data);
 
             // Fetch Fields
             const fRes = await axios.get(`/api/fields?tenantId=${tenantId}`);
@@ -94,9 +135,14 @@ function DailyEntryTab() {
             allDivRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
 
             // Fetch Today's Daily Work (Mappings)
-            const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`);
+            const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
             const dwMap = new Map<string, string>();
-            dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
+            // Since backend returns all works, let's keep all in dailyWorks
+            setDailyWorks(dwRes.data);
+
+            // Only map divisions for today's data to avoid leaking old stuff into active today UI
+            const todayWorks = dwRes.data.filter((dw: any) => dw.workDate === today);
+            todayWorks.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
 
             // Fetch Today's Attendance
             const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
@@ -104,11 +150,24 @@ function DailyEntryTab() {
             const enriched = attRes.data.map((rec: any) => ({
                 ...rec,
                 workerName: wMap.get(rec.workerId) || rec.workerId,
+                workerType: wTypeMap.get(rec.workerId) || 'PERMANENT',
                 status: rec.status || 'PRESENT',
-                amWeight: rec.amWeight || '',
-                pmWeight: rec.pmWeight || '',
-                divisionId: dwMap.get(rec.dailyWorkId) || 'UNKNOWN'
+                amWeight: rec.amWeight ?? '',
+                pmWeight: rec.pmWeight ?? '',
+                overKilos: rec.overKilos ?? '',
+                otHours: rec.otHours ?? '',
+                session: rec.session || 'FULL_DAY',
+                divisionId: dwMap.get(rec.dailyWorkId) || 'UNKNOWN',
+                tenantId: tenantId
             }));
+
+            // Fetch Norms
+            const normsRes = await axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } });
+            setNorms(normsRes.data);
+
+            // Fetch task types
+            const taskRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
+            setAvailableTasks(taskRes.data.map((t: any) => t.name));
 
             // Derive Available Divisions from Data
             const uniqueDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId as string).filter((id: string) => id !== 'UNKNOWN')));
@@ -117,10 +176,13 @@ function DailyEntryTab() {
                 name: divNameMap.get(id as string) || 'Unknown Division'
             }));
 
-            setAttendanceData(enriched);
-            setDivisions(activeDivs);
+            // Only overwrite UI state if not actively editing
+            if (!isEditModeRef.current) {
+                setAttendanceData(enriched);
+                setDivisions(activeDivs);
+            }
 
-            // Default selection logic
+            // Default selection logic (only update if not set to prevent UX jumping)
             if (activeDivs.length > 0 && (selectedDivision === '' || !activeDivs.find(d => d.divisionId === selectedDivision))) {
                 setSelectedDivision(activeDivs[0].divisionId as string);
             } else if (activeDivs.length === 0) {
@@ -129,9 +191,9 @@ function DailyEntryTab() {
 
         } catch (e) {
             console.error("Failed", e);
-            setNotification({ open: true, message: "Failed to load data.", severity: 'error' });
+            if (!silent) setNotification({ open: true, message: "Failed to load data.", severity: 'error' });
         }
-        setLoading(false);
+        if (!silent) setLoading(false);
     };
 
     const handleUpdate = (id: string, field: keyof AttendanceRecord, value: any) => {
@@ -145,6 +207,39 @@ function DailyEntryTab() {
 
     const [confirmOpen, setConfirmOpen] = useState(false);
     const [dailyWeights, setDailyWeights] = useState<any>({}); // { [divId]: { [field]: { fieldWt, factoryWt } } }
+
+    const handleSaveDraft = async () => {
+        setConfirmSaveDraftOpen(false);
+        try {
+            const updates = attendanceData.filter(item => item.divisionId === selectedDivision).map(item => ({
+                id: item.id,
+                tenantId: item.tenantId,
+                workerId: item.workerId,
+                workDate: item.workDate,
+                dailyWorkId: item.dailyWorkId,
+                workType: item.workType,
+                fieldName: item.fieldName,
+                am: item.amWeight !== '' ? Number(item.amWeight) : null,
+                pm: item.pmWeight !== '' ? Number(item.pmWeight) : null,
+                overKilos: item.overKilos !== '' ? Number(item.overKilos) : null,
+                otHours: item.otHours !== '' ? Number(item.otHours) : null,
+                status: item.status,
+                session: item.session
+            }));
+            await axios.post(`/api/operations/attendance/bulk`, updates);
+            setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
+            setIsEditMode(false);
+            isEditModeRef.current = false; // Force immediate ref update before fetch
+            window.dispatchEvent(new Event('muster-update'));
+        } catch (e) {
+            setNotification({ open: true, message: "Failed to save.", severity: 'error' });
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setIsEditMode(false);
+        fetchInitialData(false); // Reset to last saved state
+    };
 
     // Persist dailyWeights
     useEffect(() => {
@@ -173,6 +268,7 @@ function DailyEntryTab() {
         if (selectedDivision) {
             const status = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
             setIsSubmitted(status);
+            if (status) setIsEditMode(false); // Force read-only if submitted
         }
     }, [selectedDivision, tenantId, today]);
 
@@ -185,9 +281,16 @@ function DailyEntryTab() {
         try {
             const updates = attendanceData.filter(item => item.divisionId === selectedDivision).map(item => ({
                 id: item.id,
+                tenantId: item.tenantId,
+                workerId: item.workerId,
+                workDate: item.workDate,
+                dailyWorkId: item.dailyWorkId,
+                workType: item.workType,
+                fieldName: item.fieldName,
                 am: Number(item.amWeight) || null,
                 pm: Number(item.pmWeight) || null,
-                status: item.status
+                status: item.status,
+                session: item.session
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
@@ -227,22 +330,29 @@ function DailyEntryTab() {
             if (crop === 'Rubber') catKey = 'Rubber';
 
             if (!categories[catKey][m.workType]) {
-                categories[catKey][m.workType] = { count: 0, fields: {} };
+                categories[catKey][m.workType] = { countMorning: 0, countEvening: 0, fields: {} };
             }
 
             if (m.status !== 'ABSENT') {
-                categories[catKey][m.workType].count++;
+                const addMorning = m.session === 'MORNING_SESSION' || m.session === 'FULL_DAY';
+                const addEvening = m.session === 'EVENING_SESSION' || m.session === 'FULL_DAY';
+
+                if (addMorning) categories[catKey][m.workType].countMorning++;
+                if (addEvening) categories[catKey][m.workType].countEvening++;
+
                 if (!categories[catKey][m.workType].fields[m.fieldName]) {
-                    categories[catKey][m.workType].fields[m.fieldName] = 0;
+                    categories[catKey][m.workType].fields[m.fieldName] = { countMorning: 0, countEvening: 0 };
                 }
-                categories[catKey][m.workType].fields[m.fieldName]++;
+                if (addMorning) categories[catKey][m.workType].fields[m.fieldName].countMorning++;
+                if (addEvening) categories[catKey][m.workType].fields[m.fieldName].countEvening++;
             }
         });
         return categories;
     };
 
     const categorizedSummary = getCategorizedSummary();
-    const grandWorkerTotal = filteredData.filter(d => d.status !== 'ABSENT').length;
+    const grandMorningTotal = filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'MORNING_SESSION' || d.session === 'FULL_DAY')).length;
+    const grandEveningTotal = filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'EVENING_SESSION' || d.session === 'FULL_DAY')).length;
 
     if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
@@ -252,7 +362,9 @@ function DailyEntryTab() {
     return (
         <Box>
             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
-                <Typography variant="h6">Dunwatta Estate • {today}</Typography>
+                <Box display="flex" alignItems="center">
+                    {isSubmitted && <Chip label="Read-Only Mode" color="info" />}
+                </Box>
                 <Box display="flex" gap={2} width={{ xs: '100%', sm: 'auto' }}>
                     <Badge
                         badgeContent={pendingCount}
@@ -287,298 +399,463 @@ function DailyEntryTab() {
                             </Select>
                         </FormControl>
                     </Badge>
-                    <Button variant="contained" color="primary" onClick={() => fetchInitialData()}>Refresh</Button>
+                    {attendanceData.length > 0 && selectedDivision && (
+                        <Box display="flex" gap={1}>
+                            {isSubmitted ? (
+                                <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
+                            ) : !isEditMode ? (
+                                <>
+                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
+                                    <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)} sx={{ fontWeight: 'bold' }}>Edit Entry</Button>
+                                    <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold', borderWidth: 2, '&:hover': { borderWidth: 2 } }}>Submit Muster</Button>
+                                </>
+                            ) : (
+                                <>
+                                    <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold' }}>Assign Evening Worker</Button>
+                                    <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
+                                    <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ fontWeight: 'bold' }}>Save</Button>
+                                </>
+                            )}
+                        </Box>
+                    )}
+                    <Button variant="contained" color="inherit" onClick={() => fetchInitialData()}><RefreshIcon /></Button>
                 </Box>
             </Box>
 
-            {attendanceData.length === 0 ? (
-                <Alert severity="info">No Morning Muster Approved for Today. Cannot verify Attendance.</Alert>
-            ) : (
-                <Box display="flex" flexDirection={{ xs: 'column', md: 'row' }} gap={3}>
-                    {/* Muster Chit */}
-                    <Box flex={1.2} sx={{ width: '100%', overflowX: 'auto' }}>
-                        <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2 }}>
-                            <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
-                                <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
-                            </Box>
-                            <Box sx={{ overflowX: 'auto' }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                                        <TableRow>
-                                            <TableCell><strong>Work item</strong></TableCell>
-                                            <TableCell><strong>Field No</strong></TableCell>
-                                            <TableCell align="center"><strong>No of Workers</strong></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {/* Tea Section */}
-                                        {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
-                                            <Fragment key={task}>
-                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                    <TableRow key={`${task}-${field}`}>
-                                                        {idx === 0 && (
-                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+
+
+            <Box display="flex" flexDirection="column" gap={3}>
+
+                {/* Main Content Area */}
+                <Box flex={1} minWidth={0}>
+                    {attendanceData.length === 0 ? (
+                        <Alert severity="info" sx={{ fontSize: '1.1rem', py: 2 }}>No Morning Muster Approved for Today. Cannot verify Attendance.</Alert>
+                    ) : (
+                        <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
+                            {/* Left Column: Muster Chit + Submit */}
+                            <Box flex={1.2} sx={{ width: '100%', overflowX: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+
+
+                                {/* Muster Chit */}
+                                <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2 }}>
+                                    <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
+                                        <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
+                                    </Box>
+                                    <Box sx={{ overflowX: 'auto' }}>
+                                        <Table size="small">
+                                            <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                                                <TableRow>
+                                                    <TableCell rowSpan={2}><strong>Work item</strong></TableCell>
+                                                    <TableCell rowSpan={2}><strong>Field No</strong></TableCell>
+                                                    <TableCell align="center" colSpan={2}><strong>No of Workers</strong></TableCell>
+                                                </TableRow>
+                                                <TableRow>
+                                                    <TableCell align="center"><strong>Morning</strong></TableCell>
+                                                    <TableCell align="center"><strong>Evening</strong></TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {/* Tea Section */}
+                                                {Object.entries(categorizedSummary.Tea).map(([task, data]: any) => (
+                                                    <Fragment key={task}>
+                                                        {Object.entries(data.fields).map(([field, counts]: any, idx) => (
+                                                            <TableRow key={`${task}-${field}`}>
+                                                                {idx === 0 && (
+                                                                    <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                                )}
+                                                                <TableCell>{field}</TableCell>
+                                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                        {task === 'Plucking' && (
+                                                            <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                                <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
+                                                                <TableCell align="center"><strong>{data.countMorning}</strong></TableCell>
+                                                                <TableCell align="center"><strong>{data.countEvening}</strong></TableCell>
+                                                            </TableRow>
                                                         )}
-                                                        <TableCell>{field}</TableCell>
-                                                        <TableCell align="center">{count}</TableCell>
-                                                    </TableRow>
+                                                    </Fragment>
                                                 ))}
-                                                {task === 'Plucking' && (
-                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                        <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
-                                                        <TableCell align="center"><strong>{data.count}</strong></TableCell>
+                                                {Object.keys(categorizedSummary.Tea).length > 0 && (
+                                                    <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                        <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
                                                     </TableRow>
                                                 )}
-                                            </Fragment>
-                                        ))}
-                                        {Object.keys(categorizedSummary.Tea).length > 0 && (
-                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
-                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                                            </TableRow>
-                                        )}
 
-                                        {/* Rubber Section */}
-                                        {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
-                                            <Fragment key={task}>
-                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                    <TableRow key={`${task}-${field}`}>
-                                                        {idx === 0 && (
-                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                {/* Rubber Section */}
+                                                {Object.entries(categorizedSummary.Rubber).map(([task, data]: any) => (
+                                                    <Fragment key={task}>
+                                                        {Object.entries(data.fields).map(([field, counts]: any, idx) => (
+                                                            <TableRow key={`${task}-${field}`}>
+                                                                {idx === 0 && (
+                                                                    <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                                )}
+                                                                <TableCell>{field}</TableCell>
+                                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                        {task === 'Tapping' && (
+                                                            <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                                                <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
+                                                                <TableCell align="center"><strong>{data.countMorning}</strong></TableCell>
+                                                                <TableCell align="center"><strong>{data.countEvening}</strong></TableCell>
+                                                            </TableRow>
                                                         )}
-                                                        <TableCell>{field}</TableCell>
-                                                        <TableCell align="center">{count}</TableCell>
-                                                    </TableRow>
+                                                    </Fragment>
                                                 ))}
-                                                {task === 'Tapping' && (
-                                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                        <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
-                                                        <TableCell align="center"><strong>{data.count}</strong></TableCell>
+                                                {Object.keys(categorizedSummary.Rubber).length > 0 && (
+                                                    <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                        <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
                                                     </TableRow>
                                                 )}
-                                            </Fragment>
-                                        ))}
-                                        {Object.keys(categorizedSummary.Rubber).length > 0 && (
-                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
-                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                                            </TableRow>
-                                        )}
 
-                                        {/* General Section */}
-                                        {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
-                                            <Fragment key={task}>
-                                                {Object.entries(data.fields).map(([field, count]: any, idx) => (
-                                                    <TableRow key={`${task}-${field}`}>
-                                                        {idx === 0 && (
-                                                            <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                                        )}
-                                                        <TableCell>{field}</TableCell>
-                                                        <TableCell align="center">{count}</TableCell>
+                                                {/* General Section */}
+                                                {Object.entries(categorizedSummary.General).map(([task, data]: any) => (
+                                                    <Fragment key={task}>
+                                                        {Object.entries(data.fields).map(([field, counts]: any, idx) => (
+                                                            <TableRow key={`${task}-${field}`}>
+                                                                {idx === 0 && (
+                                                                    <TableCell rowSpan={Object.keys(data.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                                                )}
+                                                                <TableCell>{field}</TableCell>
+                                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </Fragment>
+                                                ))}
+                                                {Object.keys(categorizedSummary.General).length > 0 && (
+                                                    <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                                        <TableCell colSpan={2}><strong>Total General</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
+                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
                                                     </TableRow>
-                                                ))}
-                                            </Fragment>
-                                        ))}
-                                        {Object.keys(categorizedSummary.General).length > 0 && (
-                                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                <TableCell colSpan={2}><strong>Total General</strong></TableCell>
-                                                <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                                            </TableRow>
-                                        )}
+                                                )}
 
-                                        <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
-                                            <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
-                                            <TableCell align="center"><strong>{grandWorkerTotal}</strong></TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </Box>
-                        </Paper>
-                        <Button
-                            fullWidth
-                            variant="contained"
-                            size="large"
-                            onClick={handleSubmit}
-                            disabled={isSubmitted}
-                            sx={{
-                                mt: 3,
-                                borderRadius: '30px',
-                                background: isSubmitted ? '#e0e0e0' : 'linear-gradient(45deg, #d32f2f 30%, #c62828 90%)',
-                                boxShadow: isSubmitted ? 'none' : '0 3px 5px 2px rgba(211, 47, 47, .3)',
-                                fontWeight: 'bold',
-                                fontSize: '1.1rem',
-                                '&:hover': {
-                                    background: isSubmitted ? '#e0e0e0' : 'linear-gradient(45deg, #b71c1c 30%, #c62828 90%)',
-                                    transform: isSubmitted ? 'none' : 'scale(1.02)'
-                                },
-                                transition: 'all 0.3s ease-in-out'
-                            }}
-                        >
-                            {isSubmitted ? 'Submitted' : 'Submit Muster'}
-                        </Button>
-                    </Box>
-
-                    {/* Detailed List */}
-                    <Box flex={2}>
-                        {/* Daily Harvest Summary Component - Top Right */}
-                        {(() => {
-                            // Identify Harvest Fields
-                            const harvestFields = { Tea: [] as string[], Rubber: [] as string[] };
-                            Object.entries(grouped).forEach(([task, items]: any) => {
-                                const lower = task.toLowerCase();
-                                if (lower.includes('pluck') || lower.includes('harvest') || lower.includes('tap')) {
-                                    const firstItem = items[0];
-                                    const fName = firstItem?.fieldName;
-                                    const fieldObj = fields.find((f: any) => f.name === fName);
-                                    // Use same logic as TaskSection
-                                    const crop = (fieldObj?.cropType || 'General').toLowerCase();
-
-                                    const uniqueF = Array.from(new Set(items.map((i: any) => i.fieldName)));
-                                    if (crop === 'tea') harvestFields.Tea.push(...uniqueF as string[]);
-                                    if (crop === 'rubber') harvestFields.Rubber.push(...uniqueF as string[]);
-                                }
-                            });
-                            // De-duplicate
-                            harvestFields.Tea = Array.from(new Set(harvestFields.Tea));
-                            harvestFields.Rubber = Array.from(new Set(harvestFields.Rubber));
-
-                            if (harvestFields.Tea.length === 0 && harvestFields.Rubber.length === 0) return null;
-
-                            // Simplified Green Theme Layout
-                            return (
-                                <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: '#f1f8e9', border: '1px solid #c5e1a5' }}>
-                                    <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
-                                        <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ mr: 1 }}>
-                                            Yield:
-                                        </Typography>
-
-                                        {/* Tea Section */}
-                                        {harvestFields.Tea.length > 0 && (
-                                            <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-                                                {harvestFields.Tea.map(field => (
-                                                    <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                        <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
-                                                        <TextField
-                                                            variant="standard"
-                                                            InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                            placeholder="0"
-                                                            type="number"
-                                                            disabled={isSubmitted}
-                                                            sx={{ width: 50 }}
-                                                            value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                if (val === '' || Number(val) >= 0) {
-                                                                    setDailyWeights((prev: any) => ({
-                                                                        ...prev,
-                                                                        [selectedDivision]: {
-                                                                            ...prev[selectedDivision],
-                                                                            [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
-                                                                        }
-                                                                    }));
-                                                                }
-                                                            }}
-                                                        />
-                                                        <Typography variant="caption" color="text.secondary">kg</Typography>
-                                                    </Box>
-                                                ))}
-                                                {/* Single Factory Weight for Tea */}
-                                                <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                    <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
-                                                    <TextField
-                                                        variant="standard"
-                                                        InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                        placeholder="0"
-                                                        type="number"
-                                                        disabled={isSubmitted}
-                                                        sx={{ width: 50 }}
-                                                        value={dailyWeights[selectedDivision]?.['Tea_Factory']?.factoryWt || ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            if (val === '' || Number(val) >= 0) {
-                                                                setDailyWeights((prev: any) => ({
-                                                                    ...prev,
-                                                                    [selectedDivision]: {
-                                                                        ...prev[selectedDivision],
-                                                                        ['Tea_Factory']: { ...prev[selectedDivision]?.['Tea_Factory'], factoryWt: val }
-                                                                    }
-                                                                }));
-                                                            }
-                                                        }}
-                                                    />
-                                                    <Typography variant="caption" color="text.secondary">kg</Typography>
-                                                </Box>
-                                            </Box>
-                                        )}
-
-                                        {/* Rubber Section */}
-                                        {harvestFields.Rubber.length > 0 && (
-                                            <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ borderLeft: harvestFields.Tea.length > 0 ? '1px solid #bdbdbd' : 'none', pl: harvestFields.Tea.length > 0 ? 2 : 0 }}>
-                                                {harvestFields.Rubber.map(field => (
-                                                    <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                        <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
-                                                        <TextField
-                                                            variant="standard"
-                                                            InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                            placeholder="0"
-                                                            type="number"
-                                                            disabled={isSubmitted}
-                                                            sx={{ width: 50 }}
-                                                            value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                if (val === '' || Number(val) >= 0) {
-                                                                    setDailyWeights((prev: any) => ({
-                                                                        ...prev,
-                                                                        [selectedDivision]: {
-                                                                            ...prev[selectedDivision],
-                                                                            [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
-                                                                        }
-                                                                    }));
-                                                                }
-                                                            }}
-                                                        />
-                                                        <Typography variant="caption" color="text.secondary">L</Typography>
-                                                    </Box>
-                                                ))}
-                                                {/* Single Factory Weight for Rubber */}
-                                                <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                    <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
-                                                    <TextField
-                                                        variant="standard"
-                                                        InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                        placeholder="0"
-                                                        type="number"
-                                                        disabled={isSubmitted}
-                                                        sx={{ width: 50 }}
-                                                        value={dailyWeights[selectedDivision]?.['Rubber_Factory']?.factoryWt || ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            if (val === '' || Number(val) >= 0) {
-                                                                setDailyWeights((prev: any) => ({
-                                                                    ...prev,
-                                                                    [selectedDivision]: {
-                                                                        ...prev[selectedDivision],
-                                                                        ['Rubber_Factory']: { ...prev[selectedDivision]?.['Rubber_Factory'], factoryWt: val }
-                                                                    }
-                                                                }));
-                                                            }
-                                                        }}
-                                                    />
-                                                    <Typography variant="caption" color="text.secondary">L</Typography>
-                                                </Box>
-                                            </Box>
-                                        )}
+                                                <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
+                                                    <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
+                                                    <TableCell align="center"><strong>{grandMorningTotal}</strong></TableCell>
+                                                    <TableCell align="center"><strong>{grandEveningTotal}</strong></TableCell>
+                                                </TableRow>
+                                            </TableBody>
+                                        </Table>
                                     </Box>
                                 </Paper>
-                            );
-                        })()}
-                        {Object.entries(grouped).map(([task, items]: any) => (
-                            <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted} fields={fields} />
-                        ))}
-                    </Box>
+
+                                {/* Manager Remarks Section */}
+                                {dailyWorks.filter(dw => dw.workDate === today && dw.divisionId === selectedDivision && dw.remarks && dw.remarks.trim() !== '').map((dw, i) => (
+                                    <Alert
+                                        key={i}
+                                        severity={dw.status === 'REJECTED' ? 'error' : 'info'}
+                                        sx={{ borderRadius: 2 }}
+                                    >
+                                        <Typography variant="subtitle2" fontWeight="bold">
+                                            Manager Remarks {dw.status === 'REJECTED' ? '(Rejected)' : ''}:
+                                        </Typography>
+                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{dw.remarks}</Typography>
+                                    </Alert>
+                                ))}
+
+                            </Box>
+
+                            {/* Detailed List */}
+                            <Box flex={2} sx={{
+                                opacity: isSubmitted || !isEditMode ? 0.6 : 1,
+                                filter: isSubmitted || !isEditMode ? 'grayscale(40%)' : 'none',
+                                pointerEvents: isSubmitted || !isEditMode ? 'none' : 'auto',
+                                transition: 'all 0.3s ease-in-out'
+                            }}>
+                                {/* Daily Harvest Summary Component - Top Right */}
+                                {(() => {
+                                    // Identify Harvest Fields
+                                    const harvestFields = { Tea: [] as string[], Rubber: [] as string[] };
+                                    Object.entries(grouped).forEach(([task, items]: any) => {
+                                        const lower = task.toLowerCase();
+                                        if (lower.includes('pluck') || lower.includes('harvest') || lower.includes('tap')) {
+                                            const firstItem = items[0];
+                                            const fName = firstItem?.fieldName;
+                                            const fieldObj = fields.find((f: any) => f.name === fName);
+                                            // Use same logic as TaskSection
+                                            const crop = (fieldObj?.cropType || 'General').toLowerCase();
+
+                                            const uniqueF = Array.from(new Set(items.map((i: any) => i.fieldName)));
+                                            if (crop === 'tea') harvestFields.Tea.push(...uniqueF as string[]);
+                                            if (crop === 'rubber') harvestFields.Rubber.push(...uniqueF as string[]);
+                                        }
+                                    });
+                                    // De-duplicate
+                                    harvestFields.Tea = Array.from(new Set(harvestFields.Tea));
+                                    harvestFields.Rubber = Array.from(new Set(harvestFields.Rubber));
+
+                                    if (harvestFields.Tea.length === 0 && harvestFields.Rubber.length === 0) return null;
+
+                                    // Simplified Green Theme Layout
+                                    return (
+                                        <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: '#f1f8e9', border: '1px solid #c5e1a5' }}>
+                                            <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+                                                <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ mr: 1 }}>
+                                                    Yield:
+                                                </Typography>
+
+                                                {/* Tea Section */}
+                                                {harvestFields.Tea.length > 0 && (
+                                                    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
+                                                        {harvestFields.Tea.map(field => (
+                                                            <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                                <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
+                                                                <TextField
+                                                                    variant="standard"
+                                                                    InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                                    placeholder="0"
+                                                                    type="number"
+                                                                    disabled={isSubmitted || !isEditMode}
+                                                                    sx={{ width: 50 }}
+                                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        if (val === '' || Number(val) >= 0) {
+                                                                            setDailyWeights((prev: any) => ({
+                                                                                ...prev,
+                                                                                [selectedDivision]: {
+                                                                                    ...prev[selectedDivision],
+                                                                                    [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
+                                                                                }
+                                                                            }));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Typography variant="caption" color="text.secondary">kg</Typography>
+                                                            </Box>
+                                                        ))}
+                                                        {/* Single Factory Weight for Tea */}
+                                                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                            <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
+                                                            <TextField
+                                                                variant="standard"
+                                                                InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                                placeholder="0"
+                                                                type="number"
+                                                                disabled={isSubmitted || !isEditMode}
+                                                                sx={{ width: 50 }}
+                                                                value={dailyWeights[selectedDivision]?.['Tea_Factory']?.factoryWt || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val === '' || Number(val) >= 0) {
+                                                                        setDailyWeights((prev: any) => ({
+                                                                            ...prev,
+                                                                            [selectedDivision]: {
+                                                                                ...prev[selectedDivision],
+                                                                                ['Tea_Factory']: { ...prev[selectedDivision]?.['Tea_Factory'], factoryWt: val }
+                                                                            }
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Typography variant="caption" color="text.secondary">kg</Typography>
+                                                        </Box>
+                                                    </Box>
+                                                )}
+
+                                                {/* Rubber Section */}
+                                                {harvestFields.Rubber.length > 0 && (
+                                                    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ borderLeft: harvestFields.Tea.length > 0 ? '1px solid #bdbdbd' : 'none', pl: harvestFields.Tea.length > 0 ? 2 : 0 }}>
+                                                        {harvestFields.Rubber.map(field => (
+                                                            <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                                <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
+                                                                <TextField
+                                                                    variant="standard"
+                                                                    InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                                    placeholder="0"
+                                                                    type="number"
+                                                                    disabled={isSubmitted || !isEditMode}
+                                                                    sx={{ width: 50 }}
+                                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                                    onChange={(e) => {
+                                                                        const val = e.target.value;
+                                                                        if (val === '' || Number(val) >= 0) {
+                                                                            setDailyWeights((prev: any) => ({
+                                                                                ...prev,
+                                                                                [selectedDivision]: {
+                                                                                    ...prev[selectedDivision],
+                                                                                    [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
+                                                                                }
+                                                                            }));
+                                                                        }
+                                                                    }}
+                                                                />
+                                                                <Typography variant="caption" color="text.secondary">L</Typography>
+                                                            </Box>
+                                                        ))}
+                                                        {/* Single Factory Weight for Rubber */}
+                                                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
+                                                            <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
+                                                            <TextField
+                                                                variant="standard"
+                                                                InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
+                                                                placeholder="0"
+                                                                type="number"
+                                                                disabled={isSubmitted || !isEditMode}
+                                                                sx={{ width: 50 }}
+                                                                value={dailyWeights[selectedDivision]?.['Rubber_Factory']?.factoryWt || ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val === '' || Number(val) >= 0) {
+                                                                        setDailyWeights((prev: any) => ({
+                                                                            ...prev,
+                                                                            [selectedDivision]: {
+                                                                                ...prev[selectedDivision],
+                                                                                ['Rubber_Factory']: { ...prev[selectedDivision]?.['Rubber_Factory'], factoryWt: val }
+                                                                            }
+                                                                        }));
+                                                                    }
+                                                                }}
+                                                            />
+                                                            <Typography variant="caption" color="text.secondary">L</Typography>
+                                                        </Box>
+                                                    </Box>
+                                                )}
+                                            </Box>
+                                        </Paper>
+                                    );
+                                })()}
+                                {Object.entries(grouped).map(([task, items]: any) => (
+                                    <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted || !isEditMode} isFinalized={isSubmitted} fields={fields} />
+                                ))}
+                            </Box>
+                        </Box>
+                    )}
                 </Box>
-            )}
+            </Box>
+
+            {/* Add Evening Worker Dialog */}
+            <Dialog open={addWorkerOpen} onClose={() => setAddWorkerOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Assign Evening Worker</DialogTitle>
+                <DialogContent>
+                    <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
+                        <InputLabel>Task Type</InputLabel>
+                        <Select
+                            value={addWorkerTask}
+                            label="Task Type"
+                            onChange={(e) => setAddWorkerTask(e.target.value)}
+                        >
+                            {availableTasks.length > 0 ? availableTasks.map((t: string) => (
+                                <MenuItem key={t} value={t}>{t}</MenuItem>
+                            )) : (
+                                ['Plucking', 'Sundry', 'Other'].map(t => <MenuItem key={t} value={t}>{t}</MenuItem>)
+                            )}
+                        </Select>
+                    </FormControl>
+
+                    <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
+                        <InputLabel>Field Name</InputLabel>
+                        <Select
+                            value={addWorkerField}
+                            label="Field Name"
+                            onChange={(e) => setAddWorkerField(e.target.value)}
+                        >
+                            {fields.filter((f: any) => f.divisionId === selectedDivision).map((f: any) => (
+                                <MenuItem key={f.name} value={f.name}>{f.name}</MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+
+                    <Autocomplete
+                        id="evening-worker-select"
+                        options={allWorkers.filter((w: any) => {
+                            if (w.status !== 'ACTIVE') return false;
+                            if (w.employmentType === 'CONTRACT') return w.registeredDate === today;
+                            if (w.employmentType === 'CONTRACT_MEMBER') return false;
+                            return true;
+                        }).sort((a: any, b: any) => {
+                            const typeOrders: Record<string, number> = { 'PERMANENT': 1, 'CASUAL': 2, 'CONTRACT': 3, 'CONTRACT_MEMBER': 3 };
+                            const orderA = typeOrders[a.employmentType || ''] || 4;
+                            const orderB = typeOrders[b.employmentType || ''] || 4;
+                            if (orderA !== orderB) return orderA - orderB;
+                            return a.name.localeCompare(b.name);
+                        })}
+                        groupBy={(option: any) => {
+                            if (option.employmentType === 'PERMANENT') return '— PERMANENT —';
+                            if (option.employmentType === 'CASUAL') return '— CASUAL —';
+                            if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') return '— CONTRACT —';
+                            return '— OTHER —';
+                        }}
+                        getOptionLabel={(option: any) => option.name}
+                        isOptionEqualToValue={(option: any, value: any) => option.id === value?.id}
+                        value={null} // Keep unselected by default since selecting adds immediately
+                        onChange={(_event, newValue: any) => {
+                            if (!newValue) return;
+                            const worker = newValue;
+                            if (worker && addWorkerTask && addWorkerField) {
+                                const itemsForTaskField = attendanceData.filter(item => item.workType === addWorkerTask && item.fieldName === addWorkerField && item.divisionId === selectedDivision);
+                                let defaultDailyWorkId = itemsForTaskField.length > 0 ? itemsForTaskField[0].dailyWorkId : '';
+                                if (!defaultDailyWorkId) {
+                                    defaultDailyWorkId = '00000000-0000-0000-0000-000000000000';
+                                }
+
+                                const newRecord: AttendanceRecord = {
+                                    id: `temp-${Date.now()}`,
+                                    workerId: worker.workerId || worker.id,
+                                    workerName: worker.name,
+                                    workerType: worker.employmentType || 'PERMANENT',
+                                    workType: addWorkerTask,
+                                    fieldName: addWorkerField,
+                                    status: 'PRESENT',
+                                    session: 'EVENING_SESSION',
+                                    divisionId: selectedDivision,
+                                    workDate: today,
+                                    tenantId: tenantId,
+                                    dailyWorkId: defaultDailyWorkId
+                                };
+                                setAttendanceData(prev => [...prev, newRecord]);
+                                setAddWorkerOpen(false);
+                                setAddWorkerTask('');
+                                setAddWorkerField('');
+                            } else if (!addWorkerTask || !addWorkerField) {
+                                setNotification({ open: true, message: 'Please select both Task and Field first', severity: 'error' });
+                            }
+                        }}
+                        getOptionDisabled={(option: any) => attendanceData.some(a => a.workerId === (option.workerId || option.id) && (a.session === 'EVENING_SESSION' || a.session === 'FULL_DAY'))}
+                        renderInput={(params) => (
+                            <TextField
+                                {...params}
+                                label="Assign Worker"
+                                placeholder="Search by name or role"
+                                margin="dense"
+                            />
+                        )}
+                        renderOption={(props, option: any) => {
+                            let color = "#757575";
+                            let isAssigned = false;
+
+                            // Visual check if they are already assigned to SOMETHING for the evening based on backend data (simplified visual check)
+                            const hasEveningAssigned = attendanceData.some(a => a.workerId === (option.workerId || option.id) && (a.session === 'EVENING_SESSION' || a.session === 'FULL_DAY'));
+                            if (hasEveningAssigned) isAssigned = true;
+
+                            if (option.employmentType === 'PERMANENT') color = "#2e7d32";
+                            else if (option.employmentType === 'CASUAL') color = "#0288d1";
+                            else if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') color = "#9c27b0";
+
+                            const { key, ...optionProps } = props as any;
+
+                            return (
+                                <li key={key || option.id} {...optionProps} style={{ color, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
+                                    <Checkbox checked={isAssigned} size="small" sx={{ p: 0 }} disabled />
+                                    <span>{option.name} {isAssigned ? '(Assigned)' : ''}</span>
+                                </li>
+                            );
+                        }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button onClick={() => setAddWorkerOpen(false)} color="inherit">Cancel</Button>
+                </DialogActions>
+            </Dialog>
             <Snackbar open={notification.open} autoHideDuration={4000} onClose={() => setNotification({ ...notification, open: false })}>
                 <Alert severity={notification.severity}>{notification.message}</Alert>
             </Snackbar>
@@ -626,12 +903,81 @@ function DailyEntryTab() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
+            {/* Save Draft Dialog */}
+            <Dialog
+                open={confirmSaveDraftOpen}
+                onClose={() => setConfirmSaveDraftOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        bgcolor: '#e8f5e9', // Lighter green bg
+                        width: '100%',
+                        maxWidth: 350,
+                        border: '2px solid #66bb6a'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <CheckIcon sx={{ color: '#66bb6a' }} /> Save Work Progress
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body1" color="text.secondary">
+                        Save current entries? You can continue editing later before final submission.
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 3 }}>
+                    <Button onClick={() => setConfirmSaveDraftOpen(false)} variant="outlined" color="inherit">Cancel</Button>
+                    <Button onClick={handleSaveDraft} variant="contained" color="success">Save</Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* View Targets Dialog */}
+            <Dialog
+                open={viewTargetsOpen}
+                onClose={() => setViewTargetsOpen(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        bgcolor: '#e8f5e9',
+                        width: '100%',
+                        maxWidth: 350,
+                        border: '2px solid #66bb6a'
+                    }
+                }}
+            >
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1, borderBottom: '1px solid #c5e1a5', pb: 2 }}>
+                    <VisibilityIcon sx={{ color: '#66bb6a' }} /> Active Targets / Norms
+                </DialogTitle>
+                <DialogContent sx={{ p: 0 }}>
+                    {norms.length === 0 ? (
+                        <Box p={3} textAlign="center">
+                            <Typography variant="body2" color="text.secondary">No active targets found.</Typography>
+                        </Box>
+                    ) : (
+                        <Box>
+                            {norms.map((n: any, index: number) => (
+                                <Box key={n.id} display="flex" justifyContent="space-between" alignItems="center" px={3} py={2} sx={{
+                                    borderBottom: index < norms.length - 1 ? '1px solid #c5e1a5' : 'none',
+                                    '&:hover': { bgcolor: '#f1f8e9' }
+                                }}>
+                                    <Typography variant="body1" fontWeight="bold" color="text.secondary">{n.jobRole}</Typography>
+                                    <Chip label={`${n.targetValue} ${n.unit}`} color="success" size="small" variant="outlined" sx={{ fontWeight: 'bold', bgcolor: 'white' }} />
+                                </Box>
+                            ))}
+                        </Box>
+                    )}
+                </DialogContent>
+                <DialogActions sx={{ px: 3, py: 2, borderTop: '1px solid #c5e1a5' }}>
+                    <Button onClick={() => setViewTargetsOpen(false)} variant="contained" color="inherit" fullWidth sx={{ fontWeight: 'bold', color: '#2e7d32', bgcolor: '#c8e6c9', '&:hover': { bgcolor: '#a5d6a7' } }}>Close</Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
 
 // --- Task Section Component ---
-function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[] }) {
+function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, isFinalized = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], isFinalized?: boolean }) {
     // State for weights managed in parent now (or TBD)
 
     // Task Configuration Logic
@@ -700,8 +1046,6 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
             < Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap" >
                 <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 120 }}>{task}</Typography>
 
-                {/* Harvest Inputs Moved to Top Right - Removed from here */}
-
                 {/* Summary Card */}
                 <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 1, py: 0.5, minWidth: 150 }}>
                     {uniqueFields.map((f: any) => (
@@ -745,9 +1089,12 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                         <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
                     </Box>
                     <Box display="flex" alignItems="center">
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} ({taskConfig.unit})</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} ({taskConfig.unit})</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>TOTAL ({taskConfig.unit})</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} AM</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} PM</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 55 }}>TOTAL</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>OVER KGS</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>OT HRS</Typography>
+                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 100 }}>SESSION</Typography>
                         <Box sx={{ width: 110 }} /> {/* Spacer for Actions */}
                     </Box>
                 </Box>
@@ -770,10 +1117,28 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                     >
                         {/* Worker Info */}
                         <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
-                            <Avatar sx={{ bgcolor: '#333', width: 32, height: 32 }}><PersonIcon sx={{ fontSize: 18 }} /></Avatar>
+                            <Avatar sx={{
+                                bgcolor: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
+                                width: 32, height: 32
+                            }}><PersonIcon sx={{ fontSize: 18, color: 'white' }} /></Avatar>
                             <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
-                                <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333" display="block">{item.workerName}</Typography>
-                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem' }}>{item.fieldName}</Typography>
+                                <Box display="flex" alignItems="center" gap={1}>
+                                    <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333">{item.workerName}</Typography>
+                                    <Chip
+                                        label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
+                                        size="small"
+                                        sx={{
+                                            height: 16,
+                                            fontSize: '0.6rem',
+                                            fontWeight: 'bold',
+                                            bgcolor: item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
+                                            color: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : '#9c27b0',
+                                            border: '1px solid',
+                                            borderColor: item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8',
+                                        }}
+                                    />
+                                </Box>
+                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem', mt: 0.5 }}>{item.fieldName}</Typography>
                             </Box>
                         </Box>
 
@@ -813,12 +1178,12 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     />
                                 </Box>
                                 {/* Total Badge */}
-                                <Box width={65} display="flex" justifyContent="center">
+                                <Box width={55} display="flex" justifyContent="center">
                                     <Box
                                         bgcolor="#2e7d32"
                                         color="white"
                                         borderRadius={1}
-                                        width={55}
+                                        width={45}
                                         height={30}
                                         display="flex"
                                         alignItems="center"
@@ -831,12 +1196,69 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         </Typography>
                                     </Box>
                                 </Box>
+                                {/* Over Kilos Input */}
+                                <Box width={65} display="flex" justifyContent="center">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        style={{ ...inputStyle, borderColor: '#fbc02d' }} // Highlight differently
+                                        value={item.overKilos ?? ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'overKilos', val);
+                                        }}
+                                        disabled={isSubmitted}
+                                        placeholder="Over"
+                                    />
+                                </Box>
+                                {/* OT Hours Input */}
+                                <Box width={65} display="flex" justifyContent="center">
+                                    <input
+                                        type="number"
+                                        min="0"
+                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                        style={{ ...inputStyle, borderColor: '#0288d1' }} // Highlight differently
+                                        value={item.otHours ?? ''}
+                                        onChange={(e) => {
+                                            const val = e.target.value;
+                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'otHours', val);
+                                        }}
+                                        disabled={isSubmitted}
+                                        placeholder="OT"
+                                    />
+                                </Box>
+                                {/* Session Dropdown */}
+                                <Box width={100} display="flex" justifyContent="center">
+                                    <FormControl variant="standard" size="small" sx={{ width: '90%' }}>
+                                        <Select
+                                            value={item.session || 'FULL_DAY'}
+                                            onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
+                                            disableUnderline
+                                            disabled={isSubmitted}
+                                            sx={{
+                                                fontSize: '0.7rem',
+                                                fontWeight: 'bold',
+                                                color: item.session === 'FULL_DAY' ? '#1976d2' : '#ed6c02',
+                                                bgcolor: item.session === 'FULL_DAY' ? '#f5f5f5' : '#fff3e0',
+                                                border: item.session === 'FULL_DAY' ? '1px solid #e0e0e0' : '1px solid #ffcc80',
+                                                borderRadius: 1,
+                                                px: 0.5,
+                                                height: 30
+                                            }}
+                                        >
+                                            <MenuItem value="FULL_DAY" sx={{ fontSize: '0.75rem' }}>Full Day</MenuItem>
+                                            <MenuItem value="MORNING_SESSION" sx={{ fontSize: '0.75rem' }}>Morning</MenuItem>
+                                            <MenuItem value="EVENING_SESSION" sx={{ fontSize: '0.75rem' }}>Evening</MenuItem>
+                                        </Select>
+                                    </FormControl>
+                                </Box>
                             </Box>
                         )}
 
                         {/* Actions */}
                         <Box width={110} display="flex" justifyContent="flex-end" alignItems="center">
-                            {isSubmitted ? (
+                            {isFinalized ? (
                                 <>
                                     {item.status === 'PRESENT' && (
                                         <Chip
@@ -920,7 +1342,6 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                     </Box>
                 ))}
             </Box >
-
         </Paper >
     );
 }

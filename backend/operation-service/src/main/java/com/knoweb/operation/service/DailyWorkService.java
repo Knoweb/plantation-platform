@@ -1,6 +1,7 @@
 package com.knoweb.operation.service;
 
 import com.knoweb.operation.dto.DailyWorkRequest;
+import com.knoweb.operation.dto.ReviewRequest;
 import com.knoweb.operation.entity.DailyWork;
 import com.knoweb.operation.repository.DailyWorkRepository;
 import com.knoweb.operation.repository.AttendanceRepository;
@@ -40,16 +41,23 @@ public class DailyWorkService {
     }
 
     @Transactional
-    public DailyWork approveWork(UUID workId) {
+    public DailyWork approveWork(UUID workId, ReviewRequest request) {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
         
-        if ("APPROVED".equals(work.getStatus())) {
-            return work;
+        // Removed the early return for "APPROVED" to allow updating details/workers even if already approved.
+
+        if (request != null) {
+            if (request.getDetails() != null) work.setDetails(request.getDetails());
+            if (request.getWorkerCount() != null) work.setWorkerCount(request.getWorkerCount());
+            if (request.getRemarks() != null) work.setRemarks(request.getRemarks());
         }
 
         // Sync Attendance
         try {
+            // First clear out any existing attendance for this muster to prevent duplicates on update
+            attendanceRepository.deleteByDailyWorkId(workId);
+
             if (work.getDetails() != null && work.getDetails().trim().startsWith("[")) {
                 com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(work.getDetails());
                 if (root.isArray()) {
@@ -86,9 +94,14 @@ public class DailyWorkService {
     }
 
     @Transactional
-    public DailyWork rejectWork(UUID workId) {
+    public DailyWork rejectWork(UUID workId, ReviewRequest request) {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
+
+        if (request != null) {
+            if (request.getRemarks() != null) work.setRemarks(request.getRemarks());
+        }
+
         work.setStatus("REJECTED");
         work.setActionAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
         return dailyWorkRepository.save(work);

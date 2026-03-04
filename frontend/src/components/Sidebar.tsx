@@ -64,10 +64,11 @@ const menuItems = [
     { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
 
     // Chief Clerk Specific Tabs
-    { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['CHIEF_CLERK'] },
+    { text: 'Job Roles & Tasks', icon: <WorkHistoryIcon />, path: '/dashboard/job-roles', roles: ['CHIEF_CLERK'] },
     { text: 'Inventory Management', icon: <InventoryIcon />, path: '/dashboard/chief-inventory', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs
+    { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['MANAGER'] },
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
     { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review-manager', roles: ['MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER'] },
@@ -299,6 +300,23 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         }
     };
 
+    // Calculate sum of alerts across the entire sidebar to pass to the global Header bell
+    useEffect(() => {
+        let total = 0;
+        const alertsList: any[] = [];
+
+        if (alertCount > 0) { total += alertCount; alertsList.push({ id: 1, label: `${alertCount} Pending Approvals`, path: userRole === 'STORE_KEEPER' ? '/dashboard/store/approvals' : '/dashboard/approvals' }); }
+        if (restockCount > 0) { total += restockCount; alertsList.push({ id: 2, label: `${restockCount} General Stock Issues`, path: '/dashboard/stock' }); }
+        if (musterReviewCount > 0) { total += musterReviewCount; alertsList.push({ id: 3, label: `${musterReviewCount} Daily Muster Reviews`, path: '/dashboard/muster-review-manager' }); }
+        if (eveningPendingCount > 0) { total += eveningPendingCount; alertsList.push({ id: 4, label: `${eveningPendingCount} Evening Mustee Submissions`, path: '/dashboard/evening-muster' }); }
+        if (storePendingCount > 0) { total += storePendingCount; alertsList.push({ id: 5, label: `${storePendingCount} Dispatches`, path: '/dashboard/store/approvals' }); }
+        if (chiefClerkPendingCount > 0) { total += chiefClerkPendingCount; alertsList.push({ id: 6, label: `${chiefClerkPendingCount} Pending Inventory Actions`, path: '/dashboard/chief-inventory' }); }
+        if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} Unread Messages`, path: '/dashboard/correspondence' }); }
+        if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} Worker Approvals`, path: '/dashboard/workers' }); }
+
+        window.dispatchEvent(new CustomEvent('global-alerts-update', { detail: { total, alertsList } }));
+    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, userRole]);
+
     const handleLogout = () => {
         sessionStorage.removeItem('user');
         navigate('/login');
@@ -310,6 +328,19 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
     // We'll just render Divisions manually in the list below
     const effectiveRoles = userRole === 'MANAGER_CLERK' ? ['MANAGER', 'CHIEF_CLERK'] : [userRole];
+
+    const getAlertCount = (item: any) => {
+        if (item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return alertCount;
+        if (item.text === 'General Stock' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return restockCount;
+        if (item.text === 'Pending Approvals' && userRole === 'STORE_KEEPER') return storePendingCount;
+        if (item.text === 'Inventory Management' && userRole === 'CHIEF_CLERK') return chiefClerkPendingCount;
+        if (item.text === 'Dashboard' && userRole === 'STORE_KEEPER') return alertCount;
+        if (item.text === 'Muster Review') return musterReviewCount;
+        if (item.text === 'Correspondence') return unreadChatCount;
+        if (item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return workerApprovalCount;
+        if (item.text === 'Evening Muster') return eveningPendingCount;
+        return 0;
+    };
 
     const filteredMenuItems = menuItems.filter(item =>
         !item.roles || (effectiveRoles.some(r => item.roles.includes(r)))
@@ -323,7 +354,14 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             return { ...item, path: dashboardPath };
         }
         return item;
-    });
+    }).map((item, index) => ({ item, index }))
+        .sort((a, b) => {
+            const countA = getAlertCount(a.item);
+            const countB = getAlertCount(b.item);
+            if (countA > 0 && countB === 0) return -1;
+            if (countB > 0 && countA === 0) return 1;
+            return a.index - b.index; // Stable sort for identical alert states
+        }).map(obj => obj.item);
 
     const drawerContent = (
         <>

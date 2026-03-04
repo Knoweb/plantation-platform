@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.UUID;
 import java.util.Map;
+import com.knoweb.operation.dto.ReviewRequest;
 
 @RestController
 @RequestMapping("/api/operations/daily-work")
@@ -28,18 +29,18 @@ public class DailyWorkController {
     }
 
     @PutMapping("/{id}/approve")
-    public ResponseEntity<?> approveWork(@PathVariable UUID id) {
+    public ResponseEntity<?> approveWork(@PathVariable UUID id, @RequestBody(required = false) ReviewRequest request) {
         try {
-            return ResponseEntity.ok(dailyWorkService.approveWork(id));
+            return ResponseEntity.ok(dailyWorkService.approveWork(id, request));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
     @PutMapping("/{id}/reject")
-    public ResponseEntity<?> rejectWork(@PathVariable UUID id) {
+    public ResponseEntity<?> rejectWork(@PathVariable UUID id, @RequestBody(required = false) ReviewRequest request) {
         try {
-            return ResponseEntity.ok(dailyWorkService.rejectWork(id));
+            return ResponseEntity.ok(dailyWorkService.rejectWork(id, request));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

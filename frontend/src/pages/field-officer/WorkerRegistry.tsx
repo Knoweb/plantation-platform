@@ -334,7 +334,7 @@ export default function WorkerRegistry() {
             nicNumber: '',
             dateOfBirth: '',
             joinedDate: '',
-            status: userRole === 'CHIEF_CLERK' ? WorkerStatus.PENDING_APPROVAL : WorkerStatus.ACTIVE,
+            status: activeTab === 1 || userRole !== 'CHIEF_CLERK' ? WorkerStatus.ACTIVE : WorkerStatus.PENDING_APPROVAL,
             divisionIds: [],
             tenantId: tenantId
         });
@@ -470,7 +470,7 @@ export default function WorkerRegistry() {
                 employmentType: 'CONTRACT',
                 contractorName: worker.contractorName,
                 nicNumber: worker.nicNumber,
-                status: userRole === 'CHIEF_CLERK' ? WorkerStatus.PENDING_APPROVAL : WorkerStatus.ACTIVE,
+                status: WorkerStatus.ACTIVE,
                 divisionIds: [],
                 tenantId: tenantId
             };
@@ -505,7 +505,7 @@ export default function WorkerRegistry() {
                 employmentType: 'CONTRACT',
                 contractorName: dailyContractor,
                 nicNumber: '',
-                status: userRole === 'CHIEF_CLERK' ? WorkerStatus.PENDING_APPROVAL : WorkerStatus.ACTIVE,
+                status: WorkerStatus.ACTIVE,
                 divisionIds: [],
                 tenantId: tenantId
             }));
@@ -644,7 +644,7 @@ export default function WorkerRegistry() {
                                                 label={worker.employmentType || 'PERMANENT'}
                                                 size="small"
                                                 color={
-                                                    worker.employmentType === 'PERMANENT' ? 'primary' : 'warning'
+                                                    worker.employmentType === 'PERMANENT' ? 'success' : (worker.employmentType === 'CASUAL' ? 'info' : 'secondary')
                                                 }
                                                 sx={{ mr: 1 }}
                                             />

@@ -37,8 +37,17 @@ public class Attendance {
     @Column(name = "pm_weight")
     private Double pmWeight;
 
+    @Column(name = "over_kilos")
+    private Double overKilos;
+
+    @Column(name = "ot_hours")
+    private Double otHours;
+
     @Column(name = "status")
     private String status = "PRESENT";
+
+    @Column(name = "session")
+    private String session = "FULL_DAY";
 
     @Column(name = "updated_at")
     private java.time.LocalDateTime updatedAt;
@@ -54,6 +63,7 @@ public class Attendance {
         this.fieldName = fieldName;
         this.dailyWorkId = dailyWorkId;
         this.status = "PRESENT";
+        this.session = "FULL_DAY";
     }
 
     public UUID getId() {
@@ -128,12 +138,36 @@ public class Attendance {
         this.pmWeight = pmWeight;
     }
 
+    public Double getOverKilos() {
+        return overKilos;
+    }
+
+    public void setOverKilos(Double overKilos) {
+        this.overKilos = overKilos;
+    }
+
+    public Double getOtHours() {
+        return otHours;
+    }
+
+    public void setOtHours(Double otHours) {
+        this.otHours = otHours;
+    }
+
     public String getStatus() {
         return status;
     }
 
     public void setStatus(String status) {
         this.status = status;
+    }
+
+    public String getSession() {
+        return session;
+    }
+
+    public void setSession(String session) {
+        this.session = session;
     }
 
     public java.time.LocalDateTime getUpdatedAt() {

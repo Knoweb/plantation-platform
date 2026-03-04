@@ -1,6 +1,5 @@
-import { Box, Typography, Paper, Grid, Card, CardContent, Divider, Chip } from '@mui/material';
+import { Box, Typography, Grid, Card, CardContent, Chip } from '@mui/material';
 import EngineeringIcon from '@mui/icons-material/Engineering';
-import SettingsIcon from '@mui/icons-material/Settings';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 
 export default function ChiefClerkDashboard() {
@@ -14,19 +13,7 @@ export default function ChiefClerkDashboard() {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                    <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #1b5e20' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" gap={2} mb={2}>
-                                <SettingsIcon fontSize="large" color="primary" />
-                                <Typography variant="h6" fontWeight="bold">Norm Setting</Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">
-                                Prepare the monthly minimum yield targets for Tea Plucking & Rubber Tapping based on the 25th-of-the-month discussions.
-                            </Typography>
-                        </CardContent>
-                    </Card>
-                </Grid>
+
                 <Grid item xs={12} md={4}>
                     <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #f57c00' }}>
                         <CardContent>

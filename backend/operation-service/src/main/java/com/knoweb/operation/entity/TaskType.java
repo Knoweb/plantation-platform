@@ -20,10 +20,13 @@ public class TaskType {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "expected_unit")
+    private String expectedUnit;
+
     public TaskType() {
     }
 
-    public TaskType(UUID tenantId, String name) {
+    public TaskType(UUID tenantId, String name, String expectedUnit) {
         this.tenantId = tenantId;
         this.name = name;
     }
@@ -58,5 +61,13 @@ public class TaskType {
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getExpectedUnit() {
+        return expectedUnit;
+    }
+
+    public void setExpectedUnit(String expectedUnit) {
+        this.expectedUnit = expectedUnit;
     }
 }

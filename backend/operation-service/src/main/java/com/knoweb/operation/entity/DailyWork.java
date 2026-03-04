@@ -43,6 +43,9 @@ public class DailyWork {
     @Column(name = "action_at")
     private java.time.LocalDateTime actionAt;
 
+    @Column(name = "remarks", columnDefinition = "TEXT")
+    private String remarks;
+
     public DailyWork() {
     }
 
@@ -132,5 +135,13 @@ public class DailyWork {
 
     public void setActionAt(java.time.LocalDateTime actionAt) {
         this.actionAt = actionAt;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
     }
 }

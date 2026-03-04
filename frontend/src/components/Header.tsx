@@ -2,8 +2,9 @@ import { AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem } 
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Badge } from '@mui/material';
 
 interface HeaderProps {
     handleDrawerToggle: () => void;
@@ -13,6 +14,19 @@ interface HeaderProps {
 export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps) {
     const navigate = useNavigate();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+    const [notifAnchorEl, setNotifAnchorEl] = useState<null | HTMLElement>(null);
+    const [globalAlerts, setGlobalAlerts] = useState<{ total: number, alertsList: any[] }>({ total: 0, alertsList: [] });
+
+    useEffect(() => {
+        const handleGlobalAlerts = (e: any) => {
+            if (e.detail) {
+                setGlobalAlerts({ total: e.detail.total, alertsList: e.detail.alertsList });
+            }
+        };
+
+        window.addEventListener('global-alerts-update', handleGlobalAlerts);
+        return () => window.removeEventListener('global-alerts-update', handleGlobalAlerts);
+    }, []);
 
     // Load user info
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -74,9 +88,50 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                     <IconButton>
                         <SearchIcon color="action" />
                     </IconButton>
-                    <IconButton>
-                        <NotificationsIcon color="action" />
+                    <IconButton onClick={(e) => setNotifAnchorEl(e.currentTarget)}>
+                        <Badge badgeContent={globalAlerts.total} color="error">
+                            <NotificationsIcon color="action" />
+                        </Badge>
                     </IconButton>
+
+                    {/* Notification Dropdown */}
+                    <Menu
+                        anchorEl={notifAnchorEl}
+                        open={Boolean(notifAnchorEl)}
+                        onClose={() => setNotifAnchorEl(null)}
+                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+                        PaperProps={{
+                            elevation: 3,
+                            sx: { width: 320, mt: 1.5, borderRadius: 2 }
+                        }}
+                    >
+                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #eee' }}>
+                            <Typography variant="subtitle1" fontWeight="bold">Notifications</Typography>
+                        </Box>
+
+                        {globalAlerts.alertsList.length === 0 ? (
+                            <MenuItem disabled sx={{ py: 2, justifyContent: 'center' }}>
+                                <Typography variant="body2" color="text.secondary">No pending alerts</Typography>
+                            </MenuItem>
+                        ) : (
+                            globalAlerts.alertsList.map((alert: any) => (
+                                <MenuItem
+                                    key={alert.id}
+                                    onClick={() => {
+                                        setNotifAnchorEl(null);
+                                        navigate(alert.path);
+                                    }}
+                                    sx={{ borderBottom: '1px solid #f5f5f5', py: 1.5 }}
+                                >
+                                    <Box display="flex" alignItems="center" gap={1.5}>
+                                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: 'error.main' }} />
+                                        <Typography variant="body2">{alert.label}</Typography>
+                                    </Box>
+                                </MenuItem>
+                            ))
+                        )}
+                    </Menu>
 
                     <Box
                         ml={1}

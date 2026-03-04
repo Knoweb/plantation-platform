@@ -37,17 +37,20 @@ public class TaskTypeService {
         return repository.findByTenantId(tenantId);
     }
 
-    public TaskType createTaskType(UUID tenantId, String name) {
+    public TaskType createTaskType(UUID tenantId, String name, String expectedUnit) {
         Optional<TaskType> existing = repository.findByTenantIdAndName(tenantId, name);
         if (existing.isPresent()) {
             TaskType task = existing.get();
             if (!task.getActive()) {
                 task.setActive(true);
+                task.setExpectedUnit(expectedUnit);
                 return repository.save(task);
             }
-            return task;
+            // Update unit even if active
+            task.setExpectedUnit(expectedUnit);
+            return repository.save(task);
         }
-        return repository.save(new TaskType(tenantId, name));
+        return repository.save(new TaskType(tenantId, name, expectedUnit));
     }
 
     public void deleteTaskType(UUID id) {
@@ -57,10 +60,18 @@ public class TaskTypeService {
         });
     }
 
+    public TaskType updateTaskUnit(UUID id, String expectedUnit) {
+        return repository.findById(id).map(task -> {
+            task.setExpectedUnit(expectedUnit);
+            return repository.save(task);
+        }).orElseThrow(() -> new RuntimeException("Task not found"));
+    }
+
     private List<TaskType> seedDefaultTasks(UUID tenantId) {
         DEFAULT_TASKS.forEach(name -> {
             if (repository.findByTenantIdAndName(tenantId, name).isEmpty()) {
-                repository.save(new TaskType(tenantId, name));
+                String unit = name.equals("Plucking") ? "Kg" : (name.contains("Weeding") ? "Acres" : "Task");
+                repository.save(new TaskType(tenantId, name, unit));
             }
         });
         return repository.findByTenantIdAndIsActiveTrue(tenantId);

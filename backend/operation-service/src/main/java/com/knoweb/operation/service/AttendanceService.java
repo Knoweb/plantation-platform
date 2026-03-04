@@ -29,6 +29,43 @@ public class AttendanceService {
             try {
                 String idStr = (String) update.get("id");
                 if (idStr == null) continue;
+                
+                if (idStr.startsWith("temp-")) {
+                    Attendance att = new Attendance();
+                    att.setTenantId(UUID.fromString((String) update.get("tenantId")));
+                    att.setWorkerId((String) update.get("workerId"));
+                    att.setWorkDate(java.time.LocalDate.parse((String) update.get("workDate")));
+                    att.setDailyWorkId(UUID.fromString((String) update.get("dailyWorkId")));
+                    att.setWorkType((String) update.get("workType"));
+                    att.setFieldName((String) update.get("fieldName"));
+                    
+                    if (update.containsKey("am")) {
+                        Object am = update.get("am");
+                        att.setAmWeight(am instanceof Number ? ((Number) am).doubleValue() : null);
+                    }
+                    if (update.containsKey("pm")) {
+                        Object pm = update.get("pm");
+                        att.setPmWeight(pm instanceof Number ? ((Number) pm).doubleValue() : null);
+                    }
+                    if (update.containsKey("overKilos")) {
+                        Object ok = update.get("overKilos");
+                        att.setOverKilos(ok instanceof Number ? ((Number) ok).doubleValue() : null);
+                    }
+                    if (update.containsKey("otHours")) {
+                        Object ot = update.get("otHours");
+                        att.setOtHours(ot instanceof Number ? ((Number) ot).doubleValue() : null);
+                    }
+                    if (update.containsKey("status")) {
+                        att.setStatus((String) update.get("status"));
+                    }
+                    if (update.containsKey("session")) {
+                        att.setSession((String) update.get("session"));
+                    }
+                    att.setUpdatedAt(java.time.LocalDateTime.now());
+                    attendanceRepository.save(att);
+                    continue;
+                }
+
                 UUID id = UUID.fromString(idStr);
                 
                 Attendance att = attendanceRepository.findById(id).orElse(null);
@@ -41,8 +78,19 @@ public class AttendanceService {
                         Object pm = update.get("pm");
                         att.setPmWeight(pm instanceof Number ? ((Number) pm).doubleValue() : null);
                     }
+                    if (update.containsKey("overKilos")) {
+                        Object ok = update.get("overKilos");
+                        att.setOverKilos(ok instanceof Number ? ((Number) ok).doubleValue() : null);
+                    }
+                    if (update.containsKey("otHours")) {
+                        Object ot = update.get("otHours");
+                        att.setOtHours(ot instanceof Number ? ((Number) ot).doubleValue() : null);
+                    }
                     if (update.containsKey("status")) {
                         att.setStatus((String) update.get("status"));
+                    }
+                    if (update.containsKey("session")) {
+                        att.setSession((String) update.get("session"));
                     }
                     att.setUpdatedAt(java.time.LocalDateTime.now());
                     attendanceRepository.save(att);

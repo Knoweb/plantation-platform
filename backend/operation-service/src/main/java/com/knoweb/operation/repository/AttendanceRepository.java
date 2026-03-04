@@ -9,4 +9,5 @@ import java.util.UUID;
 public interface AttendanceRepository extends JpaRepository<Attendance, UUID> {
     List<Attendance> findByTenantId(UUID tenantId);
     List<Attendance> findByTenantIdAndWorkDate(UUID tenantId, LocalDate workDate);
+    void deleteByDailyWorkId(UUID dailyWorkId);
 }
