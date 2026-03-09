@@ -895,21 +895,35 @@ export default function WorkerRegistry() {
                         <Box sx={{ bgcolor: '#fafafa', p: 2, borderRadius: 1 }}>
                             <Typography variant="subtitle2" sx={{ mb: 2, color: 'text.secondary' }}>Select Workers present today:</Typography>
                             <FormGroup>
-                                {workers.filter(w => w.employmentType === 'CONTRACT_MEMBER' && w.contractorName === dailyContractor).map((w: any) => (
-                                    <FormControlLabel
-                                        key={w.id}
-                                        control={
-                                            <Checkbox
-                                                checked={dailySelectedWorkers.some(sel => sel.id === w.id)}
-                                                onChange={(e) => {
-                                                    if (e.target.checked) setDailySelectedWorkers([...dailySelectedWorkers, w]);
-                                                    else setDailySelectedWorkers(dailySelectedWorkers.filter(sel => sel.id !== w.id));
-                                                }}
-                                            />
-                                        }
-                                        label={w.name}
-                                    />
-                                ))}
+                                {workers.filter(w => w.employmentType === 'CONTRACT_MEMBER' && w.contractorName === dailyContractor).map((w: any) => {
+                                    const isAlreadyLogged = workers.some(loggedWorker =>
+                                        loggedWorker.employmentType === 'CONTRACT' &&
+                                        loggedWorker.registeredDate === defaultDate &&
+                                        loggedWorker.contractorName === dailyContractor &&
+                                        loggedWorker.name === w.name
+                                    );
+                                    return (
+                                        <FormControlLabel
+                                            key={w.id}
+                                            control={
+                                                <Checkbox
+                                                    checked={isAlreadyLogged || dailySelectedWorkers.some(sel => sel.id === w.id)}
+                                                    disabled={isAlreadyLogged}
+                                                    onChange={(e) => {
+                                                        if (e.target.checked) setDailySelectedWorkers([...dailySelectedWorkers, w]);
+                                                        else setDailySelectedWorkers(dailySelectedWorkers.filter(sel => sel.id !== w.id));
+                                                    }}
+                                                />
+                                            }
+                                            label={
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <Typography sx={{ color: isAlreadyLogged ? 'text.disabled' : 'text.primary' }}>{w.name}</Typography>
+                                                    {isAlreadyLogged && <Chip label="Logged Today" size="small" color="success" variant="outlined" sx={{ height: 20, fontSize: '0.65rem' }} />}
+                                                </Box>
+                                            }
+                                        />
+                                    );
+                                })}
                             </FormGroup>
 
                             <Typography variant="subtitle2" sx={{ mt: 3, mb: 1, color: 'text.secondary' }}>Add New Workers to Team (will save to system):</Typography>

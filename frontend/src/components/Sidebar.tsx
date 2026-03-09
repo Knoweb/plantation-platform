@@ -70,8 +70,7 @@ const menuItems = [
     // Manager Specific Tabs
     { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['MANAGER'] },
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
-    { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review-manager', roles: ['MANAGER'] },
-    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER'] },
+    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER', 'CHIEF_CLERK'] },
 
 
     // Manager
@@ -455,6 +454,38 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             </ListItem>
                         ))}
                     </Box>
+                )}
+
+                {/* Muster Review directly below Divisions for Manager */}
+                {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && (
+                    <ListItem disablePadding sx={{ mb: 1 }}>
+                        <ListItemButton
+                            onClick={() => navigate('/dashboard/muster-review-manager')}
+                            selected={location.pathname === '/dashboard/muster-review-manager'}
+                            sx={{
+                                borderRadius: 2,
+                                mx: 1,
+                                minHeight: 48,
+                                justifyContent: 'initial',
+                                '&.Mui-selected': {
+                                    bgcolor: 'rgba(255,255,255,0.2)',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                                },
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                            }}
+                        >
+                            <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
+                                {musterReviewCount > 0 ? (
+                                    <Badge badgeContent={musterReviewCount} color="error">
+                                        <GroupIcon />
+                                    </Badge>
+                                ) : (
+                                    <GroupIcon />
+                                )}
+                            </ListItemIcon>
+                            <ListItemText primary="Muster Review" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
+                        </ListItemButton>
+                    </ListItem>
                 )}
 
                 {/* Standard Menu Items (Excluding Dashboard) */}

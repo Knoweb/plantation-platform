@@ -336,16 +336,27 @@ export default function MorningMuster() {
                 filteredMusters.forEach(m => {
                     const assignedWorkers = m.workerIds?.map(wid => {
                         const w = workers.find(work => work.id === wid);
-                        return { id: wid, name: w ? w.name : 'Unknown' };
+                        return {
+                            id: wid,
+                            name: w ? w.name : 'Unknown',
+                            type: w ? (w.type || w.employmentType || w.workerType || 'CASUAL') : 'CASUAL'
+                        };
                     }) || [];
 
                     totalCount += m.workerCount;
-                    allAssignments.push({
-                        task: m.taskType,
-                        field: m.fieldName,
-                        count: m.workerCount,
-                        assigned: assignedWorkers
-                    });
+
+                    const existing = allAssignments.find(a => a.task === m.taskType && a.field === m.fieldName);
+                    if (existing) {
+                        existing.assigned.push(...assignedWorkers);
+                        existing.count += m.workerCount;
+                    } else {
+                        allAssignments.push({
+                            task: m.taskType,
+                            field: m.fieldName,
+                            count: m.workerCount,
+                            assigned: assignedWorkers
+                        });
+                    }
                 });
 
                 // Use local date for consistency

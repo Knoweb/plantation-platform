@@ -29,6 +29,7 @@ public class TaskType {
     public TaskType(UUID tenantId, String name, String expectedUnit) {
         this.tenantId = tenantId;
         this.name = name;
+        this.expectedUnit = expectedUnit;
     }
 
     public UUID getId() {

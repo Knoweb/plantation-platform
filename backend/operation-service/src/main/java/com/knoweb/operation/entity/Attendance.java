@@ -43,6 +43,12 @@ public class Attendance {
     @Column(name = "ot_hours")
     private Double otHours;
 
+    @Column(name = "cash_kilos")
+    private Double cashKilos;
+
+    @Column(name = "completed_quantity")
+    private Double completedQuantity;
+
     @Column(name = "status")
     private String status = "PRESENT";
 
@@ -152,6 +158,22 @@ public class Attendance {
 
     public void setOtHours(Double otHours) {
         this.otHours = otHours;
+    }
+
+    public Double getCashKilos() {
+        return cashKilos;
+    }
+
+    public void setCashKilos(Double cashKilos) {
+        this.cashKilos = cashKilos;
+    }
+
+    public Double getCompletedQuantity() {
+        return completedQuantity;
+    }
+
+    public void setCompletedQuantity(Double completedQuantity) {
+        this.completedQuantity = completedQuantity;
     }
 
     public String getStatus() {

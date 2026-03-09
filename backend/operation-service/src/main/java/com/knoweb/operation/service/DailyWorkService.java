@@ -120,6 +120,14 @@ public class DailyWorkService {
     }
 
     @Transactional
+    public DailyWork updateBulkWeights(UUID workId, String bulkWeights) {
+        DailyWork work = dailyWorkRepository.findById(workId)
+                .orElseThrow(() -> new RuntimeException("Work record not found"));
+        work.setBulkWeights(bulkWeights);
+        return dailyWorkRepository.save(work);
+    }
+
+    @Transactional
     public void deleteWork(UUID id) {
         dailyWorkRepository.deleteById(id);
     }

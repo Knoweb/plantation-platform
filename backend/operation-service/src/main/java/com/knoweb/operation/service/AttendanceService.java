@@ -51,9 +51,17 @@ public class AttendanceService {
                         Object ok = update.get("overKilos");
                         att.setOverKilos(ok instanceof Number ? ((Number) ok).doubleValue() : null);
                     }
+                    if (update.containsKey("completedQuantity")) {
+                        Object cq = update.get("completedQuantity");
+                        att.setCompletedQuantity(cq instanceof Number ? ((Number) cq).doubleValue() : null);
+                    }
                     if (update.containsKey("otHours")) {
                         Object ot = update.get("otHours");
                         att.setOtHours(ot instanceof Number ? ((Number) ot).doubleValue() : null);
+                    }
+                    if (update.containsKey("cashKilos")) {
+                        Object cq = update.get("cashKilos");
+                        att.setCashKilos(cq instanceof Number ? ((Number) cq).doubleValue() : null);
                     }
                     if (update.containsKey("status")) {
                         att.setStatus((String) update.get("status"));
@@ -82,9 +90,17 @@ public class AttendanceService {
                         Object ok = update.get("overKilos");
                         att.setOverKilos(ok instanceof Number ? ((Number) ok).doubleValue() : null);
                     }
+                    if (update.containsKey("completedQuantity")) {
+                        Object cq = update.get("completedQuantity");
+                        att.setCompletedQuantity(cq instanceof Number ? ((Number) cq).doubleValue() : null);
+                    }
                     if (update.containsKey("otHours")) {
                         Object ot = update.get("otHours");
                         att.setOtHours(ot instanceof Number ? ((Number) ot).doubleValue() : null);
+                    }
+                    if (update.containsKey("cashKilos")) {
+                        Object cq = update.get("cashKilos");
+                        att.setCashKilos(cq instanceof Number ? ((Number) cq).doubleValue() : null);
                     }
                     if (update.containsKey("status")) {
                         att.setStatus((String) update.get("status"));

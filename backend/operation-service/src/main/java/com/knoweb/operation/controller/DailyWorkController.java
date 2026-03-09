@@ -46,6 +46,16 @@ public class DailyWorkController {
         }
     }
 
+    @PutMapping("/{id}/weights")
+    public ResponseEntity<?> updateBulkWeights(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+        try {
+            String weights = payload.get("bulkWeights");
+            return ResponseEntity.ok(dailyWorkService.updateBulkWeights(id, weights));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteWork(@PathVariable UUID id) {
         try {

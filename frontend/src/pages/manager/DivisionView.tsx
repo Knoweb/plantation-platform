@@ -1,4 +1,4 @@
-import { Box, Typography, Card, CardContent, Avatar, Chip, Grid, CircularProgress, Alert, Grow } from '@mui/material';
+import { Box, Typography, Avatar, Chip, CircularProgress, Alert, Grow } from '@mui/material';
 import { useParams } from 'react-router-dom';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
@@ -141,84 +141,133 @@ export default function DivisionView() {
             </Typography>
 
             {workers.length === 0 ? (
-                <Alert severity="info">No workers are currently assigned to this division in today's muster.</Alert>
+                <Alert severity="info" sx={{ borderRadius: '16px', py: 0.5 }}>No workers are currently assigned to this division in today's muster.</Alert>
             ) : (
-                <Box>
-                    {Object.entries(groupedByField).map(([fieldName, tasks]: any, fieldIndex: number) => (
-                        <Card key={fieldName} sx={{ mb: 4, borderRadius: 3, boxShadow: '0 8px 24px rgba(0,0,0,0.05)', border: '1px solid #e0e0e0', overflow: 'hidden' }}>
-                            <Box bgcolor="#e8f5e9" p={2} borderBottom="1px solid #c8e6c9">
-                                <Typography variant="h6" fontWeight="bold" color="#1b5e20">
-                                    Field: {fieldName}
+                /* The outer "Division" bubble */
+                <Box
+                    sx={{
+                        bgcolor: '#f8fafc',
+                        border: '1px solid #e2e8f0',
+                        borderRadius: '24px',
+                        p: { xs: 2, md: 4 },
+                        boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)',
+                        position: 'relative',
+                        maxWidth: '1400px',
+                        mx: 'auto'
+                    }}
+                >
+                    <Box display="flex" flexWrap="wrap" gap={3} justifyContent="center" alignItems="flex-start">
+                        {Object.entries(groupedByField).map(([fieldName, tasks]: any, fieldIndex: number) => (
+                            /* "Field" bubble */
+                            <Box
+                                key={fieldName}
+                                sx={{
+                                    bgcolor: '#ffffff',
+                                    borderRadius: '20px',
+                                    boxShadow: '0 4px 16px rgba(0,0,0,0.04)',
+                                    border: '1px solid #f1f5f9',
+                                    p: 3,
+                                    flex: '0 1 auto',
+                                    minWidth: { xs: '100%', sm: '400px' },
+                                    maxWidth: '800px',
+                                    position: 'relative',
+                                    transition: 'all 0.2s ease',
+                                    '&:hover': { boxShadow: '0 6px 20px rgba(0,0,0,0.08)' }
+                                }}
+                            >
+                                <Typography variant="subtitle2" fontWeight="800" color="#0f172a" mb={2} textAlign="center" display="flex" alignItems="center" justifyContent="center" gap={1} sx={{ letterSpacing: '0.2px', fontSize: '0.9rem' }}>
+                                    <span style={{ display: 'inline-block', width: 8, height: 8, borderRadius: '50%', backgroundColor: '#10b981' }}></span>
+                                    {fieldName}
                                 </Typography>
-                            </Box>
 
-                            <CardContent sx={{ p: 3, pt: 2 }}>
-                                {Object.entries(tasks).map(([taskName, taskWorkers]: any, taskIndex: number) => (
-                                    <Box key={taskName} mb={taskIndex !== Object.keys(tasks).length - 1 ? 4 : 0}>
-                                        <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                            <Chip label={`Task: ${taskName}`} size="medium" sx={{ fontWeight: 'bold', bgcolor: '#f5f5f5', color: '#424242', borderRadius: 1 }} />
-                                            <Typography variant="body2" color="text.secondary">
-                                                ({taskWorkers.length} {taskWorkers.length === 1 ? 'Worker' : 'Workers'})
-                                            </Typography>
-                                        </Box>
+                                <Box display="flex" flexWrap="wrap" gap={2} justifyContent="center">
+                                    {Object.entries(tasks).map(([taskName, taskWorkers]: any, taskIndex: number) => (
+                                        /* "Task" bubble */
+                                        <Box
+                                            key={taskName}
+                                            sx={{
+                                                bgcolor: '#f1f5f9',
+                                                borderRadius: '16px',
+                                                p: 1.5,
+                                                flex: '1 1 auto',
+                                                minWidth: '220px',
+                                                display: 'flex',
+                                                flexDirection: 'column',
+                                                alignItems: 'center',
+                                            }}
+                                        >
+                                            <Chip
+                                                label={`${taskName} (${taskWorkers.length})`}
+                                                size="small"
+                                                sx={{
+                                                    fontWeight: '700',
+                                                    bgcolor: '#ffffff',
+                                                    color: '#334155',
+                                                    mb: 2,
+                                                    fontSize: '0.75rem',
+                                                    height: 24,
+                                                    boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
+                                                    border: '1px solid #e2e8f0'
+                                                }}
+                                            />
 
-                                        <Grid container spacing={2}>
-                                            {taskWorkers.map((worker: any, workerIndex: number) => (
-                                                <Grow in={true} key={worker.id} style={{ transformOrigin: '0 0 0' }} timeout={500 + (fieldIndex * 100) + (taskIndex * 100) + (workerIndex * 50)}>
-                                                    <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }}>
-                                                        <Card sx={{
-                                                            borderRadius: 2,
-                                                            boxShadow: '0 2px 8px rgba(0,0,0,0.04)',
-                                                            border: '1px solid #eeeeee',
-                                                            transition: 'all 0.2s',
-                                                            bgcolor: '#ffffff',
-                                                            '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 8px 16px rgba(0,0,0,0.1)', borderColor: '#e0e0e0' }
-                                                        }}>
-                                                            <CardContent sx={{ p: 1.5, '&:last-child': { pb: 1.5 } }}>
-                                                                <Box display="flex" alignItems="flex-start" gap={1.5}>
-                                                                    <Avatar sx={{
-                                                                        bgcolor: worker.workerType === 'PERMANENT' ? '#2e7d32' : worker.workerType === 'CASUAL' ? '#0288d1' : worker.workerType?.includes('CONTRACT') ? '#9c27b0' : '#757575',
-                                                                        width: 40, height: 40
+                                            <Box display="flex" flexWrap="wrap" gap={1.25} justifyContent="center" width="100%">
+                                                {taskWorkers.map((worker: any, workerIndex: number) => (
+                                                    <Grow in={true} key={worker.id} style={{ transformOrigin: '0 0 0' }} timeout={200 + (fieldIndex * 50) + (taskIndex * 30) + (workerIndex * 20)}>
+                                                        {/* Worker Pill / dot bubble */}
+                                                        <Box
+                                                            sx={{
+                                                                display: 'flex',
+                                                                alignItems: 'center',
+                                                                gap: 1.25,
+                                                                bgcolor: '#ffffff',
+                                                                borderRadius: '30px',
+                                                                pr: 2,
+                                                                pl: 0.5,
+                                                                py: 0.5,
+                                                                boxShadow: '0 1px 4px rgba(0,0,0,0.05)',
+                                                                border: '1px solid #e2e8f0',
+                                                                transition: 'transform 0.1s',
+                                                                '&:hover': { transform: 'scale(1.02)' },
+                                                                width: 'fit-content'
+                                                            }}
+                                                        >
+                                                            <Avatar sx={{
+                                                                bgcolor: worker.workerType === 'PERMANENT' ? '#10b981' : worker.workerType === 'CASUAL' ? '#3b82f6' : worker.workerType?.includes('CONTRACT') ? '#8b5cf6' : '#94a3b8',
+                                                                width: 32, height: 32,
+                                                            }}>
+                                                                <PersonIcon sx={{ fontSize: '1.2rem' }} />
+                                                            </Avatar>
+                                                            <Box display="flex" flexDirection="column" justifyContent="center">
+                                                                <Typography variant="subtitle2" fontWeight="800" lineHeight={1.1} sx={{ color: '#0f172a', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
+                                                                    {worker.workerName}
+                                                                </Typography>
+                                                                <Box display="flex" alignItems="center" gap={0.5} mt={0.25}>
+                                                                    <Typography sx={{
+                                                                        fontSize: '0.65rem',
+                                                                        fontWeight: '800',
+                                                                        color: worker.workerType === 'PERMANENT' ? '#10b981' : worker.workerType === 'CASUAL' ? '#3b82f6' : '#8b5cf6',
+                                                                        textTransform: 'uppercase',
                                                                     }}>
-                                                                        <PersonIcon fontSize="small" />
-                                                                    </Avatar>
-                                                                    <Box display="flex" flexDirection="column" gap={0.25}>
-                                                                        <Typography variant="subtitle2" fontWeight="bold" lineHeight={1.2} sx={{ color: '#212121', fontSize: '0.85rem' }}>
-                                                                            {worker.workerName}
+                                                                        {worker.workerType?.includes('CONTRACT') ? 'CONTRACT' : worker.workerType}
+                                                                    </Typography>
+                                                                    {worker.workerType?.includes('CONTRACT') && worker.contractor && (
+                                                                        <Typography sx={{ color: '#8b5cf6', fontSize: '0.55rem', fontStyle: 'italic', whiteSpace: 'nowrap' }}>
+                                                                            ({worker.contractor})
                                                                         </Typography>
-                                                                        <Box display="flex" flexWrap="wrap" alignItems="center" gap={0.5} mt={0.5}>
-                                                                            <Chip
-                                                                                label={worker.workerType?.includes('CONTRACT') ? 'CONTRACT' : worker.workerType}
-                                                                                size="small"
-                                                                                sx={{
-                                                                                    fontSize: '0.6rem',
-                                                                                    fontWeight: 'bold',
-                                                                                    height: 18,
-                                                                                    bgcolor: worker.workerType === 'PERMANENT' ? '#e8f5e9' : worker.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
-                                                                                    color: worker.workerType === 'PERMANENT' ? '#2e7d32' : worker.workerType === 'CASUAL' ? '#0288d1' : '#9c27b0',
-                                                                                    border: '1px solid',
-                                                                                    borderColor: worker.workerType === 'PERMANENT' ? '#c8e6c9' : worker.workerType === 'CASUAL' ? '#b3e5fc' : '#e1bee7',
-                                                                                }}
-                                                                            />
-                                                                            {worker.workerType?.includes('CONTRACT') && worker.contractor && (
-                                                                                <Typography variant="caption" sx={{ color: '#9c27b0', fontSize: '0.6rem', display: 'flex', alignItems: 'center', fontWeight: 'bold' }}>
-                                                                                    ({worker.contractor})
-                                                                                </Typography>
-                                                                            )}
-                                                                        </Box>
-                                                                    </Box>
+                                                                    )}
                                                                 </Box>
-                                                            </CardContent>
-                                                        </Card>
-                                                    </Grid>
-                                                </Grow>
-                                            ))}
-                                        </Grid>
-                                    </Box>
-                                ))}
-                            </CardContent>
-                        </Card>
-                    ))}
+                                                            </Box>
+                                                        </Box>
+                                                    </Grow>
+                                                ))}
+                                            </Box>
+                                        </Box>
+                                    ))}
+                                </Box>
+                            </Box>
+                        ))}
+                    </Box>
                 </Box>
             )}
         </Box>

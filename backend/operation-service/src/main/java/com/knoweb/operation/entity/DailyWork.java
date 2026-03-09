@@ -46,6 +46,9 @@ public class DailyWork {
     @Column(name = "remarks", columnDefinition = "TEXT")
     private String remarks;
 
+    @Column(name = "bulk_weights", columnDefinition = "TEXT")
+    private String bulkWeights;
+
     public DailyWork() {
     }
 
@@ -143,5 +146,13 @@ public class DailyWork {
 
     public void setRemarks(String remarks) {
         this.remarks = remarks;
+    }
+
+    public String getBulkWeights() {
+        return bulkWeights;
+    }
+
+    public void setBulkWeights(String bulkWeights) {
+        this.bulkWeights = bulkWeights;
     }
 }

@@ -25,7 +25,7 @@ import GeneralStock from './pages/field-officer/tabs/GeneralStock';
 import KPIs from './pages/field-officer/tabs/KPIs';
 import PendingApprovals from './pages/manager/tabs/PendingApprovals';
 import MusterReviewManager from './pages/manager/tabs/MusterReviewManager';
-import CropBook from './pages/manager/tabs/CropBook';
+// import CropBook from './pages/manager/tabs/CropBook';
 import AttendanceReport from './pages/manager/tabs/AttendanceReport';
 import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 import MorningMuster from './pages/field-officer/MorningMuster';
@@ -115,7 +115,7 @@ function App() {
           {/* Manager Tabs */}
           <Route path="approvals" element={<PendingApprovals />} />
           <Route path="muster-review-manager" element={<MusterReviewManager />} />
-          <Route path="crop-book" element={<CropBook />} />
+          <Route path="crop-book" element={<FOCropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
           <Route path="leave-management" element={<LeaveManagement />} />
           <Route path="division-view/:divisionId" element={<DivisionView />} />

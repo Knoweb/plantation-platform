@@ -1,4 +1,4 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox } from '@mui/material';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox, InputAdornment } from '@mui/material';
 import { useState, useEffect, useRef, Fragment } from 'react';
 import axios from 'axios';
 import {
@@ -23,6 +23,7 @@ interface AttendanceRecord {
     amWeight?: number | string;
     pmWeight?: number | string;
     overKilos?: number | string;
+    cashKilos?: number | string;
     otHours?: number | string;
     status: string;
     workerName?: string;
@@ -48,9 +49,103 @@ export default function EveningMusterPage() {
                 <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
                     {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </Typography>
-                <Tabs value={tabIndex} onChange={(_, v) => setTabIndex(v)}>
-                    <Tab label="Daily Entry (Today)" icon={<EditStartIcon />} iconPosition="start" />
-                    <Tab label="Muster History" icon={<HistoryIcon />} iconPosition="start" />
+                <Tabs
+                    value={tabIndex}
+                    onChange={(_, v) => setTabIndex(v)}
+                    TabIndicatorProps={{ style: { display: 'none' } }} // Hide default indicator for custom animation
+                    sx={{
+                        minHeight: 48,
+                        mb: 1
+                    }}
+                >
+                    <Tab
+                        label="Daily Entry (Today)"
+                        icon={<EditStartIcon />}
+                        iconPosition="start"
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 'bold',
+                            fontSize: '1.05rem',
+                            minHeight: 48,
+                            mr: 3,
+                            px: 3,
+                            color: 'text.secondary',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            zIndex: 1,
+                            transition: 'all 0.3s ease',
+                            '@keyframes borderSpin': {
+                                '0%': { transform: 'rotate(0deg)' },
+                                '100%': { transform: 'rotate(360deg)' }
+                            },
+                            '&.Mui-selected': {
+                                color: '#1b5e20',
+                                border: '1px solid transparent',
+                            },
+                            '&.Mui-selected::before': {
+                                content: '""',
+                                position: 'absolute',
+                                top: '-50%', left: '-50%', width: '200%', height: '200%',
+                                background: 'conic-gradient(transparent, transparent, transparent, #4caf50)',
+                                animation: 'borderSpin 2s linear infinite',
+                                zIndex: -2,
+                            },
+                            '&.Mui-selected::after': {
+                                content: '""',
+                                position: 'absolute',
+                                inset: '2px',
+                                bgcolor: '#f1f8e9',
+                                borderRadius: '6px',
+                                zIndex: -1,
+                            }
+                        }}
+                    />
+                    <Tab
+                        label="Muster History"
+                        icon={<HistoryIcon />}
+                        iconPosition="start"
+                        sx={{
+                            textTransform: 'none',
+                            fontWeight: 'bold',
+                            fontSize: '1.05rem',
+                            minHeight: 48,
+                            ml: 1,
+                            px: 3,
+                            color: 'text.secondary',
+                            border: '1px solid #e0e0e0',
+                            borderRadius: '8px',
+                            position: 'relative',
+                            overflow: 'hidden',
+                            zIndex: 1,
+                            transition: 'all 0.3s ease',
+                            '@keyframes borderSpin': {
+                                '0%': { transform: 'rotate(0deg)' },
+                                '100%': { transform: 'rotate(360deg)' }
+                            },
+                            '&.Mui-selected': {
+                                color: '#1b5e20',
+                                border: '1px solid transparent',
+                            },
+                            '&.Mui-selected::before': {
+                                content: '""',
+                                position: 'absolute',
+                                top: '-50%', left: '-50%', width: '200%', height: '200%',
+                                background: 'conic-gradient(transparent, transparent, transparent, #4caf50)',
+                                animation: 'borderSpin 2s linear infinite',
+                                zIndex: -2,
+                            },
+                            '&.Mui-selected::after': {
+                                content: '""',
+                                position: 'absolute',
+                                inset: '2px',
+                                bgcolor: '#f1f8e9',
+                                borderRadius: '6px',
+                                zIndex: -1,
+                            }
+                        }}
+                    />
                 </Tabs>
             </Box>
 
@@ -76,6 +171,7 @@ function DailyEntryTab() {
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]); // To store field mapping
+    const [taskTypes, setTaskTypes] = useState<any[]>([]); // To store task configurations
     const [selectedDivision, setSelectedDivision] = useState<string>('ALL'); // Default to ALL or first available
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
     const [norms, setNorms] = useState<any[]>([]);
@@ -84,6 +180,8 @@ function DailyEntryTab() {
     const isEditModeRef = useRef(false);
     const [confirmSaveDraftOpen, setConfirmSaveDraftOpen] = useState(false);
     const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
+    const [isEditingWeightsAfterSubmission, setIsEditingWeightsAfterSubmission] = useState(false);
+    const [confirmWeightsOpen, setConfirmWeightsOpen] = useState(false);
 
     // For assigning an evening worker
     const [allWorkers, setAllWorkers] = useState<any[]>([]);
@@ -142,7 +240,28 @@ function DailyEntryTab() {
 
             // Only map divisions for today's data to avoid leaking old stuff into active today UI
             const todayWorks = dwRes.data.filter((dw: any) => dw.workDate === today);
-            todayWorks.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
+
+            const dbWeights: any = {};
+            todayWorks.forEach((dw: any) => {
+                dwMap.set(dw.workId, dw.divisionId);
+                if (dw.bulkWeights) {
+                    try {
+                        dbWeights[dw.divisionId] = JSON.parse(dw.bulkWeights);
+                    } catch (e) { }
+                }
+            });
+
+            if (!isEditModeRef.current) {
+                setDailyWeights((prev: any) => {
+                    const combined = { ...prev };
+                    for (const div in dbWeights) {
+                        if (Object.keys(dbWeights[div]).length > 0) {
+                            combined[div] = dbWeights[div];
+                        }
+                    }
+                    return combined;
+                });
+            }
 
             // Fetch Today's Attendance
             const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
@@ -151,7 +270,7 @@ function DailyEntryTab() {
                 ...rec,
                 workerName: wMap.get(rec.workerId) || rec.workerId,
                 workerType: wTypeMap.get(rec.workerId) || 'PERMANENT',
-                status: rec.status || 'PRESENT',
+                status: (!rec.status || rec.status === 'PENDING') ? '' : rec.status,
                 amWeight: rec.amWeight ?? '',
                 pmWeight: rec.pmWeight ?? '',
                 overKilos: rec.overKilos ?? '',
@@ -168,6 +287,7 @@ function DailyEntryTab() {
             // Fetch task types
             const taskRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
             setAvailableTasks(taskRes.data.map((t: any) => t.name));
+            if (!isEditModeRef.current) setTaskTypes(taskRes.data);
 
             // Derive Available Divisions from Data
             const uniqueDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId as string).filter((id: string) => id !== 'UNKNOWN')));
@@ -221,8 +341,9 @@ function DailyEntryTab() {
                 fieldName: item.fieldName,
                 am: item.amWeight !== '' ? Number(item.amWeight) : null,
                 pm: item.pmWeight !== '' ? Number(item.pmWeight) : null,
-                overKilos: item.overKilos !== '' ? Number(item.overKilos) : null,
-                otHours: item.otHours !== '' ? Number(item.otHours) : null,
+                overKilos: item.overKilos !== '' && item.overKilos != null ? Number(item.overKilos) : 0,
+                cashKilos: item.workerType?.includes('CONTRACT') ? ((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)) : (item.cashKilos !== '' && item.cashKilos != null ? Number(item.cashKilos) : 0),
+                otHours: item.otHours !== '' && item.otHours != null ? Number(item.otHours) : 0,
                 status: item.status,
                 session: item.session
             }));
@@ -273,6 +394,11 @@ function DailyEntryTab() {
     }, [selectedDivision, tenantId, today]);
 
     const handleSubmit = async () => {
+        const incomplete = attendanceData.filter(item => item.divisionId === selectedDivision && (!item.status || item.status === 'PENDING' || item.status === ''));
+        if (incomplete.length > 0) {
+            setNotification({ open: true, message: `Cannot submit! Please mark the attendance status (Present, Absent, etc.) for all ${incomplete.length} remaining worker(s).`, severity: 'error' });
+            return;
+        }
         setConfirmOpen(true);
     };
 
@@ -289,10 +415,26 @@ function DailyEntryTab() {
                 fieldName: item.fieldName,
                 am: Number(item.amWeight) || null,
                 pm: Number(item.pmWeight) || null,
+                overKilos: item.overKilos !== '' && item.overKilos != null ? Number(item.overKilos) : 0,
+                cashKilos: item.workerType?.includes('CONTRACT') ? ((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)) : (item.cashKilos !== '' && item.cashKilos != null ? Number(item.cashKilos) : 0),
+                otHours: item.otHours !== '' && item.otHours != null ? Number(item.otHours) : 0,
                 status: item.status,
                 session: item.session
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
+
+            // Also save Field and Factory weights to the DailyWork entity
+            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId);
+            if (workIdSource) {
+                try {
+                    await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
+                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {})
+                    });
+                } catch (we) {
+                    console.error("Failed to save bulk weights to DB", we);
+                }
+            }
+
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
 
             // Persist Submission
@@ -308,6 +450,7 @@ function DailyEntryTab() {
 
     // Filter Logic
     const filteredData = attendanceData.filter(item => item.divisionId === selectedDivision);
+    const uniqueFieldsInMuster = Array.from(new Set(filteredData.map(item => item.fieldName))).filter(Boolean) as string[];
 
     // Grouping
     const grouped = filteredData.reduce((acc: any, item) => {
@@ -402,7 +545,17 @@ function DailyEntryTab() {
                     {attendanceData.length > 0 && selectedDivision && (
                         <Box display="flex" gap={1}>
                             {isSubmitted ? (
-                                <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
+                                <>
+                                    <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
+                                    {!isEditingWeightsAfterSubmission ? (
+                                        <Button variant="outlined" color="primary" onClick={() => setIsEditingWeightsAfterSubmission(true)} sx={{ fontWeight: 'bold' }}>Edit Field & Factory Weights</Button>
+                                    ) : (
+                                        <>
+                                            <Button variant="outlined" color="inherit" onClick={() => setIsEditingWeightsAfterSubmission(false)} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
+                                            <Button variant="contained" color="success" onClick={() => setConfirmWeightsOpen(true)} sx={{ fontWeight: 'bold' }}>Save Weights</Button>
+                                        </>
+                                    )}
+                                </>
                             ) : !isEditMode ? (
                                 <>
                                     <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
@@ -433,7 +586,7 @@ function DailyEntryTab() {
                     ) : (
                         <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
                             {/* Left Column: Muster Chit + Submit */}
-                            <Box flex={1.2} sx={{ width: '100%', overflowX: 'auto', display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <Box flex={0.8} sx={{ width: '100%', minWidth: 250, maxWidth: { lg: 350 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
 
 
                                 {/* Muster Chit */}
@@ -441,17 +594,19 @@ function DailyEntryTab() {
                                     <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
                                         <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
                                     </Box>
-                                    <Box sx={{ overflowX: 'auto' }}>
-                                        <Table size="small">
+                                    <Box>
+                                        <Table size="small" sx={{
+                                            '& .MuiTableCell-root': { py: 0.5, px: 1, fontSize: '0.75rem' }
+                                        }}>
                                             <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                                                 <TableRow>
-                                                    <TableCell rowSpan={2}><strong>Work item</strong></TableCell>
-                                                    <TableCell rowSpan={2}><strong>Field No</strong></TableCell>
-                                                    <TableCell align="center" colSpan={2}><strong>No of Workers</strong></TableCell>
+                                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Task</TableCell>
+                                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Field</TableCell>
+                                                    <TableCell align="center" colSpan={2} sx={{ fontWeight: 'bold' }}>Workers</TableCell>
                                                 </TableRow>
                                                 <TableRow>
-                                                    <TableCell align="center"><strong>Morning</strong></TableCell>
-                                                    <TableCell align="center"><strong>Evening</strong></TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>AM</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>PM</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -470,18 +625,18 @@ function DailyEntryTab() {
                                                         ))}
                                                         {task === 'Plucking' && (
                                                             <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                                <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
-                                                                <TableCell align="center"><strong>{data.countMorning}</strong></TableCell>
-                                                                <TableCell align="center"><strong>{data.countEvening}</strong></TableCell>
+                                                                <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Pluckers</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{data.countMorning}</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{data.countEvening}</TableCell>
                                                             </TableRow>
                                                         )}
                                                     </Fragment>
                                                 ))}
                                                 {Object.keys(categorizedSummary.Tea).length > 0 && (
                                                     <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                        <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
+                                                        <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Tea</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.Tea).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
                                                     </TableRow>
                                                 )}
 
@@ -500,18 +655,18 @@ function DailyEntryTab() {
                                                         ))}
                                                         {task === 'Tapping' && (
                                                             <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                                                <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
-                                                                <TableCell align="center"><strong>{data.countMorning}</strong></TableCell>
-                                                                <TableCell align="center"><strong>{data.countEvening}</strong></TableCell>
+                                                                <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Tappers</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{data.countMorning}</TableCell>
+                                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{data.countEvening}</TableCell>
                                                             </TableRow>
                                                         )}
                                                     </Fragment>
                                                 ))}
                                                 {Object.keys(categorizedSummary.Rubber).length > 0 && (
                                                     <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                        <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
+                                                        <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Rubber</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.Rubber).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
                                                     </TableRow>
                                                 )}
 
@@ -532,16 +687,16 @@ function DailyEntryTab() {
                                                 ))}
                                                 {Object.keys(categorizedSummary.General).length > 0 && (
                                                     <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                                                        <TableCell colSpan={2}><strong>Total General</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</strong></TableCell>
-                                                        <TableCell align="center"><strong>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</strong></TableCell>
+                                                        <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total General</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(categorizedSummary.General).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
                                                     </TableRow>
                                                 )}
 
                                                 <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
-                                                    <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
-                                                    <TableCell align="center"><strong>{grandMorningTotal}</strong></TableCell>
-                                                    <TableCell align="center"><strong>{grandEveningTotal}</strong></TableCell>
+                                                    <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Workers</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{grandMorningTotal}</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{grandEveningTotal}</TableCell>
                                                 </TableRow>
                                             </TableBody>
                                         </Table>
@@ -565,173 +720,110 @@ function DailyEntryTab() {
                             </Box>
 
                             {/* Detailed List */}
-                            <Box flex={2} sx={{
-                                opacity: isSubmitted || !isEditMode ? 0.6 : 1,
-                                filter: isSubmitted || !isEditMode ? 'grayscale(40%)' : 'none',
-                                pointerEvents: isSubmitted || !isEditMode ? 'none' : 'auto',
+                            <Box flex={3} sx={{
+                                opacity: (isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode) ? 0.6 : 1,
+                                filter: (isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode) ? 'grayscale(40%)' : 'none',
+                                pointerEvents: (isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode) ? 'none' : 'auto',
                                 transition: 'all 0.3s ease-in-out'
                             }}>
-                                {/* Daily Harvest Summary Component - Top Right */}
-                                {(() => {
-                                    // Identify Harvest Fields
-                                    const harvestFields = { Tea: [] as string[], Rubber: [] as string[] };
-                                    Object.entries(grouped).forEach(([task, items]: any) => {
-                                        const lower = task.toLowerCase();
-                                        if (lower.includes('pluck') || lower.includes('harvest') || lower.includes('tap')) {
-                                            const firstItem = items[0];
-                                            const fName = firstItem?.fieldName;
-                                            const fieldObj = fields.find((f: any) => f.name === fName);
-                                            // Use same logic as TaskSection
-                                            const crop = (fieldObj?.cropType || 'General').toLowerCase();
+                                {/* Weight Entries Section */}
+                                {uniqueFieldsInMuster.length > 0 && (
+                                    <Paper elevation={0} variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 2, borderColor: '#a5d6a7', bgcolor: '#f1f8e9' }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" color="#1b5e20" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <EditStartIcon fontSize="small" /> Bulk Weights Entry
+                                        </Typography>
+                                        <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+                                            {uniqueFieldsInMuster.map(field => (
+                                                <TextField
+                                                    key={field}
+                                                    label={`Field Wt. (${field})`}
+                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setDailyWeights((prev: any) => ({
+                                                            ...prev,
+                                                            [selectedDivision]: {
+                                                                ...(prev[selectedDivision] || {}),
+                                                                [field]: { ...(prev[selectedDivision]?.[field] || {}), fieldWt: val }
+                                                            }
+                                                        }));
+                                                    }}
+                                                    size="small"
+                                                    type="number"
+                                                    disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
+                                                    sx={{ bgcolor: 'white', width: 170, boxShadow: '0px 2px 4px rgba(0,0,0,0.05)' }}
+                                                    InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#333' } }}
+                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.85rem', fontWeight: 'bold', color: '#2e7d32' } }}
+                                                />
+                                            ))}
 
-                                            const uniqueF = Array.from(new Set(items.map((i: any) => i.fieldName)));
-                                            if (crop === 'tea') harvestFields.Tea.push(...uniqueF as string[]);
-                                            if (crop === 'rubber') harvestFields.Rubber.push(...uniqueF as string[]);
-                                        }
-                                    });
-                                    // De-duplicate
-                                    harvestFields.Tea = Array.from(new Set(harvestFields.Tea));
-                                    harvestFields.Rubber = Array.from(new Set(harvestFields.Rubber));
+                                            <Box flex={1} /> {/* Spacer to push Factory weight to the right */}
 
-                                    if (harvestFields.Tea.length === 0 && harvestFields.Rubber.length === 0) return null;
-
-                                    // Simplified Green Theme Layout
-                                    return (
-                                        <Paper elevation={0} sx={{ mb: 2, p: 1.5, borderRadius: 2, bgcolor: '#f1f8e9', border: '1px solid #c5e1a5' }}>
-                                            <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
-                                                <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ mr: 1 }}>
-                                                    Yield:
-                                                </Typography>
-
-                                                {/* Tea Section */}
-                                                {harvestFields.Tea.length > 0 && (
-                                                    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center">
-                                                        {harvestFields.Tea.map(field => (
-                                                            <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                                <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
-                                                                <TextField
-                                                                    variant="standard"
-                                                                    InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                                    placeholder="0"
-                                                                    type="number"
-                                                                    disabled={isSubmitted || !isEditMode}
-                                                                    sx={{ width: 50 }}
-                                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        if (val === '' || Number(val) >= 0) {
-                                                                            setDailyWeights((prev: any) => ({
-                                                                                ...prev,
-                                                                                [selectedDivision]: {
-                                                                                    ...prev[selectedDivision],
-                                                                                    [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
-                                                                                }
-                                                                            }));
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <Typography variant="caption" color="text.secondary">kg</Typography>
-                                                            </Box>
-                                                        ))}
-                                                        {/* Single Factory Weight for Tea */}
-                                                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                            <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
-                                                            <TextField
-                                                                variant="standard"
-                                                                InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                                placeholder="0"
-                                                                type="number"
-                                                                disabled={isSubmitted || !isEditMode}
-                                                                sx={{ width: 50 }}
-                                                                value={dailyWeights[selectedDivision]?.['Tea_Factory']?.factoryWt || ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    if (val === '' || Number(val) >= 0) {
-                                                                        setDailyWeights((prev: any) => ({
-                                                                            ...prev,
-                                                                            [selectedDivision]: {
-                                                                                ...prev[selectedDivision],
-                                                                                ['Tea_Factory']: { ...prev[selectedDivision]?.['Tea_Factory'], factoryWt: val }
-                                                                            }
-                                                                        }));
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <Typography variant="caption" color="text.secondary">kg</Typography>
-                                                        </Box>
-                                                    </Box>
-                                                )}
-
-                                                {/* Rubber Section */}
-                                                {harvestFields.Rubber.length > 0 && (
-                                                    <Box display="flex" flexWrap="wrap" gap={2} alignItems="center" sx={{ borderLeft: harvestFields.Tea.length > 0 ? '1px solid #bdbdbd' : 'none', pl: harvestFields.Tea.length > 0 ? 2 : 0 }}>
-                                                        {harvestFields.Rubber.map(field => (
-                                                            <Box key={field} display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                                <Typography variant="caption" fontWeight="bold" mr={1} color="#455a64">{field}</Typography>
-                                                                <TextField
-                                                                    variant="standard"
-                                                                    InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                                    placeholder="0"
-                                                                    type="number"
-                                                                    disabled={isSubmitted || !isEditMode}
-                                                                    sx={{ width: 50 }}
-                                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
-                                                                    onChange={(e) => {
-                                                                        const val = e.target.value;
-                                                                        if (val === '' || Number(val) >= 0) {
-                                                                            setDailyWeights((prev: any) => ({
-                                                                                ...prev,
-                                                                                [selectedDivision]: {
-                                                                                    ...prev[selectedDivision],
-                                                                                    [field]: { ...prev[selectedDivision]?.[field], fieldWt: val }
-                                                                                }
-                                                                            }));
-                                                                        }
-                                                                    }}
-                                                                />
-                                                                <Typography variant="caption" color="text.secondary">L</Typography>
-                                                            </Box>
-                                                        ))}
-                                                        {/* Single Factory Weight for Rubber */}
-                                                        <Box display="flex" alignItems="center" bgcolor="white" px={1} py={0.5} borderRadius={1} border="1px solid #cfd8dc">
-                                                            <Typography variant="caption" fontWeight="bold" mr={1} color="#ef6c00">Factory Wt</Typography>
-                                                            <TextField
-                                                                variant="standard"
-                                                                InputProps={{ disableUnderline: true, style: { fontSize: '0.9rem', fontWeight: 'bold', textAlign: 'center' } }}
-                                                                placeholder="0"
-                                                                type="number"
-                                                                disabled={isSubmitted || !isEditMode}
-                                                                sx={{ width: 50 }}
-                                                                value={dailyWeights[selectedDivision]?.['Rubber_Factory']?.factoryWt || ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    if (val === '' || Number(val) >= 0) {
-                                                                        setDailyWeights((prev: any) => ({
-                                                                            ...prev,
-                                                                            [selectedDivision]: {
-                                                                                ...prev[selectedDivision],
-                                                                                ['Rubber_Factory']: { ...prev[selectedDivision]?.['Rubber_Factory'], factoryWt: val }
-                                                                            }
-                                                                        }));
-                                                                    }
-                                                                }}
-                                                            />
-                                                            <Typography variant="caption" color="text.secondary">L</Typography>
-                                                        </Box>
-                                                    </Box>
-                                                )}
+                                            <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9' }}>
+                                                <TextField
+                                                    label="Factory Weight (Total)"
+                                                    value={dailyWeights[selectedDivision]?.['__FACTORY__']?.factoryWt || ''}
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        setDailyWeights((prev: any) => ({
+                                                            ...prev,
+                                                            [selectedDivision]: {
+                                                                ...(prev[selectedDivision] || {}),
+                                                                '__FACTORY__': { factoryWt: val }
+                                                            }
+                                                        }));
+                                                    }}
+                                                    size="small"
+                                                    type="number"
+                                                    disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
+                                                    sx={{ bgcolor: 'white', width: 200 }}
+                                                    InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold', color: '#1565c0' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#1565c0' } }}
+                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.9rem', fontWeight: 'bold', color: '#1976d2' } }}
+                                                />
                                             </Box>
-                                        </Paper>
-                                    );
-                                })()}
+                                        </Box>
+                                    </Paper>
+                                )}
+
                                 {Object.entries(grouped).map(([task, items]: any) => (
-                                    <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted || !isEditMode} isFinalized={isSubmitted} fields={fields} />
+                                    <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted || !isEditMode} isFinalized={isSubmitted} fields={fields} taskTypes={taskTypes || []} />
                                 ))}
                             </Box>
                         </Box>
                     )}
                 </Box>
             </Box>
+
+            {/* Confirm Save Weights Dialog */}
+            <Dialog open={confirmWeightsOpen} onClose={() => setConfirmWeightsOpen(false)} PaperProps={{ sx: { borderRadius: 3, p: 2 } }}>
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Save Weight Updates?</DialogTitle>
+                <DialogContent>
+                    <Typography>Are you sure you want to save the updated Field and Factory weights? This will be recorded against the finalized muster.</Typography>
+                </DialogContent>
+                <DialogActions sx={{ mt: 2 }}>
+                    <Button onClick={() => setConfirmWeightsOpen(false)} color="inherit" sx={{ fontWeight: 'bold' }}>Cancel</Button>
+                    <Button onClick={async () => {
+                        setIsEditingWeightsAfterSubmission(false);
+                        setConfirmWeightsOpen(false);
+
+                        // Save weights directly to the database for this DailyWork record
+                        const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId);
+                        if (workIdSource) {
+                            try {
+                                await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
+                                    bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {})
+                                });
+                                setNotification({ open: true, message: 'Weights updated successfully!', severity: 'success' });
+                            } catch (error) {
+                                console.error("Failed to update weights", error);
+                                setNotification({ open: true, message: 'Failed to save weights to the database.', severity: 'error' });
+                            }
+                        } else {
+                            setNotification({ open: true, message: 'Could not resolve DailyWork ID to save weights.', severity: 'error' });
+                        }
+                    }} color="success" variant="contained" sx={{ fontWeight: 'bold' }}>Confirm & Save</Button>
+                </DialogActions>
+            </Dialog>
 
             {/* Add Evening Worker Dialog */}
             <Dialog open={addWorkerOpen} onClose={() => setAddWorkerOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
@@ -976,47 +1068,57 @@ function DailyEntryTab() {
     );
 }
 
-// --- Task Section Component ---
-function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, isFinalized = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], isFinalized?: boolean }) {
-    // State for weights managed in parent now (or TBD)
+function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, taskTypes, isFinalized = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], taskTypes: any[], isFinalized?: boolean }) {
+    const [statusConfirm, setStatusConfirm] = useState<{ itemId: string, newStatus: string, workerName: string, label: string } | null>(null);
 
-    // Task Configuration Logic
     // Task Configuration Logic
     const getTaskConfig = (taskName: string) => {
         const lower = taskName.toLowerCase();
 
-        // Find crop type from first item's field
+        // 1. Check database task types first
+        const dbTask = (taskTypes || []).find(t => t.name.toLowerCase() === lower);
+        if (dbTask && dbTask.expectedUnit) {
+            const unit = dbTask.expectedUnit;
+            if (unit.toLowerCase() === 'none' || unit === '') return { label: 'Attendance', unit: '', type: 'none' };
+
+            // Try to infer a friendly label based on the unit or name
+            let label = 'Amount';
+            if (unit.toLowerCase() === 'kg') label = lower.includes('pluck') ? 'Green Leaf' : 'Weight';
+            if (unit.toLowerCase() === 'l' || unit.toLowerCase() === 'liters') label = lower.includes('tap') ? 'Latex' : 'Volume';
+            if (unit.toLowerCase() === 'acres' || unit.toLowerCase() === 'ha') label = 'Area';
+            if (unit.toLowerCase() === 'count' || unit.toLowerCase() === 'taps' || unit.toLowerCase() === 'bushes') label = 'Count';
+
+            return { label, unit: unit, type: 'input' };
+        }
+
+        // 2. Fallback to hardcoded logic if not in DB yet
         const firstItem = items[0];
         const fieldName = firstItem?.fieldName;
         const field = fields?.find((f: any) => f.name === fieldName);
-        const cropType = (field?.cropType || 'General'); // Keep original casing for now to match UI, but check lower
-
+        const cropType = (field?.cropType || 'General');
         const cropLower = String(cropType).toLowerCase();
 
         if (lower.includes('pluck') || (lower.includes('harvest') && cropLower === 'tea')) return { label: 'Green Leaf', unit: 'kg', type: 'input' };
         if (lower.includes('tap') || (lower.includes('harvest') && cropLower === 'rubber')) return { label: 'Latex', unit: 'L', type: 'input' };
 
-        // Fallback or explicit mapping if task name implies crop but field might be missing (unlikely)
         if (lower.includes('pluck')) return { label: 'Green Leaf', unit: 'kg', type: 'input' };
         if (lower.includes('tap')) return { label: 'Latex', unit: 'L', type: 'input' };
 
         if (lower.includes('sack')) return { label: 'Sacks', unit: 'Count', type: 'input' };
         if (lower.includes('transport')) return { label: 'Weight', unit: 'kg', type: 'input' };
         if (lower.includes('fertilizer')) return { label: 'Area', unit: 'Ha', type: 'input' };
-        if (lower.includes('chemical')) return { label: 'Area', unit: 'Ac', type: 'input' };
-        if (lower.includes('manual')) return { label: 'Area', unit: 'Ac', type: 'input' };
+        if (lower.includes('chemical') || lower.includes('manual') || lower.includes('weeding')) return { label: 'Area', unit: 'Acres', type: 'input' };
 
         if (lower.includes('pruning') || lower.includes('prun')) {
             if (cropLower === 'tea') return { label: 'Bushes', unit: 'Count', type: 'input' };
             if (cropLower === 'rubber') return { label: 'Trees', unit: 'Count', type: 'input' };
-            return { label: 'Plants', unit: 'Count', type: 'input' }; // Default
+            return { label: 'Plants', unit: 'Count', type: 'input' };
         }
 
         // Attendance Only roles
         if (lower.includes('kangani') || lower.includes('watch') || lower.includes('sundry') || lower.includes('other')) return { label: 'Attendance', unit: '', type: 'none' };
 
-        // Default
-        return { label: 'Amount', unit: '', type: 'none' }; // Default to attendance only for unknown
+        return { label: 'Amount', unit: 'Task', type: 'input' };
     };
 
     const taskConfig = getTaskConfig(task);
@@ -1025,15 +1127,18 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
     // Unique Fields for this task
     const uniqueFields = Array.from(new Set(items.map((i: any) => i.fieldName)));
 
+    // Determine if we need to show Cash Kilos (if historical data exists OR if there's a contract worker)
+    const hasCashKilos = items.some((i: any) => (i.cashKilos && Number(i.cashKilos) > 0) || i.workerType?.includes('CONTRACT'));
+
     // Common Input Style
     const inputStyle = {
-        width: 55,
+        width: 60,
         padding: '2px',
-        height: 30,
+        height: 32,
         border: '1px solid #b0bec5',
         borderRadius: 4,
         textAlign: 'center' as const,
-        fontSize: '0.9rem',
+        fontSize: '0.95rem',
         fontWeight: 'bold',
         outline: 'none',
         transition: 'all 0.2s',
@@ -1041,318 +1146,363 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
     };
 
     return (
-        <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >
-            {/* Header */}
-            < Box bgcolor="#f9fbe7" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center" gap={2} flexWrap="wrap" >
-                <Typography variant="subtitle2" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 120 }}>{task}</Typography>
+        <>
+            <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >
+                {/* Header */}
+                <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+                    <Typography variant="subtitle2" fontWeight="bold" color="#a2b5aa" sx={{ minWidth: 120, fontSize: '0.95rem' }}>{task}</Typography>
+                </Box>
 
-                {/* Summary Card */}
-                <Card elevation={0} sx={{ ml: 'auto', bgcolor: 'white', border: '1px solid #c5e1a5', px: 1, py: 0.5, minWidth: 150 }}>
-                    {uniqueFields.map((f: any) => (
-                        <Box key={f} mb={0.5}>
-                            <Box display="flex" alignItems="center" justifyContent="space-between">
-                                <Typography variant="caption" fontWeight="bold" color="#33691e" sx={{ fontSize: '0.7rem' }}>{f}</Typography>
-                                {!hideOutput && (
-                                    <Box display="flex" alignItems="center" gap={0.5}>
-                                        <input
-                                            type="number"
-                                            min="0"
-                                            style={{ ...inputStyle, width: 40, height: 20, padding: '1px' }}
-                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                            disabled={isSubmitted}
-                                        />
-                                        <Typography variant="caption" color="#33691e" fontWeight="bold" sx={{ fontSize: '0.7rem' }}>Ac</Typography>
-                                    </Box>
-                                )}
-                            </Box>
-                            {!hideOutput && task.toLowerCase().includes('chemical') && (
-                                <Box display="flex" alignItems="center" justifyContent="flex-end" gap={1}>
-                                    <Typography variant="caption" fontWeight="bold" color="#33691e" sx={{ fontSize: '0.7rem' }}>Chem. Qty</Typography>
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        style={{ ...inputStyle, width: 40, height: 20, padding: '1px' }}
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        disabled={isSubmitted}
-                                    />
-                                </Box>
+                {/* Column Headers */}
+                {showInputs && (
+                    <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f5f7f7" borderBottom="1px solid #eaeeef">
+                        <Box flex={1} minWidth={0}>
+                            <Typography variant="caption" fontWeight="bold" color="#b0babb">WORKER</Typography>
+                        </Box>
+                        <Box display="flex" alignItems="center">
+                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>{taskConfig.label}<br />AM</Typography>
+                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>{taskConfig.label}<br />PM</Typography>
+                            <Typography sx={{ width: 50, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>TOTAL</Typography>
+                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit.toUpperCase()}</Typography>
+                            {hasCashKilos && (
+                                <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit.toUpperCase()}</Typography>
                             )}
+                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OT<br />HRS</Typography>
+                            <Typography sx={{ width: 100, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>SESSION</Typography>
+                            <Box sx={{ width: 100 }} /> {/* Spacer for Actions */}
+                        </Box>
+                    </Box>
+                )}
+
+                <Box p={1} display="flex" flexDirection="column" gap={0.5}>
+                    {items.map((item: any, index: number) => (
+                        <Box key={item.id}
+                            display="flex"
+                            alignItems="center"
+                            justifyContent="space-between"
+                            p={1} // Reduced padding
+                            mb={0.5}
+                            borderRadius={2}
+                            sx={{
+                                bgcolor: '#ffffff',
+                                border: '1px solid #f0f0f0',
+                                '&:hover': { bgcolor: '#fafdfa', borderColor: '#eaefe9' },
+                                transition: 'all 0.2s',
+                            }}
+                        >
+                            {/* Define if worker is Paid by Weight based on type */}
+                            {(() => {
+                                const isPieceRate = item.workerType?.includes('CONTRACT');
+                                return (
+                                    <>
+                                        {/* Worker Info */}
+                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
+                                            <Avatar sx={{
+                                                bgcolor: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
+                                                width: 36, height: 36
+                                            }}><PersonIcon sx={{ fontSize: 20, color: 'white' }} /></Avatar>
+                                            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <Typography variant="body2" fontWeight="bold" noWrap lineHeight={1.2} color="#333" sx={{ fontSize: '0.95rem' }}>{item.workerName}</Typography>
+                                                    <Chip
+                                                        label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 18,
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 'bold',
+                                                            bgcolor: item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
+                                                            color: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
+                                                            border: '1px solid',
+                                                            borderColor: item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8',
+                                                        }}
+                                                    />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem', mt: 0.5 }}>{item.fieldName}</Typography>
+                                            </Box>
+                                        </Box>
+
+                                        {/* Right Side: Inputs */}
+                                        {showInputs && (
+                                            <Box display="flex" alignItems="center">
+                                                {/* AM Input */}
+                                                <Box width={65} display="flex" justifyContent="center">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                        style={{ ...inputStyle, borderColor: '#81c784', width: 55 }}
+                                                        value={item.amWeight ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || Number(val) >= 0) {
+                                                                onUpdate(item.id, 'amWeight', val);
+                                                                if (isPieceRate) {
+                                                                    const pmWeight = item.pmWeight || 0;
+                                                                    const newTotal = (Number(val) || 0) + Number(pmWeight);
+                                                                    onUpdate(item.id, 'cashKilos', newTotal > 0 ? newTotal.toString() : '');
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={isSubmitted}
+                                                        placeholder="AM"
+                                                    />
+                                                </Box>
+                                                {/* PM Input */}
+                                                <Box width={65} display="flex" justifyContent="center">
+                                                    <input
+                                                        type="number"
+                                                        min="0"
+                                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                        style={{ ...inputStyle, borderColor: '#81c784', width: 55 }}
+                                                        value={item.pmWeight ?? ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            if (val === '' || Number(val) >= 0) {
+                                                                onUpdate(item.id, 'pmWeight', val);
+                                                                if (isPieceRate) {
+                                                                    const amWeight = item.amWeight || 0;
+                                                                    const newTotal = Number(amWeight) + (Number(val) || 0);
+                                                                    onUpdate(item.id, 'cashKilos', newTotal > 0 ? newTotal.toString() : '');
+                                                                }
+                                                            }
+                                                        }}
+                                                        disabled={isSubmitted}
+                                                        placeholder="PM"
+                                                    />
+                                                </Box>
+                                                {/* Total Badge */}
+                                                <Box width={50} display="flex" justifyContent="center">
+                                                    <Box
+                                                        bgcolor="#2e7d32"
+                                                        color="white"
+                                                        borderRadius={1}
+                                                        width={45}
+                                                        height={30}
+                                                        display="flex"
+                                                        alignItems="center"
+                                                        justifyContent="center"
+                                                        border="1px solid #1b5e20"
+                                                        sx={{ boxShadow: 1 }}
+                                                    >
+                                                        <Typography variant="body2" fontWeight="bold" fontSize="0.9rem">
+                                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+                                                {/* Over Kilos Input */}
+                                                <Box width={75} display="flex" justifyContent="center">
+                                                    {isPieceRate ? (
+                                                        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>Cash</Typography>
+                                                    ) : (
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                            style={{ ...inputStyle, borderColor: '#fbc02d', width: 65 }} // Highlight differently
+                                                            value={item.overKilos ?? ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'overKilos', val);
+                                                            }}
+                                                            disabled={isSubmitted}
+                                                            placeholder="Over"
+                                                        />
+                                                    )}
+                                                </Box>
+                                                {/* Cash Kilos Input */}
+                                                {hasCashKilos && (
+                                                    <Box width={75} display="flex" justifyContent="center">
+                                                        {isPieceRate ? (
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }} // Light green
+                                                                value={item.cashKilos ?? ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val === '' || Number(val) >= 0) onUpdate(item.id, 'cashKilos', val);
+                                                                }}
+                                                                disabled={isSubmitted}
+                                                                placeholder="Cash"
+                                                            />
+                                                        ) : (
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }} // Light green
+                                                                value={item.cashKilos ?? ''}
+                                                                onChange={(e) => {
+                                                                    const val = e.target.value;
+                                                                    if (val === '' || Number(val) >= 0) onUpdate(item.id, 'cashKilos', val);
+                                                                }}
+                                                                disabled={true} // Legacy cash kilos read-only for non-contract
+                                                                placeholder="Cash"
+                                                            />
+                                                        )}
+                                                    </Box>
+                                                )}
+                                                {/* OT Hours Input */}
+                                                <Box width={60} display="flex" justifyContent="center">
+                                                    {isPieceRate ? (
+                                                        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>N/A</Typography>
+                                                    ) : (
+                                                        <input
+                                                            type="number"
+                                                            min="0"
+                                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
+                                                            style={{ ...inputStyle, borderColor: '#0288d1', width: 50 }} // Highlight differently
+                                                            value={item.otHours ?? ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value;
+                                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'otHours', val);
+                                                            }}
+                                                            disabled={isSubmitted}
+                                                            placeholder="OT"
+                                                        />
+                                                    )}
+                                                </Box>
+                                                {/* Session Dropdown */}
+                                                <Box width={100} display="flex" justifyContent="center">
+                                                    <FormControl variant="standard" size="small" sx={{ width: '90%' }}>
+                                                        <Select
+                                                            value={item.session || 'FULL_DAY'}
+                                                            onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
+                                                            disableUnderline
+                                                            disabled={isSubmitted}
+                                                            sx={{
+                                                                fontSize: '0.7rem',
+                                                                fontWeight: 'bold',
+                                                                color: item.session === 'FULL_DAY' ? '#1976d2' : '#ed6c02',
+                                                                bgcolor: item.session === 'FULL_DAY' ? '#f5f5f5' : '#fff3e0',
+                                                                border: item.session === 'FULL_DAY' ? '1px solid #e0e0e0' : '1px solid #ffcc80',
+                                                                borderRadius: 1,
+                                                                px: 0.5,
+                                                                height: 30
+                                                            }}
+                                                        >
+                                                            <MenuItem value="FULL_DAY" sx={{ fontSize: '0.75rem' }}>Full Day</MenuItem>
+                                                            <MenuItem value="MORNING_SESSION" sx={{ fontSize: '0.75rem' }}>Morning</MenuItem>
+                                                            <MenuItem value="EVENING_SESSION" sx={{ fontSize: '0.75rem' }}>Evening</MenuItem>
+                                                        </Select>
+                                                    </FormControl>
+                                                </Box>
+                                            </Box>
+                                        )}
+
+                                        {/* Actions */}
+                                        <Box width={100} display="flex" justifyContent="flex-end" alignItems="center">
+                                            <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                                {!isPieceRate && (
+                                                    <Tooltip title="Half Athtama">
+                                                        <span style={{ display: 'inline-block' }}>
+                                                            <IconButton
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
+                                                                size="small"
+                                                                disabled={isSubmitted || isFinalized}
+                                                                sx={{
+                                                                    padding: 0.5,
+                                                                    bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                    color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                                    '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                                }}>
+                                                                <BlockIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
+                                                {!isPieceRate && (
+                                                    <Tooltip title="Full Athtama">
+                                                        <span style={{ display: 'inline-block' }}>
+                                                            <IconButton
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
+                                                                size="small"
+                                                                disabled={isSubmitted || isFinalized}
+                                                                sx={{
+                                                                    padding: 0.5,
+                                                                    bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                    color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                    '&:hover': { bgcolor: '#00c853', color: '#000' }
+                                                                }}>
+                                                                <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                            </IconButton>
+                                                        </span>
+                                                    </Tooltip>
+                                                )}
+                                                <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
+                                                    <span style={{ display: 'inline-block' }}>
+                                                        <IconButton
+                                                            onClick={() => {
+                                                                const isUndo = isPieceRate && item.status === 'ABSENT';
+                                                                setStatusConfirm({
+                                                                    itemId: item.id,
+                                                                    newStatus: isUndo ? 'PRESENT' : 'ABSENT',
+                                                                    workerName: item.workerName,
+                                                                    label: isUndo ? 'Present (Undo Absent)' : 'Absent'
+                                                                });
+                                                            }}
+                                                            size="small"
+                                                            disabled={isSubmitted || isFinalized}
+                                                            sx={{
+                                                                padding: 0.5,
+                                                                bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
+                                                                '&:hover': { bgcolor: '#ff3d00', color: '#000' }
+                                                            }}>
+                                                            <CloseIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    </span>
+                                                </Tooltip>
+                                            </Box>
+                                        </Box>
+                                    </>
+                                );
+                            })()}
                         </Box>
                     ))}
-                </Card>
-            </Box >
-
-            {/* Column Headers */}
-            {showInputs && (
-                <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f1f8e9" borderBottom="1px solid #e0e0e0">
-                    <Box flex={1} minWidth={0}>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
-                    </Box>
-                    <Box display="flex" alignItems="center">
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} AM</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>{taskConfig.label} PM</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 55 }}>TOTAL</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>OVER KGS</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 65 }}>OT HRS</Typography>
-                        <Typography variant="caption" fontWeight="bold" color="#546e7a" align="center" sx={{ width: 100 }}>SESSION</Typography>
-                        <Box sx={{ width: 110 }} /> {/* Spacer for Actions */}
-                    </Box>
                 </Box>
-            )}
+            </Paper>
 
-            <Box p={1} display="flex" flexDirection="column" gap={0.5}>
-                {items.map((item: any, index: number) => (
-                    <Box key={item.id}
-                        display="flex"
-                        alignItems="center"
-                        justifyContent="space-between"
-                        p={1} // Reduced padding
-                        borderRadius={2}
-                        sx={{
-                            bgcolor: index % 2 === 0 ? '#fafafa' : 'white',
-                            border: '1px solid #eee',
-                            '&:hover': { bgcolor: '#f1f8e9', borderColor: '#c5e1a5' },
-                            transition: 'all 0.2s',
+            <Dialog open={!!statusConfirm} onClose={() => setStatusConfirm(null)} PaperProps={{ sx: { borderRadius: 3 } }}>
+                <DialogTitle sx={{ color: '#d32f2f', fontWeight: 'bold', borderBottom: '1px solid #ffebee' }}>Confirm Status Change</DialogTitle>
+                <DialogContent sx={{ mt: 2, minWidth: 300 }}>
+                    <Typography variant="body1">
+                        Are you sure you want to mark <strong>{statusConfirm?.workerName}</strong>'s attendance status as:
+                    </Typography>
+                    <Typography variant="h6" color="primary" fontWeight="bold" textAlign="center" mt={2} mb={1}>
+                        {statusConfirm?.label}
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2, pt: 0 }}>
+                    <Button onClick={() => setStatusConfirm(null)} color="inherit" variant="text">Cancel</Button>
+                    <Button
+                        onClick={() => {
+                            if (statusConfirm) {
+                                onUpdate(statusConfirm.itemId, 'status', statusConfirm.newStatus);
+                                setStatusConfirm(null);
+                            }
                         }}
+                        color="primary"
+                        variant="contained"
+                        sx={{ fontWeight: 'bold', borderRadius: 2 }}
                     >
-                        {/* Worker Info */}
-                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
-                            <Avatar sx={{
-                                bgcolor: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
-                                width: 32, height: 32
-                            }}><PersonIcon sx={{ fontSize: 18, color: 'white' }} /></Avatar>
-                            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
-                                <Box display="flex" alignItems="center" gap={1}>
-                                    <Typography variant="body2" fontWeight="600" noWrap lineHeight={1.2} color="#333">{item.workerName}</Typography>
-                                    <Chip
-                                        label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
-                                        size="small"
-                                        sx={{
-                                            height: 16,
-                                            fontSize: '0.6rem',
-                                            fontWeight: 'bold',
-                                            bgcolor: item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
-                                            color: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : '#9c27b0',
-                                            border: '1px solid',
-                                            borderColor: item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8',
-                                        }}
-                                    />
-                                </Box>
-                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem', mt: 0.5 }}>{item.fieldName}</Typography>
-                            </Box>
-                        </Box>
-
-                        {/* Right Side: Inputs */}
-                        {showInputs && (
-                            <Box display="flex" alignItems="center">
-                                {/* AM Input */}
-                                <Box width={65} display="flex" justifyContent="center">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        style={{ ...inputStyle, borderColor: '#81c784' }}
-                                        value={item.amWeight ?? ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'amWeight', val);
-                                        }}
-                                        disabled={isSubmitted}
-                                        placeholder="AM"
-                                    />
-                                </Box>
-                                {/* PM Input */}
-                                <Box width={65} display="flex" justifyContent="center">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        style={{ ...inputStyle, borderColor: '#81c784' }}
-                                        value={item.pmWeight ?? ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'pmWeight', val);
-                                        }}
-                                        disabled={isSubmitted}
-                                        placeholder="PM"
-                                    />
-                                </Box>
-                                {/* Total Badge */}
-                                <Box width={55} display="flex" justifyContent="center">
-                                    <Box
-                                        bgcolor="#2e7d32"
-                                        color="white"
-                                        borderRadius={1}
-                                        width={45}
-                                        height={30}
-                                        display="flex"
-                                        alignItems="center"
-                                        justifyContent="center"
-                                        border="1px solid #1b5e20"
-                                        sx={{ boxShadow: 1 }}
-                                    >
-                                        <Typography variant="body2" fontWeight="bold" fontSize="0.9rem">
-                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
-                                        </Typography>
-                                    </Box>
-                                </Box>
-                                {/* Over Kilos Input */}
-                                <Box width={65} display="flex" justifyContent="center">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        style={{ ...inputStyle, borderColor: '#fbc02d' }} // Highlight differently
-                                        value={item.overKilos ?? ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'overKilos', val);
-                                        }}
-                                        disabled={isSubmitted}
-                                        placeholder="Over"
-                                    />
-                                </Box>
-                                {/* OT Hours Input */}
-                                <Box width={65} display="flex" justifyContent="center">
-                                    <input
-                                        type="number"
-                                        min="0"
-                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                        style={{ ...inputStyle, borderColor: '#0288d1' }} // Highlight differently
-                                        value={item.otHours ?? ''}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '' || Number(val) >= 0) onUpdate(item.id, 'otHours', val);
-                                        }}
-                                        disabled={isSubmitted}
-                                        placeholder="OT"
-                                    />
-                                </Box>
-                                {/* Session Dropdown */}
-                                <Box width={100} display="flex" justifyContent="center">
-                                    <FormControl variant="standard" size="small" sx={{ width: '90%' }}>
-                                        <Select
-                                            value={item.session || 'FULL_DAY'}
-                                            onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
-                                            disableUnderline
-                                            disabled={isSubmitted}
-                                            sx={{
-                                                fontSize: '0.7rem',
-                                                fontWeight: 'bold',
-                                                color: item.session === 'FULL_DAY' ? '#1976d2' : '#ed6c02',
-                                                bgcolor: item.session === 'FULL_DAY' ? '#f5f5f5' : '#fff3e0',
-                                                border: item.session === 'FULL_DAY' ? '1px solid #e0e0e0' : '1px solid #ffcc80',
-                                                borderRadius: 1,
-                                                px: 0.5,
-                                                height: 30
-                                            }}
-                                        >
-                                            <MenuItem value="FULL_DAY" sx={{ fontSize: '0.75rem' }}>Full Day</MenuItem>
-                                            <MenuItem value="MORNING_SESSION" sx={{ fontSize: '0.75rem' }}>Morning</MenuItem>
-                                            <MenuItem value="EVENING_SESSION" sx={{ fontSize: '0.75rem' }}>Evening</MenuItem>
-                                        </Select>
-                                    </FormControl>
-                                </Box>
-                            </Box>
-                        )}
-
-                        {/* Actions */}
-                        <Box width={110} display="flex" justifyContent="flex-end" alignItems="center">
-                            {isFinalized ? (
-                                <>
-                                    {item.status === 'PRESENT' && (
-                                        <Chip
-                                            label="Present"
-                                            size="small"
-                                            sx={{ bgcolor: '#00e676', color: '#000', fontWeight: 'bold', height: 24 }}
-                                            icon={<CheckIcon sx={{ fontSize: '1rem !important' }} />}
-                                        />
-                                    )}
-                                    {item.status === 'ABSENT' && (
-                                        <Chip
-                                            label="Absent"
-                                            size="small"
-                                            sx={{ bgcolor: '#ff3d00', color: 'white', fontWeight: 'bold', height: 24 }}
-                                        />
-                                    )}
-                                    {item.status === 'HALF_DAY' && (
-                                        <Chip
-                                            label="Half Day"
-                                            size="small"
-                                            sx={{ bgcolor: '#ffd600', color: '#000', fontWeight: 'bold', height: 24 }}
-                                        />
-                                    )}
-                                    {(!item.status || item.status === 'PENDING') && (
-                                        <Chip label="-" size="small" variant="outlined" sx={{ height: 24 }} />
-                                    )}
-                                </>
-                            ) : (
-                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                    <Tooltip title="Mark Half Day">
-                                        <span style={{ display: 'inline-block' }}>
-                                            <IconButton
-                                                onClick={() => onUpdate(item.id, 'status', 'HALF_DAY')}
-                                                size="small"
-                                                disabled={isSubmitted}
-                                                sx={{
-                                                    padding: 0.5,
-                                                    bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                    color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                    '&:hover': { bgcolor: '#ffea00', color: '#000' }
-                                                }}>
-                                                <BlockIcon sx={{ fontSize: 16 }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Mark Present">
-                                        <span style={{ display: 'inline-block' }}>
-                                            <IconButton
-                                                onClick={() => onUpdate(item.id, 'status', 'PRESENT')}
-                                                size="small"
-                                                disabled={isSubmitted}
-                                                sx={{
-                                                    padding: 0.5,
-                                                    bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                    color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                    '&:hover': { bgcolor: '#00c853', color: '#000' }
-                                                }}>
-                                                <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                    <Tooltip title="Mark Absent">
-                                        <span style={{ display: 'inline-block' }}>
-                                            <IconButton
-                                                onClick={() => onUpdate(item.id, 'status', 'ABSENT')}
-                                                size="small"
-                                                disabled={isSubmitted}
-                                                sx={{
-                                                    padding: 0.5,
-                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                    color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
-                                                    '&:hover': { bgcolor: '#ff3d00', color: '#000' }
-                                                }}>
-                                                <CloseIcon sx={{ fontSize: 16 }} />
-                                            </IconButton>
-                                        </span>
-                                    </Tooltip>
-                                </Box>
-                            )}
-                        </Box>
-                    </Box>
-                ))}
-            </Box >
-        </Paper >
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+        </>
     );
 }
 
-
 // --- Shared Component: Muster Chit Summary ---
-const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = false }: any) => {
-    // Categorization Logic
+const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = false, isMorningPlan = false }: any) => {
+    // Categorization Logic for History (Handles AM / PM)
     const getSummary = () => {
         const categories: any = { Tea: {}, Rubber: {}, General: {} };
         if (!data || !Array.isArray(data)) return categories;
+
         data.forEach((m: any) => {
             const field = fields.find((f: any) => f.name === m.fieldName || f.fieldId === m.fieldId);
             const crop = field?.cropType || 'General';
@@ -1360,114 +1510,201 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
             if (crop === 'Tea') catKey = 'Tea';
             if (crop === 'Rubber') catKey = 'Rubber';
 
-            if (!categories[catKey][m.workType]) categories[catKey][m.workType] = { count: 0, fields: {} };
+            if (!categories[catKey][m.workType]) categories[catKey][m.workType] = { countMorning: 0, countEvening: 0, fields: {} };
 
+            // Morning Data
+            categories[catKey][m.workType].countMorning++;
+            if (!categories[catKey][m.workType].fields[m.fieldName]) {
+                categories[catKey][m.workType].fields[m.fieldName] = { countMorning: 0, countEvening: 0 };
+            }
+            categories[catKey][m.workType].fields[m.fieldName].countMorning++;
+
+            // Evening Data
             if (includeAbsent || m.status !== 'ABSENT') {
-                categories[catKey][m.workType].count++;
-                if (!categories[catKey][m.workType].fields[m.fieldName]) categories[catKey][m.workType].fields[m.fieldName] = 0;
-                categories[catKey][m.workType].fields[m.fieldName]++;
+                categories[catKey][m.workType].countEvening++;
+                categories[catKey][m.workType].fields[m.fieldName].countEvening++;
             }
         });
         return categories;
     };
     const summary = getSummary();
-    const grandTotal = (data || []).filter((d: any) => includeAbsent || d.status !== 'ABSENT').length;
+    const grandMorningTotal = (data || []).length;
+    const grandEveningTotal = (data || []).filter((d: any) => includeAbsent || d.status !== 'ABSENT').length;
 
     return (
         <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, mb: 2, maxWidth: 350, mx: 'auto' }}>
-            <Box bgcolor="#e0e0e0" p={0.5} borderBottom="1px solid #ccc">
-                <Typography variant="subtitle2" align="center" fontWeight="bold">{label}</Typography>
+            <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
+                <Typography variant="h6" align="center" fontWeight="bold">{label}</Typography>
             </Box>
-            <Table size="small" sx={{ '& .MuiTableCell-root': { padding: '4px 8px', fontSize: '0.8rem' } }}>
-                <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                    <TableRow>
-                        <TableCell><strong>Work item</strong></TableCell>
-                        <TableCell><strong>Field No</strong></TableCell>
-                        <TableCell align="center"><strong>No of Workers</strong></TableCell>
-                    </TableRow>
-                </TableHead>
-                <TableBody>
-                    {/* Tea Section */}
-                    {Object.entries(summary.Tea).map(([task, val]: any) => (
-                        <Fragment key={task}>
-                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
-                                <TableRow key={`${task}-${field}`}>
-                                    {idx === 0 && (
-                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                    )}
-                                    <TableCell>{field}</TableCell>
-                                    <TableCell align="center">{count}</TableCell>
+            <Box>
+                <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 1, fontSize: '0.75rem' } }}>
+                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                        {isMorningPlan ? (
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Task</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Field</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Workers</TableCell>
+                            </TableRow>
+                        ) : (
+                            <>
+                                <TableRow>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Task</TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Field</TableCell>
+                                    <TableCell align="center" colSpan={2} sx={{ fontWeight: 'bold' }}>Workers</TableCell>
                                 </TableRow>
-                            ))}
-                            {task === 'Plucking' && (
-                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                    <TableCell colSpan={2}><strong>Total Pluckers</strong></TableCell>
-                                    <TableCell align="center"><strong>{val.count}</strong></TableCell>
+                                <TableRow>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>AM</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>PM</TableCell>
                                 </TableRow>
+                            </>
+                        )}
+                    </TableHead>
+                    <TableBody>
+                        {/* Tea Section */}
+                        {Object.entries(summary.Tea).map(([task, val]: any) => (
+                            <Fragment key={task}>
+                                {Object.entries(val.fields).map(([field, counts]: any, idx) => (
+                                    <TableRow key={`${task}-${field}`}>
+                                        {idx === 0 && (
+                                            <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                        )}
+                                        <TableCell>{field}</TableCell>
+                                        {isMorningPlan ? (
+                                            <TableCell align="center">{counts.countMorning}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                            </>
+                                        )}
+                                    </TableRow>
+                                ))}
+                                {task === 'Plucking' && (
+                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                        <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Pluckers</TableCell>
+                                        {isMorningPlan ? (
+                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countMorning}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countMorning}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countEvening}</TableCell>
+                                            </>
+                                        )}
+                                    </TableRow>
+                                )}
+                            </Fragment>
+                        ))}
+                        {Object.keys(summary.Tea).length > 0 && (
+                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Tea</TableCell>
+                                {isMorningPlan ? (
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Tea).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                ) : (
+                                    <>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Tea).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Tea).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
+                                    </>
+                                )}
+                            </TableRow>
+                        )}
+
+                        {/* Rubber Section */}
+                        {Object.entries(summary.Rubber).map(([task, val]: any) => (
+                            <Fragment key={task}>
+                                {Object.entries(val.fields).map(([field, counts]: any, idx) => (
+                                    <TableRow key={`${task}-${field}`}>
+                                        {idx === 0 && (
+                                            <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                        )}
+                                        <TableCell>{field}</TableCell>
+                                        {isMorningPlan ? (
+                                            <TableCell align="center">{counts.countMorning}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                            </>
+                                        )}
+                                    </TableRow>
+                                ))}
+                                {task === 'Tapping' && (
+                                    <TableRow sx={{ bgcolor: '#a5d6a7' }}>
+                                        <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Tappers</TableCell>
+                                        {isMorningPlan ? (
+                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countMorning}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countMorning}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{val.countEvening}</TableCell>
+                                            </>
+                                        )}
+                                    </TableRow>
+                                )}
+                            </Fragment>
+                        ))}
+                        {Object.keys(summary.Rubber).length > 0 && (
+                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Rubber</TableCell>
+                                {isMorningPlan ? (
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Rubber).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                ) : (
+                                    <>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Rubber).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.Rubber).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
+                                    </>
+                                )}
+                            </TableRow>
+                        )}
+
+                        {/* General Section */}
+                        {Object.entries(summary.General).map(([task, val]: any) => (
+                            <Fragment key={task}>
+                                {Object.entries(val.fields).map(([field, counts]: any, idx) => (
+                                    <TableRow key={`${task}-${field}`}>
+                                        {idx === 0 && (
+                                            <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
+                                        )}
+                                        <TableCell>{field}</TableCell>
+                                        {isMorningPlan ? (
+                                            <TableCell align="center">{counts.countMorning}</TableCell>
+                                        ) : (
+                                            <>
+                                                <TableCell align="center">{counts.countMorning}</TableCell>
+                                                <TableCell align="center">{counts.countEvening}</TableCell>
+                                            </>
+                                        )}
+                                    </TableRow>
+                                ))}
+                            </Fragment>
+                        ))}
+                        {Object.keys(summary.General).length > 0 && (
+                            <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
+                                <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total General</TableCell>
+                                {isMorningPlan ? (
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.General).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                ) : (
+                                    <>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.General).reduce((acc: number, curr: any) => acc + curr.countMorning, 0)}</TableCell>
+                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{Object.values(summary.General).reduce((acc: number, curr: any) => acc + curr.countEvening, 0)}</TableCell>
+                                    </>
+                                )}
+                            </TableRow>
+                        )}
+
+                        <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
+                            <TableCell colSpan={2} sx={{ fontWeight: 'bold' }}>Total Workers</TableCell>
+                            {isMorningPlan ? (
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>{grandMorningTotal}</TableCell>
+                            ) : (
+                                <>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{grandMorningTotal}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{grandEveningTotal}</TableCell>
+                                </>
                             )}
-                        </Fragment>
-                    ))}
-                    {Object.keys(summary.Tea).length > 0 && (
-                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                            <TableCell colSpan={2}><strong>Total Tea</strong></TableCell>
-                            <TableCell align="center"><strong>{Object.values(summary.Tea).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
                         </TableRow>
-                    )}
-
-                    {/* Rubber Section */}
-                    {Object.entries(summary.Rubber).map(([task, val]: any) => (
-                        <Fragment key={task}>
-                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
-                                <TableRow key={`${task}-${field}`}>
-                                    {idx === 0 && (
-                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                    )}
-                                    <TableCell>{field}</TableCell>
-                                    <TableCell align="center">{count}</TableCell>
-                                </TableRow>
-                            ))}
-                            {task === 'Tapping' && (
-                                <TableRow sx={{ bgcolor: '#a5d6a7' }}>
-                                    <TableCell colSpan={2}><strong>Total Tappers</strong></TableCell>
-                                    <TableCell align="center"><strong>{val.count}</strong></TableCell>
-                                </TableRow>
-                            )}
-                        </Fragment>
-                    ))}
-                    {Object.keys(summary.Rubber).length > 0 && (
-                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                            <TableCell colSpan={2}><strong>Total Rubber</strong></TableCell>
-                            <TableCell align="center"><strong>{Object.values(summary.Rubber).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                        </TableRow>
-                    )}
-
-                    {/* General Section */}
-                    {Object.entries(summary.General).map(([task, val]: any) => (
-                        <Fragment key={task}>
-                            {Object.entries(val.fields).map(([field, count]: any, idx) => (
-                                <TableRow key={`${task}-${field}`}>
-                                    {idx === 0 && (
-                                        <TableCell rowSpan={Object.keys(val.fields).length} sx={{ verticalAlign: 'top', fontWeight: 'bold' }}>{task}</TableCell>
-                                    )}
-                                    <TableCell>{field}</TableCell>
-                                    <TableCell align="center">{count}</TableCell>
-                                </TableRow>
-                            ))}
-                        </Fragment>
-                    ))}
-                    {Object.keys(summary.General).length > 0 && (
-                        <TableRow sx={{ bgcolor: '#81c784', borderTop: '2px solid #2e7d32' }}>
-                            <TableCell colSpan={2}><strong>Total General</strong></TableCell>
-                            <TableCell align="center"><strong>{Object.values(summary.General).reduce((acc: number, curr: any) => acc + curr.count, 0)}</strong></TableCell>
-                        </TableRow>
-                    )}
-
-                    <TableRow sx={{ bgcolor: '#dcdcdc', borderTop: '3px double #000' }}>
-                        <TableCell colSpan={2}><strong>Grand Total of workers</strong></TableCell>
-                        <TableCell align="center"><strong>{grandTotal}</strong></TableCell>
-                    </TableRow>
-                </TableBody>
-            </Table>
+                    </TableBody>
+                </Table>
+            </Box>
         </Paper>
     );
 };
@@ -1485,45 +1722,66 @@ function MorningPlanDisplay({ plans }: { plans: any[] }) {
     return (
         <Box>
             {Object.entries(groupedByTask).map(([task, fieldPlans]: any) => (
-                <Paper key={task} elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#c5e1a5' }}>
-                    {/* Header - Green Theme for Morning (User Preferred) */}
-                    <Box bgcolor="#f1f8e9" borderBottom="1px solid #c5e1a5" p={1} display="flex" alignItems="center">
-                        <Typography variant="subtitle2" fontWeight="bold" color="#33691e" sx={{ minWidth: 120 }}>{task}</Typography>
+                <Paper key={task} elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
+                    {/* Header - Matches TaskSection Theme */}
+                    <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
+                        <Typography variant="subtitle2" fontWeight="bold" color="#a2b5aa" sx={{ minWidth: 120, fontSize: '0.95rem' }}>{task}</Typography>
                     </Box>
 
-                    <Box p={1}>
-                        {fieldPlans.map((plan: any, idx: number) => (
-                            <Box key={`${task}-${plan.field}-${idx}`} mb={1} last-child={{ mb: 0 }}>
-                                <Paper variant="outlined" sx={{ p: 1.5, bgcolor: 'white', border: '1px solid #eee' }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                        <Typography variant="caption" color="text.secondary" fontWeight="bold">
-                                            Field: <span style={{ color: '#333' }}>{plan.field}</span>
-                                        </Typography>
-                                        <Typography variant="caption" color="primary" fontWeight="bold" sx={{ bgcolor: '#e3f2fd', px: 1, borderRadius: 1 }}>
-                                            {plan.count} Assigned
-                                        </Typography>
-                                    </Box>
+                    {/* Column Header */}
+                    <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f5f7f7" borderBottom="1px solid #eaeeef">
+                        <Box flex={1} minWidth={0}>
+                            <Typography variant="caption" fontWeight="bold" color="#b0babb">WORKER</Typography>
+                        </Box>
+                    </Box>
 
-                                    <Box display="flex" flexWrap="wrap" gap={0.5}>
-                                        {plan.assigned && plan.assigned.map((w: any) => (
-                                            <Chip
-                                                key={w.id}
-                                                avatar={<Avatar sx={{ bgcolor: '#66bb6a', width: 24, height: 24 }}><PersonIcon sx={{ fontSize: 16 }} /></Avatar>}
-                                                label={w.name}
-                                                variant="outlined"
-                                                size="small"
-                                                sx={{
-                                                    fontSize: '0.75rem',
-                                                    height: 28,
-                                                    bgcolor: '#f9fbe7',
-                                                    borderColor: '#c5e1a5',
-                                                    '& .MuiChip-label': { color: '#33691e', fontWeight: 500 }
-                                                }}
-                                            />
-                                        ))}
+                    <Box p={1} display="flex" flexDirection="column" gap={0.5}>
+                        {fieldPlans.map((plan: any) => (
+                            plan.assigned && plan.assigned.map((w: any, index: number) => {
+                                const workerType = w.type || w.employmentType || w.workerType || 'CASUAL';
+                                return (
+                                    <Box key={`${plan.field}-${w.id}-${index}`}
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="space-between"
+                                        p={1}
+                                        mb={0.5}
+                                        borderRadius={2}
+                                        sx={{
+                                            bgcolor: '#ffffff',
+                                            border: '1px solid #f0f0f0',
+                                            '&:hover': { bgcolor: '#fafdfa', borderColor: '#eaefe9' },
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
+                                            <Avatar sx={{
+                                                bgcolor: workerType === 'PERMANENT' ? '#2e7d32' : workerType === 'CASUAL' ? '#0288d1' : workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
+                                                width: 36, height: 36
+                                            }}><PersonIcon sx={{ fontSize: 20, color: 'white' }} /></Avatar>
+                                            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <Typography variant="body2" fontWeight="bold" noWrap lineHeight={1.2} color="#333" sx={{ fontSize: '0.95rem' }}>{w.name}</Typography>
+                                                    <Chip
+                                                        label={workerType?.includes('CONTRACT') ? 'CONTRACT' : workerType}
+                                                        size="small"
+                                                        sx={{
+                                                            height: 18,
+                                                            fontSize: '0.65rem',
+                                                            fontWeight: 'bold',
+                                                            bgcolor: workerType === 'PERMANENT' ? '#e8f5e9' : workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
+                                                            color: workerType === 'PERMANENT' ? '#2e7d32' : workerType === 'CASUAL' ? '#0288d1' : workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
+                                                            border: '1px solid',
+                                                            borderColor: workerType === 'PERMANENT' ? '#a5d6a7' : workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8',
+                                                        }}
+                                                    />
+                                                </Box>
+                                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem', mt: 0.5 }}>{plan.field}</Typography>
+                                            </Box>
+                                        </Box>
                                     </Box>
-                                </Paper>
-                            </Box>
+                                )
+                            })
                         ))}
                     </Box>
                 </Paper>
@@ -1544,6 +1802,8 @@ function HistoryTab() {
     const [history, setHistory] = useState<any[]>([]);
     const [rawData, setRawData] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
+    const [divisions, setDivisions] = useState<any[]>([]);
+    const [taskTypes, setTaskTypes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
 
     // Review Modal State
@@ -1551,17 +1811,22 @@ function HistoryTab() {
     const [selectedDate, setSelectedDate] = useState<string>('');
     const [selectedRecords, setSelectedRecords] = useState<any[]>([]);
     const [morningPlan, setMorningPlan] = useState<any[]>([]);
+    const [historicWeights, setHistoricWeights] = useState<any>({});
+    const [historicDivision, setHistoricDivision] = useState<string>('');
 
     useEffect(() => {
         const fetchData = async () => {
             try {
                 // Fetch Metadata
-                const [fRes, wRes, divRes] = await Promise.all([
+                const [fRes, wRes, divRes, tRes] = await Promise.all([
                     axios.get(`/api/fields?tenantId=${tenantId}`),
                     axios.get(`/api/workers?tenantId=${tenantId}`),
-                    axios.get(`/api/divisions?tenantId=${tenantId}`)
+                    axios.get(`/api/divisions?tenantId=${tenantId}`),
+                    axios.get(`/api/operations/task-types?tenantId=${tenantId}`)
                 ]);
                 setFields(fRes.data);
+                setDivisions(divRes.data);
+                setTaskTypes(tRes.data);
 
                 const divMap = new Map<string, string>();
                 divRes.data.forEach((d: any) => divMap.set(d.divisionId, d.name));
@@ -1594,10 +1859,12 @@ function HistoryTab() {
                         if (f) divId = f.divisionId;
                     }
 
+                    const mappedWorker = wMap.get(rec.workerId);
                     return {
                         ...rec,
-                        workerName: wMap.get(rec.workerId)?.name || rec.workerName || 'Unknown',
-                        gender: wMap.get(rec.workerId)?.gender || 'MALE',
+                        workerName: mappedWorker?.name || rec.workerName || 'Unknown',
+                        workerType: mappedWorker?.type || mappedWorker?.employmentType || mappedWorker?.workerType || 'CASUAL',
+                        gender: mappedWorker?.gender || 'MALE',
                         divisionId: divId
                     };
                 });
@@ -1641,7 +1908,8 @@ function HistoryTab() {
                         attended: attended,
                         totalWeight: totalWeight,
                         types: ['Morning Muster'],
-                        details: mm.details // Store the snapshot JSON here!
+                        details: mm.details, // Store the snapshot JSON here!
+                        bulkWeights: mm.bulkWeights // Add DB-saved weights
                     };
                 });
 
@@ -1657,6 +1925,27 @@ function HistoryTab() {
 
     const handleReview = async (row: any) => {
         setSelectedDate(`${row.date} - ${row.divisionName}`);
+        setHistoricDivision(row.divisionId);
+
+        // Fetch historic weights from the database snapshot
+        if (row.bulkWeights) {
+            try {
+                // Ensure it gets wrapped properly depending on whether it's keyed by division or not
+                const parsed = JSON.parse(row.bulkWeights);
+                // wrap in generic way so historic UI can consume it
+                setHistoricWeights({ [row.divisionId]: parsed });
+            } catch (e) {
+                setHistoricWeights({});
+            }
+        } else {
+            // Fallback to local storage (for very old data that never got the db fix)
+            try {
+                const weights = localStorage.getItem(`dailyWeights_${tenantId}_${row.date}`);
+                setHistoricWeights(weights ? JSON.parse(weights) : {});
+            } catch (e) {
+                setHistoricWeights({});
+            }
+        }
 
         // Filter attendance for this specific Division + Date
         const records = rawData.filter((r: any) => r.workDate === row.date && r.divisionId === row.divisionId);
@@ -1665,7 +1954,16 @@ function HistoryTab() {
         // Use the snapshot directly from the row
         if (row.details) {
             try {
-                setMorningPlan(JSON.parse(row.details));
+                let parsedPlan = JSON.parse(row.details);
+                // Dynamically backfill missing worker types for old history records
+                parsedPlan = parsedPlan.map((plan: any) => ({
+                    ...plan,
+                    assigned: plan.assigned?.map((w: any) => ({
+                        ...w,
+                        type: w.type || rawData.find((r: any) => r.workerId === w.id)?.workerType || 'CASUAL'
+                    })) || []
+                }));
+                setMorningPlan(parsedPlan);
             } catch (e) { setMorningPlan([]); }
         } else {
             setMorningPlan([]);
@@ -1697,6 +1995,8 @@ function HistoryTab() {
         acc[key].push(item);
         return acc;
     }, {});
+
+    const uniqueFieldsInHistory = Array.from(new Set(selectedRecords.map((item: any) => item.fieldName))).filter(Boolean) as string[];
 
     if (loading) return <Box display="flex" justifyItems="center" p={3}><CircularProgress /></Box>;
 
@@ -1766,14 +2066,14 @@ function HistoryTab() {
             </Paper>
 
             {/* FULL REVIEW MODAL */}
-            <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="lg" fullWidth>
+            <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="xl" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }}>
                     Muster Review: {selectedDate}
                 </DialogTitle>
                 <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: 1 }}>
-                    <Grid container spacing={3}>
-                        {/* LEFT: MORNING PLAN (Strict 6 columns) */}
-                        <Grid size={{ xs: 12, md: 6 }} sx={{ borderRight: { md: '2px dashed #bdbdbd' } }}>
+                    <Grid container spacing={3} wrap="nowrap" sx={{ overflowX: 'auto', minHeight: '60vh' }}>
+                        {/* LEFT: MORNING PLAN  */}
+                        <Grid size={4} sx={{ borderRight: '2px dashed #bdbdbd', minWidth: '35%' }}>
                             <Box mb={3}>
                                 <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
                                     <Avatar sx={{ bgcolor: 'orange', width: 24, height: 24 }}>🌞</Avatar>
@@ -1784,6 +2084,7 @@ function HistoryTab() {
                                     fields={fields}
                                     label="Muster Chit"
                                     includeAbsent={true}
+                                    isMorningPlan={true}
                                 />
                             </Box>
 
@@ -1793,8 +2094,8 @@ function HistoryTab() {
                             </Box>
                         </Grid>
 
-                        {/* RIGHT: EVENING ACTUAL (Strict 6 columns) */}
-                        <Grid size={{ xs: 12, md: 6 }}>
+                        {/* RIGHT: EVENING ACTUAL */}
+                        <Grid size={8} sx={{ minWidth: '65%' }}>
                             <Box mb={3}>
                                 <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
                                     <Avatar sx={{ bgcolor: '#bdbdbd', width: 24, height: 24 }}>🌙</Avatar>
@@ -1809,6 +2110,45 @@ function HistoryTab() {
                             </Box>
 
                             <Box>
+                                {/* Weight Entries Section (Historic) */}
+                                {uniqueFieldsInHistory.length > 0 && (
+                                    <Paper elevation={0} variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 2, borderColor: '#a5d6a7', bgcolor: '#f1f8e9' }}>
+                                        <Typography variant="subtitle2" fontWeight="bold" color="#1b5e20" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
+                                            <EditStartIcon fontSize="small" /> Bulk Weights Entry
+                                        </Typography>
+                                        <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+                                            {uniqueFieldsInHistory.map((field: string) => (
+                                                <TextField
+                                                    key={field}
+                                                    label={`Field Wt. (${field})`}
+                                                    value={historicWeights[historicDivision]?.[field]?.fieldWt || ''}
+                                                    size="small"
+                                                    type="number"
+                                                    disabled={true}
+                                                    sx={{ bgcolor: 'white', width: 170, boxShadow: '0px 2px 4px rgba(0,0,0,0.05)' }}
+                                                    InputProps={{ sx: { fontSize: '1rem', fontWeight: 'bold', color: '#333' } }}
+                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.85rem', fontWeight: 'bold', color: '#2e7d32' } }}
+                                                />
+                                            ))}
+
+                                            <Box flex={1} /> {/* Spacer to push Factory weight to the right */}
+
+                                            <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9' }}>
+                                                <TextField
+                                                    label="Factory Weight (Total)"
+                                                    value={historicWeights[historicDivision]?.['__FACTORY__']?.factoryWt || ''}
+                                                    size="small"
+                                                    type="number"
+                                                    disabled={true}
+                                                    sx={{ bgcolor: 'white', width: 200 }}
+                                                    InputProps={{ sx: { fontSize: '1rem', fontWeight: 'bold', color: '#1565c0' } }}
+                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.9rem', fontWeight: 'bold', color: '#1976d2' } }}
+                                                />
+                                            </Box>
+                                        </Box>
+                                    </Paper>
+                                )}
+
                                 <Typography variant="subtitle1" fontWeight="bold" gutterBottom>Harvest & Output</Typography>
                                 {Object.entries(groupedRecords).map(([task, items]: any) => (
                                     <TaskSection
@@ -1819,6 +2159,8 @@ function HistoryTab() {
                                         isSubmitted={true}
                                         hideOutput={false} // Show outputs
                                         fields={fields} // Pass fields
+                                        taskTypes={taskTypes}
+                                        isFinalized={true}
                                     />
                                 ))}
                             </Box>
