@@ -1,0 +1,554 @@
+import {
+    Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
+    TableHead, TableRow, Tabs, Tab, TextField, Button, IconButton,
+    Dialog, DialogTitle, DialogContent, DialogActions, Chip, Tooltip,
+    Alert, Divider, InputAdornment
+} from '@mui/material';
+import AddIcon from '@mui/icons-material/Add';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EditIcon from '@mui/icons-material/Edit';
+import SaveIcon from '@mui/icons-material/Save';
+import DownloadIcon from '@mui/icons-material/Download';
+import UploadIcon from '@mui/icons-material/Upload';
+import FolderIcon from '@mui/icons-material/Folder';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import * as XLSX from 'xlsx';
+
+// ─── Data Model ───────────────────────────────────────────────────────────────
+interface CostItem {
+    id: string;
+    name: string;
+    dayAmount?: string;
+    todateAmount?: string;
+    lastMonthAmount?: string;
+    ytdAmount?: string;
+}
+
+interface CostCategory {
+    id: string;
+    name: string;
+    items: CostItem[];
+}
+
+const CROP_COLORS: Record<string, string> = {
+    Tea: '#2e7d32',
+    Rubber: '#0277bd',
+    Cinnamon: '#e65100',
+};
+
+const generateId = () => Math.random().toString(36).slice(2, 10);
+
+const DEFAULT_CATEGORIES: CostCategory[] = [
+    {
+        id: generateId(), name: 'Plucking', items: [
+            { id: generateId(), name: 'Pluckers' },
+            { id: generateId(), name: 'Kanganies' },
+            { id: generateId(), name: 'Sack Coolies' },
+            { id: generateId(), name: 'Staff OT for Plucking' },
+            { id: generateId(), name: 'Leaf Bags' },
+            { id: generateId(), name: 'Cash Kilos' },
+            { id: generateId(), name: 'Meals' },
+            { id: generateId(), name: 'Over Kilos' },
+        ]
+    },
+    {
+        id: generateId(), name: 'Chemical Weeding', items: [
+            { id: generateId(), name: 'Chemical Weeding ManDays' },
+            { id: generateId(), name: 'Cost of Chemical' },
+            { id: generateId(), name: 'Tank Repair' },
+            { id: generateId(), name: 'Meals' },
+            { id: generateId(), name: 'Transport' },
+        ]
+    },
+    {
+        id: generateId(), name: 'Manual Weeding', items: [
+            { id: generateId(), name: 'Manual Weeding ManDays' },
+            { id: generateId(), name: 'Tools' },
+        ]
+    },
+    {
+        id: generateId(), name: 'Fertilizing', items: [
+            { id: generateId(), name: 'Fertilizer Cost' },
+        ]
+    },
+];
+
+// ─── Component ────────────────────────────────────────────────────────────────
+export default function CostAnalysisManager() {
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const [activeCrop, setActiveCrop] = useState('Tea');
+    const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
+    const [categories, setCategories] = useState<CostCategory[]>([]);
+    const [saved, setSaved] = useState(true);
+    const [saveMsg, setSaveMsg] = useState('');
+    const [uploadMsg, setUploadMsg] = useState('');
+    const fileInputRef = useRef<HTMLInputElement>(null);
+
+    const [catDialog, setCatDialog] = useState<{ open: boolean; editId?: string; name: string }>({ open: false, name: '' });
+    const [itemDialog, setItemDialog] = useState<{ open: boolean; catId: string; editId?: string; name: string }>({ open: false, catId: '', name: '' });
+    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: 'cat' | 'item'; catId: string; itemId?: string; label: string } | null>(null);
+
+    useEffect(() => {
+        axios.get(`/api/fields?tenantId=${userSession.tenantId}`)
+            .then(r => {
+                const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
+                if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
+            }).catch(() => { });
+    }, []);
+
+    useEffect(() => {
+        axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+            .then(r => {
+                if (r.data?.costItems) {
+                    try {
+                        const parsed = JSON.parse(r.data.costItems);
+                        setCategories(Array.isArray(parsed) ? parsed : makeDefaults());
+                    } catch { setCategories(makeDefaults()); }
+                } else {
+                    setCategories(makeDefaults());
+                }
+                setSaved(true);
+            }).catch(() => setCategories([]));
+    }, [activeCrop]);
+
+    const makeDefaults = () => DEFAULT_CATEGORIES.map(c => ({
+        ...c, id: generateId(), items: c.items.map(i => ({ ...i, id: generateId() }))
+    }));
+
+    const markDirty = () => setSaved(false);
+
+    // ── Save to backend ───────────────────────────────────────────────────────
+    const handleSave = async () => {
+        try {
+            await axios.post(`/api/crop-configs`, {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop,
+                costItems: JSON.stringify(categories),
+            });
+            setSaved(true);
+            setSaveMsg('Saved successfully!');
+            setTimeout(() => setSaveMsg(''), 3000);
+        } catch { setSaveMsg('Save failed. Please try again.'); }
+    };
+
+    // ── Amount editing ────────────────────────────────────────────────────────
+    const updateItemField = (catId: string, itemId: string, field: keyof CostItem, value: string) => {
+        setCategories(prev => prev.map(c => c.id !== catId ? c : {
+            ...c, items: c.items.map(i => i.id !== itemId ? i : { ...i, [field]: value })
+        }));
+        markDirty();
+    };
+
+    // ── Excel Download ────────────────────────────────────────────────────────
+    const handleDownload = () => {
+        const rows: any[] = [];
+        // Header
+        rows.push({
+            'Category': 'CATEGORY',
+            'Work Item': 'WORK ITEM',
+            'Day Amount (Rs.)': 'DAY AMOUNT (Rs.)',
+            'Todate Amount (Rs.)': 'TODATE AMOUNT (Rs.)',
+            'Last Month Amount (Rs.)': 'LAST MONTH AMOUNT (Rs.)',
+            'YTD Amount (Rs.)': 'YTD AMOUNT (Rs.)',
+        });
+        categories.forEach(cat => {
+            cat.items.forEach(item => {
+                rows.push({
+                    'Category': cat.name,
+                    'Work Item': item.name,
+                    'Day Amount (Rs.)': item.dayAmount || '',
+                    'Todate Amount (Rs.)': item.todateAmount || '',
+                    'Last Month Amount (Rs.)': item.lastMonthAmount || '',
+                    'YTD Amount (Rs.)': item.ytdAmount || '',
+                });
+            });
+            // Total row placeholder
+            rows.push({
+                'Category': cat.name,
+                'Work Item': `*** Total Cost for ${cat.name} ***`,
+                'Day Amount (Rs.)': '',
+                'Todate Amount (Rs.)': '',
+                'Last Month Amount (Rs.)': '',
+                'YTD Amount (Rs.)': '',
+            });
+            rows.push({}); // blank spacer
+        });
+
+        const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
+
+        // Column widths
+        ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 20 }, { wch: 22 }, { wch: 24 }, { wch: 18 }];
+
+        const wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, `${activeCrop} Cost Analysis`);
+        XLSX.writeFile(wb, `Cost_Analysis_${activeCrop}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+    };
+
+    // ── Excel Upload ──────────────────────────────────────────────────────────
+    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = (evt) => {
+            try {
+                const data = new Uint8Array(evt.target!.result as ArrayBuffer);
+                const wb = XLSX.read(data, { type: 'array' });
+                const ws = wb.Sheets[wb.SheetNames[0]];
+                const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
+
+                // Build a lookup map: "CategoryName|ItemName" -> amounts
+                const amountMap: Record<string, { dayAmount?: string; todateAmount?: string; lastMonthAmount?: string; ytdAmount?: string }> = {};
+                for (let i = 1; i < rows.length; i++) {
+                    const row = rows[i];
+                    if (!row || row.length < 2) continue;
+                    const cat = String(row[0] || '').trim();
+                    const item = String(row[1] || '').trim();
+                    if (!cat || !item || item.startsWith('***')) continue;
+                    const key = `${cat}|${item}`;
+                    amountMap[key] = {
+                        dayAmount: row[2] != null ? String(row[2]) : undefined,
+                        todateAmount: row[3] != null ? String(row[3]) : undefined,
+                        lastMonthAmount: row[4] != null ? String(row[4]) : undefined,
+                        ytdAmount: row[5] != null ? String(row[5]) : undefined,
+                    };
+                }
+
+                // Apply to current categories
+                setCategories(prev => prev.map(cat => ({
+                    ...cat,
+                    items: cat.items.map(item => {
+                        const key = `${cat.name}|${item.name}`;
+                        const amounts = amountMap[key];
+                        return amounts ? { ...item, ...amounts } : item;
+                    })
+                })));
+                markDirty();
+                setUploadMsg('Excel loaded! Review the amounts below, then click Save.');
+                setTimeout(() => setUploadMsg(''), 5000);
+            } catch {
+                setUploadMsg('Failed to read Excel. Please use the downloaded template.');
+                setTimeout(() => setUploadMsg(''), 5000);
+            }
+        };
+        reader.readAsArrayBuffer(file);
+        // Reset file input so same file can be re-uploaded
+        e.target.value = '';
+    };
+
+    // ── Category CRUD ─────────────────────────────────────────────────────────
+    const saveCat = () => {
+        const name = catDialog.name.trim();
+        if (!name) return;
+        if (catDialog.editId) {
+            setCategories(prev => prev.map(c => c.id === catDialog.editId ? { ...c, name } : c));
+        } else {
+            setCategories(prev => [...prev, { id: generateId(), name, items: [] }]);
+        }
+        markDirty();
+        setCatDialog({ open: false, name: '' });
+    };
+
+    const deleteCat = (catId: string) => {
+        setCategories(prev => prev.filter(c => c.id !== catId));
+        markDirty(); setDeleteDialog(null);
+    };
+
+    // ── Item CRUD ─────────────────────────────────────────────────────────────
+    const saveItem = () => {
+        const name = itemDialog.name.trim();
+        if (!name) return;
+        setCategories(prev => prev.map(c => {
+            if (c.id !== itemDialog.catId) return c;
+            if (itemDialog.editId) return { ...c, items: c.items.map(i => i.id === itemDialog.editId ? { ...i, name } : i) };
+            return { ...c, items: [...c.items, { id: generateId(), name }] };
+        }));
+        markDirty();
+        setItemDialog({ open: false, catId: '', name: '' });
+    };
+
+    const deleteItem = (catId: string, itemId: string) => {
+        setCategories(prev => prev.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c));
+        markDirty(); setDeleteDialog(null);
+    };
+
+    const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
+
+    // Total for a category
+    const catTotal = (cat: CostCategory, field: keyof CostItem) =>
+        cat.items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
+
+    return (
+        <Box sx={{ pb: 4 }}>
+            {/* Header */}
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                <Box>
+                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                        Cost Analysis Manager
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" mt={0.5}>
+                        Enter amounts manually below, or <strong>download the Excel template</strong>, fill it in, and <strong>upload</strong> it back.
+                    </Typography>
+                </Box>
+                <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+                    {saveMsg && <Alert severity={saveMsg.includes('fail') ? 'error' : 'success'} sx={{ py: 0, px: 1 }}>{saveMsg}</Alert>}
+                    {!saved && <Chip label="Unsaved changes" color="warning" size="small" />}
+                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
+                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
+                        Save
+                    </Button>
+                    <Divider orientation="vertical" flexItem />
+                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}
+                        sx={{ borderColor: cropColor, color: cropColor }}>
+                        Download Template
+                    </Button>
+                    <Button variant="outlined" startIcon={<UploadIcon />}
+                        onClick={() => fileInputRef.current?.click()}
+                        sx={{ borderColor: '#f57c00', color: '#f57c00', borderWidth: 2 }}>
+                        Upload Excel
+                    </Button>
+                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
+                    <Button variant="text" startIcon={<AddIcon />}
+                        onClick={() => setCatDialog({ open: true, name: '' })}
+                        sx={{ color: cropColor }}>
+                        Add Category
+                    </Button>
+                </Box>
+            </Box>
+
+            {uploadMsg && (
+                <Alert severity="info" sx={{ mb: 2 }}>{uploadMsg}</Alert>
+            )}
+
+            <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                {/* Crop Tabs */}
+                <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
+                    <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
+                        sx={{ minHeight: 40, '& .MuiTab-root': { minHeight: 40, fontWeight: 'bold', textTransform: 'none', borderRight: '1px solid #ccc' } }}>
+                        {availableCrops.map(crop => (
+                            <Tab key={crop} label={crop} value={crop} sx={{
+                                bgcolor: activeCrop === crop ? (CROP_COLORS[crop] || '#4caf50') : '#e8e8e8',
+                                color: activeCrop === crop ? '#fff !important' : '#555',
+                            }} />
+                        ))}
+                    </Tabs>
+                </Box>
+
+                {/* Table */}
+                <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
+                    <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #f0f0f0', padding: '4px 10px' } }}>
+                        <TableHead>
+                            <TableRow>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 220 }}>Work Item</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 140 }}>Day Amount (Rs.)</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 150 }}>Todate Amount (Rs.)</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#888', textAlign: 'right', minWidth: 150 }}>Last Month (Rs.)</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#888', textAlign: 'right', minWidth: 130 }}>YTD (Rs.)</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 80, textAlign: 'center' }}>Actions</TableCell>
+                            </TableRow>
+                        </TableHead>
+                        <TableBody>
+                            {categories.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                        <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
+                                        <Typography>No categories. Click "Add Category" to start.</Typography>
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {categories.flatMap(cat => {
+                                const rows: React.ReactNode[] = [];
+
+                                // Category header row
+                                rows.push(
+                                    <TableRow key={`${cat.id}-header`}>
+                                        <TableCell colSpan={6} sx={{
+                                            bgcolor: cropColor + '18',
+                                            borderLeft: `4px solid ${cropColor}`,
+                                            py: 0.6,
+                                        }}>
+                                            <Box display="flex" alignItems="center" justifyContent="space-between">
+                                                <Box display="flex" alignItems="center" gap={1}>
+                                                    <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
+                                                    <Typography fontWeight="bold" sx={{ color: cropColor, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: 0.8 }}>
+                                                        {cat.name}
+                                                    </Typography>
+                                                    <Chip label={`${cat.items.length} items`} size="small"
+                                                        sx={{ height: 17, fontSize: '0.63rem', bgcolor: cropColor + '33', color: cropColor }} />
+                                                </Box>
+                                                <Box display="flex" gap={0.5}>
+                                                    <Button size="small" startIcon={<AddIcon />}
+                                                        onClick={() => setItemDialog({ open: true, catId: cat.id, name: '' })}
+                                                        sx={{ fontSize: '0.68rem', color: cropColor, textTransform: 'none', py: 0.1, minWidth: 0 }}>
+                                                        Add Item
+                                                    </Button>
+                                                    <Tooltip title="Rename category">
+                                                        <IconButton size="small" onClick={() => setCatDialog({ open: true, editId: cat.id, name: cat.name })} sx={{ color: '#1976d2' }}>
+                                                            <EditIcon sx={{ fontSize: 15 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    <Tooltip title="Delete category">
+                                                        <IconButton size="small"
+                                                            onClick={() => setDeleteDialog({ open: true, type: 'cat', catId: cat.id, label: cat.name })}
+                                                            sx={{ color: '#c62828' }}>
+                                                            <DeleteIcon sx={{ fontSize: 15 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </Box>
+                                            </Box>
+                                        </TableCell>
+                                    </TableRow>
+                                );
+
+                                // Item rows
+                                cat.items.forEach(item => {
+                                    rows.push(
+                                        <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
+                                            <TableCell sx={{ pl: 4, color: '#333' }}>{item.name}</TableCell>
+                                            {(['dayAmount', 'todateAmount', 'lastMonthAmount', 'ytdAmount'] as const).map(field => (
+                                                <TableCell key={field} align="right" sx={{ py: 0.3 }}>
+                                                    <TextField
+                                                        size="small"
+                                                        type="number"
+                                                        value={(item[field] as string) || ''}
+                                                        onChange={e => updateItemField(cat.id, item.id, field, e.target.value)}
+                                                        placeholder="0.00"
+                                                        sx={{
+                                                            width: 120,
+                                                            '& .MuiOutlinedInput-root': {
+                                                                '& fieldset': { borderColor: '#e0e0e0' },
+                                                                '&:hover fieldset': { borderColor: cropColor },
+                                                                '&.Mui-focused fieldset': { borderColor: cropColor },
+                                                            },
+                                                            '& input': { textAlign: 'right', fontSize: '0.82rem', p: '4px 8px' }
+                                                        }}
+                                                        InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem', color: '#aaa' } }}>Rs.</InputAdornment> }}
+                                                    />
+                                                </TableCell>
+                                            ))}
+                                            <TableCell align="center" sx={{ py: 0.3 }}>
+                                                <Tooltip title="Rename">
+                                                    <IconButton size="small" onClick={() => setItemDialog({ open: true, catId: cat.id, editId: item.id, name: item.name })} sx={{ color: '#1976d2' }}>
+                                                        <EditIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                                <Tooltip title="Remove">
+                                                    <IconButton size="small"
+                                                        onClick={() => setDeleteDialog({ open: true, type: 'item', catId: cat.id, itemId: item.id, label: item.name })}
+                                                        sx={{ color: '#c62828' }}>
+                                                        <DeleteIcon sx={{ fontSize: 14 }} />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                });
+
+                                // Empty placeholder
+                                if (cat.items.length === 0) {
+                                    rows.push(
+                                        <TableRow key={`${cat.id}-empty`}>
+                                            <TableCell colSpan={6} sx={{ pl: 6, py: 1, color: '#bbb', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                                                No items yet — click "Add Item" above
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                }
+
+                                // Auto-total row
+                                if (cat.items.length > 0) {
+                                    const dayTotal = catTotal(cat, 'dayAmount');
+                                    const todateTotal = catTotal(cat, 'todateAmount');
+                                    const lastMthTotal = catTotal(cat, 'lastMonthAmount');
+                                    const ytdTotal = catTotal(cat, 'ytdAmount');
+                                    rows.push(
+                                        <TableRow key={`${cat.id}-total`} sx={{ bgcolor: '#eeeeee', borderTop: '2px solid #ccc' }}>
+                                            <TableCell sx={{ fontWeight: 'bold', fontSize: '0.82rem', color: '#333', pl: 4 }}>
+                                                ∑ &nbsp; Total Cost for {cat.name}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: cropColor }}>
+                                                {dayTotal > 0 ? `Rs. ${dayTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: cropColor }}>
+                                                {todateTotal > 0 ? `Rs. ${todateTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                {lastMthTotal > 0 ? `Rs. ${lastMthTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                {ytdTotal > 0 ? `Rs. ${ytdTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
+                                            </TableCell>
+                                            <TableCell />
+                                        </TableRow>
+                                    );
+                                }
+
+                                return rows;
+                            })}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            </Paper>
+
+            {/* Add / Edit Category */}
+            <Dialog open={catDialog.open} onClose={() => setCatDialog({ open: false, name: '' })} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold' }}>
+                    {catDialog.editId ? 'Rename Category' : 'Add New Category'}
+                </DialogTitle>
+                <DialogContent dividers>
+                    <TextField label="Category Name" value={catDialog.name}
+                        onChange={e => setCatDialog(d => ({ ...d, name: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && saveCat()}
+                        size="small" fullWidth autoFocus sx={{ mt: 1 }} />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setCatDialog({ open: false, name: '' })}>Cancel</Button>
+                    <Button variant="contained" onClick={saveCat} disabled={!catDialog.name.trim()}
+                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
+                        {catDialog.editId ? 'Rename' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Add / Edit Item */}
+            <Dialog open={itemDialog.open} onClose={() => setItemDialog({ open: false, catId: '', name: '' })} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold' }}>
+                    {itemDialog.editId ? 'Rename Work Item' : `Add Item under "${categories.find(c => c.id === itemDialog.catId)?.name || ''}"`}
+                </DialogTitle>
+                <DialogContent dividers>
+                    <TextField label="Work Item Name" value={itemDialog.name}
+                        onChange={e => setItemDialog(d => ({ ...d, name: e.target.value }))}
+                        onKeyDown={e => e.key === 'Enter' && saveItem()}
+                        size="small" fullWidth autoFocus sx={{ mt: 1 }} />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setItemDialog({ open: false, catId: '', name: '' })}>Cancel</Button>
+                    <Button variant="contained" onClick={saveItem} disabled={!itemDialog.name.trim()}
+                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
+                        {itemDialog.editId ? 'Rename' : 'Add'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Delete Confirmation */}
+            <Dialog open={!!deleteDialog?.open} onClose={() => setDeleteDialog(null)} maxWidth="xs">
+                <DialogTitle>{deleteDialog?.type === 'cat' ? 'Delete Category?' : 'Remove Item?'}</DialogTitle>
+                <DialogContent>
+                    <Typography>
+                        {deleteDialog?.type === 'cat'
+                            ? <>Delete <strong>"{deleteDialog?.label}"</strong> and all its items?</>
+                            : <>Remove <strong>"{deleteDialog?.label}"</strong>?</>}
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialog(null)}>Cancel</Button>
+                    <Button variant="contained" color="error" onClick={() => {
+                        if (!deleteDialog) return;
+                        if (deleteDialog.type === 'cat') deleteCat(deleteDialog.catId);
+                        else if (deleteDialog.itemId) deleteItem(deleteDialog.catId, deleteDialog.itemId);
+                    }}>Delete</Button>
+                </DialogActions>
+            </Dialog>
+        </Box>
+    );
+}

@@ -43,6 +43,7 @@ import Fertilizer from './pages/field-officer/tabs/Fertilizer';
 import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
 import NormSettings from './pages/manager/tabs/NormSettings';
 import TaskTypeSettings from './pages/chief-clerk/tabs/TaskTypeSettings';
+import CostAnalysisManager from './pages/chief-clerk/tabs/CostAnalysisManager';
 import DivisionView from './pages/manager/DivisionView';
 
 // Placeholder Component for the Main Dashboard View
@@ -123,6 +124,7 @@ function App() {
           {/* Chief Clerk Tabs */}
           <Route path="norms" element={<NormSettings />} />
           <Route path="job-roles" element={<TaskTypeSettings />} />
+          <Route path="chief-cost-analysis" element={<CostAnalysisManager />} />
           <Route path="chief-inventory" element={<StoreKeeperDashboard />} />
         </Route>
 

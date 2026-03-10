@@ -42,6 +42,10 @@ public class CropConfig {
     @Column(name = "cash_kilo_rate")
     private Double cashKiloRate;
 
+    // JSON string storing cost analysis items, managed by Chief Clerk
+    @Column(name = "cost_items", columnDefinition = "TEXT")
+    private String costItems;
+
     public UUID getId() {
         return id;
     }
@@ -121,5 +125,13 @@ public class CropConfig {
 
     public void setCashKiloRate(Double cashKiloRate) {
         this.cashKiloRate = cashKiloRate;
+    }
+
+    public String getCostItems() {
+        return costItems;
+    }
+
+    public void setCostItems(String costItems) {
+        this.costItems = costItems;
     }
 }

@@ -28,6 +28,7 @@ export default function CropBook() {
         cashKiloRate: ''
     });
     const [achievedLastMonthAuto, setAchievedLastMonthAuto] = useState<number>(0);
+    const [currentTime, setCurrentTime] = useState(new Date());
     const [openConfig, setOpenConfig] = useState(false);
     const [openWages, setOpenWages] = useState(false);
 
@@ -55,6 +56,12 @@ export default function CropBook() {
         loadConfig(activeCrop);
     }, [activeCrop]);
 
+    // Live clock
+    useEffect(() => {
+        const timer = setInterval(() => setCurrentTime(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
     // Auto-calculate Achieved Crop up to Last Month from system data
     // Financial year runs April-March. Sum factory weights from April 1 of this fin year up to end of last month.
     useEffect(() => {
@@ -69,7 +76,7 @@ export default function CropBook() {
                 const startMonth = { year: finYearStart, month: 4 }; // April
 
                 // "Last month" = month before selected month
-                const lastMonthDate = new Date(selYear, selMonth - 2, 1); // JS months 0-indexed
+                const lastMonthDate = new Date(selYear, selMonth - 2, 1);
                 const lastMonthYear = lastMonthDate.getFullYear();
                 const lastMonth = lastMonthDate.getMonth() + 1;
 
@@ -79,7 +86,14 @@ export default function CropBook() {
                     return;
                 }
 
-                // Collect all months from start to lastMonth
+                // Fetch fields to build a fieldId -> cropType map for crop filtering
+                const fieldsRes = await axios.get(`/api/fields?tenantId=${userSession.tenantId}`);
+                const fieldCropMap = new Map<string, string>();
+                (fieldsRes.data || []).forEach((f: any) => {
+                    if (f.id && f.cropType) fieldCropMap.set(String(f.id), f.cropType.toLowerCase());
+                });
+
+                // Collect all months from fin year start to last month
                 const months: { year: number; month: number }[] = [];
                 let y = startMonth.year;
                 let m = startMonth.month;
@@ -89,7 +103,7 @@ export default function CropBook() {
                     if (m > 12) { m = 1; y++; }
                 }
 
-                // Fetch factory weights for each month and sum them
+                // Fetch factory weights for each month, filtered by active crop
                 let total = 0;
                 await Promise.all(months.map(async ({ year, month }) => {
                     const mm = String(month).padStart(2, '0');
@@ -99,8 +113,18 @@ export default function CropBook() {
                     );
                     const ops = res.data || [];
                     ops.forEach((op: any) => {
-                        if (op.cropType?.toLowerCase() === activeCrop.toLowerCase()) {
-                            total += Number(op.factoryWeight || 0);
+                        // Only count this daily-work if its field belongs to the active crop
+                        const opCropType = fieldCropMap.get(String(op.fieldId));
+                        if (!opCropType || opCropType !== activeCrop.toLowerCase()) return;
+
+                        // Factory weight is inside bulkWeights JSON under __FACTORY__ key
+                        if (op.bulkWeights) {
+                            try {
+                                const bw = JSON.parse(op.bulkWeights);
+                                if (bw.__FACTORY__?.factoryWt) {
+                                    total += Number(bw.__FACTORY__.factoryWt);
+                                }
+                            } catch (e) { /* ignore malformed JSON */ }
                         }
                     });
                 }));
@@ -267,7 +291,8 @@ export default function CropBook() {
                             const pm = Number(a.pmWeight || a.pm || 0);
                             const over = Number(a.overKilos || 0);
                             const cash = Number(a.cashKilos || 0);
-                            dayData.permAndCasualWeightDay += (am + pm + over + cash);
+                            // Yield per Acre uses only actual AM+PM plucking weight, NOT Over/Cash (those are bonuses)
+                            dayData.permAndCasualWeightDay += (am + pm);
                             // Track full vs half athtama for accurate cost calculation
                             if (a.status === 'PRESENT') {
                                 dayData.fullAththamaCount++;
@@ -429,15 +454,19 @@ export default function CropBook() {
     const prevMonthName = selMonth === 1 ? 'December' : monthNames[selMonth - 2];
     const currentMonthName = monthNames[selMonth - 1];
 
+    // Total achieved to date = previous months + current month so far
+    const totalAchievedToDate = achievedLastMonthAuto + facTodateMetric;
+
     // Data for the left sidebar KPI section based on the db config
     const kpiData = [
         { label: `Budgeted crop for the Year`, value: `${config.budgetYear || 0} Kg`, type: 'header', bgColor: '#e8f5e9' },
         { label: `Achieved Crop Up to ${prevMonthName}`, value: `${achievedLastMonthAuto} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
-        { label: 'Achievement', value: config.budgetYear > 0 ? `${((achievedLastMonthAuto / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
-        { label: `Budgeted crop up to ${prevMonthName}`, value: `${budgetLastMonthCalculated} Kg`, type: 'header', bgColor: '#66bb6a' },
+        { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
+        { label: `Total Achieved To Date`, value: `${totalAchievedToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#a5d6a7' },
+        { label: 'Achievement (vs Annual Budget)', value: config.budgetYear > 0 ? `${((totalAchievedToDate / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
+        { label: `Budgeted crop up to ${prevMonthName}`, value: `${budgetLastMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
         { label: `Achievement up to ${prevMonthName}`, value: budgetLastMonthCalculated > 0 ? `${((achievedLastMonthAuto / budgetLastMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#81c784' },
         { label: `Budgeted crop for ${currentMonthName}`, value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
-        { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#e8f5e9' },
         { label: 'Budgeted Crop for todate', value: `${automatedBudgetToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: `Achievement For ${currentMonthName}`, value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
         { label: 'Achievement For To Date', value: automatedBudgetToDate > 0 ? `${((facTodateMetric / automatedBudgetToDate) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
@@ -461,27 +490,65 @@ export default function CropBook() {
     return (
         <Box sx={{ pb: 4, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+                {/* Title */}
+                <Box sx={{ flex: '0 0 auto' }}>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                         Crop Book
                     </Typography>
                 </Box>
-                <Box sx={{ flex: 1, display: 'flex', justifyContent: 'center' }}>
-                    <TextField
-                        type="month"
-                        value={selectedMonth}
-                        onChange={(e) => setSelectedMonth(e.target.value)}
-                        size="small"
-                        sx={{ width: 220 }}
-                    />
-                </Box>
-                <Box sx={{ flex: 1 }} /> {/* Filler block for centering */}
-            </Box>
 
+                {/* Centre: Month picker + Live Clock in one themed card */}
+                <Box sx={{
+                    display: 'flex', alignItems: 'center', gap: 2,
+                    bgcolor: '#e8f5e9', border: '2px solid #a5d6a7',
+                    borderRadius: 3, px: 3, py: 1,
+                    boxShadow: '0 2px 8px rgba(46,125,50,0.12)'
+                }}>
+                    {/* Month Picker */}
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#2e7d32', whiteSpace: 'nowrap' }}>
+                            📅 Month
+                        </Typography>
+                        <TextField
+                            type="month"
+                            value={selectedMonth}
+                            onChange={(e) => setSelectedMonth(e.target.value)}
+                            size="small"
+                            sx={{
+                                width: 160,
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2,
+                                    bgcolor: '#fff',
+                                    '& fieldset': { borderColor: '#81c784' },
+                                    '&:hover fieldset': { borderColor: '#2e7d32' },
+                                    '&.Mui-focused fieldset': { borderColor: '#1b5e20' },
+                                },
+                                '& input': { color: '#1b5e20', fontWeight: 'bold' }
+                            }}
+                        />
+                    </Box>
+
+                    {/* Divider */}
+                    <Box sx={{ width: '1px', height: 40, bgcolor: '#a5d6a7' }} />
+
+                    {/* Live Clock */}
+                    <Box sx={{ textAlign: 'center', lineHeight: 1.1 }}>
+                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#388e3c' }}>
+                            {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                        </Typography>
+                        <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1b5e20', fontVariantNumeric: 'tabular-nums', letterSpacing: 2, lineHeight: 1.2 }}>
+                            {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                        </Typography>
+                    </Box>
+                </Box>
+
+                {/* Right spacer to keep centre card balanced */}
+                <Box sx={{ flex: '0 0 auto', minWidth: 120 }} />
+            </Box>
             <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: isChiefClerk ? 'column' : 'row', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
                 {/* Left Panel / Main Panel for Chief Clerk: Cost Analysis KPIs & Crop Tabs */}
-                <Box sx={{ width: isChiefClerk ? '100%' : 380, borderRight: isChiefClerk ? 'none' : '1px solid #000', display: 'flex', flexDirection: 'column' }}>
+                <Box sx={{ width: isChiefClerk ? '100%' : 320, borderRight: isChiefClerk ? 'none' : '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
                     <Tabs
                         value={availableCrops.includes(activeCrop) ? activeCrop : (availableCrops[0] || 'Tea')}
                         onChange={(_, v) => setActiveCrop(v)}
@@ -586,37 +653,19 @@ export default function CropBook() {
                                     </Typography>
                                 </Box>
                                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, p: 2, overflowY: 'auto', justifyContent: 'flex-start' }}>
-                                    <Box sx={{
-                                        bgcolor: '#fff9c4',
-                                        borderRadius: 2,
-                                        boxShadow: '0px 2px 6px rgba(0,0,0,0.1)',
-                                        p: 2.5,
-                                        border: '1px solid #f9a825'
-                                    }}>
+                                    <Box sx={{ bgcolor: '#fff9c4', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #f9a825' }}>
                                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#5d4037', letterSpacing: 0.5 }}>Aththama Daily Wage</Typography>
                                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#e65100', mt: 0.5, textAlign: 'right' }}>
                                             රු. {config.aththamaWage || 0}
                                         </Typography>
                                     </Box>
-                                    <Box sx={{
-                                        bgcolor: '#fff3e0',
-                                        borderRadius: 2,
-                                        boxShadow: '0px 2px 6px rgba(0,0,0,0.1)',
-                                        p: 2.5,
-                                        border: '1px solid #ffb300'
-                                    }}>
+                                    <Box sx={{ bgcolor: '#fff3e0', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #ffb300' }}>
                                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#5d4037', letterSpacing: 0.5 }}>Over Kilo Rate (per Kg)</Typography>
                                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#e65100', mt: 0.5, textAlign: 'right' }}>
                                             රු. {config.overKiloRate || 0}
                                         </Typography>
                                     </Box>
-                                    <Box sx={{
-                                        bgcolor: '#f1f8e9',
-                                        borderRadius: 2,
-                                        boxShadow: '0px 2px 6px rgba(0,0,0,0.1)',
-                                        p: 2.5,
-                                        border: '1px solid #aed581'
-                                    }}>
+                                    <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #aed581' }}>
                                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#33691e', letterSpacing: 0.5 }}>Cash Kilo Rate (per Kg)</Typography>
                                         <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#33691e', mt: 0.5, textAlign: 'right' }}>
                                             රු. {config.cashKiloRate || 0}
@@ -633,26 +682,27 @@ export default function CropBook() {
                             </Box>
                         </Box>
                     ) : (
-                        /* Non-Chief Clerk: original vertical column layout */
-                        <Box sx={{ flex: 1, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                        /* Non-Chief Clerk: slim list that fills full height */
+                        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                             {kpiData.map((kpi, idx) => (
                                 <Box key={idx} sx={{
+                                    flex: 1,
                                     bgcolor: kpi.bgColor,
-                                    borderBottom: '1px solid #bccac0',
-                                    p: 1.5,
+                                    borderBottom: '1px solid rgba(0,0,0,0.06)',
+                                    px: 2,
                                     display: 'flex',
-                                    flexDirection: 'column',
-                                    justifyContent: 'center',
-                                    alignItems: 'flex-start'
+                                    justifyContent: 'space-between',
+                                    alignItems: 'center',
+                                    minHeight: 0,
                                 }}>
-                                    <Typography variant="caption" sx={{ color: '#555' }}>{kpi.label}</Typography>
-                                    <Typography variant="h6" sx={{ alignSelf: 'flex-end', fontWeight: 'bold', color: '#000', mt: 0.5 }}>{kpi.value}</Typography>
+                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#444', lineHeight: 1.3, flex: 1, pr: 1 }}>{kpi.label}</Typography>
+                                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 'bold', color: '#1b5e20', whiteSpace: 'nowrap' }}>{kpi.value}</Typography>
                                 </Box>
                             ))}
                             {isManagerOrChief && (
-                                <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #bccac0' }}>
-                                    <Button size="small" variant="contained" color="primary" startIcon={<EditIcon />} onClick={() => setOpenConfig(true)}>Edit Target Budgets</Button>
-                                    <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} onClick={() => setOpenWages(true)}>Edit Plucking Wages</Button>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 1, borderTop: '1px solid #e0e0e0' }}>
+                                    <Button size="small" variant="contained" color="primary" startIcon={<EditIcon />} onClick={() => setOpenConfig(true)} sx={{ fontSize: '0.7rem', py: 0.4 }}>Edit Budgets</Button>
+                                    <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} onClick={() => setOpenWages(true)} sx={{ fontSize: '0.7rem', py: 0.4 }}>Edit Wages</Button>
                                 </Box>
                             )}
                         </Box>
@@ -660,67 +710,69 @@ export default function CropBook() {
                 </Box>
 
                 {/* Right Panel: Data Grid - Hidden for Chief Clerk */}
-                {userRole !== 'CHIEF_CLERK' && (
-                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                        <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
-                            <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', padding: '4px 8px', whiteSpace: 'nowrap', textAlign: 'center' } }}>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa' }} />
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Factory Weight</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Field Weight</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Checkroll Weight</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Yield per Acre</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>No. Of Pluckers</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Over kilos</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Cash Kilos</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Plucking Average</TableCell>
-                                        <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold' }}>Plucking Cost per Kg</TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, zIndex: 1, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
-                                        <TableCell sx={{ bgcolor: '#fafafa' }} />
-                                        {Array.from({ length: 9 }).map((_, i) => (
-                                            <React.Fragment key={i}>
-                                                <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem' }}>Day</TableCell>
-                                                <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem' }}>Todate</TableCell>
-                                            </React.Fragment>
-                                        ))}
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {realData.map((row) => (
-                                        <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
-                                            <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>
-                                                {row.day}
-                                            </TableCell>
-                                            <TableCell sx={{ p: 0 }} /> {/* Spacer */}
-                                            <TableCell>{row.factoryWeightDay}</TableCell>
-                                            <TableCell>{row.factoryWeightTodate}</TableCell>
-                                            <TableCell>{row.fieldWeightDay}</TableCell>
-                                            <TableCell>{row.fieldWeightTodate}</TableCell>
-                                            <TableCell>{row.checkrollWeightDay}</TableCell>
-                                            <TableCell>{row.checkrollWeightTodate}</TableCell>
-                                            <TableCell>{row.yieldPerAcreDay}</TableCell>
-                                            <TableCell>{row.yieldPerAcreTodate}</TableCell>
-                                            <TableCell>{row.noOfPluckersDay}</TableCell>
-                                            <TableCell>{row.noOfPluckersTodate}</TableCell>
-                                            <TableCell>{row.overKilosDay}</TableCell>
-                                            <TableCell>{row.overKilosTodate}</TableCell>
-                                            <TableCell>{row.cashKilosDay}</TableCell>
-                                            <TableCell>{row.cashKilosTodate}</TableCell>
-                                            <TableCell>{row.pluckingAverageDay}</TableCell>
-                                            <TableCell>{row.pluckingAverageTodate}</TableCell>
-                                            <TableCell>{row.pluckingCostPerKgDay}</TableCell>
-                                            <TableCell>{row.pluckingCostPerKgTodate}</TableCell>
+                {
+                    userRole !== 'CHIEF_CLERK' && (
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                            <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
+                                <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', padding: '4px 8px', whiteSpace: 'nowrap', textAlign: 'center' } }}>
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell colSpan={1} sx={{ bgcolor: '#fafafa', position: 'sticky', top: 0, zIndex: 3 }} />
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Factory Weight</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Field Weight</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Checkroll Weight</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Yield per Acre</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>No. Of Pluckers</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Over kilos</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Cash Kilos</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Plucking Average</TableCell>
+                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Plucking Cost per Kg</TableCell>
                                         </TableRow>
-                                    ))}
-                                </TableBody>
-                            </Table>
-                        </TableContainer>
-                    </Box>
-                )}
-            </Paper>
+                                        <TableRow>
+                                            <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, top: '29px', zIndex: 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
+
+                                            {Array.from({ length: 9 }).map((_, i) => (
+                                                <React.Fragment key={i}>
+                                                    <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Day</TableCell>
+                                                    <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Todate</TableCell>
+                                                </React.Fragment>
+                                            ))}
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {realData.map((row) => (
+                                            <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
+                                                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>
+                                                    {row.day}
+                                                </TableCell>
+
+                                                <TableCell>{row.factoryWeightDay}</TableCell>
+                                                <TableCell>{row.factoryWeightTodate}</TableCell>
+                                                <TableCell>{row.fieldWeightDay}</TableCell>
+                                                <TableCell>{row.fieldWeightTodate}</TableCell>
+                                                <TableCell>{row.checkrollWeightDay}</TableCell>
+                                                <TableCell>{row.checkrollWeightTodate}</TableCell>
+                                                <TableCell>{row.yieldPerAcreDay}</TableCell>
+                                                <TableCell>{row.yieldPerAcreTodate}</TableCell>
+                                                <TableCell>{row.noOfPluckersDay}</TableCell>
+                                                <TableCell>{row.noOfPluckersTodate}</TableCell>
+                                                <TableCell>{row.overKilosDay}</TableCell>
+                                                <TableCell>{row.overKilosTodate}</TableCell>
+                                                <TableCell>{row.cashKilosDay}</TableCell>
+                                                <TableCell>{row.cashKilosTodate}</TableCell>
+                                                <TableCell>{row.pluckingAverageDay}</TableCell>
+                                                <TableCell>{row.pluckingAverageTodate}</TableCell>
+                                                <TableCell>{row.pluckingCostPerKgDay}</TableCell>
+                                                <TableCell>{row.pluckingCostPerKgTodate}</TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            </TableContainer>
+                        </Box>
+                    )
+                }
+            </Paper >
 
             <Dialog open={openConfig} onClose={() => setOpenConfig(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Edit Budget Metrics ({activeCrop})</DialogTitle>

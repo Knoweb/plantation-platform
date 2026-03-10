@@ -43,6 +43,7 @@ public class CropConfigController {
             configToUpdate.setAththamaWage(newConfig.getAththamaWage());
             configToUpdate.setOverKiloRate(newConfig.getOverKiloRate());
             configToUpdate.setCashKiloRate(newConfig.getCashKiloRate());
+            configToUpdate.setCostItems(newConfig.getCostItems());
             return ResponseEntity.ok(configRepository.save(configToUpdate));
         } else {
             return ResponseEntity.ok(configRepository.save(newConfig));

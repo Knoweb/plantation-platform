@@ -9,11 +9,29 @@ export default function ChiefClerkDashboard() {
                 Chief Clerk Dashboard
             </Typography>
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Manage Estate Norms, Monthly Aththama, and Core Worker HR Registry.
+                Manage Estate Norms, Monthly Aththama, Worker HR Registry, and <strong>Cost Analysis Structure</strong>.
             </Typography>
 
             <Grid container spacing={3}>
-
+                <Grid item xs={12} md={4}>
+                    <Card 
+                        sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #2e7d32', cursor: 'pointer', '&:hover': { boxShadow: 4 } }}
+                        onClick={() => window.location.href = '/dashboard/chief-cost-analysis'}
+                    >
+                        <CardContent>
+                            <Box display="flex" alignItems="center" gap={2} mb={2}>
+                                <AttachMoneyIcon fontSize="large" sx={{ color: '#2e7d32' }} />
+                                <Typography variant="h6" fontWeight="bold">Cost Analysis</Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                                Define the monthly cost structure and line items for Tea, Rubber, and other crops. Used for FO reporting.
+                            </Typography>
+                            <Box mt={2}>
+                                <Chip label="New Feature" size="small" color="success" />
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
                 <Grid item xs={12} md={4}>
                     <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #f57c00' }}>
                         <CardContent>
@@ -24,7 +42,7 @@ export default function ChiefClerkDashboard() {
                             <Typography variant="body2" color="text.secondary">
                                 Maintain the central worker employee roster. Shift contracts from Casual to Permanent, and update EPF numbers.
                             </Typography>
-                            <Box mt={2} display="flex" gap={1}>
+                            <Box mt={2}>
                                 <Chip label="HR Managed" size="small" color="warning" />
                             </Box>
                         </CardContent>

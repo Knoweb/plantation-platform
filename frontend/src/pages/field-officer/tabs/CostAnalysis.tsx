@@ -1,49 +1,80 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab } from '@mui/material';
-import { useState } from 'react';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress } from '@mui/material';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Define the data structure based on the mock
-interface CostDataRow {
-    item: string;
-    dayAmount: string;
-    dayCostPerKg: string;
-    todateAmount: string;
-    todateCostPerKg: string;
-    isHeaderRow?: boolean;
-    isTotalRow?: boolean;
+interface CostItem {
+    id: string;
+    name: string;
+    dayAmount?: string;
+    todateAmount?: string;
+    lastMonthAmount?: string;
+    ytdAmount?: string;
 }
 
-const mockData: CostDataRow[] = [
-    { item: 'Pluckers', dayAmount: '15,000.00', dayCostPerKg: '45.00', todateAmount: '450,000.00', todateCostPerKg: '42.50' },
-    { item: 'Kanganies', dayAmount: '2,500.00', dayCostPerKg: '7.50', todateAmount: '75,000.00', todateCostPerKg: '7.00' },
-    { item: 'Sack Coolies', dayAmount: '1,500.00', dayCostPerKg: '4.50', todateAmount: '45,000.00', todateCostPerKg: '4.20' },
-    { item: 'Staff OT for Plucking', dayAmount: '800.00', dayCostPerKg: '2.40', todateAmount: '24,000.00', todateCostPerKg: '2.20' },
-    { item: 'Leaf Bags', dayAmount: '-', dayCostPerKg: '-', todateAmount: '12,000.00', todateCostPerKg: '1.10' },
-    { item: 'Cash Kilos', dayAmount: '4,000.00', dayCostPerKg: '12.00', todateAmount: '120,000.00', todateCostPerKg: '11.30' },
-    { item: 'Meals', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '90,000.00', todateCostPerKg: '8.50' },
-    { item: 'Over Kilos', dayAmount: '2,000.00', dayCostPerKg: '6.00', todateAmount: '60,000.00', todateCostPerKg: '5.60' },
-    { item: 'Total Plucking Cost', dayAmount: '28,800.00', dayCostPerKg: '86.40', todateAmount: '876,000.00', todateCostPerKg: '82.40', isTotalRow: true },
+interface CostCategory {
+    id: string;
+    name: string;
+    items: CostItem[];
+}
 
-    { item: 'Chemical Weeding ManDays', dayAmount: '5,000.00', dayCostPerKg: '15.00', todateAmount: '150,000.00', todateCostPerKg: '14.10' },
-    { item: 'Cost of Chemical', dayAmount: '12,000.00', dayCostPerKg: '36.00', todateAmount: '360,000.00', todateCostPerKg: '33.90' },
-    { item: 'Tank Repair', dayAmount: '-', dayCostPerKg: '-', todateAmount: '5,000.00', todateCostPerKg: '0.40' },
-    { item: 'Meals', dayAmount: '800.00', dayCostPerKg: '2.40', todateAmount: '24,000.00', todateCostPerKg: '2.20' },
-    { item: 'Transport', dayAmount: '1,500.00', dayCostPerKg: '4.50', todateAmount: '45,000.00', todateCostPerKg: '4.20' },
-    { item: 'Total Cost for Chemical weeding', dayAmount: '19,300.00', dayCostPerKg: '57.90', todateAmount: '584,000.00', todateCostPerKg: '54.80', isTotalRow: true },
+const CROP_COLORS: Record<string, { tab: string; total: string }> = {
+    Tea: { tab: '#2e7d32', total: '#e8f5e9' },
+    Rubber: { tab: '#0277bd', total: '#e1f5fe' },
+    Cinnamon: { tab: '#e65100', total: '#fff3e0' },
+};
+const DEFAULT_COLOR = { tab: '#757575', total: '#f5f5f5' };
 
-    { item: 'Manual Weeding ManDays', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '90,000.00', todateCostPerKg: '8.40' },
-    { item: 'Tools', dayAmount: '-', dayCostPerKg: '-', todateAmount: '8,000.00', todateCostPerKg: '0.70' },
-    { item: 'Total Cost for Manual weeding', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '98,000.00', todateCostPerKg: '9.10', isTotalRow: true },
+const fmt = (val?: string) => {
+    const n = parseFloat(val || '0');
+    return n > 0 ? n.toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '-';
+};
 
-    { item: 'Fertilizer Cost', dayAmount: '-', dayCostPerKg: '-', todateAmount: '850,000.00', todateCostPerKg: '80.10', isTotalRow: true },
-];
+const catTotal = (items: CostItem[], field: keyof CostItem) =>
+    items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
+
+const fmtTotal = (n: number) => n > 0 ? n.toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '-';
 
 export default function CostAnalysis() {
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
+    const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
+    const [categories, setCategories] = useState<CostCategory[]>([]);
+    const [loading, setLoading] = useState(false);
+
+    useEffect(() => {
+        axios.get(`/api/fields?tenantId=${userSession.tenantId}`)
+            .then(r => {
+                const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
+                if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
+            }).catch(() => { });
+    }, []);
+
+    useEffect(() => {
+        setLoading(true);
+        axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+            .then(r => {
+                if (r.data?.costItems) {
+                    try {
+                        const parsed = JSON.parse(r.data.costItems);
+                        setCategories(Array.isArray(parsed) ? parsed : []);
+                    } catch { setCategories([]); }
+                } else { setCategories([]); }
+            }).catch(() => setCategories([]))
+            .finally(() => setLoading(false));
+    }, [activeCrop]);
+
+    const colors = CROP_COLORS[activeCrop] || DEFAULT_COLOR;
+
+    const headerCell = (label: string) => (
+        <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', fontSize: '0.8rem' }}>
+            {label}
+        </TableCell>
+    );
 
     return (
         <Box sx={{ pb: 4 }}>
             {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Cost Analysis
                 </Typography>
@@ -53,82 +84,122 @@ export default function CostAnalysis() {
             </Box>
 
             <Paper elevation={3} sx={{ overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
-
-                {/* Crop Tabs (mimicking the colored cells in the mock) */}
+                {/* Crop Tabs */}
                 <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
-                    <Tabs
-                        value={activeCrop}
-                        onChange={(_, v) => setActiveCrop(v)}
-                        sx={{
-                            minHeight: 36,
-                            '& .MuiTab-root': {
-                                minHeight: 36,
-                                py: 0.5,
-                                px: 3,
-                                fontWeight: 'bold',
-                                textTransform: 'none',
-                                color: '#000',
-                                borderRight: '1px solid #ccc'
-                            }
-                        }}
-                    >
-                        <Tab label="Tea" value="Tea" sx={{ bgcolor: activeCrop === 'Tea' ? '#4caf50' : '#81c784', '&.Mui-selected': { bgcolor: '#4caf50', color: '#fff !important' } }} />
-                        <Tab label="Rubber" value="Rubber" sx={{ bgcolor: activeCrop === 'Rubber' ? '#03a9f4' : '#81d4fa', '&.Mui-selected': { bgcolor: '#03a9f4', color: '#fff !important' } }} />
-                        <Tab label="Cinnamon" value="Cinnamon" sx={{ bgcolor: activeCrop === 'Cinnamon' ? '#ffc107' : '#ffe082', '&.Mui-selected': { bgcolor: '#ffc107', color: '#000 !important' } }} />
-                        <Tab label="General" value="General" sx={{ bgcolor: activeCrop === 'General' ? '#e0e0e0' : '#f5f5f5', '&.Mui-selected': { bgcolor: '#bdbdbd', color: '#000 !important' }, borderRight: 'none !important' }} />
+                    <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
+                        sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontWeight: 'bold', textTransform: 'none', borderRight: '1px solid #ccc' } }}>
+                        {availableCrops.map(crop => (
+                            <Tab key={crop} label={crop} value={crop} sx={{
+                                bgcolor: activeCrop === crop ? (CROP_COLORS[crop]?.tab || '#757575') : '#e8e8e8',
+                                color: activeCrop === crop ? '#fff !important' : '#555',
+                            }} />
+                        ))}
                     </Tabs>
                 </Box>
 
-                {/* Complex Data Table */}
-                <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-                    <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', padding: '6px 16px' } }}>
+                {loading && (
+                    <Box display="flex" justifyContent="center" py={6}>
+                        <CircularProgress size={30} sx={{ color: colors.tab }} />
+                    </Box>
+                )}
 
-                        {/* Two-Tier Table Header */}
-                        <TableHead>
-                            <TableRow sx={{ '& th': { bgcolor: '#fafafa', color: '#1b5e20', fontWeight: 'bold', borderBottom: '1px solid #e0e0e0' } }}>
-                                <TableCell rowSpan={2} sx={{ width: '30%', minWidth: 250 }}>Work Item</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>Day</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>Todate</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>History</TableCell>
-                            </TableRow>
-                            <TableRow sx={{ '& th': { bgcolor: '#fafafa', fontWeight: 'bold' } }}>
-                                {/* Day */}
-                                <TableCell align="right">Amount</TableCell>
-                                <TableCell align="right">Cost/Kg</TableCell>
-                                {/* Todate */}
-                                <TableCell align="right">Amount</TableCell>
-                                <TableCell align="right">Cost/Kg</TableCell>
-                                {/* History */}
-                                <TableCell align="right">Last Mth</TableCell>
-                                <TableCell align="right">YTD</TableCell>
-                            </TableRow>
-                        </TableHead>
-
-                        {/* Table Body */}
-                        <TableBody>
-                            {mockData.map((row, index) => (
-                                <TableRow
-                                    key={index}
-                                    sx={{
-                                        bgcolor: row.isTotalRow ? '#e0e0e0' : 'inherit',
-                                        '&:hover': { bgcolor: row.isTotalRow ? '#d5d5d5' : '#f5f5f5' }
-                                    }}
-                                >
-                                    <TableCell sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>
-                                        {row.item}
+                {!loading && (
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 260px)' }}>
+                        <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' } }}>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', width: '32%', minWidth: 220 }}>
+                                        Work Item
                                     </TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.dayAmount}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.dayCostPerKg}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.todateAmount}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.todateCostPerKg}</TableCell>
-                                    {/* History Placeholders */}
-                                    <TableCell align="right" sx={{ color: 'text.secondary' }}>-</TableCell>
-                                    <TableCell align="right" sx={{ color: 'text.secondary' }}>-</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                        Day
+                                    </TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                        Todate
+                                    </TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
+                                        History
+                                    </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                <TableRow>
+                                    {headerCell('Amount (Rs.)')}
+                                    {headerCell('Cost/Kg')}
+                                    {headerCell('Amount (Rs.)')}
+                                    {headerCell('Cost/Kg')}
+                                    {headerCell('Last Mth')}
+                                    {headerCell('YTD')}
+                                </TableRow>
+                            </TableHead>
+
+                            <TableBody>
+                                {categories.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                            <Typography variant="body2">
+                                                No cost data entered yet for <strong>{activeCrop}</strong>.<br />
+                                                The Chief Clerk can enter amounts in the Cost Analysis Manager.
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+
+                                {categories.flatMap(cat => {
+                                    const rows = cat.items.map((item, idx) => (
+                                        <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
+                                            <TableCell sx={{ pl: idx === 0 ? 2 : 4, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {item.name}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.dayAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                -
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.todateAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                -
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.lastMonthAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.ytdAmount)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ));
+
+                                    // Total row
+                                    if (cat.items.length > 0) {
+                                        rows.push(
+                                            <TableRow key={`${cat.id}-total`} sx={{ bgcolor: colors.total }}>
+                                                <TableCell sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.82rem' }}>
+                                                    Total Cost for {cat.name}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                    {fmtTotal(catTotal(cat.items, 'dayAmount'))}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>-</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                    {fmtTotal(catTotal(cat.items, 'todateAmount'))}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>-</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                    {fmtTotal(catTotal(cat.items, 'lastMonthAmount'))}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                    {fmtTotal(catTotal(cat.items, 'ytdAmount'))}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    }
+                                    return rows;
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
             </Paper>
         </Box>
     );

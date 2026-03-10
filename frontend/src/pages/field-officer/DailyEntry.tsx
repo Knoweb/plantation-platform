@@ -266,19 +266,34 @@ function DailyEntryTab() {
             // Fetch Today's Attendance
             const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
 
-            const enriched = attRes.data.map((rec: any) => ({
-                ...rec,
-                workerName: wMap.get(rec.workerId) || rec.workerId,
-                workerType: wTypeMap.get(rec.workerId) || 'PERMANENT',
-                status: (!rec.status || rec.status === 'PENDING') ? '' : rec.status,
-                amWeight: rec.amWeight ?? '',
-                pmWeight: rec.pmWeight ?? '',
-                overKilos: rec.overKilos ?? '',
-                otHours: rec.otHours ?? '',
-                session: rec.session || 'FULL_DAY',
-                divisionId: dwMap.get(rec.dailyWorkId) || 'UNKNOWN',
-                tenantId: tenantId
-            }));
+            const enriched = attRes.data.map((rec: any) => {
+                const divId = dwMap.get(rec.dailyWorkId) || 'UNKNOWN';
+                const draftKey = `muster_draft_${tenantId}_${today}_${divId}`;
+                const submittedKey = `muster_submitted_${tenantId}_${today}_${divId}`;
+                const hasDraft = localStorage.getItem(draftKey) === 'true';
+                const hasSubmitted = localStorage.getItem(submittedKey) === 'true';
+
+                let defaultStatus = (!rec.status || rec.status === 'PENDING') ? '' : rec.status;
+
+                // If neither drafted nor submitted for evening, wipe the morning status so user has to verify manually
+                if (!hasDraft && !hasSubmitted) {
+                    defaultStatus = '';
+                }
+
+                return {
+                    ...rec,
+                    workerName: wMap.get(rec.workerId) || rec.workerId,
+                    workerType: wTypeMap.get(rec.workerId) || 'PERMANENT',
+                    status: defaultStatus,
+                    amWeight: rec.amWeight ?? '',
+                    pmWeight: rec.pmWeight ?? '',
+                    overKilos: rec.overKilos ?? '',
+                    otHours: rec.otHours ?? '',
+                    session: rec.session || 'FULL_DAY',
+                    divisionId: divId,
+                    tenantId: tenantId
+                };
+            });
 
             // Fetch Norms
             const normsRes = await axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } });
@@ -344,10 +359,14 @@ function DailyEntryTab() {
                 overKilos: item.overKilos !== '' && item.overKilos != null ? Number(item.overKilos) : 0,
                 cashKilos: item.workerType?.includes('CONTRACT') ? ((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)) : (item.cashKilos !== '' && item.cashKilos != null ? Number(item.cashKilos) : 0),
                 otHours: item.otHours !== '' && item.otHours != null ? Number(item.otHours) : 0,
-                status: item.status,
+                status: (item.workerType?.includes('CONTRACT') && (!item.status || item.status === '')) ? 'PRESENT' : item.status,
                 session: item.session
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
+
+            // Mark draft as saved so fetchInitialData doesn't wipe the statuses again
+            localStorage.setItem(`muster_draft_${tenantId}_${today}_${selectedDivision}`, 'true');
+
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
             setIsEditMode(false);
             isEditModeRef.current = false; // Force immediate ref update before fetch
@@ -394,7 +413,11 @@ function DailyEntryTab() {
     }, [selectedDivision, tenantId, today]);
 
     const handleSubmit = async () => {
-        const incomplete = attendanceData.filter(item => item.divisionId === selectedDivision && (!item.status || item.status === 'PENDING' || item.status === ''));
+        const incomplete = attendanceData.filter(item =>
+            item.divisionId === selectedDivision &&
+            !item.workerType?.includes('CONTRACT') &&
+            (!item.status || item.status === 'PENDING' || item.status === '')
+        );
         if (incomplete.length > 0) {
             setNotification({ open: true, message: `Cannot submit! Please mark the attendance status (Present, Absent, etc.) for all ${incomplete.length} remaining worker(s).`, severity: 'error' });
             return;
@@ -418,7 +441,7 @@ function DailyEntryTab() {
                 overKilos: item.overKilos !== '' && item.overKilos != null ? Number(item.overKilos) : 0,
                 cashKilos: item.workerType?.includes('CONTRACT') ? ((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)) : (item.cashKilos !== '' && item.cashKilos != null ? Number(item.cashKilos) : 0),
                 otHours: item.otHours !== '' && item.otHours != null ? Number(item.otHours) : 0,
-                status: item.status,
+                status: (item.workerType?.includes('CONTRACT') && (!item.status || item.status === '')) ? 'PRESENT' : item.status,
                 session: item.session
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
@@ -898,7 +921,7 @@ function DailyEntryTab() {
                                     workerType: worker.employmentType || 'PERMANENT',
                                     workType: addWorkerTask,
                                     fieldName: addWorkerField,
-                                    status: 'PRESENT',
+                                    status: '', // Not selected by default!
                                     session: 'EVENING_SESSION',
                                     divisionId: selectedDivision,
                                     workDate: today,
@@ -1245,7 +1268,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 }
                                                             }
                                                         }}
-                                                        disabled={isSubmitted}
+                                                        disabled={isSubmitted || item.status === 'ABSENT'}
                                                         placeholder="AM"
                                                     />
                                                 </Box>
@@ -1268,7 +1291,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 }
                                                             }
                                                         }}
-                                                        disabled={isSubmitted}
+                                                        disabled={isSubmitted || item.status === 'ABSENT'}
                                                         placeholder="PM"
                                                     />
                                                 </Box>
@@ -1306,7 +1329,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 const val = e.target.value;
                                                                 if (val === '' || Number(val) >= 0) onUpdate(item.id, 'overKilos', val);
                                                             }}
-                                                            disabled={isSubmitted}
+                                                            disabled={isSubmitted || item.status === 'ABSENT'}
                                                             placeholder="Over"
                                                         />
                                                     )}
@@ -1325,7 +1348,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                     const val = e.target.value;
                                                                     if (val === '' || Number(val) >= 0) onUpdate(item.id, 'cashKilos', val);
                                                                 }}
-                                                                disabled={isSubmitted}
+                                                                disabled={isSubmitted || item.status === 'ABSENT'}
                                                                 placeholder="Cash"
                                                             />
                                                         ) : (
@@ -1349,7 +1372,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 const val = e.target.value;
                                                                 if (val === '' || Number(val) >= 0) onUpdate(item.id, 'otHours', val);
                                                             }}
-                                                            disabled={isSubmitted}
+                                                            disabled={isSubmitted || item.status === 'ABSENT'}
                                                             placeholder="OT"
                                                         />
                                                     )}
@@ -1361,7 +1384,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                             value={item.session || 'FULL_DAY'}
                                                             onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
                                                             disableUnderline
-                                                            disabled={isSubmitted}
+                                                            disabled={isSubmitted || item.status === 'ABSENT'}
                                                             sx={{
                                                                 fontSize: '0.7rem',
                                                                 fontWeight: 'bold',
@@ -1522,6 +1545,13 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                         onClick={() => {
                             if (statusConfirm) {
                                 onUpdate(statusConfirm.itemId, 'status', statusConfirm.newStatus);
+                                if (statusConfirm.newStatus === 'ABSENT') {
+                                    onUpdate(statusConfirm.itemId, 'amWeight', '0');
+                                    onUpdate(statusConfirm.itemId, 'pmWeight', '0');
+                                    onUpdate(statusConfirm.itemId, 'overKilos', '0');
+                                    onUpdate(statusConfirm.itemId, 'cashKilos', '0');
+                                    onUpdate(statusConfirm.itemId, 'otHours', '0');
+                                }
                                 setStatusConfirm(null);
                             }
                         }}
@@ -2072,7 +2102,7 @@ function HistoryTab() {
                                         <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
                                     </TableCell>
                                     <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                        {row.submittedAt ? new Date(row.submittedAt.endsWith('Z') ? row.submittedAt : row.submittedAt + 'Z').toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
                                     </TableCell>
                                     <TableCell align="center">
                                         <Button
