@@ -564,6 +564,7 @@ function DailyEntryTab() {
                                 </>
                             ) : (
                                 <>
+                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
                                     <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold' }}>Assign Evening Worker</Button>
                                     <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
                                     <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ fontWeight: 'bold' }}>Save</Button>
@@ -1310,7 +1311,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         />
                                                     )}
                                                 </Box>
-                                                {/* Cash Kilos Input */}
+                                                {/* Cash Kilos Input - only show input for CONTRACT, spacer for others */}
                                                 {hasCashKilos && (
                                                     <Box width={75} display="flex" justifyContent="center">
                                                         {isPieceRate ? (
@@ -1318,7 +1319,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 type="number"
                                                                 min="0"
                                                                 onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }} // Light green
+                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }}
                                                                 value={item.cashKilos ?? ''}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
@@ -1328,19 +1329,8 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 placeholder="Cash"
                                                             />
                                                         ) : (
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }} // Light green
-                                                                value={item.cashKilos ?? ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    if (val === '' || Number(val) >= 0) onUpdate(item.id, 'cashKilos', val);
-                                                                }}
-                                                                disabled={true} // Legacy cash kilos read-only for non-contract
-                                                                placeholder="Cash"
-                                                            />
+                                                            // Non-contract workers don't get Cash KG input — show N/A label
+                                                            <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>N/A</Typography>
                                                         )}
                                                     </Box>
                                                 )}
@@ -1394,68 +1384,119 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
 
                                         {/* Actions */}
                                         <Box width={100} display="flex" justifyContent="flex-end" alignItems="center">
-                                            <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                                {!isPieceRate && (
-                                                    <Tooltip title="Half Athtama">
-                                                        <span style={{ display: 'inline-block' }}>
-                                                            <IconButton
-                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
-                                                                size="small"
-                                                                disabled={isSubmitted || isFinalized}
-                                                                sx={{
+                                            {isFinalized ? (
+                                                // In history view: show same icon buttons, highlighted to reflect the actual recorded status (read-only)
+                                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                                    {!isPieceRate && (
+                                                        <Tooltip title="Half Athtama">
+                                                            <span style={{ display: 'inline-block' }}>
+                                                                <IconButton size="small" disabled sx={{
                                                                     padding: 0.5,
                                                                     bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                    color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                                    '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                                    color: item.status === 'HALF_DAY' ? '#000 !important' : '#cfd8dc !important',
+                                                                    '&.Mui-disabled': {
+                                                                        bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                        color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                                    }
                                                                 }}>
-                                                                <BlockIcon sx={{ fontSize: 16 }} />
+                                                                    <BlockIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                    {!isPieceRate && (
+                                                        <Tooltip title="Full Athtama">
+                                                            <span style={{ display: 'inline-block' }}>
+                                                                <IconButton size="small" disabled sx={{
+                                                                    padding: 0.5,
+                                                                    '&.Mui-disabled': {
+                                                                        bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                        color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                    }
+                                                                }}>
+                                                                    <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                    <Tooltip title="Absent">
+                                                        <span style={{ display: 'inline-block' }}>
+                                                            <IconButton size="small" disabled sx={{
+                                                                padding: 0.5,
+                                                                '&.Mui-disabled': {
+                                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                    color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
+                                                                }
+                                                            }}>
+                                                                <CloseIcon sx={{ fontSize: 16 }} />
                                                             </IconButton>
                                                         </span>
                                                     </Tooltip>
-                                                )}
-                                                {!isPieceRate && (
-                                                    <Tooltip title="Full Athtama">
+                                                </Box>
+                                            ) : (
+                                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                                    {!isPieceRate && (
+                                                        <Tooltip title="Half Athtama">
+                                                            <span style={{ display: 'inline-block' }}>
+                                                                <IconButton
+                                                                    onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
+                                                                    size="small"
+                                                                    disabled={isSubmitted}
+                                                                    sx={{
+                                                                        padding: 0.5,
+                                                                        bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                        color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                                        '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                                    }}>
+                                                                    <BlockIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                    {!isPieceRate && (
+                                                        <Tooltip title="Full Athtama">
+                                                            <span style={{ display: 'inline-block' }}>
+                                                                <IconButton
+                                                                    onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
+                                                                    size="small"
+                                                                    disabled={isSubmitted}
+                                                                    sx={{
+                                                                        padding: 0.5,
+                                                                        bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                        color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                        '&:hover': { bgcolor: '#00c853', color: '#000' }
+                                                                    }}>
+                                                                    <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                </IconButton>
+                                                            </span>
+                                                        </Tooltip>
+                                                    )}
+                                                    <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
                                                         <span style={{ display: 'inline-block' }}>
                                                             <IconButton
-                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
+                                                                onClick={() => {
+                                                                    const isUndo = isPieceRate && item.status === 'ABSENT';
+                                                                    setStatusConfirm({
+                                                                        itemId: item.id,
+                                                                        newStatus: isUndo ? 'PRESENT' : 'ABSENT',
+                                                                        workerName: item.workerName,
+                                                                        label: isUndo ? 'Present (Undo Absent)' : 'Absent'
+                                                                    });
+                                                                }}
                                                                 size="small"
-                                                                disabled={isSubmitted || isFinalized}
+                                                                disabled={isSubmitted}
                                                                 sx={{
                                                                     padding: 0.5,
-                                                                    bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                                    color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                                    '&:hover': { bgcolor: '#00c853', color: '#000' }
+                                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                    color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
+                                                                    '&:hover': { bgcolor: '#ff3d00', color: '#000' }
                                                                 }}>
-                                                                <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                <CloseIcon sx={{ fontSize: 16 }} />
                                                             </IconButton>
                                                         </span>
                                                     </Tooltip>
-                                                )}
-                                                <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
-                                                    <span style={{ display: 'inline-block' }}>
-                                                        <IconButton
-                                                            onClick={() => {
-                                                                const isUndo = isPieceRate && item.status === 'ABSENT';
-                                                                setStatusConfirm({
-                                                                    itemId: item.id,
-                                                                    newStatus: isUndo ? 'PRESENT' : 'ABSENT',
-                                                                    workerName: item.workerName,
-                                                                    label: isUndo ? 'Present (Undo Absent)' : 'Absent'
-                                                                });
-                                                            }}
-                                                            size="small"
-                                                            disabled={isSubmitted || isFinalized}
-                                                            sx={{
-                                                                padding: 0.5,
-                                                                bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                                color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
-                                                                '&:hover': { bgcolor: '#ff3d00', color: '#000' }
-                                                            }}>
-                                                            <CloseIcon sx={{ fontSize: 16 }} />
-                                                        </IconButton>
-                                                    </span>
-                                                </Tooltip>
-                                            </Box>
+                                                </Box>
+                                            )}
                                         </Box>
                                     </>
                                 );

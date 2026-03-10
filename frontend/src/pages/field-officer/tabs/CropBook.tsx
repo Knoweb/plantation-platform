@@ -170,17 +170,29 @@ export default function CropBook() {
                 const acreageDivisor = totalAcreage > 0 ? totalAcreage : 1;
 
                 const dayMap = new Map();
+                // Track acreage of fields actually worked each day (for accurate yield per acre)
+                const dayActiveAcreage = new Map<number, number>(); // day -> total active acreage
+                const daySeenFields = new Map<number, Set<string>>(); // day -> Set of fieldIds already counted
                 for (let i = 1; i <= lastDay; i++) {
                     dayMap.set(i, {
                         day: i, factoryWeightDay: 0, fieldWeightDay: 0, checkrollWeightDay: 0,
                         noOfPluckersDay: 0, permAndCasualPluckersDay: 0, permAndCasualWeightDay: 0,
-                        overKilosDay: 0, cashKilosDay: 0
+                        overKilosDay: 0, cashKilosDay: 0,
+                        fullAththamaCount: 0,   // PERM/CASUAL workers on FULL DAY
+                        halfAththamaCount: 0,   // PERM/CASUAL workers on HALF DAY
+                        permCasualOverKilosDay: 0 // Over kilos for PERM/CASUAL workers only
                     });
+                    dayActiveAcreage.set(i, 0);
+                    daySeenFields.set(i, new Set());
                 }
 
                 const workMap = new Map();
                 const fieldListMap = new Map();
-                fieldsList.forEach((f: any) => fieldListMap.set(f.id, f));
+                const fieldNameMap = new Map(); // field name -> field object (for bulkWeights lookup)
+                fieldsList.forEach((f: any) => {
+                    fieldListMap.set(f.id, f);
+                    if (f.name) fieldNameMap.set(f.name, f);
+                });
 
                 // Process Daily Works (Bulk Weights for Factory/Field sum)
                 workList.forEach((w: any) => {
@@ -188,6 +200,9 @@ export default function CropBook() {
                     const cropMatch = field.cropType && field.cropType.toLowerCase() === activeCrop.toLowerCase();
 
                     if (!cropMatch) return; // Ignore works that aren't for the active crop
+
+                    // Validate this work record belongs to the selected year-month
+                    if (!w.workDate || !w.workDate.startsWith(`${year}-${month}`)) return;
 
                     const d = parseInt(w.workDate.split('-')[2], 10);
                     if (!dayMap.has(d)) return;
@@ -200,12 +215,21 @@ export default function CropBook() {
                             const bw = JSON.parse(w.bulkWeights);
                             let dailyFieldSum = 0;
                             let dailyFacSum = 0;
+                            const seenToday = daySeenFields.get(d);
 
                             for (const key in bw) {
                                 if (key === '__FACTORY__' && bw[key].factoryWt) {
                                     dailyFacSum += Number(bw[key].factoryWt);
                                 } else if (bw[key].fieldWt) {
                                     dailyFieldSum += Number(bw[key].fieldWt);
+                                    // Track acreage per harvested field (by field name in bulkWeights)
+                                    if (seenToday && !seenToday.has(key)) {
+                                        seenToday.add(key);
+                                        const harvestedField = fieldNameMap.get(key);
+                                        if (harvestedField) {
+                                            dayActiveAcreage.set(d, (dayActiveAcreage.get(d) || 0) + Number(harvestedField.acreage || 0));
+                                        }
+                                    }
                                 }
                             }
                             dayData.fieldWeightDay += dailyFieldSum;
@@ -226,6 +250,9 @@ export default function CropBook() {
                     if (activeCrop.toLowerCase() === 'tea' && a.workType?.toLowerCase() !== 'plucking') return;
                     if (activeCrop.toLowerCase() === 'rubber' && a.workType?.toLowerCase() !== 'tapping') return;
 
+                    // Validate this attendance record belongs to the selected year-month
+                    if (!a.workDate || !a.workDate.startsWith(`${year}-${month}`)) return;
+
                     const d = parseInt(a.workDate.split('-')[2], 10);
                     if (!dayMap.has(d)) return;
                     const dayData = dayMap.get(d);
@@ -241,6 +268,14 @@ export default function CropBook() {
                             const over = Number(a.overKilos || 0);
                             const cash = Number(a.cashKilos || 0);
                             dayData.permAndCasualWeightDay += (am + pm + over + cash);
+                            // Track full vs half athtama for accurate cost calculation
+                            if (a.status === 'PRESENT') {
+                                dayData.fullAththamaCount++;
+                            } else { // HALF_DAY
+                                dayData.halfAththamaCount++;
+                            }
+                            // Track over kilos for perm/casual separately
+                            dayData.permCasualOverKilosDay += over;
                         }
                     }
                     if (a.amWeight || a.am) dayData.checkrollWeightDay += Number(a.amWeight || a.am);
@@ -281,20 +316,41 @@ export default function CropBook() {
                     const pAvgDay = (!isFuture && d.permAndCasualPluckersDay > 0) ? ((d.factoryWeightDay - d.cashKilosDay) / d.permAndCasualPluckersDay) : 0;
                     const pAvgToDate = (!isFuture && permCasPlkToDate > 0) ? ((facToDate - cKToDate) / permCasPlkToDate) : 0;
 
-                    // Yield per Acre: (Permanent + Casual Workers Weights) / Total Acreage
-                    const yPerAcreDay = (!isFuture && totalAcreage > 0) ? (d.permAndCasualWeightDay / acreageDivisor) : 0;
+                    // Yield per Acre Day: only acreage of fields actually worked that day
+                    const activeAcreageDay = dayActiveAcreage.get(i) || 0;
+                    const yPerAcreDay = (!isFuture && activeAcreageDay > 0) ? (d.permAndCasualWeightDay / activeAcreageDay) : 0;
                     const yPerAcreToDate = (!isFuture && totalAcreage > 0) ? (permCasWtToDate / acreageDivisor) : 0;
 
-                    // Plucking Cost Per Kg: (perm+casual × aththama wage) + (over kilos × over kilo rate) + (cash kilos × cash kilo rate)
+                    // Plucking Cost Per Kg:
+                    // = (full athtama workers × wage) + (half athtama workers × wage/2) + (perm/casual over kilos × rate)
+                    // Divided by total perm/casual weight (not factory weight)
                     const aththamaWage = Number(config.aththamaWage || 0);
                     const overKiloRate = Number(config.overKiloRate || 0);
-                    const cashKiloRate = Number(config.cashKiloRate || 0);
 
-                    const costDay = (d.permAndCasualPluckersDay * aththamaWage) + (d.overKilosDay * overKiloRate) + (d.cashKilosDay * cashKiloRate);
-                    const costDayPerKg = (!isFuture && d.factoryWeightDay > 0) ? (costDay / d.factoryWeightDay) : 0;
+                    const costDay =
+                        (d.fullAththamaCount * aththamaWage) +
+                        (d.halfAththamaCount * (aththamaWage / 2)) +
+                        (d.permCasualOverKilosDay * overKiloRate);
+                    const costDayPerKg = (!isFuture && d.permAndCasualWeightDay > 0) ? (costDay / d.permAndCasualWeightDay) : 0;
 
-                    const costToDate = (permCasPlkToDate * aththamaWage) + (oKToDate * overKiloRate) + (cKToDate * cashKiloRate);
-                    const costToDatePerKg = (!isFuture && facToDate > 0) ? (costToDate / facToDate) : 0;
+                    // Todate accumulators for cost
+                    let fullAththamaTD = 0, halfAththamaTD = 0, permCasOverKgTD = 0;
+                    for (let j = 1; j <= i; j++) {
+                        const dj = dayMap.get(j);
+                        const isFutureJ = (selY > currentY) ||
+                            (selY === currentY && selM > currentM) ||
+                            (selY === currentY && selM === currentM && j > currentD);
+                        if (!isFutureJ) {
+                            fullAththamaTD += dj.fullAththamaCount;
+                            halfAththamaTD += dj.halfAththamaCount;
+                            permCasOverKgTD += dj.permCasualOverKilosDay;
+                        }
+                    }
+                    const costToDate =
+                        (fullAththamaTD * aththamaWage) +
+                        (halfAththamaTD * (aththamaWage / 2)) +
+                        (permCasOverKgTD * overKiloRate);
+                    const costToDatePerKg = (!isFuture && permCasWtToDate > 0) ? (costToDate / permCasWtToDate) : 0;
 
                     finalData.push({
                         day: i,
@@ -328,7 +384,8 @@ export default function CropBook() {
     }, [selectedMonth, activeCrop, config.aththamaWage, config.overKiloRate]);
 
     // Totals for the month to derive KPI "Achieved Crop - Todate" 
-    const facTodateMetric = realData.length > 0 ? Number(realData[realData.length - 1].factoryWeightTodate || 0) : 0;
+    const lastValidDay = [...realData].reverse().find(d => d.factoryWeightTodate !== '');
+    const facTodateMetric = lastValidDay ? Number(lastValidDay.factoryWeightTodate) : 0;
 
     // Auto-calculate "Budgeted Crop for todate" based on the current day vs total days in month
     const currentDate = new Date();
@@ -368,17 +425,21 @@ export default function CropBook() {
     // Calculate the expected progress proportionally
     const automatedBudgetToDate = (budgetMonthCalculated / totalDaysInMonth) * daysPassed;
 
+    const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+    const prevMonthName = selMonth === 1 ? 'December' : monthNames[selMonth - 2];
+    const currentMonthName = monthNames[selMonth - 1];
+
     // Data for the left sidebar KPI section based on the db config
     const kpiData = [
         { label: `Budgeted crop for the Year`, value: `${config.budgetYear || 0} Kg`, type: 'header', bgColor: '#e8f5e9' },
-        { label: 'Achieved Crop Up to last month', value: `${achievedLastMonthAuto} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
+        { label: `Achieved Crop Up to ${prevMonthName}`, value: `${achievedLastMonthAuto} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: 'Achievement', value: config.budgetYear > 0 ? `${((achievedLastMonthAuto / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
-        { label: 'Budgeted crop up to last month', value: `${budgetLastMonthCalculated} Kg`, type: 'header', bgColor: '#66bb6a' },
-        { label: 'Achievement up to last month', value: budgetLastMonthCalculated > 0 ? `${((achievedLastMonthAuto / budgetLastMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#81c784' },
-        { label: 'Budgeted crop for the month', value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
-        { label: 'Achieved Crop - Todate (Month)', value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#e8f5e9' },
+        { label: `Budgeted crop up to ${prevMonthName}`, value: `${budgetLastMonthCalculated} Kg`, type: 'header', bgColor: '#66bb6a' },
+        { label: `Achievement up to ${prevMonthName}`, value: budgetLastMonthCalculated > 0 ? `${((achievedLastMonthAuto / budgetLastMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#81c784' },
+        { label: `Budgeted crop for ${currentMonthName}`, value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
+        { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#e8f5e9' },
         { label: 'Budgeted Crop for todate', value: `${automatedBudgetToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
-        { label: 'Achievement For The month', value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
+        { label: `Achievement For ${currentMonthName}`, value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
         { label: 'Achievement For To Date', value: automatedBudgetToDate > 0 ? `${((facTodateMetric / automatedBudgetToDate) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
     ];
 
