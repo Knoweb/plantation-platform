@@ -346,196 +346,207 @@ export default function MusterReviewManager() {
                                             </Box>
                                         </Box>
                                         <Box sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
-                                            {localDetails.map((d: any, idx: number) => (
-                                                <Box key={idx} mb={2} p={2} bgcolor="white" borderRadius={3} border="1px solid #e0e0e0" sx={{ '&:hover': { borderColor: '#a5d6a7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
-                                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5} borderBottom="1px solid #f0f0f0" pb={1}>
-                                                        <Typography variant="subtitle1" fontWeight="bold" color="#37474f">{d.task}</Typography>
-                                                        <Box display="flex" alignItems="center" gap={1}>
-                                                            <Chip label={d.field} size="small" variant="outlined" color="primary" sx={{ borderRadius: 1 }} />
-                                                            {isEditMode && (
-                                                                <>
-                                                                    {editingIdx === idx ? (
-                                                                        <Box display="flex" gap={0.5}>
-                                                                            <IconButton size="small" title="Discard Changes" onClick={() => {
-                                                                                if (selectedItem?.detailsRaw) {
-                                                                                    try {
-                                                                                        const originalDetails = JSON.parse(selectedItem.detailsRaw);
-                                                                                        const copy = [...localDetails];
-                                                                                        copy[idx].assigned = originalDetails[idx]?.assigned || [];
-                                                                                        copy[idx].count = copy[idx].assigned.length;
-                                                                                        setLocalDetails(copy);
-                                                                                    } catch (e) { }
-                                                                                }
-                                                                                setEditingIdx(null);
-                                                                            }}>
-                                                                                <CancelIcon color="error" fontSize="small" />
-                                                                            </IconButton>
-                                                                            <IconButton size="small" title="Save Changes" onClick={() => setEditingIdx(null)}>
-                                                                                <SaveIcon color="primary" fontSize="small" />
-                                                                            </IconButton>
-                                                                        </Box>
-                                                                    ) : (
-                                                                        <IconButton size="small" onClick={() => setEditingIdx(idx)}>
-                                                                            <EditIcon fontSize="small" />
-                                                                        </IconButton>
-                                                                    )}
-                                                                </>
-                                                            )}
-                                                        </Box>
-                                                    </Box>
-                                                    <Box display="flex" gap={1} flexWrap="wrap">
-                                                        {editingIdx === idx ? (
-                                                            <Autocomplete
-                                                                multiple
-                                                                options={getFilteredWorkersForEdit()}
-                                                                getOptionLabel={(option) => option.name || option.workerName || ''}
-                                                                groupBy={(option) => {
-                                                                    if (option.employmentType === 'PERMANENT') return '— PERMANENT —';
-                                                                    if (option.employmentType === 'CASUAL') return '— CASUAL —';
-                                                                    if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') return '— CONTRACT —';
-                                                                    return '— OTHER —';
-                                                                }}
-                                                                disableCloseOnSelect
-                                                                value={(d.assigned || []).map((w: any) => workerMap.get(w.id) || workerMap.get(w.workerId) || w).filter(Boolean)}
-                                                                isOptionEqualToValue={(o, v) => o.id === v.id}
-                                                                onChange={(e, newVal) => {
-                                                                    const copy = [...localDetails];
-                                                                    copy[idx].assigned = newVal.map((w: any) => ({
-                                                                        id: w.id,
-                                                                        name: w.name || w.workerName,
-                                                                        workerId: w.workerId
-                                                                    }));
-                                                                    copy[idx].count = newVal.length;
-                                                                    setLocalDetails(copy);
-                                                                }}
-                                                                renderInput={(params) => (
-                                                                    <TextField
-                                                                        {...params}
-                                                                        variant="outlined"
-                                                                        size="small"
-                                                                        placeholder="Search by name..."
-                                                                        sx={{ width: '100%', minWidth: 300 }}
-                                                                        InputProps={{
-                                                                            ...params.InputProps,
-                                                                            startAdornment: (
-                                                                                <>
-                                                                                    {params.InputProps.startAdornment}
-                                                                                    <AddCircleOutlineIcon
-                                                                                        fontSize="small"
-                                                                                        sx={{ color: '#2e7d32', ml: 1, mr: 1, cursor: 'pointer' }}
-                                                                                        onMouseDown={(e) => {
-                                                                                            e.preventDefault(); // Prevents focus loss
-                                                                                            const inputElement = e.currentTarget.closest('.MuiInputBase-root')?.querySelector('input');
-                                                                                            if (inputElement) {
-                                                                                                inputElement.focus();
+                                            {Object.entries(localDetails.reduce((acc: any, d: any, originalIdx: number) => {
+                                                if (!acc[d.task]) acc[d.task] = [];
+                                                acc[d.task].push({ ...d, originalIdx });
+                                                return acc;
+                                            }, {})).map(([taskName, items]: [string, any], taskIdx: number) => (
+                                                <Box key={taskIdx} mb={2} p={2} bgcolor="white" borderRadius={3} border="1px solid #e0e0e0" sx={{ '&:hover': { borderColor: '#a5d6a7', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' } }}>
+                                                    <Typography variant="h6" fontWeight="bold" color="#37474f" mb={1.5} borderBottom="2px solid #e8f5e9" pb={0.5}>{taskName}</Typography>
+                                                    {items.map((d: any, subIdx: number) => {
+                                                        const idx = d.originalIdx;
+                                                        return (
+                                                            <Box key={idx} mb={subIdx === items.length - 1 ? 0 : 2} pb={subIdx === items.length - 1 ? 0 : 2} borderBottom={subIdx === items.length - 1 ? 'none' : '1px dashed #e0e0e0'}>
+                                                                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                                                                    <Chip label={d.field} size="small" variant="outlined" color="primary" sx={{ borderRadius: 1 }} />
+                                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                                        {isEditMode && (
+                                                                            <>
+                                                                                {editingIdx === idx ? (
+                                                                                    <Box display="flex" gap={0.5}>
+                                                                                        <IconButton size="small" title="Discard Changes" onClick={() => {
+                                                                                            if (selectedItem?.detailsRaw) {
+                                                                                                try {
+                                                                                                    const originalDetails = JSON.parse(selectedItem.detailsRaw);
+                                                                                                    const copy = [...localDetails];
+                                                                                                    copy[idx].assigned = originalDetails[idx]?.assigned || [];
+                                                                                                    copy[idx].count = copy[idx].assigned.length;
+                                                                                                    setLocalDetails(copy);
+                                                                                                } catch (e) { }
                                                                                             }
-                                                                                        }}
-                                                                                    />
-                                                                                </>
-                                                                            ),
-                                                                        }}
-                                                                    />
-                                                                )}
-                                                                renderTags={(val, getTagProps) => val.map((w, i) => {
-                                                                    let chipColor: any = "default";
-                                                                    let borderC = "transparent";
-                                                                    let txColor = "inherit";
-                                                                    if (w.employmentType === 'PERMANENT') { chipColor = "success"; }
-                                                                    else if (w.employmentType === 'CASUAL') { chipColor = "info"; }
-                                                                    else if (w.employmentType === 'CONTRACT' || w.employmentType === 'CONTRACT_MEMBER') {
-                                                                        chipColor = undefined;
-                                                                        borderC = "#9c27b0";
-                                                                        txColor = "#9c27b0";
-                                                                    }
+                                                                                            setEditingIdx(null);
+                                                                                        }}>
+                                                                                            <CancelIcon color="error" fontSize="small" />
+                                                                                        </IconButton>
+                                                                                        <IconButton size="small" title="Save Changes" onClick={() => setEditingIdx(null)}>
+                                                                                            <SaveIcon color="primary" fontSize="small" />
+                                                                                        </IconButton>
+                                                                                    </Box>
+                                                                                ) : (
+                                                                                    <IconButton size="small" onClick={() => setEditingIdx(idx)}>
+                                                                                        <EditIcon fontSize="small" />
+                                                                                    </IconButton>
+                                                                                )}
+                                                                            </>
+                                                                        )}
+                                                                    </Box>
+                                                                </Box>
+                                                                <Box display="flex" gap={1} flexWrap="wrap">
+                                                                    {editingIdx === idx ? (
+                                                                        <Autocomplete
+                                                                            multiple
+                                                                            options={getFilteredWorkersForEdit()}
+                                                                            getOptionLabel={(option) => option.name || option.workerName || ''}
+                                                                            groupBy={(option) => {
+                                                                                if (option.employmentType === 'PERMANENT') return '— PERMANENT —';
+                                                                                if (option.employmentType === 'CASUAL') return '— CASUAL —';
+                                                                                if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') return '— CONTRACT —';
+                                                                                return '— OTHER —';
+                                                                            }}
+                                                                            disableCloseOnSelect
+                                                                            value={(d.assigned || []).map((w: any) => workerMap.get(w.id) || workerMap.get(w.workerId) || w).filter(Boolean)}
+                                                                            isOptionEqualToValue={(o, v) => o.id === v.id}
+                                                                            onChange={(e, newVal) => {
+                                                                                const copy = [...localDetails];
+                                                                                copy[idx].assigned = newVal.map((w: any) => ({
+                                                                                    id: w.id,
+                                                                                    name: w.name || w.workerName,
+                                                                                    workerId: w.workerId
+                                                                                }));
+                                                                                copy[idx].count = newVal.length;
+                                                                                setLocalDetails(copy);
+                                                                            }}
+                                                                            renderInput={(params) => (
+                                                                                <TextField
+                                                                                    {...params}
+                                                                                    variant="outlined"
+                                                                                    size="small"
+                                                                                    placeholder="Search by name..."
+                                                                                    sx={{ width: '100%', minWidth: 300 }}
+                                                                                    InputProps={{
+                                                                                        ...params.InputProps,
+                                                                                        startAdornment: (
+                                                                                            <>
+                                                                                                {params.InputProps.startAdornment}
+                                                                                                <AddCircleOutlineIcon
+                                                                                                    fontSize="small"
+                                                                                                    sx={{ color: '#2e7d32', ml: 1, mr: 1, cursor: 'pointer' }}
+                                                                                                    onMouseDown={(e) => {
+                                                                                                        e.preventDefault(); // Prevents focus loss
+                                                                                                        const inputElement = e.currentTarget.closest('.MuiInputBase-root')?.querySelector('input');
+                                                                                                        if (inputElement) {
+                                                                                                            inputElement.focus();
+                                                                                                        }
+                                                                                                    }}
+                                                                                                />
+                                                                                            </>
+                                                                                        ),
+                                                                                    }}
+                                                                                />
+                                                                            )}
+                                                                            renderTags={(val, getTagProps) => val.map((w, i) => {
+                                                                                let chipColor: any = "default";
+                                                                                let borderC = "transparent";
+                                                                                let txColor = "inherit";
+                                                                                if (w.employmentType === 'PERMANENT') { chipColor = "success"; }
+                                                                                else if (w.employmentType === 'CASUAL') { chipColor = "info"; }
+                                                                                else if (w.employmentType === 'CONTRACT' || w.employmentType === 'CONTRACT_MEMBER') {
+                                                                                    chipColor = undefined;
+                                                                                    borderC = "#9c27b0";
+                                                                                    txColor = "#9c27b0";
+                                                                                }
 
-                                                                    const { key, ...tagProps } = getTagProps({ index: i }) as any;
+                                                                                const { key, ...tagProps } = getTagProps({ index: i }) as any;
 
-                                                                    return <Chip
-                                                                        key={w.id || key}
-                                                                        {...tagProps}
-                                                                        label={
-                                                                            <Box display="flex" alignItems="center" gap={1}>
-                                                                                <Typography variant="body2">{w.name}</Typography>
-                                                                                <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '10px', textTransform: 'capitalize' }}>
-                                                                                    ({w.employmentType?.replace('_', ' ').toLowerCase() || 'unknown'})
-                                                                                </Typography>
-                                                                            </Box>
-                                                                        }
-                                                                        size="small"
-                                                                        color={chipColor}
-                                                                        variant="outlined"
-                                                                        sx={!chipColor ? { borderColor: borderC, color: txColor } : {}}
-                                                                    />;
-                                                                })}
-                                                                renderOption={(props, option, { selected }) => {
-                                                                    let typeColor = "inherit"; // default
+                                                                                return <Chip
+                                                                                    key={w.id || key}
+                                                                                    {...tagProps}
+                                                                                    label={
+                                                                                        <Box display="flex" alignItems="center" gap={1}>
+                                                                                            <Typography variant="body2">{w.name}</Typography>
+                                                                                            <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '10px', textTransform: 'capitalize' }}>
+                                                                                                ({w.employmentType?.replace('_', ' ').toLowerCase() || 'unknown'})
+                                                                                            </Typography>
+                                                                                        </Box>
+                                                                                    }
+                                                                                    size="small"
+                                                                                    color={chipColor}
+                                                                                    variant="outlined"
+                                                                                    sx={!chipColor ? { borderColor: borderC, color: txColor } : {}}
+                                                                                />;
+                                                                            })}
+                                                                            renderOption={(props, option, { selected }) => {
+                                                                                let typeColor = "inherit"; // default
 
-                                                                    if (option.employmentType === 'PERMANENT') { typeColor = "success.main"; }
-                                                                    if (option.employmentType === 'CASUAL') { typeColor = "info.main"; }
-                                                                    if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') {
-                                                                        typeColor = "#9c27b0";
-                                                                    }
+                                                                                if (option.employmentType === 'PERMANENT') { typeColor = "success.main"; }
+                                                                                if (option.employmentType === 'CASUAL') { typeColor = "info.main"; }
+                                                                                if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') {
+                                                                                    typeColor = "#9c27b0";
+                                                                                }
 
-                                                                    const isUnavailableInOtherMusters = globalUnavailableSet.has(option.id);
-                                                                    const isUnavailableInOtherTasks = localDetails.some((dItem: any, dIdx: number) =>
-                                                                        dIdx !== idx && dItem.assigned && dItem.assigned.some((w: any) => w.id === option.id || w.workerId === option.id)
-                                                                    );
-                                                                    const isUnavailable = isUnavailableInOtherMusters || isUnavailableInOtherTasks;
+                                                                                const isUnavailableInOtherMusters = globalUnavailableSet.has(option.id);
+                                                                                const isUnavailableInOtherTasks = localDetails.some((dItem: any, dIdx: number) =>
+                                                                                    dIdx !== idx && dItem.assigned && dItem.assigned.some((w: any) => w.id === option.id || w.workerId === option.id)
+                                                                                );
+                                                                                const isUnavailable = isUnavailableInOtherMusters || isUnavailableInOtherTasks;
 
-                                                                    const { key, ...otherProps } = props as any;
+                                                                                const { key, ...otherProps } = props as any;
 
-                                                                    return (
-                                                                        <li key={option.id || key} {...otherProps}>
-                                                                            <Checkbox
-                                                                                icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
-                                                                                checkedIcon={<CheckBoxIcon fontSize="small" />}
-                                                                                style={{ marginRight: 8 }}
-                                                                                checked={selected}
-                                                                                disabled={isUnavailable}
-                                                                            />
-                                                                            <Box sx={{ opacity: isUnavailable ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
-                                                                                <Typography variant="body2" sx={{ color: typeColor, fontWeight: selected ? 'bold' : 'normal' }}>
-                                                                                    {option.name} {isUnavailable ? '(Assigned)' : ''}
-                                                                                </Typography>
-                                                                            </Box>
-                                                                        </li>
-                                                                    );
-                                                                }}
-                                                                fullWidth
-                                                            />
-                                                        ) : (
-                                                            <>
-                                                                {d.assigned && d.assigned.length > 0 ? d.assigned.map((w: any, i: number) => {
-                                                                    const worker = workerMap.get(w.id);
-                                                                    const isFemale = worker?.gender === 'FEMALE';
-                                                                    const empType = worker?.employmentType;
-
-                                                                    let avatarBg = '#e0e0e0';
-                                                                    let avatarBorder = 'transparent';
-                                                                    if (empType === 'PERMANENT') { avatarBg = '#2e7d32'; }
-                                                                    else if (empType === 'CASUAL') { avatarBg = '#0288d1'; }
-                                                                    else if (empType === 'CONTRACT' || empType === 'CONTRACT_MEMBER') { avatarBg = '#9c27b0'; }
-
-                                                                    return (
-                                                                        <Chip
-                                                                            key={i}
-                                                                            avatar={
-                                                                                <Avatar sx={{ bgcolor: avatarBg, color: '#fff', width: 24, height: 24, border: '1px solid white' }}>
-                                                                                    {isFemale ? <WomanIcon sx={{ fontSize: 16 }} /> : <ManIcon sx={{ fontSize: 16 }} />}
-                                                                                </Avatar>
-                                                                            }
-                                                                            label={w.name}
-                                                                            variant="outlined"
-                                                                            size="small"
-                                                                            sx={{ borderRadius: 4, bgcolor: '#fafafa', border: '1px solid #eeeeee' }}
+                                                                                return (
+                                                                                    <li key={option.id || key} {...otherProps}>
+                                                                                        <Checkbox
+                                                                                            icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
+                                                                                            checkedIcon={<CheckBoxIcon fontSize="small" />}
+                                                                                            style={{ marginRight: 8 }}
+                                                                                            checked={selected}
+                                                                                            disabled={isUnavailable}
+                                                                                        />
+                                                                                        <Box sx={{ opacity: isUnavailable ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                                                                            <Typography variant="body2" sx={{ color: typeColor, fontWeight: selected ? 'bold' : 'normal' }}>
+                                                                                                {option.name} {isUnavailable ? '(Assigned)' : ''}
+                                                                                            </Typography>
+                                                                                        </Box>
+                                                                                    </li>
+                                                                                );
+                                                                            }}
+                                                                            fullWidth
                                                                         />
-                                                                    );
-                                                                }) : (
-                                                                    <Typography variant="body2" color="text.secondary" fontStyle="italic">No specific workers assigned</Typography>
-                                                                )}
-                                                            </>
-                                                        )}
-                                                    </Box>
+                                                                    ) : (
+                                                                        <>
+                                                                            {d.assigned && d.assigned.length > 0 ? d.assigned.map((w: any, i: number) => {
+                                                                                const worker = workerMap.get(w.id);
+                                                                                const isFemale = worker?.gender === 'FEMALE';
+                                                                                const empType = worker?.employmentType;
+
+                                                                                let avatarBg = '#e0e0e0';
+                                                                                let avatarBorder = 'transparent';
+                                                                                if (empType === 'PERMANENT') { avatarBg = '#2e7d32'; }
+                                                                                else if (empType === 'CASUAL') { avatarBg = '#0288d1'; }
+                                                                                else if (empType === 'CONTRACT' || empType === 'CONTRACT_MEMBER') { avatarBg = '#9c27b0'; }
+
+                                                                                return (
+                                                                                    <Chip
+                                                                                        key={i}
+                                                                                        avatar={
+                                                                                            <Avatar sx={{ bgcolor: avatarBg, color: '#fff', width: 24, height: 24, border: '1px solid white' }}>
+                                                                                                {isFemale ? <WomanIcon sx={{ fontSize: 16 }} /> : <ManIcon sx={{ fontSize: 16 }} />}
+                                                                                            </Avatar>
+                                                                                        }
+                                                                                        label={w.name}
+                                                                                        variant="outlined"
+                                                                                        size="small"
+                                                                                        sx={{ borderRadius: 4, bgcolor: '#fafafa', border: '1px solid #eeeeee' }}
+                                                                                    />
+                                                                                );
+                                                                            }) : (
+                                                                                <Typography variant="body2" color="text.secondary" fontStyle="italic">No specific workers assigned</Typography>
+                                                                            )}
+                                                                        </>
+                                                                    )}
+                                                                </Box>
+                                                            </Box>
+                                                        );
+                                                    })}
                                                 </Box>
                                             ))}
                                         </Box>
@@ -578,6 +589,6 @@ export default function MusterReviewManager() {
             <Snackbar open={!!notification} autoHideDuration={4000} onClose={() => setNotification(null)}>
                 <Alert severity={notification?.severity || 'info'}>{notification?.message}</Alert>
             </Snackbar>
-        </Box>
+        </Box >
     );
 }
