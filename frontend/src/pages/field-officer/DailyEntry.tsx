@@ -1977,7 +1977,7 @@ function HistoryTab() {
                         date: date,
                         divisionId: divId,
                         divisionName: divMap.get(divId) || 'Unknown',
-                        submittedAt: latestUpdate || mm.createdAt,
+                        submittedAt: mm.createdAt || latestUpdate,
                         assigned: mm.workerCount,
                         attended: attended,
                         totalWeight: totalWeight,
