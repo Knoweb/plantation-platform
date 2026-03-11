@@ -1918,15 +1918,18 @@ function HistoryTab() {
                 // Map Attendance to Divisions via DailyWork ID (or infer)
                 // We build a helper map: DailyWorkID -> DivisionID
                 const dwDivMap = new Map<string, string>();
-                dwRes.data.forEach((dw: any) => dwDivMap.set(dw.id, dw.divisionId)); // Assuming dw.id is the link
+                dwRes.data.forEach((dw: any) => {
+                    const id = dw.workId || dw.id;
+                    if (id) dwDivMap.set(String(id), String(dw.divisionId));
+                });
 
                 const enrichedAttendance = attRes.data.map((rec: any) => {
                     // Try to resolve division from dailyWork link or field
                     let divId = 'UNKNOWN';
-                    if (rec.dailyWorkId) divId = dwDivMap.get(rec.dailyWorkId) || 'UNKNOWN';
+                    if (rec.dailyWorkId) divId = dwDivMap.get(String(rec.dailyWorkId)) || 'UNKNOWN';
                     if (divId === 'UNKNOWN') {
                         // Fallback: try field mapping
-                        const f = fRes.data.find((field: any) => field.name && rec.fieldName && field.name.toLowerCase() === rec.fieldName.toLowerCase());
+                        const f = fRes.data.find((field: any) => field.name && rec.fieldName && String(field.name).trim().toLowerCase() === String(rec.fieldName).trim().toLowerCase());
                         if (f) divId = f.divisionId;
                     }
 
@@ -2019,7 +2022,11 @@ function HistoryTab() {
         }
 
         // Filter attendance for this specific Division + Date
-        const records = rawData.filter((r: any) => r.workDate === row.date && r.divisionId === row.divisionId);
+        const records = rawData.filter((r: any) => {
+            const rDate = String(r.workDate).split('T')[0];
+            const rowDate = String(row.date).split('T')[0];
+            return rDate === rowDate && String(r.divisionId) === String(row.divisionId);
+        });
         setSelectedRecords(records);
 
         // Use the snapshot directly from the row
