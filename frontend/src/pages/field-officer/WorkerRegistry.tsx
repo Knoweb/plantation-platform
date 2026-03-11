@@ -613,11 +613,29 @@ export default function WorkerRegistry() {
                     <TableBody>
                         {workers
                             .filter(w => {
-                                if (activeTab === 0) return w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL';
+                                const isPending = w.status === 'PENDING_APPROVAL' && w.employmentType !== 'CONTRACT_MEMBER';
+                                const userCanApprove = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK';
+
+                                if (activeTab === 0) {
+                                    if (w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL') return true;
+                                    // Show orphaned pending workers here so they can be approved/rejected
+                                    if (userCanApprove && isPending && w.employmentType !== 'CONTRACT') return true;
+                                    return false;
+                                }
                                 if (activeTab === 1) return w.employmentType === 'CONTRACT';
                                 return false;
                             })
-                            .filter(w => (activeTab === 1 && filterDate) ? w.registeredDate === filterDate : true)
+                            .filter(w => {
+                                const isPending = w.status === 'PENDING_APPROVAL';
+                                const userCanApprove = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK';
+
+                                if (activeTab === 1 && filterDate) {
+                                    // Bypass date filter for pending approvals so they don't get lost in history
+                                    if (userCanApprove && isPending) return true;
+                                    return w.registeredDate === filterDate;
+                                }
+                                return true;
+                            })
                             .sort((a, b) => {
                                 // Put PERMANENT workers at the top for tab 0
                                 if (activeTab === 0) {

@@ -40,6 +40,13 @@ export default function CostAnalysis() {
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
     const [loading, setLoading] = useState(false);
+    const [now, setNow] = useState(new Date());
+
+    // Live clock
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
 
     useEffect(() => {
         axios.get(`/api/fields?tenantId=${userSession.tenantId}`)
@@ -73,17 +80,36 @@ export default function CostAnalysis() {
 
     return (
         <Box sx={{ pb: 4 }}>
-            {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            {/* Main Header */}
+            <Box mb={3}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Cost Analysis
-                </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
                 </Typography>
             </Box>
 
             <Paper elevation={3} sx={{ overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+
+                {/* Excel-style top ribbon inside the table card */}
+                <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
+                    <Box sx={{ borderTop: '2px solid #1b5e20', borderBottom: '1px solid #ccc', textAlign: 'center', py: 0.5 }}>
+                        <Typography sx={{ fontSize: '1.2rem', color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                            Cost Analysis
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc', py: 0.2 }}>
+                        <Box sx={{ flex: 1, borderRight: '1px solid #ccc' }} />
+                        <Box sx={{ flex: 3, textAlign: 'center' }}>
+                            <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                                {now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ flex: 1, textAlign: 'right', pr: 2, borderLeft: '1px solid #ccc' }}>
+                            <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                                {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
                 {/* Crop Tabs */}
                 <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
                     <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
@@ -104,11 +130,20 @@ export default function CostAnalysis() {
                 )}
 
                 {!loading && (
-                    <TableContainer sx={{ maxHeight: 'calc(100vh - 260px)' }}>
-                        <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' } }}>
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
+                        <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' }, tableLayout: 'fixed' }}>
+                            <colgroup>
+                                <col style={{ width: '28%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                            </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', width: '32%', minWidth: 220 }}>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', width: '28%' }}>
                                         Work Item
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>

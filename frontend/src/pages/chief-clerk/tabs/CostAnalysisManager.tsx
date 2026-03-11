@@ -80,6 +80,12 @@ export default function CostAnalysisManager() {
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
+
+    // Default to today
+    const [selectedDate, setSelectedDate] = useState<string>(
+        new Date().toISOString().split('T')[0]
+    );
+
     const [saved, setSaved] = useState(true);
     const [saveMsg, setSaveMsg] = useState('');
     const [uploadMsg, setUploadMsg] = useState('');
@@ -95,22 +101,39 @@ export default function CostAnalysisManager() {
                 const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
                 if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
             }).catch(() => { });
-    }, []);
+    }, [userSession.tenantId]);
 
     useEffect(() => {
-        axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+        setSaved(true);
+        axios.get(`/api/daily-costs`, {
+            params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
+        })
             .then(r => {
-                if (r.data?.costItems) {
+                if (r.status === 200 && r.data?.costData) {
                     try {
-                        const parsed = JSON.parse(r.data.costItems);
+                        const parsed = JSON.parse(r.data.costData);
                         setCategories(Array.isArray(parsed) ? parsed : makeDefaults());
-                    } catch { setCategories(makeDefaults()); }
-                } else {
-                    setCategories(makeDefaults());
+                        return; // exit early if daily record found
+                    } catch { }
                 }
-                setSaved(true);
-            }).catch(() => setCategories([]));
-    }, [activeCrop]);
+                fetchConfigFallback();
+            })
+            .catch(() => fetchConfigFallback());
+
+        function fetchConfigFallback() {
+            axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+                .then(res => {
+                    if (res.data?.costItems) {
+                        try {
+                            const parsed = JSON.parse(res.data.costItems);
+                            setCategories(Array.isArray(parsed) ? parsed : makeDefaults());
+                        } catch { setCategories(makeDefaults()); }
+                    } else {
+                        setCategories(makeDefaults());
+                    }
+                }).catch(() => setCategories(makeDefaults()));
+        }
+    }, [activeCrop, selectedDate, userSession.tenantId]);
 
     const makeDefaults = () => DEFAULT_CATEGORIES.map(c => ({
         ...c, id: generateId(), items: c.items.map(i => ({ ...i, id: generateId() }))
@@ -121,11 +144,20 @@ export default function CostAnalysisManager() {
     // ── Save to backend ───────────────────────────────────────────────────────
     const handleSave = async () => {
         try {
+            // Save structure to CropConfig
             await axios.post(`/api/crop-configs`, {
                 tenantId: userSession.tenantId,
                 cropType: activeCrop,
                 costItems: JSON.stringify(categories),
             });
+            // Save actual daily amounts
+            await axios.post(`/api/daily-costs`, {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop,
+                date: selectedDate,
+                costData: JSON.stringify(categories),
+            });
+
             setSaved(true);
             setSaveMsg('Saved successfully!');
             setTimeout(() => setSaveMsg(''), 3000);
@@ -140,49 +172,119 @@ export default function CostAnalysisManager() {
         markDirty();
     };
 
-    // ── Excel Download ────────────────────────────────────────────────────────
+    // Total for a category
+    const catTotal = (cat: CostCategory, field: keyof CostItem) =>
+        cat.items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
+
+    // ── Excel Download — HTML approach (renders real colors in Excel) ──────────
     const handleDownload = () => {
-        const rows: any[] = [];
-        // Header
-        rows.push({
-            'Category': 'CATEGORY',
-            'Work Item': 'WORK ITEM',
-            'Day Amount (Rs.)': 'DAY AMOUNT (Rs.)',
-            'Todate Amount (Rs.)': 'TODATE AMOUNT (Rs.)',
-            'Last Month Amount (Rs.)': 'LAST MONTH AMOUNT (Rs.)',
-            'YTD Amount (Rs.)': 'YTD AMOUNT (Rs.)',
-        });
+        const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
+        const lightBg = activeCrop === 'Tea' ? '#e8f5e9' : activeCrop === 'Rubber' ? '#e1f5fe' : '#fff3e0';
+        const selected = new Date(selectedDate);
+        const dateStr = selected.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-');
+        const timeStr = selected.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+        const tdBase = `border:1px solid #ccc; padding:5px 8px; font-size:11pt; font-family:Calibri,Arial,sans-serif;`;
+        const tdR = `${tdBase} text-align:right;`;
+        const tdL = `${tdBase} text-align:left;`;
+
+        const rows: string[] = [];
+
+        // 1) Ribbon header
+        rows.push(`
+            <tr>
+                <td colspan="6" style="border-top:3px solid #1b5e20; border-left:1px solid #ccc; border-right:1px solid #ccc; font-weight:bold; font-size:16pt; font-family:Calibri,Arial,sans-serif; text-align:center; padding:10px 0; background-color:#ffffff;">
+                    Cost Analysis
+                </td>
+            </tr>
+            <tr>
+                <td style="border-bottom:1px solid #ccc; border-left:1px solid #ccc;"></td>
+                <td colspan="3" style="border-bottom:1px solid #ccc; text-align:center; font-size:11pt; font-family:Calibri,Arial,sans-serif;">
+                    ${dateStr}
+                </td>
+                <td colspan="2" style="border-bottom:1px solid #ccc; border-right:1px solid #ccc; text-align:right; padding-right:15px; font-size:11pt; font-family:Calibri,Arial,sans-serif;">
+                    ${timeStr}
+                </td>
+            </tr>
+        `);
+
+        // 2) Column headers
+        rows.push(`
+            <tr>
+                <td style="font-weight:bold; background-color:#fafafa; ${tdL}">Work Item</td>
+                <td style="font-weight:bold; background-color:#fafafa; color:${cropColor}; ${tdR}">Day Amount (Rs.)</td>
+                <td style="font-weight:bold; background-color:#fafafa; color:${cropColor}; ${tdR}">Todate Amount (Rs.)</td>
+                <td style="font-weight:bold; background-color:#fafafa; color:#888; ${tdR}">Last Month (Rs.)</td>
+                <td style="font-weight:bold; background-color:#fafafa; color:#888; ${tdR}">YTD (Rs.)</td>
+            </tr>
+        `);
+
         categories.forEach(cat => {
+            rows.push(`
+                <tr>
+                    <td colspan="6" style="background-color:${lightBg}; color:${cropColor}; font-weight:bold; text-transform:uppercase; ${tdL}">
+                        ${cat.name}
+                    </td>
+                </tr>
+            `);
+
             cat.items.forEach(item => {
-                rows.push({
-                    'Category': cat.name,
-                    'Work Item': item.name,
-                    'Day Amount (Rs.)': item.dayAmount || '',
-                    'Todate Amount (Rs.)': item.todateAmount || '',
-                    'Last Month Amount (Rs.)': item.lastMonthAmount || '',
-                    'YTD Amount (Rs.)': item.ytdAmount || '',
-                });
+                rows.push(`
+                    <tr>
+                        <td style="${tdL} padding-left:20px;">${item.name}</td>
+                        <td style="${tdR}">${item.dayAmount || ''}</td>
+                        <td style="${tdR}">${item.todateAmount || ''}</td>
+                        <td style="${tdR} color:#555;">${item.lastMonthAmount || ''}</td>
+                        <td style="${tdR} color:#555;">${item.ytdAmount || ''}</td>
+                    </tr>
+                `);
             });
-            // Total row placeholder
-            rows.push({
-                'Category': cat.name,
-                'Work Item': `*** Total Cost for ${cat.name} ***`,
-                'Day Amount (Rs.)': '',
-                'Todate Amount (Rs.)': '',
-                'Last Month Amount (Rs.)': '',
-                'YTD Amount (Rs.)': '',
-            });
-            rows.push({}); // blank spacer
+
+            if (cat.items.length > 0) {
+                const dayTotal = catTotal(cat, 'dayAmount');
+                const todateTotal = catTotal(cat, 'todateAmount');
+                const lastMthTotal = catTotal(cat, 'lastMonthAmount');
+                const ytdTotal = catTotal(cat, 'ytdAmount');
+                rows.push(`
+                    <tr>
+                        <td style="background-color:#eeeeee; font-weight:bold; ${tdL}">Σ Total Cost for ${cat.name}</td>
+                        <td style="background-color:#eeeeee; font-weight:bold; color:${cropColor}; ${tdR}">${dayTotal || ''}</td>
+                        <td style="background-color:#eeeeee; font-weight:bold; color:${cropColor}; ${tdR}">${todateTotal || ''}</td>
+                        <td style="background-color:#eeeeee; font-weight:bold; color:#555; ${tdR}">${lastMthTotal || ''}</td>
+                        <td style="background-color:#eeeeee; font-weight:bold; color:#555; ${tdR}">${ytdTotal || ''}</td>
+                    </tr>
+                `);
+            }
         });
 
-        const ws = XLSX.utils.json_to_sheet(rows, { skipHeader: true });
+        const html = `
+          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+          <head>
+            <meta charset="utf-8">
+            <style> table { border-collapse: collapse; width: 100%; } </style>
+          </head>
+          <body>
+            <table>
+              <colgroup>
+                  <col width="300" />
+                  <col width="150" />
+                  <col width="150" />
+                  <col width="150" />
+                  <col width="150" />
+                  <col width="10" />
+              </colgroup>
+              ${rows.join('\n')}
+            </table>
+          </body>
+          </html>`;
 
-        // Column widths
-        ws['!cols'] = [{ wch: 22 }, { wch: 35 }, { wch: 20 }, { wch: 22 }, { wch: 24 }, { wch: 18 }];
-
-        const wb = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, ws, `${activeCrop} Cost Analysis`);
-        XLSX.writeFile(wb, `Cost_Analysis_${activeCrop}_${new Date().toISOString().slice(0, 10)}.xlsx`);
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=UTF-8' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Cost_Analysis_${activeCrop}_${selected.toISOString().slice(0, 10)}.xls`;
+        a.click();
+        URL.revokeObjectURL(url);
     };
 
     // ── Excel Upload ──────────────────────────────────────────────────────────
@@ -197,20 +299,22 @@ export default function CostAnalysisManager() {
                 const ws = wb.Sheets[wb.SheetNames[0]];
                 const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
 
-                // Build a lookup map: "CategoryName|ItemName" -> amounts
                 const amountMap: Record<string, { dayAmount?: string; todateAmount?: string; lastMonthAmount?: string; ytdAmount?: string }> = {};
                 for (let i = 1; i < rows.length; i++) {
                     const row = rows[i];
                     if (!row || row.length < 2) continue;
-                    const cat = String(row[0] || '').trim();
+                    const catOrName = String(row[0] || '').trim();
                     const item = String(row[1] || '').trim();
-                    if (!cat || !item || item.startsWith('***')) continue;
-                    const key = `${cat}|${item}`;
-                    amountMap[key] = {
-                        dayAmount: row[2] != null ? String(row[2]) : undefined,
-                        todateAmount: row[3] != null ? String(row[3]) : undefined,
-                        lastMonthAmount: row[4] != null ? String(row[4]) : undefined,
-                        ytdAmount: row[5] != null ? String(row[5]) : undefined,
+                    // Basic parsing since HTML to excel loses strict columns sometimes, robust logic:
+                    if (!catOrName || catOrName.startsWith('Σ')) continue;
+
+                    // The old upload logic used Category in row 0 and item in row 1, but HTML approach put Item in row 0
+                    // We map by Item name
+                    amountMap[catOrName] = {
+                        dayAmount: row[1] != null ? String(row[1]) : undefined,
+                        todateAmount: row[2] != null ? String(row[2]) : undefined,
+                        lastMonthAmount: row[3] != null ? String(row[3]) : undefined,
+                        ytdAmount: row[4] != null ? String(row[4]) : undefined,
                     };
                 }
 
@@ -218,8 +322,7 @@ export default function CostAnalysisManager() {
                 setCategories(prev => prev.map(cat => ({
                     ...cat,
                     items: cat.items.map(item => {
-                        const key = `${cat.name}|${item.name}`;
-                        const amounts = amountMap[key];
+                        const amounts = amountMap[item.name];
                         return amounts ? { ...item, ...amounts } : item;
                     })
                 })));
@@ -232,7 +335,6 @@ export default function CostAnalysisManager() {
             }
         };
         reader.readAsArrayBuffer(file);
-        // Reset file input so same file can be re-uploaded
         e.target.value = '';
     };
 
@@ -274,10 +376,6 @@ export default function CostAnalysisManager() {
 
     const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
 
-    // Total for a category
-    const catTotal = (cat: CostCategory, field: keyof CostItem) =>
-        cat.items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
-
     return (
         <Box sx={{ pb: 4 }}>
             {/* Header */}
@@ -287,10 +385,18 @@ export default function CostAnalysisManager() {
                         Cost Analysis Manager
                     </Typography>
                     <Typography variant="body2" color="text.secondary" mt={0.5}>
-                        Enter amounts manually below, or <strong>download the Excel template</strong>, fill it in, and <strong>upload</strong> it back.
+                        Select a date to enter daily cost amounts.
                     </Typography>
                 </Box>
                 <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+                    <TextField
+                        type="date"
+                        size="small"
+                        val
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        sx={{ bgcolor: '#fff', borderRadius: 1 }}
+                    />
                     {saveMsg && <Alert severity={saveMsg.includes('fail') ? 'error' : 'success'} sx={{ py: 0, px: 1 }}>{saveMsg}</Alert>}
                     {!saved && <Chip label="Unsaved changes" color="warning" size="small" />}
                     <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
@@ -300,7 +406,7 @@ export default function CostAnalysisManager() {
                     <Divider orientation="vertical" flexItem />
                     <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}
                         sx={{ borderColor: cropColor, color: cropColor }}>
-                        Download Template
+                        Download Report
                     </Button>
                     <Button variant="outlined" startIcon={<UploadIcon />}
                         onClick={() => fileInputRef.current?.click()}
@@ -499,56 +605,55 @@ export default function CostAnalysisManager() {
                     <TextField label="Category Name" value={catDialog.name}
                         onChange={e => setCatDialog(d => ({ ...d, name: e.target.value }))}
                         onKeyDown={e => e.key === 'Enter' && saveCat()}
-                        size="small" fullWidth autoFocus sx={{ mt: 1 }} />
+                        fullWidth autoFocus sx={{ mt: 1 }}
+                    />
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setCatDialog({ open: false, name: '' })}>Cancel</Button>
-                    <Button variant="contained" onClick={saveCat} disabled={!catDialog.name.trim()}
-                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
-                        {catDialog.editId ? 'Rename' : 'Add'}
-                    </Button>
+                    <Button variant="contained" onClick={saveCat} sx={{ bgcolor: '#2e7d32' }}>Save Category</Button>
                 </DialogActions>
             </Dialog>
 
             {/* Add / Edit Item */}
             <Dialog open={itemDialog.open} onClose={() => setItemDialog({ open: false, catId: '', name: '' })} maxWidth="xs" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold' }}>
-                    {itemDialog.editId ? 'Rename Work Item' : `Add Item under "${categories.find(c => c.id === itemDialog.catId)?.name || ''}"`}
+                    {itemDialog.editId ? 'Rename Item' : 'Add New Item'}
                 </DialogTitle>
                 <DialogContent dividers>
                     <TextField label="Work Item Name" value={itemDialog.name}
                         onChange={e => setItemDialog(d => ({ ...d, name: e.target.value }))}
                         onKeyDown={e => e.key === 'Enter' && saveItem()}
-                        size="small" fullWidth autoFocus sx={{ mt: 1 }} />
+                        fullWidth autoFocus sx={{ mt: 1 }}
+                    />
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setItemDialog({ open: false, catId: '', name: '' })}>Cancel</Button>
-                    <Button variant="contained" onClick={saveItem} disabled={!itemDialog.name.trim()}
-                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
-                        {itemDialog.editId ? 'Rename' : 'Add'}
-                    </Button>
+                    <Button variant="contained" onClick={saveItem} sx={{ bgcolor: '#2e7d32' }}>Save Item</Button>
                 </DialogActions>
             </Dialog>
 
             {/* Delete Confirmation */}
-            <Dialog open={!!deleteDialog?.open} onClose={() => setDeleteDialog(null)} maxWidth="xs">
-                <DialogTitle>{deleteDialog?.type === 'cat' ? 'Delete Category?' : 'Remove Item?'}</DialogTitle>
-                <DialogContent>
+            <Dialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ color: '#d32f2f', fontWeight: 'bold' }}>Confirm Deletion</DialogTitle>
+                <DialogContent dividers>
                     <Typography>
-                        {deleteDialog?.type === 'cat'
-                            ? <>Delete <strong>"{deleteDialog?.label}"</strong> and all its items?</>
-                            : <>Remove <strong>"{deleteDialog?.label}"</strong>?</>}
+                        Are you sure you want to delete the {deleteDialog?.type === 'cat' ? 'category' : 'item'} <strong>{deleteDialog?.label}</strong>?
                     </Typography>
+                    {deleteDialog?.type === 'cat' && (
+                        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
+                            This will also delete all items within this category!
+                        </Typography>
+                    )}
                 </DialogContent>
-                <DialogActions>
+                <DialogActions sx={{ p: 2 }}>
                     <Button onClick={() => setDeleteDialog(null)}>Cancel</Button>
-                    <Button variant="contained" color="error" onClick={() => {
-                        if (!deleteDialog) return;
-                        if (deleteDialog.type === 'cat') deleteCat(deleteDialog.catId);
-                        else if (deleteDialog.itemId) deleteItem(deleteDialog.catId, deleteDialog.itemId);
-                    }}>Delete</Button>
+                    <Button variant="contained" color="error"
+                        onClick={() => deleteDialog?.type === 'cat' ? deleteCat(deleteDialog.catId) : deleteItem(deleteDialog!.catId, deleteDialog!.itemId!)}>
+                        Delete
+                    </Button>
                 </DialogActions>
             </Dialog>
+
         </Box>
     );
 }

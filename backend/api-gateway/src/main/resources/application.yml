@@ -29,7 +29,7 @@ spring:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
           predicates:
-            - Path=/api/tenants/**,/api/divisions/**,/api/workers/**,/api/fields/**,/api/crop-configs/**
+            - Path=/api/tenants/**,/api/divisions/**,/api/workers/**,/api/fields/**,/api/crop-configs/**,/api/daily-costs/**
         - id: inventory-service
           uri: lb://INVENTORY-SERVICE
           predicates:
