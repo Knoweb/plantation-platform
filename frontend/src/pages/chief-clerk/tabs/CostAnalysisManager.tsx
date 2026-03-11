@@ -392,7 +392,6 @@ export default function CostAnalysisManager() {
                     <TextField
                         type="date"
                         size="small"
-                        val
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}

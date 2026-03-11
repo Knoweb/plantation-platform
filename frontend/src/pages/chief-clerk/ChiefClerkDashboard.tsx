@@ -1,6 +1,7 @@
 import { Box, Typography, Grid, Card, CardContent, Chip } from '@mui/material';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 
 export default function ChiefClerkDashboard() {
     return (
@@ -13,8 +14,8 @@ export default function ChiefClerkDashboard() {
             </Typography>
 
             <Grid container spacing={3}>
-                <Grid item xs={12} md={4}>
-                    <Card 
+                <Grid size={{ xs: 12, md: 4 }}>
+                    <Card
                         sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #2e7d32', cursor: 'pointer', '&:hover': { boxShadow: 4 } }}
                         onClick={() => window.location.href = '/dashboard/chief-cost-analysis'}
                     >
@@ -32,7 +33,7 @@ export default function ChiefClerkDashboard() {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #f57c00' }}>
                         <CardContent>
                             <Box display="flex" alignItems="center" gap={2} mb={2}>
@@ -48,7 +49,7 @@ export default function ChiefClerkDashboard() {
                         </CardContent>
                     </Card>
                 </Grid>
-                <Grid item xs={12} md={4}>
+                <Grid size={{ xs: 12, md: 4 }}>
                     <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderLeft: '6px solid #1976d2' }}>
                         <CardContent>
                             <Box display="flex" alignItems="center" gap={2} mb={2}>

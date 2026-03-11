@@ -548,7 +548,7 @@ export default function CropBook() {
             <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: isChiefClerk ? 'column' : 'row', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
                 {/* Left Panel / Main Panel for Chief Clerk: Cost Analysis KPIs & Crop Tabs */}
-                <Box sx={{ width: isChiefClerk ? '100%' : 320, borderRight: isChiefClerk ? 'none' : '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', flexShrink: 0 }}>
+                <Box sx={{ width: isChiefClerk ? '100%' : 320, flex: isChiefClerk ? 1 : '0 0 auto', borderRight: isChiefClerk ? 'none' : '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Tabs
                         value={availableCrops.includes(activeCrop) ? activeCrop : (availableCrops[0] || 'Tea')}
                         onChange={(_, v) => setActiveCrop(v)}
@@ -822,19 +822,19 @@ export default function CropBook() {
                 <DialogTitle>Edit Plucking Wages ({activeCrop})</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
-                        <Grid xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField fullWidth label="Aththama Daily Wage (රු.)" type="number" margin="normal"
                                 value={config.aththamaWage} onChange={e => setConfig({ ...config, aththamaWage: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
-                        <Grid xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField fullWidth label="Over Kilo Rate (රු. / Kg)" type="number" margin="normal"
                                 value={config.overKiloRate} onChange={e => setConfig({ ...config, overKiloRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
-                        <Grid xs={12} sm={6}>
+                        <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField fullWidth label="Cash Kilo Rate (රු. / Kg)" type="number" margin="normal"
                                 value={config.cashKiloRate} onChange={e => setConfig({ ...config, cashKiloRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
