@@ -618,21 +618,24 @@ export default function WorkerRegistry() {
 
                                 if (activeTab === 0) {
                                     if (w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL') return true;
-                                    // Show orphaned pending workers here so they can be approved/rejected
                                     if (userCanApprove && isPending && w.employmentType !== 'CONTRACT') return true;
                                     return false;
                                 }
-                                if (activeTab === 1) return w.employmentType === 'CONTRACT';
+                                if (activeTab === 1) {
+                                    if (w.employmentType === 'CONTRACT') return true;
+                                    if (userCanApprove && isPending && w.employmentType === 'CONTRACT') return true;
+                                    return false;
+                                }
                                 return false;
                             })
                             .filter(w => {
                                 const isPending = w.status === 'PENDING_APPROVAL';
                                 const userCanApprove = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK';
 
-                                if (activeTab === 1 && filterDate) {
-                                    // Bypass date filter for pending approvals so they don't get lost in history
-                                    if (userCanApprove && isPending) return true;
-                                    return w.registeredDate === filterDate;
+                                if (activeTab === 1) {
+                                    if (userCanApprove && isPending) return true; // Always show pending contract workers
+                                    if (filterDate) return w.registeredDate === filterDate; // Otherwise rely on the date filter
+                                    return true; // If no active filterDate, show everything
                                 }
                                 return true;
                             })
