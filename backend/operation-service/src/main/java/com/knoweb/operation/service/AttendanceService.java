@@ -69,7 +69,7 @@ public class AttendanceService {
                     if (update.containsKey("session")) {
                         att.setSession((String) update.get("session"));
                     }
-                    att.setUpdatedAt(java.time.LocalDateTime.now());
+                    att.setUpdatedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
                     attendanceRepository.save(att);
                     continue;
                 }
@@ -108,7 +108,7 @@ public class AttendanceService {
                     if (update.containsKey("session")) {
                         att.setSession((String) update.get("session"));
                     }
-                    att.setUpdatedAt(java.time.LocalDateTime.now());
+                    att.setUpdatedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
                     attendanceRepository.save(att);
                 }
             } catch (Exception e) {

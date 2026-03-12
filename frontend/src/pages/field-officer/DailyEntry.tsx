@@ -36,6 +36,17 @@ interface AttendanceRecord {
     workerType?: string;
 }
 
+const parseJavaDate = (dateVal: any) => {
+    if (!dateVal) return null;
+    if (typeof dateVal === 'string') return new Date(dateVal);
+    if (Array.isArray(dateVal)) {
+        // Handle Java LocalDateTime array format: [year, month, day, hour, minute, second, nano]
+        const [year, month, day, hour, minute, second] = dateVal;
+        return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
+    }
+    return new Date(dateVal);
+};
+
 // --- Main Component ---
 export default function EveningMusterPage() {
     const [tabIndex, setTabIndex] = useState(0);
@@ -267,7 +278,12 @@ function DailyEntryTab() {
             const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
 
             const enriched = attRes.data.map((rec: any) => {
-                const divId = dwMap.get(rec.dailyWorkId) || 'UNKNOWN';
+                let divId = dwMap.get(rec.dailyWorkId) || 'UNKNOWN';
+                if (divId === 'UNKNOWN') {
+                    const fieldNameStr = String(rec.fieldName || '').trim().toLowerCase();
+                    const f = fRes.data.find((fld: any) => fld.name && String(fld.name).trim().toLowerCase() === fieldNameStr);
+                    if (f) divId = f.divisionId;
+                }
                 const draftKey = `muster_draft_${tenantId}_${today}_${divId}`;
                 const submittedKey = `muster_submitted_${tenantId}_${today}_${divId}`;
                 const hasDraft = localStorage.getItem(draftKey) === 'true';
@@ -280,6 +296,8 @@ function DailyEntryTab() {
                     defaultStatus = '';
                 }
 
+                let sessionVal = rec.session || 'FULL_DAY';
+
                 return {
                     ...rec,
                     workerName: wMap.get(rec.workerId) || rec.workerId,
@@ -289,7 +307,7 @@ function DailyEntryTab() {
                     pmWeight: rec.pmWeight ?? '',
                     overKilos: rec.overKilos ?? '',
                     otHours: rec.otHours ?? '',
-                    session: rec.session || 'FULL_DAY',
+                    session: sessionVal,
                     divisionId: divId,
                     tenantId: tenantId
                 };
@@ -309,20 +327,33 @@ function DailyEntryTab() {
             const activeDivs = uniqueDivIds.map(id => ({
                 divisionId: id as string,
                 name: divNameMap.get(id as string) || 'Unknown Division'
-            }));
+            })).sort((a, b) => a.name.localeCompare(b.name));
 
             // Only overwrite UI state if not actively editing
             if (!isEditModeRef.current) {
-                setAttendanceData(enriched);
+                setAttendanceData(prev => {
+                    // Preserve any temp-id records not yet returned by the backend
+                    const tempRecords = prev.filter(r => String(r.id || '').startsWith('temp-'));
+                    if (tempRecords.length === 0) return enriched;
+                    // Key = workerId + workType — if backend already returned it, don't duplicate
+                    const backendKeys = new Set(enriched.map((r: any) => `${r.workerId}__${r.workType}__${r.session}`));
+                    const unresolvedTemps = tempRecords.filter(t =>
+                        !backendKeys.has(`${t.workerId}__${t.workType}__${t.session}`)
+                    );
+                    return [...enriched, ...unresolvedTemps];
+                });
                 setDivisions(activeDivs);
             }
 
             // Default selection logic (only update if not set to prevent UX jumping)
-            if (activeDivs.length > 0 && (selectedDivision === '' || !activeDivs.find(d => d.divisionId === selectedDivision))) {
-                setSelectedDivision(activeDivs[0].divisionId as string);
-            } else if (activeDivs.length === 0) {
-                setSelectedDivision('');
-            }
+            setSelectedDivision(prev => {
+                if (activeDivs.length > 0 && (prev === '' || prev === 'ALL' || !activeDivs.find(d => d.divisionId === prev))) {
+                    return activeDivs[0].divisionId as string;
+                } else if (activeDivs.length === 0) {
+                    return '';
+                }
+                return prev;
+            });
 
         } catch (e) {
             console.error("Failed", e);
@@ -363,6 +394,19 @@ function DailyEntryTab() {
                 session: item.session
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
+
+            // Also save Field and Factory weights to the DailyWork entity so they aren't lost on refresh/navigation
+            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
+            if (workIdSource) {
+                try {
+                    await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
+                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                        isSubmission: false
+                    });
+                } catch (we) {
+                    console.error("Failed to save draft bulk weights to DB", we);
+                }
+            }
 
             // Mark draft as saved so fetchInitialData doesn't wipe the statuses again
             localStorage.setItem(`muster_draft_${tenantId}_${today}_${selectedDivision}`, 'true');
@@ -413,8 +457,21 @@ function DailyEntryTab() {
     }, [selectedDivision, tenantId, today]);
 
     const handleSubmit = async () => {
-        const incomplete = attendanceData.filter(item =>
-            item.divisionId === selectedDivision &&
+        // Build a set of workerIds whose last assignment (per task order) needs a status
+        const divData = attendanceData.filter(item => item.divisionId === selectedDivision);
+        const allTaskOrder = Object.keys(
+            divData.reduce((a: any, i) => { a[i.workType] = true; return a; }, {})
+        );
+        const workerLastTaskMap: Record<string, string> = {};
+        divData.forEach(item => {
+            // For each worker, find which task appears LAST in the ordered task list
+            workerLastTaskMap[item.workerId] = item.workType; // last one wins (order = task grouping order)
+        });
+        const workerIdsRequiringStatus = new Set(Object.values(workerLastTaskMap));
+
+        const incomplete = divData.filter(item =>
+            // Only check workers whose last assignment is this item AND they are not CONTRACT
+            workerLastTaskMap[item.workerId] === item.workType &&
             !item.workerType?.includes('CONTRACT') &&
             (!item.status || item.status === 'PENDING' || item.status === '')
         );
@@ -447,22 +504,30 @@ function DailyEntryTab() {
             await axios.post(`/api/operations/attendance/bulk`, updates);
 
             // Also save Field and Factory weights to the DailyWork entity
-            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId);
+            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
+            console.log("Submitting weights for division:", selectedDivision, "Target DailyWorkId:", workIdSource?.dailyWorkId);
             if (workIdSource) {
                 try {
                     await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
-                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {})
+                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                        isSubmission: true // Tell backend to set the submitted_at timestamp
                     });
                 } catch (we) {
                     console.error("Failed to save bulk weights to DB", we);
                 }
+            } else {
+                console.warn("No DailyWork ID found for division:", selectedDivision, "Submission time might not be updated.");
             }
 
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
 
             // Persist Submission
             localStorage.setItem(getStorageKey(selectedDivision), 'true');
-            setIsSubmitted(true); // Disable button
+            setIsSubmitted(true);
+            isEditModeRef.current = false; // ensure polling can update state
+
+            // Re-fetch so temp-ID workers get replaced with real backend IDs
+            await fetchInitialData(true);
 
             // Trigger Sidebar Update
             window.dispatchEvent(new Event('muster-update'));
@@ -475,6 +540,13 @@ function DailyEntryTab() {
     const filteredData = attendanceData.filter(item => item.divisionId === selectedDivision);
     const uniqueFieldsInMuster = Array.from(new Set(filteredData.map(item => item.fieldName))).filter(Boolean) as string[];
 
+    // Only fields that involve plucking / harvesting should get bulk weight inputs
+    const uniqueFieldsForWeights = Array.from(new Set(
+        filteredData
+            .filter(item => item.workType?.toLowerCase().includes('pluck') || item.workType?.toLowerCase().includes('harvest'))
+            .map(item => item.fieldName)
+    )).filter(Boolean) as string[];
+
     // Grouping
     const grouped = filteredData.reduce((acc: any, item) => {
         const key = item.workType;
@@ -482,6 +554,17 @@ function DailyEntryTab() {
         acc[key].push(item);
         return acc;
     }, {});
+
+    // Build a map: workerId -> the workType of the LAST task they appear in (for icon visibility)
+    const workerLastTaskMap: Record<string, string> = {};
+    filteredData.forEach(item => {
+        workerLastTaskMap[item.workerId] = item.workType; // Last assignment wins
+    });
+
+    // Handler to remove an accidentally added evening-only worker
+    const handleRemoveWorker = (itemId: string) => {
+        setAttendanceData(prev => prev.filter(a => a.id !== itemId));
+    };
 
     // Categorized Summary Calculation for Muster Chit
     const getCategorizedSummary = () => {
@@ -751,13 +834,13 @@ function DailyEntryTab() {
                                 transition: 'all 0.3s ease-in-out'
                             }}>
                                 {/* Weight Entries Section */}
-                                {uniqueFieldsInMuster.length > 0 && (
+                                {uniqueFieldsForWeights.length > 0 && (
                                     <Paper elevation={0} variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 2, borderColor: '#a5d6a7', bgcolor: '#f1f8e9' }}>
                                         <Typography variant="subtitle2" fontWeight="bold" color="#1b5e20" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <EditStartIcon fontSize="small" /> Bulk Weights Entry
                                         </Typography>
                                         <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
-                                            {uniqueFieldsInMuster.map(field => (
+                                            {uniqueFieldsForWeights.map(field => (
                                                 <TextField
                                                     key={field}
                                                     label={`Field Wt. (${field})`}
@@ -810,7 +893,7 @@ function DailyEntryTab() {
                                 )}
 
                                 {Object.entries(grouped).map(([task, items]: any) => (
-                                    <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted || !isEditMode} isFinalized={isSubmitted} fields={fields} taskTypes={taskTypes || []} />
+                                    <TaskSection key={task} task={task} items={items} onUpdate={handleUpdate} isSubmitted={isSubmitted || !isEditMode} isFinalized={isSubmitted} fields={fields} taskTypes={taskTypes || []} workerLastTaskMap={workerLastTaskMap} onRemove={handleRemoveWorker} />
                                 ))}
                             </Box>
                         </Box>
@@ -831,11 +914,12 @@ function DailyEntryTab() {
                         setConfirmWeightsOpen(false);
 
                         // Save weights directly to the database for this DailyWork record
-                        const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId);
+                        const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
                         if (workIdSource) {
                             try {
                                 await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
-                                    bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {})
+                                    bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                                    isSubmission: false
                                 });
                                 setNotification({ open: true, message: 'Weights updated successfully!', severity: 'success' });
                             } catch (error) {
@@ -908,11 +992,8 @@ function DailyEntryTab() {
                             if (!newValue) return;
                             const worker = newValue;
                             if (worker && addWorkerTask && addWorkerField) {
-                                const itemsForTaskField = attendanceData.filter(item => item.workType === addWorkerTask && item.fieldName === addWorkerField && item.divisionId === selectedDivision);
-                                let defaultDailyWorkId = itemsForTaskField.length > 0 ? itemsForTaskField[0].dailyWorkId : '';
-                                if (!defaultDailyWorkId) {
-                                    defaultDailyWorkId = '00000000-0000-0000-0000-000000000000';
-                                }
+                                const itemsForDiv = attendanceData.filter(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
+                                let defaultDailyWorkId = itemsForDiv.length > 0 ? itemsForDiv[0].dailyWorkId : '00000000-0000-0000-0000-000000000000';
 
                                 const newRecord: AttendanceRecord = {
                                     id: `temp-${Date.now()}`,
@@ -936,7 +1017,21 @@ function DailyEntryTab() {
                                 setNotification({ open: true, message: 'Please select both Task and Field first', severity: 'error' });
                             }
                         }}
-                        getOptionDisabled={(option: any) => attendanceData.some(a => a.workerId === (option.workerId || option.id) && (a.session === 'EVENING_SESSION' || a.session === 'FULL_DAY'))}
+                        getOptionDisabled={(option: any) => {
+                            const wId = option.workerId || option.id;
+
+                            // 1. Is this worker already assigned to an evening task? -> Block.
+                            const hasEvening = attendanceData.some(a => a.workerId === wId && (a.session === 'EVENING_SESSION'));
+                            if (hasEvening) return true;
+
+                            // 2. Is this worker assigned to a MORNING_SESSION somewhere?
+                            // Based on user request: IT SHOULD ONLY FETCH WORKERS THAT THEIR SESSION STATUS IS = "MORNING"
+                            // If they are literally set to 'FULL_DAY', they belong to another muster completely and must be blocked.
+                            const hasMorningSession = attendanceData.some(a => a.workerId === wId && a.session === 'MORNING_SESSION');
+
+                            // If they don't explicitly have a Morning Session available, they are blocked.
+                            return !hasMorningSession;
+                        }}
                         renderInput={(params) => (
                             <TextField
                                 {...params}
@@ -949,9 +1044,13 @@ function DailyEntryTab() {
                             let color = "#757575";
                             let isAssigned = false;
 
-                            // Visual check if they are already assigned to SOMETHING for the evening based on backend data (simplified visual check)
-                            const hasEveningAssigned = attendanceData.some(a => a.workerId === (option.workerId || option.id) && (a.session === 'EVENING_SESSION' || a.session === 'FULL_DAY'));
-                            if (hasEveningAssigned) isAssigned = true;
+                            const wId = option.workerId || option.id;
+
+                            // Same visual logic to grey them out and mark as assigned
+                            const hasEvening = attendanceData.some(a => a.workerId === wId && (a.session === 'EVENING_SESSION'));
+                            const hasMorningSession = attendanceData.some(a => a.workerId === wId && a.session === 'MORNING_SESSION');
+
+                            if (hasEvening || !hasMorningSession) isAssigned = true;
 
                             if (option.employmentType === 'PERMANENT') color = "#2e7d32";
                             else if (option.employmentType === 'CASUAL') color = "#0288d1";
@@ -1092,7 +1191,7 @@ function DailyEntryTab() {
     );
 }
 
-function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, taskTypes, isFinalized = false }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], taskTypes: any[], isFinalized?: boolean }) {
+function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, taskTypes, isFinalized = false, workerLastTaskMap = {}, onRemove }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], taskTypes: any[], isFinalized?: boolean, workerLastTaskMap?: Record<string, string>, onRemove?: (id: string) => void }) {
     const [statusConfirm, setStatusConfirm] = useState<{ itemId: string, newStatus: string, workerName: string, label: string } | null>(null);
 
     // Task Configuration Logic
@@ -1184,16 +1283,16 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                             <Typography variant="caption" fontWeight="bold" color="#b0babb">WORKER</Typography>
                         </Box>
                         <Box display="flex" alignItems="center">
-                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>{taskConfig.label}<br />AM</Typography>
-                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>{taskConfig.label}<br />PM</Typography>
+                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>AM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
+                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>PM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
                             <Typography sx={{ width: 50, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>TOTAL</Typography>
-                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit.toUpperCase()}</Typography>
+                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
                             {hasCashKilos && (
-                                <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit.toUpperCase()}</Typography>
+                                <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
                             )}
                             <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OT<br />HRS</Typography>
                             <Typography sx={{ width: 100, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>SESSION</Typography>
-                            <Box sx={{ width: 100 }} /> {/* Spacer for Actions */}
+                            <Box sx={{ width: 120 }} /> {/* Spacer for Actions */}
                         </Box>
                     </Box>
                 )}
@@ -1255,7 +1354,6 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         type="number"
                                                         min="0"
                                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                        style={{ ...inputStyle, borderColor: '#81c784', width: 55 }}
                                                         value={item.amWeight ?? ''}
                                                         onChange={(e) => {
                                                             const val = e.target.value;
@@ -1268,8 +1366,9 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 }
                                                             }
                                                         }}
-                                                        disabled={isSubmitted || item.status === 'ABSENT'}
+                                                        disabled={isSubmitted || item.status === 'ABSENT' || item.session === 'EVENING_SESSION'}
                                                         placeholder="AM"
+                                                        style={{ ...inputStyle, borderColor: item.session === 'EVENING_SESSION' ? '#e0e0e0' : '#81c784', width: 55, opacity: item.session === 'EVENING_SESSION' ? 0.4 : 1 }}
                                                     />
                                                 </Box>
                                                 {/* PM Input */}
@@ -1278,7 +1377,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         type="number"
                                                         min="0"
                                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                        style={{ ...inputStyle, borderColor: '#81c784', width: 55 }}
+                                                        style={{ ...inputStyle, borderColor: item.session === 'MORNING_SESSION' ? '#e0e0e0' : '#81c784', width: 55, opacity: item.session === 'MORNING_SESSION' ? 0.4 : 1 }}
                                                         value={item.pmWeight ?? ''}
                                                         onChange={(e) => {
                                                             const val = e.target.value;
@@ -1291,7 +1390,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                                 }
                                                             }
                                                         }}
-                                                        disabled={isSubmitted || item.status === 'ABSENT'}
+                                                        disabled={isSubmitted || item.status === 'ABSENT' || item.session === 'MORNING_SESSION'}
                                                         placeholder="PM"
                                                     />
                                                 </Box>
@@ -1406,119 +1505,130 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         )}
 
                                         {/* Actions */}
-                                        <Box width={100} display="flex" justifyContent="flex-end" alignItems="center">
-                                            {isFinalized ? (
-                                                // In history view: show same icon buttons, highlighted to reflect the actual recorded status (read-only)
-                                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                                    {!isPieceRate && (
-                                                        <Tooltip title="Half Athtama">
-                                                            <span style={{ display: 'inline-block' }}>
-                                                                <IconButton size="small" disabled sx={{
-                                                                    padding: 0.5,
-                                                                    bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                    color: item.status === 'HALF_DAY' ? '#000 !important' : '#cfd8dc !important',
-                                                                    '&.Mui-disabled': {
+                                        <Box width={120} display="flex" justifyContent="flex-end" alignItems="center" gap={0.5}>
+                                            {/* Remove button: for EVENING_SESSION workers OR temp (just-added) ones */}
+                                            {!isSubmitted && onRemove && (item.session === 'EVENING_SESSION' || item.id.startsWith('temp-')) && (
+                                                <Tooltip title="Remove from this evening slot">
+                                                    <IconButton size="small" color="error" onClick={() => onRemove(item.id)} sx={{ bgcolor: '#ffebee', '&:hover': { bgcolor: '#ffcdd2' } }}>
+                                                        <CloseIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
+                                            {/* Status icon set: only shown on the worker's LAST task assignment */}
+                                            {(workerLastTaskMap[item.workerId] === task || isFinalized) && (
+                                                isFinalized ? (
+                                                    // Read-only: show recorded status
+                                                    <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                                        {!isPieceRate && (
+                                                            <Tooltip title="Half Athtama">
+                                                                <span style={{ display: 'inline-block' }}>
+                                                                    <IconButton size="small" disabled sx={{
+                                                                        padding: 0.5,
                                                                         bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                        color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                                    }
-                                                                }}>
-                                                                    <BlockIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    )}
-                                                    {!isPieceRate && (
-                                                        <Tooltip title="Full Athtama">
+                                                                        '&.Mui-disabled': {
+                                                                            bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                            color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                                        }
+                                                                    }}>
+                                                                        <BlockIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        )}
+                                                        {!isPieceRate && (
+                                                            <Tooltip title="Full Athtama">
+                                                                <span style={{ display: 'inline-block' }}>
+                                                                    <IconButton size="small" disabled sx={{
+                                                                        padding: 0.5,
+                                                                        '&.Mui-disabled': {
+                                                                            bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                            color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                        }
+                                                                    }}>
+                                                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        )}
+                                                        <Tooltip title="Absent">
                                                             <span style={{ display: 'inline-block' }}>
                                                                 <IconButton size="small" disabled sx={{
                                                                     padding: 0.5,
                                                                     '&.Mui-disabled': {
-                                                                        bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                                        color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                        bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                        color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
                                                                     }
                                                                 }}>
-                                                                    <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                    <CloseIcon sx={{ fontSize: 16 }} />
                                                                 </IconButton>
                                                             </span>
                                                         </Tooltip>
-                                                    )}
-                                                    <Tooltip title="Absent">
-                                                        <span style={{ display: 'inline-block' }}>
-                                                            <IconButton size="small" disabled sx={{
-                                                                padding: 0.5,
-                                                                '&.Mui-disabled': {
-                                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                                    color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
-                                                                }
-                                                            }}>
-                                                                <CloseIcon sx={{ fontSize: 16 }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Box>
-                                            ) : (
-                                                <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                                    {!isPieceRate && (
-                                                        <Tooltip title="Half Athtama">
+                                                    </Box>
+                                                ) : (
+                                                    // Edit mode: clickable status buttons
+                                                    <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
+                                                        {!isPieceRate && (
+                                                            <Tooltip title="Half Athtama">
+                                                                <span style={{ display: 'inline-block' }}>
+                                                                    <IconButton
+                                                                        onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
+                                                                        size="small"
+                                                                        disabled={isSubmitted}
+                                                                        sx={{
+                                                                            padding: 0.5,
+                                                                            bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                            color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
+                                                                            '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                                        }}>
+                                                                        <BlockIcon sx={{ fontSize: 16 }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        )}
+                                                        {!isPieceRate && (
+                                                            <Tooltip title="Full Athtama">
+                                                                <span style={{ display: 'inline-block' }}>
+                                                                    <IconButton
+                                                                        onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
+                                                                        size="small"
+                                                                        disabled={isSubmitted}
+                                                                        sx={{
+                                                                            padding: 0.5,
+                                                                            bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                            color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
+                                                                            '&:hover': { bgcolor: '#00c853', color: '#000' }
+                                                                        }}>
+                                                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
+                                                                    </IconButton>
+                                                                </span>
+                                                            </Tooltip>
+                                                        )}
+                                                        <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
                                                             <span style={{ display: 'inline-block' }}>
                                                                 <IconButton
-                                                                    onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
+                                                                    onClick={() => {
+                                                                        const isUndo = isPieceRate && item.status === 'ABSENT';
+                                                                        setStatusConfirm({
+                                                                            itemId: item.id,
+                                                                            newStatus: isUndo ? 'PRESENT' : 'ABSENT',
+                                                                            workerName: item.workerName,
+                                                                            label: isUndo ? 'Present (Undo Absent)' : 'Absent'
+                                                                        });
+                                                                    }}
                                                                     size="small"
                                                                     disabled={isSubmitted}
                                                                     sx={{
                                                                         padding: 0.5,
-                                                                        bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                        color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                                        '&:hover': { bgcolor: '#ffea00', color: '#000' }
+                                                                        bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                        color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
+                                                                        '&:hover': { bgcolor: '#ff3d00', color: '#000' }
                                                                     }}>
-                                                                    <BlockIcon sx={{ fontSize: 16 }} />
+                                                                    <CloseIcon sx={{ fontSize: 16 }} />
                                                                 </IconButton>
                                                             </span>
                                                         </Tooltip>
-                                                    )}
-                                                    {!isPieceRate && (
-                                                        <Tooltip title="Full Athtama">
-                                                            <span style={{ display: 'inline-block' }}>
-                                                                <IconButton
-                                                                    onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
-                                                                    size="small"
-                                                                    disabled={isSubmitted}
-                                                                    sx={{
-                                                                        padding: 0.5,
-                                                                        bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                                        color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                                        '&:hover': { bgcolor: '#00c853', color: '#000' }
-                                                                    }}>
-                                                                    <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    )}
-                                                    <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
-                                                        <span style={{ display: 'inline-block' }}>
-                                                            <IconButton
-                                                                onClick={() => {
-                                                                    const isUndo = isPieceRate && item.status === 'ABSENT';
-                                                                    setStatusConfirm({
-                                                                        itemId: item.id,
-                                                                        newStatus: isUndo ? 'PRESENT' : 'ABSENT',
-                                                                        workerName: item.workerName,
-                                                                        label: isUndo ? 'Present (Undo Absent)' : 'Absent'
-                                                                    });
-                                                                }}
-                                                                size="small"
-                                                                disabled={isSubmitted}
-                                                                sx={{
-                                                                    padding: 0.5,
-                                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                                    color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
-                                                                    '&:hover': { bgcolor: '#ff3d00', color: '#000' }
-                                                                }}>
-                                                                <CloseIcon sx={{ fontSize: 16 }} />
-                                                            </IconButton>
-                                                        </span>
-                                                    </Tooltip>
-                                                </Box>
+                                                    </Box>
+                                                )
                                             )}
                                         </Box>
                                     </>
@@ -1888,6 +1998,7 @@ function HistoryTab() {
     useEffect(() => {
         const fetchData = async () => {
             try {
+                setLoading(true); // Ensure loading state is shown during manual refreshes via events
                 // Fetch Metadata
                 const [fRes, wRes, divRes, tRes] = await Promise.all([
                     axios.get(`/api/fields?tenantId=${tenantId}`),
@@ -1952,49 +2063,68 @@ function HistoryTab() {
 
                     // Filter attendance for this specific muster (Date + Division)
                     const musterAtt = enrichedAttendance.filter((a: any) =>
-                        a.workDate === date && a.divisionId === divId
+                        String(a.workDate).split('T')[0] === String(date).split('T')[0] &&
+                        String(a.divisionId) === String(divId)
                     );
 
                     let attended = 0;
                     let totalWeight = 0;
                     let latestUpdate: string | null = null;
+                    let isEveningSubmitted = mm.bulkWeights != null && mm.bulkWeights !== "";
 
                     musterAtt.forEach((item: any) => {
+
                         if (item.status === 'PRESENT' || item.status === 'HALF_DAY' || item.status === 'COMPLETED') {
                             attended++;
                             totalWeight += (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
                         }
                         // Track latest update time
                         if (item.updatedAt) {
-                            if (!latestUpdate || new Date(item.updatedAt) > new Date(latestUpdate)) {
-                                latestUpdate = item.updatedAt;
+                            const parsedUpd = parseJavaDate(item.updatedAt);
+                            if (parsedUpd && (!latestUpdate || parsedUpd > (latestUpdate as any))) {
+                                latestUpdate = parsedUpd as any;
                             }
                         }
                     });
+
+                    const finalSubmittedAt = parseJavaDate(mm.submittedAt) || latestUpdate || parseJavaDate(mm.createdAt);
 
                     return {
                         id: mm.workId, // Correct field from backend (DailyWork entity)
                         date: date,
                         divisionId: divId,
                         divisionName: divMap.get(divId) || 'Unknown',
-                        submittedAt: mm.createdAt || latestUpdate,
+                        submittedAt: finalSubmittedAt,
                         assigned: mm.workerCount,
                         attended: attended,
                         totalWeight: totalWeight,
                         types: ['Morning Muster'],
                         details: mm.details, // Store the snapshot JSON here!
-                        bulkWeights: mm.bulkWeights // Add DB-saved weights
+                        bulkWeights: mm.bulkWeights, // Add DB-saved weights
+                        isEveningSubmitted
                     };
-                });
+                }).filter((r: any) => r.isEveningSubmitted);
 
-                setHistory(historyRows.sort((a: any, b: any) => new Date(b.date).getTime() - new Date(a.date).getTime()));
+                // Sort by Date (desc) then by submission/creation time (desc) within the same date
+                setHistory(historyRows.sort((a: any, b: any) => {
+                    const dateDiff = new Date(b.date).getTime() - new Date(a.date).getTime();
+                    if (dateDiff !== 0) return dateDiff;
+                    const timeA = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+                    const timeB = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+                    return timeB - timeA;
+                }));
 
             } catch (e) {
                 console.error("History fetch failed", e);
             }
             setLoading(false);
         };
+
         fetchData();
+
+        // Listen for muster updates (e.g. from DailyEntry submission) to re-fetch history
+        window.addEventListener('muster-update', fetchData);
+        return () => window.removeEventListener('muster-update', fetchData);
     }, [tenantId]);
 
     const handleReview = async (row: any) => {
@@ -2074,7 +2204,11 @@ function HistoryTab() {
         return acc;
     }, {});
 
-    const uniqueFieldsInHistory = Array.from(new Set(selectedRecords.map((item: any) => item.fieldName))).filter(Boolean) as string[];
+    const uniqueFieldsInHistoryForWeights = Array.from(new Set(
+        selectedRecords
+            .filter((item: any) => item.workType?.toLowerCase().includes('pluck') || item.workType?.toLowerCase().includes('harvest'))
+            .map((item: any) => item.fieldName)
+    )).filter(Boolean) as string[];
 
     if (loading) return <Box display="flex" justifyItems="center" p={3}><CircularProgress /></Box>;
 
@@ -2087,6 +2221,18 @@ function HistoryTab() {
                         <Typography variant="h5" fontWeight="bold" color="text.primary">
                             Muster History
                         </Typography>
+                        <IconButton
+                            onClick={() => window.dispatchEvent(new Event('muster-update'))}
+                            size="small"
+                            color="primary"
+                            sx={{
+                                bgcolor: '#e3f2fd',
+                                '&:hover': { bgcolor: '#bbdefb' },
+                                ml: 1
+                            }}
+                        >
+                            <RefreshIcon fontSize="small" />
+                        </IconButton>
                     </Box>
                     <Chip label={`${history.length} Records`} color="primary" variant="outlined" size="small" />
                 </Box>
@@ -2141,10 +2287,11 @@ function HistoryTab() {
                         </TableBody>
                     </Table>
                 </TableContainer>
-            </Paper>
+            </Paper >
 
             {/* FULL REVIEW MODAL */}
-            <Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="xl" fullWidth>
+            < Dialog open={reviewOpen} onClose={() => setReviewOpen(false)
+            } maxWidth="xl" fullWidth >
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }}>
                     Muster Review: {selectedDate}
                 </DialogTitle>
@@ -2189,13 +2336,13 @@ function HistoryTab() {
 
                             <Box>
                                 {/* Weight Entries Section (Historic) */}
-                                {uniqueFieldsInHistory.length > 0 && (
+                                {uniqueFieldsInHistoryForWeights.length > 0 && (
                                     <Paper elevation={0} variant="outlined" sx={{ mb: 3, p: 2, borderRadius: 2, borderColor: '#a5d6a7', bgcolor: '#f1f8e9' }}>
                                         <Typography variant="subtitle2" fontWeight="bold" color="#1b5e20" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <EditStartIcon fontSize="small" /> Bulk Weights Entry
                                         </Typography>
                                         <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
-                                            {uniqueFieldsInHistory.map((field: string) => (
+                                            {uniqueFieldsInHistoryForWeights.map((field: string) => (
                                                 <TextField
                                                     key={field}
                                                     label={`Field Wt. (${field})`}
@@ -2248,7 +2395,7 @@ function HistoryTab() {
                 <DialogActions sx={{ p: 2, bgcolor: '#fff' }}>
                     <Button onClick={() => setReviewOpen(false)} variant="contained" color="primary" size="large">Close Review</Button>
                 </DialogActions>
-            </Dialog>
-        </Box>
+            </Dialog >
+        </Box >
     );
 }

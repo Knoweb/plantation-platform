@@ -120,10 +120,13 @@ public class DailyWorkService {
     }
 
     @Transactional
-    public DailyWork updateBulkWeights(UUID workId, String bulkWeights) {
+    public DailyWork updateBulkWeights(UUID workId, String bulkWeights, boolean isSubmission) {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
         work.setBulkWeights(bulkWeights);
+        if (isSubmission) {
+            work.setSubmittedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
+        }
         return dailyWorkRepository.save(work);
     }
 

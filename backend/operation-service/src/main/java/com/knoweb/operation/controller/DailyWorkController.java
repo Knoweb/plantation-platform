@@ -47,10 +47,11 @@ public class DailyWorkController {
     }
 
     @PutMapping("/{id}/weights")
-    public ResponseEntity<?> updateBulkWeights(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+    public ResponseEntity<?> updateBulkWeights(@PathVariable UUID id, @RequestBody Map<String, Object> payload) {
         try {
-            String weights = payload.get("bulkWeights");
-            return ResponseEntity.ok(dailyWorkService.updateBulkWeights(id, weights));
+            String weights = (String) payload.get("bulkWeights");
+            boolean isSubmission = payload.get("isSubmission") != null && (boolean) payload.get("isSubmission");
+            return ResponseEntity.ok(dailyWorkService.updateBulkWeights(id, weights, isSubmission));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

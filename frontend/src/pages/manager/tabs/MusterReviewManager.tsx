@@ -14,6 +14,7 @@ import axios from 'axios';
 
 export default function MusterReviewManager() {
     const [pendingItems, setPendingItems] = useState<any[]>([]);
+    const [allMusterRecords, setAllMusterRecords] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [viewStatus, setViewStatus] = useState<'PENDING' | 'HISTORY'>('PENDING');
     const [workerMap, setWorkerMap] = useState<Map<string, any>>(new Map());
@@ -54,7 +55,7 @@ export default function MusterReviewManager() {
         setLoading(true);
         try {
             const [workRes, divRes, workerRes] = await Promise.all([
-                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=${viewStatus}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}`), // Fetch ALL to track global assignments
                 axios.get(`/api/divisions?tenantId=${tenantId}`),
                 axios.get(`/api/workers?tenantId=${tenantId}`)
             ]);
@@ -75,10 +76,25 @@ export default function MusterReviewManager() {
             // If HISTORY view, backend returns ALL (if status!=PENDING param).
             // So we need to filter "non-Pending" for History view.
 
-            const musters = workRes.data
+            const mappedAll = workRes.data.map((item: any) => ({
+                id: item.workId,
+                displayId: item.workId.substring(0, 8),
+                type: item.workType,
+                detailsRaw: item.details,
+                date: item.workDate,
+                createdAt: item.createdAt,
+                actionAt: item.actionAt,
+                quantity: item.workerCount,
+                divisionName: divMap.get(item.divisionId) || 'Unknown Division',
+                status: item.status,
+                remarks: item.remarks
+            }));
+            setAllMusterRecords(mappedAll);
+
+            const musters = mappedAll
                 .filter((item: any) => {
                     // Filter Morning/Evening Muster
-                    const isMuster = item.workType === 'Morning Muster' || item.workType === 'Evening Muster';
+                    const isMuster = item.type === 'Morning Muster' || item.type === 'Evening Muster';
                     if (!isMuster) return false;
 
                     // Filter based on View Status
@@ -89,19 +105,6 @@ export default function MusterReviewManager() {
                         return item.status === 'APPROVED' || item.status === 'REJECTED';
                     }
                 })
-                .map((item: any) => ({
-                    id: item.workId,
-                    displayId: item.workId.substring(0, 8),
-                    type: item.workType,
-                    detailsRaw: item.details,
-                    date: item.workDate,
-                    createdAt: item.createdAt,
-                    actionAt: item.actionAt, // Include action timestamp
-                    quantity: item.workerCount,
-                    divisionName: divMap.get(item.divisionId) || 'Unknown Division',
-                    status: item.status,
-                    remarks: item.remarks
-                }))
                 .sort((a: any, b: any) => {
                     if (viewStatus === 'HISTORY') {
                         const timeA = new Date(a.actionAt || a.date).getTime();
@@ -271,24 +274,42 @@ export default function MusterReviewManager() {
                 };
 
                 const getUnavailableWorkerIds = () => {
-                    if (!selectedItem) return new Set<string>();
+                    if (!selectedItem) return { globalUnavailableSet: new Set<string>(), morningWorkersSet: new Set<string>(), isEveningEditing: false };
                     const unavailable = new Set<string>();
-                    pendingItems.forEach(item => {
-                        if (item.id !== selectedItem.id && item.date === selectedItem.date) {
+                    const morningWorkers = new Set<string>();
+                    const isEveningEditing = selectedItem.type === 'Evening Muster';
+
+                    // Check against ALL musters for the day, not just the pending ones
+                    allMusterRecords.forEach(item => {
+                        // Only consider musters for the same date that are NOT rejected
+                        if (item.date === selectedItem.date && item.status !== 'REJECTED') {
+                            const isMorning = item.type === 'Morning Muster';
+                            const isEvening = item.type === 'Evening Muster';
                             try {
                                 const details = JSON.parse(item.detailsRaw);
                                 details.forEach((dItem: any) => {
                                     if (dItem.assigned) {
-                                        dItem.assigned.forEach((w: any) => unavailable.add(w.id || w.workerId));
+                                        dItem.assigned.forEach((w: any) => {
+                                            const wId = w.id || w.workerId;
+                                            if (isMorning) morningWorkers.add(wId);
+
+                                            // Block rules
+                                            if (!isEveningEditing && isMorning && item.id !== selectedItem.id) {
+                                                unavailable.add(wId); // Editing morning, block if in another morning
+                                            }
+                                            if (isEveningEditing && isEvening && item.id !== selectedItem.id) {
+                                                unavailable.add(wId); // Editing evening, block if in another evening
+                                            }
+                                        });
                                     }
                                 });
                             } catch (e) { }
                         }
                     });
-                    return unavailable;
+                    return { globalUnavailableSet: unavailable, morningWorkersSet: morningWorkers, isEveningEditing };
                 };
 
-                const globalUnavailableSet = getUnavailableWorkerIds();
+                const { globalUnavailableSet, morningWorkersSet, isEveningEditing } = getUnavailableWorkerIds();
 
                 return (
                     <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="lg" fullWidth>
@@ -406,7 +427,15 @@ export default function MusterReviewManager() {
                                                                             disableCloseOnSelect
                                                                             value={(d.assigned || []).map((w: any) => workerMap.get(w.id) || workerMap.get(w.workerId) || w).filter(Boolean)}
                                                                             isOptionEqualToValue={(o, v) => o.id === v.id}
-                                                                            onChange={(e, newVal) => {
+                                                                            getOptionDisabled={(option: any) => {
+                                                                                const isUnavailableInOtherMusters = globalUnavailableSet.has(option.id);
+                                                                                const isUnavailableInOtherTasks = localDetails.some((dItem: any, dIdx: number) =>
+                                                                                    dIdx !== idx && dItem.assigned && dItem.assigned.some((w: any) => w.id === option.id || w.workerId === option.id)
+                                                                                );
+                                                                                const notInMorning = isEveningEditing && !morningWorkersSet.has(option.id);
+                                                                                return isUnavailableInOtherMusters || isUnavailableInOtherTasks || notInMorning;
+                                                                            }}
+                                                                            onChange={(_, newVal) => {
                                                                                 const copy = [...localDetails];
                                                                                 copy[idx].assigned = newVal.map((w: any) => ({
                                                                                     id: w.id,
@@ -488,7 +517,8 @@ export default function MusterReviewManager() {
                                                                                 const isUnavailableInOtherTasks = localDetails.some((dItem: any, dIdx: number) =>
                                                                                     dIdx !== idx && dItem.assigned && dItem.assigned.some((w: any) => w.id === option.id || w.workerId === option.id)
                                                                                 );
-                                                                                const isUnavailable = isUnavailableInOtherMusters || isUnavailableInOtherTasks;
+                                                                                const notInMorning = isEveningEditing && !morningWorkersSet.has(option.id);
+                                                                                const isUnavailable = isUnavailableInOtherMusters || isUnavailableInOtherTasks || notInMorning;
 
                                                                                 const { key, ...otherProps } = props as any;
 
@@ -519,7 +549,6 @@ export default function MusterReviewManager() {
                                                                                 const empType = worker?.employmentType;
 
                                                                                 let avatarBg = '#e0e0e0';
-                                                                                let avatarBorder = 'transparent';
                                                                                 if (empType === 'PERMANENT') { avatarBg = '#2e7d32'; }
                                                                                 else if (empType === 'CASUAL') { avatarBg = '#0288d1'; }
                                                                                 else if (empType === 'CONTRACT' || empType === 'CONTRACT_MEMBER') { avatarBg = '#9c27b0'; }
