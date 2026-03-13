@@ -87,6 +87,7 @@ export default function CostAnalysisManager() {
     );
 
     const [saved, setSaved] = useState(true);
+    const [isEditable, setIsEditable] = useState(false);
     const [saveMsg, setSaveMsg] = useState('');
     const [uploadMsg, setUploadMsg] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -144,13 +145,22 @@ export default function CostAnalysisManager() {
     // ── Save to backend ───────────────────────────────────────────────────────
     const handleSave = async () => {
         try {
-            // Save structure to CropConfig
+            // Strip amounts before saving bare structure to CropConfig
+            const structureOnlyCategories = categories.map(cat => ({
+                ...cat,
+                items: cat.items.map(item => ({
+                    id: item.id,
+                    name: item.name
+                }))
+            }));
+
+            // Save empty structure to CropConfig
             await axios.post(`/api/crop-configs`, {
                 tenantId: userSession.tenantId,
                 cropType: activeCrop,
-                costItems: JSON.stringify(categories),
+                costItems: JSON.stringify(structureOnlyCategories),
             });
-            // Save actual daily amounts
+            // Save actual daily amounts with auto-calculation
             await axios.post(`/api/daily-costs`, {
                 tenantId: userSession.tenantId,
                 cropType: activeCrop,
@@ -159,8 +169,20 @@ export default function CostAnalysisManager() {
             });
 
             setSaved(true);
+            setIsEditable(false);
             setSaveMsg('Saved successfully!');
             setTimeout(() => setSaveMsg(''), 3000);
+            
+            // Refresh data to show calculated values
+            const response = await axios.get(`/api/daily-costs`, {
+                params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
+            });
+            if (response.status === 200 && response.data?.costData) {
+                try {
+                    const parsed = JSON.parse(response.data.costData);
+                    setCategories(Array.isArray(parsed) ? parsed : categories);
+                } catch { }
+            }
         } catch { setSaveMsg('Save failed. Please try again.'); }
     };
 
@@ -385,7 +407,7 @@ export default function CostAnalysisManager() {
                         Cost Analysis Manager
                     </Typography>
                     <Typography variant="body2" color="text.secondary" mt={0.5}>
-                        Select a date to enter daily cost amounts.
+                        Enter Daily Amount for each work item. All calculations are done automatically.
                     </Typography>
                 </Box>
                 <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
@@ -397,27 +419,40 @@ export default function CostAnalysisManager() {
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}
                     />
                     {saveMsg && <Alert severity={saveMsg.includes('fail') ? 'error' : 'success'} sx={{ py: 0, px: 1 }}>{saveMsg}</Alert>}
-                    {!saved && <Chip label="Unsaved changes" color="warning" size="small" />}
-                    <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
-                        sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
-                        Save
-                    </Button>
+                    {!saved && isEditable && <Chip label="Unsaved changes" color="warning" size="small" />}
+                    
+                    {!isEditable ? (
+                        <Button variant="contained" startIcon={<EditIcon />} onClick={() => setIsEditable(true)}
+                            sx={{ bgcolor: '#e65100', '&:hover': { bgcolor: '#ef6c00' } }}>
+                            Edit Entry
+                        </Button>
+                    ) : (
+                        <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
+                            sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
+                            Save
+                        </Button>
+                    )}
+
                     <Divider orientation="vertical" flexItem />
                     <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}
                         sx={{ borderColor: cropColor, color: cropColor }}>
                         Download Report
                     </Button>
-                    <Button variant="outlined" startIcon={<UploadIcon />}
-                        onClick={() => fileInputRef.current?.click()}
-                        sx={{ borderColor: '#f57c00', color: '#f57c00', borderWidth: 2 }}>
-                        Upload Excel
-                    </Button>
-                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
-                    <Button variant="text" startIcon={<AddIcon />}
-                        onClick={() => setCatDialog({ open: true, name: '' })}
-                        sx={{ color: cropColor }}>
-                        Add Category
-                    </Button>
+                    {isEditable && (
+                        <>
+                            <Button variant="outlined" startIcon={<UploadIcon />}
+                                onClick={() => fileInputRef.current?.click()}
+                                sx={{ borderColor: '#f57c00', color: '#f57c00', borderWidth: 2 }}>
+                                Upload Excel
+                            </Button>
+                            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
+                            <Button variant="text" startIcon={<AddIcon />}
+                                onClick={() => setCatDialog({ open: true, name: '' })}
+                                sx={{ color: cropColor }}>
+                                Add Category
+                            </Button>
+                        </>
+                    )}
                 </Box>
             </Box>
 
@@ -444,18 +479,17 @@ export default function CostAnalysisManager() {
                     <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #f0f0f0', padding: '4px 10px' } }}>
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 220 }}>Work Item</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 140 }}>Day Amount (Rs.)</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 150 }}>Todate Amount (Rs.)</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#888', textAlign: 'right', minWidth: 150 }}>Last Month (Rs.)</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#888', textAlign: 'right', minWidth: 130 }}>YTD (Rs.)</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 80, textAlign: 'center' }}>Actions</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 300 }}>Work Item</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 180 }}>
+                                    Day Amount (Rs.)
+                                </TableCell>
+                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 100, textAlign: 'center' }}>Actions</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
                             {categories.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                    <TableCell colSpan={3} align="center" sx={{ py: 6, color: '#aaa' }}>
                                         <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
                                         <Typography>No categories. Click "Add Category" to start.</Typography>
                                     </TableCell>
@@ -467,7 +501,7 @@ export default function CostAnalysisManager() {
                                 // Category header row
                                 rows.push(
                                     <TableRow key={`${cat.id}-header`}>
-                                        <TableCell colSpan={6} sx={{
+                                        <TableCell colSpan={3} sx={{
                                             bgcolor: cropColor + '18',
                                             borderLeft: `4px solid ${cropColor}`,
                                             py: 0.6,
@@ -482,23 +516,27 @@ export default function CostAnalysisManager() {
                                                         sx={{ height: 17, fontSize: '0.63rem', bgcolor: cropColor + '33', color: cropColor }} />
                                                 </Box>
                                                 <Box display="flex" gap={0.5}>
-                                                    <Button size="small" startIcon={<AddIcon />}
-                                                        onClick={() => setItemDialog({ open: true, catId: cat.id, name: '' })}
-                                                        sx={{ fontSize: '0.68rem', color: cropColor, textTransform: 'none', py: 0.1, minWidth: 0 }}>
-                                                        Add Item
-                                                    </Button>
-                                                    <Tooltip title="Rename category">
-                                                        <IconButton size="small" onClick={() => setCatDialog({ open: true, editId: cat.id, name: cat.name })} sx={{ color: '#1976d2' }}>
-                                                            <EditIcon sx={{ fontSize: 15 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    <Tooltip title="Delete category">
-                                                        <IconButton size="small"
-                                                            onClick={() => setDeleteDialog({ open: true, type: 'cat', catId: cat.id, label: cat.name })}
-                                                            sx={{ color: '#c62828' }}>
-                                                            <DeleteIcon sx={{ fontSize: 15 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    {isEditable && (
+                                                        <>
+                                                            <Button size="small" startIcon={<AddIcon />}
+                                                                onClick={() => setItemDialog({ open: true, catId: cat.id, name: '' })}
+                                                                sx={{ fontSize: '0.68rem', color: cropColor, textTransform: 'none', py: 0.1, minWidth: 0 }}>
+                                                                Add Item
+                                                            </Button>
+                                                            <Tooltip title="Rename category">
+                                                                <IconButton size="small" onClick={() => setCatDialog({ open: true, editId: cat.id, name: cat.name })} sx={{ color: '#1976d2' }}>
+                                                                    <EditIcon sx={{ fontSize: 15 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Delete category">
+                                                                <IconButton size="small"
+                                                                    onClick={() => setDeleteDialog({ open: true, type: 'cat', catId: cat.id, label: cat.name })}
+                                                                    sx={{ color: '#c62828' }}>
+                                                                    <DeleteIcon sx={{ fontSize: 15 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </>
+                                                    )}
                                                 </Box>
                                             </Box>
                                         </TableCell>
@@ -510,40 +548,44 @@ export default function CostAnalysisManager() {
                                     rows.push(
                                         <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
                                             <TableCell sx={{ pl: 4, color: '#333' }}>{item.name}</TableCell>
-                                            {(['dayAmount', 'todateAmount', 'lastMonthAmount', 'ytdAmount'] as const).map(field => (
-                                                <TableCell key={field} align="right" sx={{ py: 0.3 }}>
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        value={(item[field] as string) || ''}
-                                                        onChange={e => updateItemField(cat.id, item.id, field, e.target.value)}
-                                                        placeholder="0.00"
-                                                        sx={{
-                                                            width: 120,
-                                                            '& .MuiOutlinedInput-root': {
-                                                                '& fieldset': { borderColor: '#e0e0e0' },
-                                                                '&:hover fieldset': { borderColor: cropColor },
-                                                                '&.Mui-focused fieldset': { borderColor: cropColor },
-                                                            },
-                                                            '& input': { textAlign: 'right', fontSize: '0.82rem', p: '4px 8px' }
-                                                        }}
-                                                        InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.75rem', color: '#aaa' } }}>Rs.</InputAdornment> }}
-                                                    />
-                                                </TableCell>
-                                            ))}
+                                            {/* Editable Day Amount */}
+                                            <TableCell align="right" sx={{ py: 0.3 }}>
+                                                <TextField
+                                                    size="small"
+                                                    type="number"
+                                                    disabled={!isEditable}
+                                                    value={(item.dayAmount as string) || ''}
+                                                    onChange={e => updateItemField(cat.id, item.id, 'dayAmount', e.target.value)}
+                                                    placeholder="0.00"
+                                                    sx={{
+                                                        width: 150,
+                                                        '& .MuiOutlinedInput-root': {
+                                                            '& fieldset': { borderColor: '#e0e0e0' },
+                                                            '&:hover fieldset': { borderColor: isEditable ? cropColor : '#e0e0e0' },
+                                                            '&.Mui-focused fieldset': { borderColor: cropColor },
+                                                        },
+                                                        '& input': { textAlign: 'right', fontSize: '0.9rem', p: '6px 10px', WebkitTextFillColor: isEditable ? 'inherit' : '#555' }
+                                                    }}
+                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.8rem', color: '#aaa' } }}>Rs.</InputAdornment> }}
+                                                />
+                                            </TableCell>
                                             <TableCell align="center" sx={{ py: 0.3 }}>
-                                                <Tooltip title="Rename">
-                                                    <IconButton size="small" onClick={() => setItemDialog({ open: true, catId: cat.id, editId: item.id, name: item.name })} sx={{ color: '#1976d2' }}>
-                                                        <EditIcon sx={{ fontSize: 14 }} />
-                                                    </IconButton>
-                                                </Tooltip>
-                                                <Tooltip title="Remove">
-                                                    <IconButton size="small"
-                                                        onClick={() => setDeleteDialog({ open: true, type: 'item', catId: cat.id, itemId: item.id, label: item.name })}
-                                                        sx={{ color: '#c62828' }}>
-                                                        <DeleteIcon sx={{ fontSize: 14 }} />
-                                                    </IconButton>
-                                                </Tooltip>
+                                                {isEditable && (
+                                                    <>
+                                                        <Tooltip title="Rename">
+                                                            <IconButton size="small" onClick={() => setItemDialog({ open: true, catId: cat.id, editId: item.id, name: item.name })} sx={{ color: '#1976d2' }}>
+                                                                <EditIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="Remove">
+                                                            <IconButton size="small"
+                                                                onClick={() => setDeleteDialog({ open: true, type: 'item', catId: cat.id, itemId: item.id, label: item.name })}
+                                                                sx={{ color: '#c62828' }}>
+                                                                <DeleteIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </>
+                                                )}
                                             </TableCell>
                                         </TableRow>
                                     );
@@ -553,7 +595,7 @@ export default function CostAnalysisManager() {
                                 if (cat.items.length === 0) {
                                     rows.push(
                                         <TableRow key={`${cat.id}-empty`}>
-                                            <TableCell colSpan={6} sx={{ pl: 6, py: 1, color: '#bbb', fontStyle: 'italic', fontSize: '0.8rem' }}>
+                                            <TableCell colSpan={3} sx={{ pl: 6, py: 1, color: '#bbb', fontStyle: 'italic', fontSize: '0.8rem' }}>
                                                 No items yet — click "Add Item" above
                                             </TableCell>
                                         </TableRow>
@@ -563,25 +605,13 @@ export default function CostAnalysisManager() {
                                 // Auto-total row
                                 if (cat.items.length > 0) {
                                     const dayTotal = catTotal(cat, 'dayAmount');
-                                    const todateTotal = catTotal(cat, 'todateAmount');
-                                    const lastMthTotal = catTotal(cat, 'lastMonthAmount');
-                                    const ytdTotal = catTotal(cat, 'ytdAmount');
                                     rows.push(
                                         <TableRow key={`${cat.id}-total`} sx={{ bgcolor: '#eeeeee', borderTop: '2px solid #ccc' }}>
-                                            <TableCell sx={{ fontWeight: 'bold', fontSize: '0.82rem', color: '#333', pl: 4 }}>
+                                            <TableCell sx={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#333', pl: 4 }}>
                                                 ∑ &nbsp; Total Cost for {cat.name}
                                             </TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: cropColor }}>
                                                 {dayTotal > 0 ? `Rs. ${dayTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: cropColor }}>
-                                                {todateTotal > 0 ? `Rs. ${todateTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
-                                                {lastMthTotal > 0 ? `Rs. ${lastMthTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
-                                            </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
-                                                {ytdTotal > 0 ? `Rs. ${ytdTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
                                             </TableCell>
                                             <TableCell />
                                         </TableRow>

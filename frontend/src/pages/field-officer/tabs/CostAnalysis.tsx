@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress } from '@mui/material';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress, TextField } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -34,6 +34,11 @@ const catTotal = (items: CostItem[], field: keyof CostItem) =>
 
 const fmtTotal = (n: number) => n > 0 ? n.toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '-';
 
+const fmtPerKg = (amtTotal: number, weight?: number) => {
+    if (amtTotal === 0 || !weight || weight === 0) return '-';
+    return amtTotal.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export default function CostAnalysis() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
@@ -41,6 +46,14 @@ export default function CostAnalysis() {
     const [categories, setCategories] = useState<CostCategory[]>([]);
     const [loading, setLoading] = useState(false);
     const [now, setNow] = useState(new Date());
+    
+    // date selection
+    const [selectedDate, setSelectedDate] = useState<string>(
+        new Date().toISOString().split('T')[0]
+    );
+
+    const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
+    const [weights, setWeights] = useState({ day: 0, todate: 0, lastMonth: 0, ytd: 0 });
 
     // Live clock
     useEffect(() => {
@@ -53,22 +66,103 @@ export default function CostAnalysis() {
             .then(r => {
                 const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
                 if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
+                
+                const fMap = new Map<string, string>();
+                r.data.forEach((f: any) => {
+                    if (f.name && f.cropType) fMap.set(f.name.toLowerCase(), f.cropType.toUpperCase());
+                    if (f.id && f.cropType) fMap.set(String(f.id), f.cropType.toUpperCase());
+                });
+                setFieldCropMap(fMap);
             }).catch(() => { });
-    }, []);
+    }, [userSession.tenantId]);
 
     useEffect(() => {
         setLoading(true);
-        axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+        axios.get(`/api/daily-costs`, {
+            params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
+        })
+        .then(r => {
+            if (r.status === 200 && r.data?.costData) {
+                try {
+                    const parsed = JSON.parse(r.data.costData);
+                    setCategories(Array.isArray(parsed) ? parsed : []);
+                    setLoading(false);
+                    return;
+                } catch { }
+            }
+            fetchConfigFallback();
+        })
+        .catch(() => fetchConfigFallback());
+
+        function fetchConfigFallback() {
+            axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+                .then(r => {
+                    if (r.data?.costItems) {
+                        try {
+                            const parsed = JSON.parse(r.data.costItems);
+                            setCategories(Array.isArray(parsed) ? parsed : []);
+                        } catch { setCategories([]); }
+                    } else { setCategories([]); }
+                }).catch(() => setCategories([]))
+                .finally(() => setLoading(false));
+        }
+        
+        // Fetch Daily Work for True Factory Weights
+        const reqDateForFetch = new Date(`${selectedDate}T00:00:00`);
+        const fwYearBase = reqDateForFetch.getMonth() >= 3 ? reqDateForFetch.getFullYear() : reqDateForFetch.getFullYear() - 1;
+        const startFetchStr = `${fwYearBase}-04-01`;
+
+        axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&startDate=${startFetchStr}&endDate=${selectedDate}`)
             .then(r => {
-                if (r.data?.costItems) {
-                    try {
-                        const parsed = JSON.parse(r.data.costItems);
-                        setCategories(Array.isArray(parsed) ? parsed : []);
-                    } catch { setCategories([]); }
-                } else { setCategories([]); }
-            }).catch(() => setCategories([]))
-            .finally(() => setLoading(false));
-    }, [activeCrop]);
+                let dWeight = 0, tWeight = 0, lmWeight = 0, ytdWeight = 0;
+                const reqDate = new Date(`${selectedDate}T00:00:00`);
+                const sYear = reqDate.getFullYear();
+                const sMonth = reqDate.getMonth();
+                const sDate = reqDate.getDate();
+
+                const fwYear = sMonth >= 3 ? sYear : sYear - 1;
+                const dYTD = new Date(fwYear, 3, 1);
+                const lDateStart = new Date(sYear, sMonth - 1, 1);
+                const lDateEnd = new Date(sYear, sMonth, 0);
+
+                const works = r.data || [];
+                works.forEach((w: any) => {
+                    if (w.bulkWeights) {
+                        try {
+                            const bw = JSON.parse(w.bulkWeights);
+                            let factorySum = 0;
+                            let belongsToCrop = false;
+
+                            // Check all fields inside bulkWeights to see if any match the active crop
+                            for (const key in bw) {
+                                if (key !== '__FACTORY__' && fieldCropMap.has(key.toLowerCase())) {
+                                    if (fieldCropMap.get(key.toLowerCase())?.toUpperCase() === activeCrop.toUpperCase()) {
+                                        belongsToCrop = true;
+                                    }
+                                }
+                            }
+
+                            if (belongsToCrop && bw.__FACTORY__ && bw.__FACTORY__.factoryWt) {
+                                factorySum = Number(bw.__FACTORY__.factoryWt) || 0;
+                            }
+                            
+                            if (factorySum > 0) {
+                                const wDateStr = w.workDate;
+                                if (!wDateStr) return;
+                                const wDate = new Date(`${wDateStr}T00:00:00`);
+                                
+                                if (wDateStr === selectedDate) dWeight += factorySum;
+                                if (wDate.getFullYear() === sYear && wDate.getMonth() === sMonth && wDate.getDate() <= sDate) tWeight += factorySum;
+                                if (wDate >= lDateStart && wDate <= lDateEnd) lmWeight += factorySum;
+                                if (wDate >= dYTD && wDate <= reqDate) ytdWeight += factorySum;
+                            }
+                        } catch(e) {}
+                    }
+                });
+                setWeights({ day: dWeight, todate: tWeight, lastMonth: lmWeight, ytd: ytdWeight });
+            }).catch(() => {});
+
+    }, [activeCrop, selectedDate, userSession.tenantId, fieldCropMap]);
 
     const colors = CROP_COLORS[activeCrop] || DEFAULT_COLOR;
 
@@ -80,12 +174,27 @@ export default function CostAnalysis() {
 
     return (
         <Box sx={{ pb: 4 }}>
-            {/* Main Header */}
-            <Box mb={3}>
+            {/* Title Header */}
+            <Box mb={2}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Cost Analysis
                 </Typography>
             </Box>
+
+            {/* Header Section */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #81c784' }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                    <Typography variant="body1" fontWeight="bold" color="#1b5e20">Analysis Date:</Typography>
+                    <TextField
+                        type="date"
+                        variant="outlined"
+                        size="small"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    />
+                </Box>
+            </Paper>
 
             <Paper elevation={3} sx={{ overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
@@ -93,14 +202,14 @@ export default function CostAnalysis() {
                 <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
                     <Box sx={{ borderTop: '2px solid #1b5e20', borderBottom: '1px solid #ccc', textAlign: 'center', py: 0.5 }}>
                         <Typography sx={{ fontSize: '1.2rem', color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
-                            Cost Analysis
+                            Cost Analysis - {activeCrop}
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc', py: 0.2 }}>
                         <Box sx={{ flex: 1, borderRight: '1px solid #ccc' }} />
                         <Box sx={{ flex: 3, textAlign: 'center' }}>
                             <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
-                                {now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
+                                {new Date(selectedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
                             </Typography>
                         </Box>
                         <Box sx={{ flex: 1, textAlign: 'right', pr: 2, borderLeft: '1px solid #ccc' }}>
@@ -188,13 +297,13 @@ export default function CostAnalysis() {
                                                 {fmt(item.dayAmount)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
-                                                -
+                                                {fmtPerKg(parseFloat(item.dayAmount || '0') / (weights.day || 1), weights.day)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.todateAmount)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
-                                                -
+                                                {fmtPerKg(parseFloat(item.todateAmount || '0') / (weights.todate || 1), weights.todate)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.lastMonthAmount)}
@@ -207,19 +316,26 @@ export default function CostAnalysis() {
 
                                     // Total row
                                     if (cat.items.length > 0) {
+                                        const totalDayAmount = catTotal(cat.items, 'dayAmount');
+                                        const totalTodateAmount = catTotal(cat.items, 'todateAmount');
+                                        
                                         rows.push(
                                             <TableRow key={`${cat.id}-total`} sx={{ bgcolor: colors.total }}>
                                                 <TableCell sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.82rem' }}>
                                                     Total Cost for {cat.name}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
-                                                    {fmtTotal(catTotal(cat.items, 'dayAmount'))}
+                                                    {fmtTotal(totalDayAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>-</TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(totalDayAmount / (weights.day || 1), weights.day)}
+                                                </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
-                                                    {fmtTotal(catTotal(cat.items, 'todateAmount'))}
+                                                    {fmtTotal(totalTodateAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>-</TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(totalTodateAmount / (weights.todate || 1), weights.todate)}
+                                                </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                     {fmtTotal(catTotal(cat.items, 'lastMonthAmount'))}
                                                 </TableCell>
