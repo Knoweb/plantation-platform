@@ -66,6 +66,7 @@ const menuItems = [
     // Chief Clerk Specific Tabs
     { text: 'Job Roles & Tasks', icon: <WorkHistoryIcon />, path: '/dashboard/job-roles', roles: ['CHIEF_CLERK'] },
     { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/chief-cost-analysis', roles: ['CHIEF_CLERK'] },
+    { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/chief-distribution-works', roles: ['CHIEF_CLERK'] },
     { text: 'Inventory Management', icon: <InventoryIcon />, path: '/dashboard/chief-inventory', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs

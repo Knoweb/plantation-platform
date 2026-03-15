@@ -27,8 +27,9 @@ public class TaskTypeController {
     public ResponseEntity<TaskType> createTaskType(@RequestParam UUID tenantId, @RequestBody Map<String, String> payload) {
         String name = payload.get("name");
         String unit = payload.get("unit");
+        String cropType = payload.getOrDefault("cropType", "GENERAL");
         if (name != null) name = name.replace("\"", "");
-        return ResponseEntity.ok(service.createTaskType(tenantId, name, unit));
+        return ResponseEntity.ok(service.createTaskType(tenantId, name, unit, cropType));
     }
 
     @DeleteMapping("/{id}")
@@ -41,5 +42,11 @@ public class TaskTypeController {
     public ResponseEntity<TaskType> updateTaskUnit(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
         String unit = payload.get("unit");
         return ResponseEntity.ok(service.updateTaskUnit(id, unit));
+    }
+
+    @PutMapping("/{id}/crop-type")
+    public ResponseEntity<TaskType> updateCropType(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+        String cropType = payload.get("cropType");
+        return ResponseEntity.ok(service.updateCropType(id, cropType));
     }
 }

@@ -44,6 +44,7 @@ import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
 import NormSettings from './pages/manager/tabs/NormSettings';
 import TaskTypeSettings from './pages/chief-clerk/tabs/TaskTypeSettings';
 import CostAnalysisManager from './pages/chief-clerk/tabs/CostAnalysisManager';
+import WorkProgramManager from './pages/chief-clerk/tabs/WorkProgramManager';
 import DivisionView from './pages/manager/DivisionView';
 
 // Placeholder Component for the Main Dashboard View
@@ -125,6 +126,7 @@ function App() {
           <Route path="norms" element={<NormSettings />} />
           <Route path="job-roles" element={<TaskTypeSettings />} />
           <Route path="chief-cost-analysis" element={<CostAnalysisManager />} />
+          <Route path="chief-distribution-works" element={<WorkProgramManager />} />
           <Route path="chief-inventory" element={<StoreKeeperDashboard />} />
         </Route>
 

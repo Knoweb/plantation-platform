@@ -23,6 +23,9 @@ public class TaskType {
     @Column(name = "expected_unit")
     private String expectedUnit;
 
+    @Column(name = "crop_type")
+    private String cropType; // e.g. TEA, RUBBER, CINNAMON, GENERAL
+
     public TaskType() {
     }
 
@@ -70,5 +73,13 @@ public class TaskType {
 
     public void setExpectedUnit(String expectedUnit) {
         this.expectedUnit = expectedUnit;
+    }
+
+    public String getCropType() {
+        return cropType;
+    }
+
+    public void setCropType(String cropType) {
+        this.cropType = cropType;
     }
 }
