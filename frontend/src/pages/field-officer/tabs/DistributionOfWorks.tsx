@@ -2,13 +2,26 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Select, MenuItem, FormControl
+    TableContainer, TableHead, TableRow, Select, MenuItem, FormControl, Chip
 } from '@mui/material';
+
+const buildSocketUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${path}`;
+};
 
 // Helper: parse comma-separated cropType string -> string[]
 const parseCropTypes = (cropType: string | null | undefined): string[] => {
     if (!cropType) return ['GENERAL'];
     return cropType.split(',').map(s => s.trim().toUpperCase()).filter(Boolean);
+};
+
+const getSessionRank = (session?: string) => {
+    const normalized = String(session || '').toUpperCase();
+    if (normalized === 'EVENING_SESSION') return 3;
+    if (normalized === 'FULL_DAY') return 2;
+    if (normalized === 'MORNING_SESSION') return 1;
+    return 0;
 };
 
 export default function DistributionOfWorks() {
@@ -25,6 +38,7 @@ export default function DistributionOfWorks() {
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
     const [availableCrops, setAvailableCrops] = useState<string[]>([]);
     const [workProgram, setWorkProgram] = useState<Record<string, number>>({});
+    const [realtimeEnabled, setRealtimeEnabled] = useState(false);
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -70,7 +84,7 @@ export default function DistributionOfWorks() {
             setTasks(taskObjects);
             const taskNameList = taskObjects.map(t => t.name);
 
-            // 3. Fetch Work Program
+            // 3. Fetch Work Program set by Chief Clerk
             const progRes = await axios.get(
                 `/api/work-program?tenantId=${tenantId}&year=${currentYear}&month=${currentMonth + 1}`
             );
@@ -80,7 +94,20 @@ export default function DistributionOfWorks() {
             });
             setWorkProgram(progMap);
 
-            // 3. Fetch attendance for whole month
+            // 4. Fetch submitted daily-work records so actual counts come only from finalized evening muster.
+            const dailyWorkRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
+            const submittedDailyWorkIds = new Set<string>();
+            (dailyWorkRes.data || []).forEach((work: any) => {
+                const workDate = String(work.workDate || '');
+                if (!workDate.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-`)) return;
+
+                const isSubmitted = Boolean(work.submittedAt) || (typeof work.bulkWeights === 'string' && work.bulkWeights.trim() !== '');
+                if (isSubmitted && work.workId) {
+                    submittedDailyWorkIds.add(String(work.workId));
+                }
+            });
+
+            // 5. Fetch attendance for whole month
             const mm = String(currentMonth + 1).padStart(2, '0');
             const lastDay = String(daysInMonth).padStart(2, '0');
             const attRes = await axios.get(
@@ -97,29 +124,52 @@ export default function DistributionOfWorks() {
                 taskNameList.forEach(t => { newData[d][t] = 0; });
             }
 
-            // Process attendance records
+            // Build the final submitted assignment per worker per day from evening muster.
+            const finalAssignmentsByDay: Record<number, Map<string, any>> = {};
+            for (let d = 1; d <= daysInMonth; d++) {
+                finalAssignmentsByDay[d] = new Map();
+            }
+
             attendanceRecords.forEach((rec: any) => {
                 if (rec.status !== 'PRESENT' && rec.status !== 'HALF_DAY') return;
+                if (!rec.dailyWorkId || !submittedDailyWorkIds.has(String(rec.dailyWorkId))) return;
+
                 const wDateStr = rec.workDate;
                 if (!wDateStr) return;
+                if (!String(wDateStr).startsWith(`${currentYear}-${mm}-`)) return;
                 const dayNum = parseInt(wDateStr.split('-')[2], 10);
                 if (!dayNum || dayNum < 1 || dayNum > daysInMonth) return;
-                const rawType = rec.workType || 'Other';
 
-                let matchedItem: string;
-                if (taskNameList.includes(rawType)) {
-                    matchedItem = rawType;
-                } else {
-                    const found = taskNameList.find(t => t.toLowerCase() === rawType.toLowerCase());
-                    matchedItem = found || mapWorkType(rawType, taskNameList);
-                }
-                if (newData[dayNum][matchedItem] !== undefined) {
-                    newData[dayNum][matchedItem] += 1;
-                } else {
-                    const other = taskNameList.find(t => t === 'Other');
-                    if (other && newData[dayNum][other] !== undefined) newData[dayNum][other] += 1;
+                const workerId = String(rec.workerId || '').trim();
+                if (!workerId) return;
+
+                const existing = finalAssignmentsByDay[dayNum].get(workerId);
+                if (!existing || getSessionRank(rec.session) >= getSessionRank(existing.session)) {
+                    finalAssignmentsByDay[dayNum].set(workerId, rec);
                 }
             });
+
+            // Count one final submitted task per worker per day.
+            for (let d = 1; d <= daysInMonth; d++) {
+                finalAssignmentsByDay[d].forEach((rec: any) => {
+                    const rawType = rec.workType || 'Other';
+                    let matchedItem: string;
+
+                    if (taskNameList.includes(rawType)) {
+                        matchedItem = rawType;
+                    } else {
+                        const found = taskNameList.find(t => t.toLowerCase() === String(rawType).toLowerCase());
+                        matchedItem = found || mapWorkType(String(rawType), taskNameList);
+                    }
+
+                    if (newData[d][matchedItem] !== undefined) {
+                        newData[d][matchedItem] += 1;
+                    } else {
+                        const other = taskNameList.find(t => t === 'Other');
+                        if (other && newData[d][other] !== undefined) newData[d][other] += 1;
+                    }
+                });
+            }
 
             // Totals
             taskNameList.forEach(item => {
@@ -130,14 +180,105 @@ export default function DistributionOfWorks() {
 
             setData(newData);
             setTotalsByItem(newTotals);
+            setRealtimeEnabled(true);
         } catch (e) {
             console.error('Error fetching distribution data', e);
+            setRealtimeEnabled(false);
         } finally {
             setLoading(false);
         }
     }, [tenantId, currentYear, currentMonth, daysInMonth]);
 
     useEffect(() => { fetchData(); }, [fetchData]);
+
+    useEffect(() => {
+        if (!tenantId || !realtimeEnabled) return undefined;
+
+        let active = true;
+        let manuallyClosed = false;
+        let workProgramSocket: WebSocket | null = null;
+        let distributionSocket: WebSocket | null = null;
+        let workProgramReconnect: number | null = null;
+        let distributionReconnect: number | null = null;
+
+        const connectWorkProgram = () => {
+            workProgramSocket = new WebSocket(buildSocketUrl('/ws/work-program'));
+            workProgramSocket.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (
+                        payload?.type === 'work-program-updated' &&
+                        payload?.tenantId === tenantId &&
+                        Number(payload?.year) === currentYear &&
+                        Number(payload?.month) === currentMonth + 1
+                    ) {
+                        fetchData();
+                    }
+                } catch (error) {
+                    console.error('Failed to parse work program websocket payload', error);
+                }
+            };
+            workProgramSocket.onerror = () => {
+                // Fetch errors already surface backend outages; keep websocket noise quiet.
+            };
+            workProgramSocket.onclose = () => {
+                if (!active || manuallyClosed) return;
+                workProgramReconnect = window.setTimeout(connectWorkProgram, 2000);
+            };
+        };
+
+        const connectDistribution = () => {
+            distributionSocket = new WebSocket(buildSocketUrl('/ws/distribution-works'));
+            distributionSocket.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (
+                        payload?.type === 'distribution-updated' &&
+                        payload?.tenantId === tenantId &&
+                        Number(payload?.year) === currentYear &&
+                        Number(payload?.month) === currentMonth + 1
+                    ) {
+                        fetchData();
+                    }
+                } catch (error) {
+                    console.error('Failed to parse distribution websocket payload', error);
+                }
+            };
+            distributionSocket.onerror = () => {
+                // Fetch errors already surface backend outages; keep websocket noise quiet.
+            };
+            distributionSocket.onclose = () => {
+                if (!active || manuallyClosed) return;
+                distributionReconnect = window.setTimeout(connectDistribution, 2000);
+            };
+        };
+
+        connectWorkProgram();
+        connectDistribution();
+
+        return () => {
+            active = false;
+            manuallyClosed = true;
+            if (workProgramReconnect !== null) window.clearTimeout(workProgramReconnect);
+            if (distributionReconnect !== null) window.clearTimeout(distributionReconnect);
+            if (workProgramSocket) {
+                workProgramSocket.onclose = null;
+                workProgramSocket.onerror = null;
+                workProgramSocket.onmessage = null;
+                if (workProgramSocket.readyState === WebSocket.OPEN) {
+                    workProgramSocket.close();
+                }
+            }
+            if (distributionSocket) {
+                distributionSocket.onclose = null;
+                distributionSocket.onerror = null;
+                distributionSocket.onmessage = null;
+                if (distributionSocket.readyState === WebSocket.OPEN) {
+                    distributionSocket.close();
+                }
+            }
+        };
+    }, [tenantId, currentYear, currentMonth, realtimeEnabled, fetchData]);
 
     const mapWorkType = (type: string, taskList: string[]) => {
         const lower = type.toLowerCase();
@@ -176,9 +317,15 @@ export default function DistributionOfWorks() {
             <Box flex={1} p={2} sx={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Header */}
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                    <Typography variant="h4" fontWeight="bold" color="#1b5e20">
-                        Distribution of Works
-                    </Typography>
+                    <Box>
+                        <Typography variant="h4" fontWeight="bold" color="#1b5e20">
+                            Distribution of Works
+                        </Typography>
+                        <Box mt={0.5} display="flex" gap={1} flexWrap="wrap">
+                            <Chip size="small" label="Work Prgrm from Chief Clerk" sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 700 }} />
+                            <Chip size="small" label="Daily counts from submitted evening muster" sx={{ bgcolor: '#fff3e0', color: '#e65100', fontWeight: 700 }} />
+                        </Box>
+                    </Box>
 
                     <Box display="flex" alignItems="center" gap={2}
                         sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 3, px: 3, py: 1 }}>

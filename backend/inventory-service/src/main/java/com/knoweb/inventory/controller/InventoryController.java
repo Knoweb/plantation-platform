@@ -17,6 +17,7 @@ public class InventoryController {
     @Autowired
     private InventoryService service;
 
+    // Keep inventory endpoints centralized under /api/inventory for gateway routing.
     @GetMapping
     public List<InventoryItem> getInventory(@RequestParam String tenantId) {
         return service.getAllItems(tenantId);

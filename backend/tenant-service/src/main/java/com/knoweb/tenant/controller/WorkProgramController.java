@@ -2,6 +2,7 @@ package com.knoweb.tenant.controller;
 
 import com.knoweb.tenant.entity.WorkProgram;
 import com.knoweb.tenant.repository.WorkProgramRepository;
+import com.knoweb.tenant.websocket.WorkProgramRealtimePublisher;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -14,9 +15,11 @@ import java.util.Optional;
 public class WorkProgramController {
 
     private final WorkProgramRepository workProgramRepository;
+    private final WorkProgramRealtimePublisher realtimePublisher;
 
-    public WorkProgramController(WorkProgramRepository workProgramRepository) {
+    public WorkProgramController(WorkProgramRepository workProgramRepository, WorkProgramRealtimePublisher realtimePublisher) {
         this.workProgramRepository = workProgramRepository;
+        this.realtimePublisher = realtimePublisher;
     }
 
     /**
@@ -49,7 +52,9 @@ public class WorkProgramController {
         } else {
             toSave = request;
         }
-        return ResponseEntity.ok(workProgramRepository.save(toSave));
+        WorkProgram saved = workProgramRepository.save(toSave);
+        realtimePublisher.broadcastUpdated(saved.getTenantId(), saved.getYear(), saved.getMonth());
+        return ResponseEntity.ok(saved);
     }
 
     /**
@@ -86,6 +91,7 @@ public class WorkProgramController {
             workProgramRepository.save(wp);
         });
 
+        realtimePublisher.broadcastUpdated(tenantId, year, month);
         return ResponseEntity.ok().build();
     }
 }

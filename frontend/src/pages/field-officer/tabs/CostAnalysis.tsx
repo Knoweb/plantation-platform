@@ -9,6 +9,8 @@ interface CostItem {
     todateAmount?: string;
     lastMonthAmount?: string;
     ytdAmount?: string;
+    dayCostPerKgOverride?: string;
+    todateCostPerKgOverride?: string;
 }
 
 interface CostCategory {
@@ -16,6 +18,107 @@ interface CostCategory {
     name: string;
     items: CostItem[];
 }
+
+const DEFAULT_CATEGORY_STRUCTURE = [
+    { name: 'Plucking', items: ['Pluckers', 'Kanganies', 'Sack Coolies', 'Staff OT for Plucking', 'Leaf Bags', 'Cash Kilos', 'Meals', 'Over Kilos'] },
+    { name: 'Chemical Weeding', items: ['Chemical Weeding ManDays', 'Cost of Chemical', 'Tank Repair', 'Meals', 'Transport'] },
+    { name: 'Manual Weeding', items: ['Manual Weeding ManDays', 'Tools'] },
+    { name: 'Fertilizing', items: ['Fertilizer Cost'] },
+];
+
+const ITEM_TO_CATEGORY = new Map(
+    DEFAULT_CATEGORY_STRUCTURE.flatMap((category) => category.items.map((item) => [item, category.name] as const)),
+);
+const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORY_STRUCTURE.map((category) => category.name));
+const HEADER_ROW_ONE_HEIGHT = 38;
+const HEADER_ROW_TWO_HEIGHT = 44;
+
+const sanitizeCostPerKgOverride = (overrideText?: string, amountText?: string) => {
+    const trimmed = String(overrideText || '').trim();
+    if (!trimmed) return '';
+
+    const overrideValue = Number.parseFloat(trimmed);
+    const amountValue = Number.parseFloat(String(amountText || '0'));
+    if (!Number.isFinite(overrideValue) || overrideValue <= 0 || !Number.isFinite(amountValue) || amountValue <= 0) {
+        return '';
+    }
+
+    if (overrideValue >= 100 && amountValue >= 100) return '';
+    if (overrideValue >= amountValue * 0.2) return '';
+    return trimmed;
+};
+
+const normalizeCategories = (input: any): CostCategory[] => {
+    if (!Array.isArray(input)) return [];
+
+    const grouped = new Map<string, CostCategory>();
+    const ensureCategory = (name: string) => {
+        if (!grouped.has(name)) grouped.set(name, { id: `${name}-${Math.random().toString(36).slice(2, 8)}`, name, items: [] });
+        return grouped.get(name)!;
+    };
+
+    const repairMalformedItem = (workItemName: string, source: any): CostItem => {
+        const sourceName = String(source?.name || '').trim();
+        const sourceNameNumber = Number.parseFloat(sourceName);
+        const todateFromSource = String(source?.todateAmount || '').trim();
+        const ytdFromSource = String(source?.ytdAmount || '').trim();
+        const ytdNumber = Number.parseFloat(ytdFromSource || '0');
+        const todateNumber = Number.parseFloat(todateFromSource || '0');
+
+        const repaired: CostItem = {
+            id: source?.id || `${workItemName}-${Math.random().toString(36).slice(2, 8)}`,
+            name: workItemName,
+            dayAmount: String(source?.dayAmount || '0'),
+            lastMonthAmount: String(source?.lastMonthAmount || '0'),
+            ytdAmount: ytdFromSource,
+            dayCostPerKgOverride: sanitizeCostPerKgOverride(source?.dayCostPerKgOverride, source?.dayAmount),
+            todateCostPerKgOverride: sanitizeCostPerKgOverride(source?.todateCostPerKgOverride, source?.todateAmount),
+        };
+
+        if (!Number.isNaN(sourceNameNumber) && sourceNameNumber > 0 && (Math.abs(ytdNumber - sourceNameNumber) < 0.001 || todateNumber === 0)) {
+            repaired.todateAmount = sourceName;
+            if (!repaired.todateCostPerKgOverride && todateNumber > 0) {
+                repaired.todateCostPerKgOverride = todateFromSource;
+            }
+        } else {
+            repaired.todateAmount = String(source?.todateAmount || '0');
+        }
+
+        return repaired;
+    };
+
+    for (const rawCategory of input) {
+        const categoryName = String(rawCategory?.name || '').trim();
+        const rawItems = Array.isArray(rawCategory?.items) ? rawCategory.items : [];
+        if (!categoryName) continue;
+
+        if (ITEM_TO_CATEGORY.has(categoryName) && !KNOWN_CATEGORY_NAMES.has(categoryName)) {
+            const bucket = ensureCategory(ITEM_TO_CATEGORY.get(categoryName)!);
+            bucket.items.push(repairMalformedItem(categoryName, rawItems[0] || {}));
+            continue;
+        }
+
+        const bucket = ensureCategory(categoryName);
+        for (const rawItem of rawItems) {
+            const itemName = String(rawItem?.name || '').trim();
+            if (!itemName) continue;
+            bucket.items.push({
+                ...rawItem,
+                id: rawItem?.id || `${itemName}-${Math.random().toString(36).slice(2, 8)}`,
+                name: itemName,
+                dayCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.dayCostPerKgOverride, rawItem?.dayAmount),
+                todateCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.todateCostPerKgOverride, rawItem?.todateAmount),
+            });
+        }
+    }
+
+    return Array.from(grouped.values()).map((category) => ({
+        ...category,
+        items: category.items.filter((item, index, items) =>
+            items.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index,
+        ),
+    }));
+};
 
 const CROP_COLORS: Record<string, { tab: string; total: string }> = {
     Tea: { tab: '#2e7d32', total: '#e8f5e9' },
@@ -26,17 +129,19 @@ const DEFAULT_COLOR = { tab: '#757575', total: '#f5f5f5' };
 
 const fmt = (val?: string) => {
     const n = parseFloat(val || '0');
-    return n > 0 ? n.toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '-';
+    return Number.isFinite(n) ? n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
 };
 
 const catTotal = (items: CostItem[], field: keyof CostItem) =>
     items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
 
-const fmtTotal = (n: number) => n > 0 ? n.toLocaleString('en-LK', { minimumFractionDigits: 2 }) : '-';
+const fmtTotal = (n: number) => n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const fmtPerKg = (amtTotal: number, weight?: number) => {
+const fmtPerKg = (amtTotal: number, weight?: number, overrideText?: string) => {
+    const sanitizedOverride = sanitizeCostPerKgOverride(overrideText, String(amtTotal));
+    if (sanitizedOverride && amtTotal > 0) return sanitizedOverride;
     if (amtTotal === 0 || !weight || weight === 0) return '-';
-    return amtTotal.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    return (amtTotal / weight).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
 export default function CostAnalysis() {
@@ -85,27 +190,16 @@ export default function CostAnalysis() {
             if (r.status === 200 && r.data?.costData) {
                 try {
                     const parsed = JSON.parse(r.data.costData);
-                    setCategories(Array.isArray(parsed) ? parsed : []);
-                    setLoading(false);
-                    return;
-                } catch { }
+                    setCategories(normalizeCategories(parsed));
+                } catch {
+                    setCategories([]);
+                }
+            } else {
+                setCategories([]);
             }
-            fetchConfigFallback();
         })
-        .catch(() => fetchConfigFallback());
-
-        function fetchConfigFallback() {
-            axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
-                .then(r => {
-                    if (r.data?.costItems) {
-                        try {
-                            const parsed = JSON.parse(r.data.costItems);
-                            setCategories(Array.isArray(parsed) ? parsed : []);
-                        } catch { setCategories([]); }
-                    } else { setCategories([]); }
-                }).catch(() => setCategories([]))
-                .finally(() => setLoading(false));
-        }
+        .catch(() => setCategories([]))
+        .finally(() => setLoading(false));
         
         // Fetch Daily Work for True Factory Weights
         const reqDateForFetch = new Date(`${selectedDate}T00:00:00`);
@@ -167,7 +261,10 @@ export default function CostAnalysis() {
     const colors = CROP_COLORS[activeCrop] || DEFAULT_COLOR;
 
     const headerCell = (label: string) => (
-        <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', fontSize: '0.8rem' }}>
+        <TableCell
+            align="right"
+            sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', fontSize: '0.8rem', height: `${HEADER_ROW_TWO_HEIGHT}px` }}
+        >
             {label}
         </TableCell>
     );
@@ -240,7 +337,39 @@ export default function CostAnalysis() {
 
                 {!loading && (
                     <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
-                        <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' }, tableLayout: 'fixed' }}>
+                        <Table
+                            size="small"
+                            stickyHeader
+                            sx={{
+                                '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' },
+                                tableLayout: 'fixed',
+                                '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_ONE_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e0e0e0',
+                                },
+                                '& .MuiTableHead-root .MuiTableRow-root:nth-of-type(2) .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: HEADER_ROW_ONE_HEIGHT,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e0e0e0',
+                                },
+                                '& .MuiTableHead-root .MuiTableCell-root[rowspan="2"]': {
+                                    top: 0,
+                                    zIndex: 5,
+                                    height: `${HEADER_ROW_ONE_HEIGHT + HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                },
+                            }}
+                        >
                             <colgroup>
                                 <col style={{ width: '28%' }} />
                                 <col style={{ width: '12%' }} />
@@ -280,8 +409,8 @@ export default function CostAnalysis() {
                                     <TableRow>
                                         <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#aaa' }}>
                                             <Typography variant="body2">
-                                                No cost data entered yet for <strong>{activeCrop}</strong>.<br />
-                                                The Chief Clerk can enter amounts in the Cost Analysis Manager.
+                                                No published cost analysis is available yet for <strong>{activeCrop}</strong> on this date.<br />
+                                                The Chief Clerk must save or upload the report before it becomes visible here.
                                             </Typography>
                                         </TableCell>
                                     </TableRow>
@@ -297,13 +426,13 @@ export default function CostAnalysis() {
                                                 {fmt(item.dayAmount)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
-                                                {fmtPerKg(parseFloat(item.dayAmount || '0') / (weights.day || 1), weights.day)}
+                                                {fmtPerKg(parseFloat(item.dayAmount || '0'), weights.day, item.dayCostPerKgOverride)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.todateAmount)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
-                                                {fmtPerKg(parseFloat(item.todateAmount || '0') / (weights.todate || 1), weights.todate)}
+                                                {fmtPerKg(parseFloat(item.todateAmount || '0'), weights.todate, item.todateCostPerKgOverride)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.lastMonthAmount)}
@@ -328,13 +457,13 @@ export default function CostAnalysis() {
                                                     {fmtTotal(totalDayAmount)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ color: '#888' }}>
-                                                    {fmtPerKg(totalDayAmount / (weights.day || 1), weights.day)}
+                                                    {fmtPerKg(totalDayAmount, weights.day)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
                                                     {fmtTotal(totalTodateAmount)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ color: '#888' }}>
-                                                    {fmtPerKg(totalTodateAmount / (weights.todate || 1), weights.todate)}
+                                                    {fmtPerKg(totalTodateAmount, weights.todate)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                     {fmtTotal(catTotal(cat.items, 'lastMonthAmount'))}

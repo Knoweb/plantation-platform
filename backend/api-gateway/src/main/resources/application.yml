@@ -29,15 +29,23 @@ spring:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
           predicates:
-            - Path=/api/tenants/**,/api/divisions/**,/api/workers/**,/api/fields/**,/api/crop-configs/**,/api/daily-costs/**,/api/daily-costs
+            - Path=/api/tenants,/api/tenants/**,/api/divisions,/api/divisions/**,/api/workers,/api/workers/**,/api/fields,/api/fields/**,/api/crop-configs,/api/crop-configs/**,/api/daily-costs,/api/daily-costs/**,/api/work-program,/api/work-program/**
+        - id: tenant-service-ws
+          uri: lb:ws://TENANT-SERVICE
+          predicates:
+            - Path=/ws/work-program,/ws/work-program/**
         - id: inventory-service
           uri: lb://INVENTORY-SERVICE
           predicates:
-            - Path=/api/inventory/**
+            - Path=/api/inventory,/api/inventory/**
         - id: operation-service
           uri: lb://OPERATION-SERVICE
           predicates:
-            - Path=/api/operations/**,/api/messages/**
+            - Path=/api/operations,/api/operations/**,/api/messages,/api/messages/**
+        - id: operation-service-ws
+          uri: lb:ws://OPERATION-SERVICE
+          predicates:
+            - Path=/ws/distribution-works,/ws/distribution-works/**
 
 eureka:
   client:

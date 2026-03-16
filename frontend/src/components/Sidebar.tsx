@@ -47,7 +47,6 @@ const menuItems = [
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
     // Workers moved to Chief Clerk / Manager
     { text: 'Worker Registry', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['CHIEF_CLERK', 'MANAGER'] },
-    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
     { text: 'Field log', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
     { text: 'Fertilizer Programme', icon: <ScienceIcon />, path: '/dashboard/fertilizer-programme', roles: ['FIELD_OFFICER'] },

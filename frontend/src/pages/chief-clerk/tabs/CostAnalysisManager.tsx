@@ -1,21 +1,39 @@
+import { useEffect, useRef, useState } from 'react';
 import {
-    Box, Typography, Paper, Table, TableBody, TableCell, TableContainer,
-    TableHead, TableRow, Tabs, Tab, TextField, Button, IconButton,
-    Dialog, DialogTitle, DialogContent, DialogActions, Chip, Tooltip,
-    Alert, Divider, InputAdornment
+    Alert,
+    Box,
+    Button,
+    Chip,
+    CircularProgress,
+    Dialog,
+    DialogActions,
+    DialogContent,
+    DialogTitle,
+    Divider,
+    IconButton,
+    InputAdornment,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Tab,
+    Tabs,
+    TextField,
+    Tooltip,
+    Typography,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
 import DownloadIcon from '@mui/icons-material/Download';
-import UploadIcon from '@mui/icons-material/Upload';
+import EditIcon from '@mui/icons-material/Edit';
 import FolderIcon from '@mui/icons-material/Folder';
-import React, { useState, useEffect, useRef } from 'react';
+import SaveIcon from '@mui/icons-material/Save';
+import UploadIcon from '@mui/icons-material/Upload';
 import axios from 'axios';
-import * as XLSX from 'xlsx';
 
-// ─── Data Model ───────────────────────────────────────────────────────────────
 interface CostItem {
     id: string;
     name: string;
@@ -23,6 +41,8 @@ interface CostItem {
     todateAmount?: string;
     lastMonthAmount?: string;
     ytdAmount?: string;
+    dayCostPerKgOverride?: string;
+    todateCostPerKgOverride?: string;
 }
 
 interface CostCategory {
@@ -41,7 +61,9 @@ const generateId = () => Math.random().toString(36).slice(2, 10);
 
 const DEFAULT_CATEGORIES: CostCategory[] = [
     {
-        id: generateId(), name: 'Plucking', items: [
+        id: generateId(),
+        name: 'Plucking',
+        items: [
             { id: generateId(), name: 'Pluckers' },
             { id: generateId(), name: 'Kanganies' },
             { id: generateId(), name: 'Sack Coolies' },
@@ -50,639 +72,1029 @@ const DEFAULT_CATEGORIES: CostCategory[] = [
             { id: generateId(), name: 'Cash Kilos' },
             { id: generateId(), name: 'Meals' },
             { id: generateId(), name: 'Over Kilos' },
-        ]
+        ],
     },
     {
-        id: generateId(), name: 'Chemical Weeding', items: [
+        id: generateId(),
+        name: 'Chemical Weeding',
+        items: [
             { id: generateId(), name: 'Chemical Weeding ManDays' },
             { id: generateId(), name: 'Cost of Chemical' },
             { id: generateId(), name: 'Tank Repair' },
             { id: generateId(), name: 'Meals' },
             { id: generateId(), name: 'Transport' },
-        ]
+        ],
     },
     {
-        id: generateId(), name: 'Manual Weeding', items: [
+        id: generateId(),
+        name: 'Manual Weeding',
+        items: [
             { id: generateId(), name: 'Manual Weeding ManDays' },
             { id: generateId(), name: 'Tools' },
-        ]
+        ],
     },
     {
-        id: generateId(), name: 'Fertilizing', items: [
-            { id: generateId(), name: 'Fertilizer Cost' },
-        ]
+        id: generateId(),
+        name: 'Fertilizing',
+        items: [{ id: generateId(), name: 'Fertilizer Cost' }],
     },
 ];
 
-// ─── Component ────────────────────────────────────────────────────────────────
+const makeDefaults = () =>
+    DEFAULT_CATEGORIES.map((category) => ({
+        ...category,
+        id: generateId(),
+        items: category.items.map((item) => ({ ...item, id: generateId() })),
+    }));
+
+const ITEM_TO_CATEGORY = new Map(
+    DEFAULT_CATEGORIES.flatMap((category) => category.items.map((item) => [item.name, category.name] as const)),
+);
+const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORIES.map((category) => category.name));
+const HEADER_ROW_ONE_HEIGHT = 38;
+const HEADER_ROW_TWO_HEIGHT = 44;
+
+const sanitizeCostPerKgOverride = (overrideText: string | undefined, amountText: string | undefined) => {
+    const trimmed = String(overrideText || '').trim();
+    if (!trimmed) return '';
+
+    const overrideValue = Number.parseFloat(trimmed);
+    const amountValue = Number.parseFloat(String(amountText || '0'));
+    if (!Number.isFinite(overrideValue) || overrideValue <= 0 || !Number.isFinite(amountValue) || amountValue <= 0) {
+        return '';
+    }
+
+    if (overrideValue >= 100 && amountValue >= 100) return '';
+    if (overrideValue >= amountValue * 0.2) return '';
+    return trimmed;
+};
+
+const getTodayLocalISO = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
+const normalizeCategories = (input: any): CostCategory[] => {
+    if (!Array.isArray(input)) return makeDefaults();
+
+    const grouped = new Map<string, CostCategory>();
+    const ensureCategory = (name: string) => {
+        if (!grouped.has(name)) {
+            grouped.set(name, { id: generateId(), name, items: [] });
+        }
+        return grouped.get(name)!;
+    };
+
+    const repairMalformedItem = (workItemName: string, source: any): CostItem => {
+        const sourceName = String(source?.name || '').trim();
+        const sourceNameNumber = Number.parseFloat(sourceName);
+        const todateFromSource = String(source?.todateAmount || '').trim();
+        const ytdFromSource = String(source?.ytdAmount || '').trim();
+        const ytdNumber = Number.parseFloat(ytdFromSource || '0');
+        const todateNumber = Number.parseFloat(todateFromSource || '0');
+
+        const repaired: CostItem = {
+            id: source?.id || generateId(),
+            name: workItemName,
+            dayAmount: String(source?.dayAmount || '0'),
+            lastMonthAmount: String(source?.lastMonthAmount || '0'),
+            ytdAmount: ytdFromSource,
+            dayCostPerKgOverride: sanitizeCostPerKgOverride(source?.dayCostPerKgOverride, source?.dayAmount),
+            todateCostPerKgOverride: sanitizeCostPerKgOverride(source?.todateCostPerKgOverride, source?.todateAmount),
+        };
+
+        if (!Number.isNaN(sourceNameNumber) && sourceNameNumber > 0 && (Math.abs(ytdNumber - sourceNameNumber) < 0.001 || todateNumber === 0)) {
+            repaired.todateAmount = sourceName;
+            if (!repaired.todateCostPerKgOverride && todateNumber > 0) {
+                repaired.todateCostPerKgOverride = todateFromSource;
+            }
+        } else {
+            repaired.todateAmount = String(source?.todateAmount || '0');
+        }
+
+        return repaired;
+    };
+
+    for (const rawCategory of input) {
+        const categoryName = String(rawCategory?.name || '').trim();
+        const rawItems = Array.isArray(rawCategory?.items) ? rawCategory.items : [];
+        if (!categoryName) continue;
+
+        if (ITEM_TO_CATEGORY.has(categoryName) && !KNOWN_CATEGORY_NAMES.has(categoryName)) {
+            const bucket = ensureCategory(ITEM_TO_CATEGORY.get(categoryName)!);
+            bucket.items.push(repairMalformedItem(categoryName, rawItems[0] || {}));
+            continue;
+        }
+
+        const bucket = ensureCategory(categoryName);
+        for (const rawItem of rawItems) {
+            const itemName = String(rawItem?.name || '').trim();
+            if (!itemName) continue;
+            bucket.items.push({
+                ...rawItem,
+                id: rawItem?.id || generateId(),
+                name: itemName,
+                dayCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.dayCostPerKgOverride, rawItem?.dayAmount),
+                todateCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.todateCostPerKgOverride, rawItem?.todateAmount),
+            });
+        }
+    }
+
+    const normalized = Array.from(grouped.values()).map((category) => ({
+        ...category,
+        items: category.items.filter((item, index, items) =>
+            items.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index,
+        ),
+    }));
+
+    return normalized.length > 0 ? normalized : makeDefaults();
+};
+
 export default function CostAnalysisManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
-
-    // Default to today
-    const [selectedDate, setSelectedDate] = useState<string>(
-        new Date().toISOString().split('T')[0]
-    );
-
+    const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+    const [loading, setLoading] = useState(false);
     const [saved, setSaved] = useState(true);
     const [isEditable, setIsEditable] = useState(false);
-    const [saveMsg, setSaveMsg] = useState('');
-    const [uploadMsg, setUploadMsg] = useState('');
+    const [msg, setMsg] = useState('');
+    const [baselineCategories, setBaselineCategories] = useState<CostCategory[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [catDialog, setCatDialog] = useState<{ open: boolean; editId?: string; name: string }>({
+        open: false,
+        name: '',
+    });
+    const [itemDialog, setItemDialog] = useState<{
+        open: boolean;
+        catId: string;
+        editId?: string;
+        name: string;
+    }>({ open: false, catId: '', name: '' });
+    const [deleteDialog, setDeleteDialog] = useState<{
+        open: boolean;
+        type: 'cat' | 'item';
+        catId: string;
+        itemId?: string;
+        label: string;
+    } | null>(null);
+    const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
+    const [weights, setWeights] = useState({ day: 0, todate: 0 });
 
-    const [catDialog, setCatDialog] = useState<{ open: boolean; editId?: string; name: string }>({ open: false, name: '' });
-    const [itemDialog, setItemDialog] = useState<{ open: boolean; catId: string; editId?: string; name: string }>({ open: false, catId: '', name: '' });
-    const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; type: 'cat' | 'item'; catId: string; itemId?: string; label: string } | null>(null);
+    const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
+    const canEditSelectedDate = selectedDate === getTodayLocalISO();
 
     useEffect(() => {
-        axios.get(`/api/fields?tenantId=${userSession.tenantId}`)
-            .then(r => {
+        axios
+            .get(`/api/fields?tenantId=${userSession.tenantId}`)
+            .then((r) => {
                 const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
-                if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
-            }).catch(() => { });
+                if (crops.length > 0) {
+                    setAvailableCrops(crops);
+                    setActiveCrop(crops[0]);
+                }
+                const nextMap = new Map<string, string>();
+                (r.data || []).forEach((field: any) => {
+                    if (field.name && field.cropType) nextMap.set(String(field.name).toLowerCase(), String(field.cropType).toUpperCase());
+                    if (field.id && field.cropType) nextMap.set(String(field.id), String(field.cropType).toUpperCase());
+                });
+                setFieldCropMap(nextMap);
+            })
+            .catch(() => setAvailableCrops(['Tea']));
     }, [userSession.tenantId]);
 
     useEffect(() => {
+        setLoading(true);
         setSaved(true);
-        axios.get(`/api/daily-costs`, {
-            params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
-        })
-            .then(r => {
-                if (r.status === 200 && r.data?.costData) {
-                    try {
-                        const parsed = JSON.parse(r.data.costData);
-                        setCategories(Array.isArray(parsed) ? parsed : makeDefaults());
-                        return; // exit early if daily record found
-                    } catch { }
-                }
-                fetchConfigFallback();
+        axios
+            .get('/api/daily-costs', {
+                params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate },
             })
-            .catch(() => fetchConfigFallback());
+            .then((r) => {
+                if (r.status === 200 && r.data?.costData) {
+                    const parsed = JSON.parse(r.data.costData);
+                    const nextCategories = normalizeCategories(parsed);
+                    setCategories(nextCategories);
+                    setBaselineCategories(nextCategories);
+                    return;
+                }
+                loadFromConfig();
+            })
+            .catch(loadFromConfig)
+            .finally(() => setLoading(false));
 
-        function fetchConfigFallback() {
-            axios.get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
-                .then(res => {
+        function loadFromConfig() {
+            axios
+                .get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
+                .then((res) => {
                     if (res.data?.costItems) {
-                        try {
-                            const parsed = JSON.parse(res.data.costItems);
-                            setCategories(Array.isArray(parsed) ? parsed : makeDefaults());
-                        } catch { setCategories(makeDefaults()); }
+                        const parsed = JSON.parse(res.data.costItems);
+                        const nextCategories = normalizeCategories(parsed);
+                        setCategories(nextCategories);
+                        setBaselineCategories(nextCategories);
                     } else {
-                        setCategories(makeDefaults());
+                        const nextCategories = makeDefaults();
+                        setCategories(nextCategories);
+                        setBaselineCategories(nextCategories);
                     }
-                }).catch(() => setCategories(makeDefaults()));
+                })
+                .catch(() => {
+                    const nextCategories = makeDefaults();
+                    setCategories(nextCategories);
+                    setBaselineCategories(nextCategories);
+                });
         }
     }, [activeCrop, selectedDate, userSession.tenantId]);
 
-    const makeDefaults = () => DEFAULT_CATEGORIES.map(c => ({
-        ...c, id: generateId(), items: c.items.map(i => ({ ...i, id: generateId() }))
-    }));
+    useEffect(() => {
+        const reqDateForFetch = new Date(`${selectedDate}T00:00:00`);
+        const fwYearBase = reqDateForFetch.getMonth() >= 3 ? reqDateForFetch.getFullYear() : reqDateForFetch.getFullYear() - 1;
+        const startFetchStr = `${fwYearBase}-04-01`;
+
+        axios
+            .get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&startDate=${startFetchStr}&endDate=${selectedDate}`)
+            .then((r) => {
+                let dWeight = 0;
+                let tWeight = 0;
+                const reqDate = new Date(`${selectedDate}T00:00:00`);
+                const sYear = reqDate.getFullYear();
+                const sMonth = reqDate.getMonth();
+                const sDate = reqDate.getDate();
+
+                const works = r.data || [];
+                works.forEach((w: any) => {
+                    if (!w.bulkWeights) return;
+                    try {
+                        const bw = JSON.parse(w.bulkWeights);
+                        let factorySum = 0;
+                        let belongsToCrop = false;
+
+                        for (const key in bw) {
+                            if (key !== '__FACTORY__' && fieldCropMap.has(key.toLowerCase())) {
+                                if (fieldCropMap.get(key.toLowerCase())?.toUpperCase() === activeCrop.toUpperCase()) {
+                                    belongsToCrop = true;
+                                }
+                            }
+                        }
+
+                        if (belongsToCrop && bw.__FACTORY__ && bw.__FACTORY__.factoryWt) {
+                            factorySum = Number(bw.__FACTORY__.factoryWt) || 0;
+                        }
+
+                        if (factorySum > 0) {
+                            const wDateStr = w.workDate;
+                            if (!wDateStr) return;
+                            const wDate = new Date(`${wDateStr}T00:00:00`);
+                            if (wDateStr === selectedDate) dWeight += factorySum;
+                            if (wDate.getFullYear() === sYear && wDate.getMonth() === sMonth && wDate.getDate() <= sDate) {
+                                tWeight += factorySum;
+                            }
+                        }
+                    } catch {
+                        // Ignore malformed bulk weight payloads.
+                    }
+                });
+
+                setWeights({ day: dWeight, todate: tWeight });
+            })
+            .catch(() => setWeights({ day: 0, todate: 0 }));
+    }, [activeCrop, selectedDate, userSession.tenantId, fieldCropMap]);
+
+    useEffect(() => {
+        if (!canEditSelectedDate && isEditable) {
+            setIsEditable(false);
+            setSaved(true);
+            setMsg('Past-day entries are locked. Chief Clerk can edit only the current day.');
+        }
+    }, [canEditSelectedDate, isEditable]);
 
     const markDirty = () => setSaved(false);
 
-    // ── Save to backend ───────────────────────────────────────────────────────
-    const handleSave = async () => {
-        try {
-            // Strip amounts before saving bare structure to CropConfig
-            const structureOnlyCategories = categories.map(cat => ({
-                ...cat,
-                items: cat.items.map(item => ({
-                    id: item.id,
-                    name: item.name
-                }))
-            }));
-
-            // Save empty structure to CropConfig
-            await axios.post(`/api/crop-configs`, {
-                tenantId: userSession.tenantId,
-                cropType: activeCrop,
-                costItems: JSON.stringify(structureOnlyCategories),
-            });
-            // Save actual daily amounts with auto-calculation
-            await axios.post(`/api/daily-costs`, {
-                tenantId: userSession.tenantId,
-                cropType: activeCrop,
-                date: selectedDate,
-                costData: JSON.stringify(categories),
-            });
-
-            setSaved(true);
-            setIsEditable(false);
-            setSaveMsg('Saved successfully!');
-            setTimeout(() => setSaveMsg(''), 3000);
-            
-            // Refresh data to show calculated values
-            const response = await axios.get(`/api/daily-costs`, {
-                params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
-            });
-            if (response.status === 200 && response.data?.costData) {
-                try {
-                    const parsed = JSON.parse(response.data.costData);
-                    setCategories(Array.isArray(parsed) ? parsed : categories);
-                } catch { }
-            }
-        } catch { setSaveMsg('Save failed. Please try again.'); }
+    const fmtPerKg = (amountText?: string, weight?: number, overrideText?: string) => {
+        const amount = parseFloat(amountText || '0');
+        const sanitizedOverride = sanitizeCostPerKgOverride(overrideText, amountText);
+        if (sanitizedOverride && amount > 0) return sanitizedOverride;
+        if (!amount || !weight) return '-';
+        return (amount / weight).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
-    // ── Amount editing ────────────────────────────────────────────────────────
-    const updateItemField = (catId: string, itemId: string, field: keyof CostItem, value: string) => {
-        setCategories(prev => prev.map(c => c.id !== catId ? c : {
-            ...c, items: c.items.map(i => i.id !== itemId ? i : { ...i, [field]: value })
-        }));
+    const updateDayAmount = (catId: string, itemId: string, value: string) => {
+        setCategories((prev) =>
+            prev.map((category) =>
+                category.id !== catId
+                    ? category
+                    : {
+                          ...category,
+                          items: category.items.map((item) =>
+                              item.id !== itemId ? item : { ...item, dayAmount: value },
+                          ),
+                      },
+            ),
+        );
         markDirty();
     };
 
-    // Total for a category
-    const catTotal = (cat: CostCategory, field: keyof CostItem) =>
-        cat.items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
-
-    // ── Excel Download — HTML approach (renders real colors in Excel) ──────────
-    const handleDownload = () => {
-        const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
-        const lightBg = activeCrop === 'Tea' ? '#e8f5e9' : activeCrop === 'Rubber' ? '#e1f5fe' : '#fff3e0';
-        const selected = new Date(selectedDate);
-        const dateStr = selected.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-');
-        const timeStr = selected.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-
-        const tdBase = `border:1px solid #ccc; padding:5px 8px; font-size:11pt; font-family:Calibri,Arial,sans-serif;`;
-        const tdR = `${tdBase} text-align:right;`;
-        const tdL = `${tdBase} text-align:left;`;
-
-        const rows: string[] = [];
-
-        // 1) Ribbon header
-        rows.push(`
-            <tr>
-                <td colspan="6" style="border-top:3px solid #1b5e20; border-left:1px solid #ccc; border-right:1px solid #ccc; font-weight:bold; font-size:16pt; font-family:Calibri,Arial,sans-serif; text-align:center; padding:10px 0; background-color:#ffffff;">
-                    Cost Analysis
-                </td>
-            </tr>
-            <tr>
-                <td style="border-bottom:1px solid #ccc; border-left:1px solid #ccc;"></td>
-                <td colspan="3" style="border-bottom:1px solid #ccc; text-align:center; font-size:11pt; font-family:Calibri,Arial,sans-serif;">
-                    ${dateStr}
-                </td>
-                <td colspan="2" style="border-bottom:1px solid #ccc; border-right:1px solid #ccc; text-align:right; padding-right:15px; font-size:11pt; font-family:Calibri,Arial,sans-serif;">
-                    ${timeStr}
-                </td>
-            </tr>
-        `);
-
-        // 2) Column headers
-        rows.push(`
-            <tr>
-                <td style="font-weight:bold; background-color:#fafafa; ${tdL}">Work Item</td>
-                <td style="font-weight:bold; background-color:#fafafa; color:${cropColor}; ${tdR}">Day Amount (Rs.)</td>
-                <td style="font-weight:bold; background-color:#fafafa; color:${cropColor}; ${tdR}">Todate Amount (Rs.)</td>
-                <td style="font-weight:bold; background-color:#fafafa; color:#888; ${tdR}">Last Month (Rs.)</td>
-                <td style="font-weight:bold; background-color:#fafafa; color:#888; ${tdR}">YTD (Rs.)</td>
-            </tr>
-        `);
-
-        categories.forEach(cat => {
-            rows.push(`
-                <tr>
-                    <td colspan="6" style="background-color:${lightBg}; color:${cropColor}; font-weight:bold; text-transform:uppercase; ${tdL}">
-                        ${cat.name}
-                    </td>
-                </tr>
-            `);
-
-            cat.items.forEach(item => {
-                rows.push(`
-                    <tr>
-                        <td style="${tdL} padding-left:20px;">${item.name}</td>
-                        <td style="${tdR}">${item.dayAmount || ''}</td>
-                        <td style="${tdR}">${item.todateAmount || ''}</td>
-                        <td style="${tdR} color:#555;">${item.lastMonthAmount || ''}</td>
-                        <td style="${tdR} color:#555;">${item.ytdAmount || ''}</td>
-                    </tr>
-                `);
-            });
-
-            if (cat.items.length > 0) {
-                const dayTotal = catTotal(cat, 'dayAmount');
-                const todateTotal = catTotal(cat, 'todateAmount');
-                const lastMthTotal = catTotal(cat, 'lastMonthAmount');
-                const ytdTotal = catTotal(cat, 'ytdAmount');
-                rows.push(`
-                    <tr>
-                        <td style="background-color:#eeeeee; font-weight:bold; ${tdL}">Σ Total Cost for ${cat.name}</td>
-                        <td style="background-color:#eeeeee; font-weight:bold; color:${cropColor}; ${tdR}">${dayTotal || ''}</td>
-                        <td style="background-color:#eeeeee; font-weight:bold; color:${cropColor}; ${tdR}">${todateTotal || ''}</td>
-                        <td style="background-color:#eeeeee; font-weight:bold; color:#555; ${tdR}">${lastMthTotal || ''}</td>
-                        <td style="background-color:#eeeeee; font-weight:bold; color:#555; ${tdR}">${ytdTotal || ''}</td>
-                    </tr>
-                `);
-            }
-        });
-
-        const html = `
-          <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
-          <head>
-            <meta charset="utf-8">
-            <style> table { border-collapse: collapse; width: 100%; } </style>
-          </head>
-          <body>
-            <table>
-              <colgroup>
-                  <col width="300" />
-                  <col width="150" />
-                  <col width="150" />
-                  <col width="150" />
-                  <col width="150" />
-                  <col width="10" />
-              </colgroup>
-              ${rows.join('\n')}
-            </table>
-          </body>
-          </html>`;
-
-        const blob = new Blob([html], { type: 'application/vnd.ms-excel;charset=UTF-8' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Cost_Analysis_${activeCrop}_${selected.toISOString().slice(0, 10)}.xls`;
-        a.click();
-        URL.revokeObjectURL(url);
-    };
-
-    // ── Excel Upload ──────────────────────────────────────────────────────────
-    const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const file = e.target.files?.[0];
-        if (!file) return;
-        const reader = new FileReader();
-        reader.onload = (evt) => {
-            try {
-                const data = new Uint8Array(evt.target!.result as ArrayBuffer);
-                const wb = XLSX.read(data, { type: 'array' });
-                const ws = wb.Sheets[wb.SheetNames[0]];
-                const rows: any[] = XLSX.utils.sheet_to_json(ws, { header: 1 });
-
-                const amountMap: Record<string, { dayAmount?: string; todateAmount?: string; lastMonthAmount?: string; ytdAmount?: string }> = {};
-                for (let i = 1; i < rows.length; i++) {
-                    const row = rows[i];
-                    if (!row || row.length < 2) continue;
-                    const catOrName = String(row[0] || '').trim();
-                    const item = String(row[1] || '').trim();
-                    // Basic parsing since HTML to excel loses strict columns sometimes, robust logic:
-                    if (!catOrName || catOrName.startsWith('Σ')) continue;
-
-                    // The old upload logic used Category in row 0 and item in row 1, but HTML approach put Item in row 0
-                    // We map by Item name
-                    amountMap[catOrName] = {
-                        dayAmount: row[1] != null ? String(row[1]) : undefined,
-                        todateAmount: row[2] != null ? String(row[2]) : undefined,
-                        lastMonthAmount: row[3] != null ? String(row[3]) : undefined,
-                        ytdAmount: row[4] != null ? String(row[4]) : undefined,
-                    };
-                }
-
-                // Apply to current categories
-                setCategories(prev => prev.map(cat => ({
-                    ...cat,
-                    items: cat.items.map(item => {
-                        const amounts = amountMap[item.name];
-                        return amounts ? { ...item, ...amounts } : item;
-                    })
-                })));
-                markDirty();
-                setUploadMsg('Excel loaded! Review the amounts below, then click Save.');
-                setTimeout(() => setUploadMsg(''), 5000);
-            } catch {
-                setUploadMsg('Failed to read Excel. Please use the downloaded template.');
-                setTimeout(() => setUploadMsg(''), 5000);
-            }
-        };
-        reader.readAsArrayBuffer(file);
-        e.target.value = '';
-    };
-
-    // ── Category CRUD ─────────────────────────────────────────────────────────
-    const saveCat = () => {
+    const saveCategory = () => {
         const name = catDialog.name.trim();
         if (!name) return;
+
         if (catDialog.editId) {
-            setCategories(prev => prev.map(c => c.id === catDialog.editId ? { ...c, name } : c));
+            setCategories((prev) => prev.map((category) => (category.id === catDialog.editId ? { ...category, name } : category)));
         } else {
-            setCategories(prev => [...prev, { id: generateId(), name, items: [] }]);
+            setCategories((prev) => [...prev, { id: generateId(), name, items: [] }]);
         }
+
         markDirty();
         setCatDialog({ open: false, name: '' });
     };
 
-    const deleteCat = (catId: string) => {
-        setCategories(prev => prev.filter(c => c.id !== catId));
-        markDirty(); setDeleteDialog(null);
-    };
-
-    // ── Item CRUD ─────────────────────────────────────────────────────────────
     const saveItem = () => {
         const name = itemDialog.name.trim();
         if (!name) return;
-        setCategories(prev => prev.map(c => {
-            if (c.id !== itemDialog.catId) return c;
-            if (itemDialog.editId) return { ...c, items: c.items.map(i => i.id === itemDialog.editId ? { ...i, name } : i) };
-            return { ...c, items: [...c.items, { id: generateId(), name }] };
-        }));
+
+        setCategories((prev) =>
+            prev.map((category) => {
+                if (category.id !== itemDialog.catId) return category;
+
+                if (itemDialog.editId) {
+                    return {
+                        ...category,
+                        items: category.items.map((item) => (item.id === itemDialog.editId ? { ...item, name } : item)),
+                    };
+                }
+
+                return {
+                    ...category,
+                    items: [...category.items, { id: generateId(), name }],
+                };
+            }),
+        );
+
         markDirty();
         setItemDialog({ open: false, catId: '', name: '' });
     };
 
-    const deleteItem = (catId: string, itemId: string) => {
-        setCategories(prev => prev.map(c => c.id === catId ? { ...c, items: c.items.filter(i => i.id !== itemId) } : c));
-        markDirty(); setDeleteDialog(null);
+    const deleteCategory = (catId: string) => {
+        setCategories((prev) => prev.filter((category) => category.id !== catId));
+        markDirty();
+        setDeleteDialog(null);
     };
 
-    const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
+    const deleteItem = (catId: string, itemId: string) => {
+        setCategories((prev) =>
+            prev.map((category) =>
+                category.id === catId
+                    ? { ...category, items: category.items.filter((item) => item.id !== itemId) }
+                    : category,
+            ),
+        );
+        markDirty();
+        setDeleteDialog(null);
+    };
+
+    const handleSave = async () => {
+        if (!canEditSelectedDate) {
+            setIsEditable(false);
+            setMsg('Past-day entries are locked. Chief Clerk can edit only the current day.');
+            return;
+        }
+        try {
+            const structureOnly = categories.map((category) => ({
+                ...category,
+                items: category.items.map((item) => ({ id: item.id, name: item.name })),
+            }));
+
+            const manualEntryPayload = categories.map((category) => ({
+                id: category.id,
+                name: category.name,
+                items: category.items.map((item) => ({
+                    id: item.id,
+                    name: item.name,
+                    dayAmount: item.dayAmount || '0',
+                })),
+            }));
+
+            await axios.post('/api/crop-configs', {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop,
+                costItems: JSON.stringify(structureOnly),
+            });
+
+            const saveResponse = await axios.post('/api/daily-costs', {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop,
+                date: selectedDate,
+                costData: JSON.stringify(manualEntryPayload),
+            });
+
+            if (saveResponse.data?.costData) {
+                const parsed = JSON.parse(saveResponse.data.costData);
+                const nextCategories = normalizeCategories(parsed);
+                setCategories(nextCategories);
+                setBaselineCategories(nextCategories);
+            }
+
+            setSaved(true);
+            setIsEditable(false);
+            setMsg('Saved successfully.');
+        } catch {
+            setMsg('Save failed.');
+        }
+    };
+
+    const downloadExcel = async (downloadName: string, successMessage: string, emptyMessage: string) => {
+        try {
+            const response = await axios.get('/api/daily-costs/report-excel', {
+                params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate },
+                responseType: 'blob',
+                validateStatus: (status) => status >= 200 && status < 300,
+            });
+
+            const contentType = String(response.headers['content-type'] || '').toLowerCase();
+            const blob: Blob = response.data;
+
+            if (response.status === 204 || !blob || blob.size === 0) {
+                setMsg(emptyMessage);
+                return;
+            }
+
+            if (!contentType.includes('spreadsheetml')) {
+                const text = await blob.text();
+                let errorMessage = 'Download failed.';
+
+                try {
+                    const parsed = JSON.parse(text);
+                    errorMessage = parsed.message || errorMessage;
+                } catch {
+                    if (text.trim()) {
+                        errorMessage = text.slice(0, 160);
+                    }
+                }
+
+                setMsg(errorMessage);
+                return;
+            }
+
+            const downloadBlob = new Blob([blob], {
+                type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            });
+            const url = URL.createObjectURL(downloadBlob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = downloadName;
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            URL.revokeObjectURL(url);
+            setMsg(successMessage);
+        } catch (error: any) {
+            const blob: Blob | undefined = error?.response?.data;
+            if (blob instanceof Blob) {
+                try {
+                    const text = await blob.text();
+                    const parsed = JSON.parse(text);
+                    setMsg(parsed.message || 'Download failed.');
+                    return;
+                } catch {
+                    // Fall back to the generic message below.
+                }
+            }
+            setMsg('Download failed.');
+        }
+    };
+
+    const handleDownloadSnapshot = async () => {
+        await downloadExcel(
+            `Cost_Snapshot_${activeCrop}_${selectedDate}.xlsx`,
+            'Snapshot downloaded.',
+            'No daily snapshot is available for that date yet.',
+        );
+    };
+
+    const handleDownloadTemplate = async () => {
+        await downloadExcel(
+            `Cost_Editing_Template_${activeCrop}_${selectedDate}.xlsx`,
+            'Excel template downloaded.',
+            'No Excel template is available for that date yet.',
+        );
+    };
+
+    const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (!canEditSelectedDate) {
+            setMsg('Past-day entries are locked. Excel upload is allowed only for the current day.');
+            e.target.value = '';
+            return;
+        }
+
+        try {
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('tenantId', userSession.tenantId);
+            formData.append('cropType', activeCrop);
+            formData.append('date', selectedDate);
+
+            const response = await axios.post('/api/daily-costs/report-excel', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' },
+            });
+
+            if (response.data?.costData) {
+                const parsed = JSON.parse(response.data.costData);
+                const nextCategories = normalizeCategories(parsed);
+                setCategories(nextCategories);
+                setBaselineCategories(nextCategories);
+            }
+
+            setSaved(true);
+            setIsEditable(false);
+            setMsg('Excel uploaded successfully. Field Officer can now view the same report.');
+        } catch {
+            setMsg('Upload failed. Please use the downloaded template.');
+        } finally {
+            e.target.value = '';
+        }
+    };
+
+    const handleCancelEdit = () => {
+        setCategories(baselineCategories);
+        setSaved(true);
+        setIsEditable(false);
+        setMsg('Edit cancelled.');
+    };
+
+    const catDayTotal = (category: CostCategory) =>
+        category.items.reduce((sum, item) => sum + (parseFloat(item.dayAmount || '0') || 0), 0);
+
+    const catFieldTotal = (category: CostCategory, field: keyof CostItem) =>
+        category.items.reduce((sum, item) => sum + (parseFloat((item[field] as string) || '0') || 0), 0);
+
+    const fmtAmount = (amountText?: string) => {
+        const parsed = parseFloat(String(amountText ?? '').trim());
+        if (!Number.isFinite(parsed)) return '-';
+        return parsed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
+
+    const fmtTotal = (amount: number) =>
+        amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <Box sx={{ pb: 4 }}>
-            {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
-                <Box>
+        <Box sx={{ height: 'calc(100vh - 120px)', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '100%' }}>
+            <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} mb={2}>
+                <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                         Cost Analysis Manager
                     </Typography>
-                    <Typography variant="body2" color="text.secondary" mt={0.5}>
-                        Enter Daily Amount for each work item. All calculations are done automatically.
+                    <Typography variant="body2" color="text.secondary">
+                        Chief Clerk can either use the web system manually or upload/download a simple Excel report.
                     </Typography>
                 </Box>
-                <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+                <Box
+                    display="flex"
+                    gap={1}
+                    alignItems="center"
+                    flexWrap="nowrap"
+                    sx={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+                >
                     <TextField
                         type="date"
                         size="small"
                         value={selectedDate}
-                        onChange={(e) => setSelectedDate(e.target.value)}
+                        onChange={(e) => {
+                            setSelectedDate(e.target.value);
+                            setMsg('');
+                        }}
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}
                     />
-                    {saveMsg && <Alert severity={saveMsg.includes('fail') ? 'error' : 'success'} sx={{ py: 0, px: 1 }}>{saveMsg}</Alert>}
-                    {!saved && isEditable && <Chip label="Unsaved changes" color="warning" size="small" />}
-                    
                     {!isEditable ? (
-                        <Button variant="contained" startIcon={<EditIcon />} onClick={() => setIsEditable(true)}
-                            sx={{ bgcolor: '#e65100', '&:hover': { bgcolor: '#ef6c00' } }}>
+                        <Button
+                            variant="contained"
+                            startIcon={<EditIcon />}
+                            onClick={() => setIsEditable(true)}
+                            disabled={!canEditSelectedDate}
+                            sx={{ bgcolor: '#e65100' }}
+                        >
                             Edit Entry
                         </Button>
                     ) : (
-                        <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave}
-                            sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}>
-                            Save
-                        </Button>
-                    )}
-
-                    <Divider orientation="vertical" flexItem />
-                    <Button variant="outlined" startIcon={<DownloadIcon />} onClick={handleDownload}
-                        sx={{ borderColor: cropColor, color: cropColor }}>
-                        Download Report
-                    </Button>
-                    {isEditable && (
                         <>
-                            <Button variant="outlined" startIcon={<UploadIcon />}
+                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161' }}>
+                                Cancel
+                            </Button>
+                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32' }}>
+                                Save
+                            </Button>
+                            <Button
+                                variant="outlined"
+                                startIcon={<DownloadIcon />}
+                                onClick={handleDownloadTemplate}
+                                sx={{ borderColor: cropColor, color: cropColor }}
+                            >
+                                Download Excel Sheet
+                            </Button>
+                        </>
+                    )}
+                    {isEditable && canEditSelectedDate && (
+                        <>
+                            <Divider orientation="vertical" flexItem />
+                            <Button
+                                variant="outlined"
+                                startIcon={<UploadIcon />}
                                 onClick={() => fileInputRef.current?.click()}
-                                sx={{ borderColor: '#f57c00', color: '#f57c00', borderWidth: 2 }}>
+                                sx={{ borderColor: '#f57c00', color: '#f57c00' }}
+                            >
                                 Upload Excel
                             </Button>
                             <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
-                            <Button variant="text" startIcon={<AddIcon />}
-                                onClick={() => setCatDialog({ open: true, name: '' })}
-                                sx={{ color: cropColor }}>
-                                Add Category
-                            </Button>
                         </>
                     )}
                 </Box>
             </Box>
 
-            {uploadMsg && (
-                <Alert severity="info" sx={{ mb: 2 }}>{uploadMsg}</Alert>
+            {msg && (
+                <Alert severity={msg.includes('failed') ? 'error' : 'info'} sx={{ mb: 2 }}>
+                    {msg}
+                </Alert>
             )}
+            {!canEditSelectedDate && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    This date is locked. Chief Clerk can edit entries only on the current day.
+                </Alert>
+            )}
+            {!saved && isEditable && <Chip label="Unsaved changes" color="warning" size="small" sx={{ mb: 1 }} />}
 
-            <Paper elevation={3} sx={{ overflow: 'hidden', borderRadius: 2, border: '1px solid #e0e0e0' }}>
-                {/* Crop Tabs */}
-                <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
-                    <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
-                        sx={{ minHeight: 40, '& .MuiTab-root': { minHeight: 40, fontWeight: 'bold', textTransform: 'none', borderRight: '1px solid #ccc' } }}>
-                        {availableCrops.map(crop => (
-                            <Tab key={crop} label={crop} value={crop} sx={{
-                                bgcolor: activeCrop === crop ? (CROP_COLORS[crop] || '#4caf50') : '#e8e8e8',
-                                color: activeCrop === crop ? '#fff !important' : '#555',
-                            }} />
+            <Box sx={{ mt: 5, position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {!isEditable && (
+                    <Tooltip title="Download Daily Snapshot">
+                        <IconButton
+                            onClick={handleDownloadSnapshot}
+                            sx={{
+                                position: 'absolute',
+                                top: -48,
+                                right: 10,
+                                zIndex: 3,
+                                width: 40,
+                                height: 40,
+                                color: '#fff',
+                                bgcolor: '#2e7d32',
+                                borderRadius: 1,
+                                border: '1px solid #1b5e20',
+                                boxShadow: '0 4px 10px rgba(46, 125, 50, 0.22)',
+                                '&:hover': { bgcolor: '#1b5e20' },
+                            }}
+                            aria-label="Download Daily Snapshot"
+                        >
+                            <DownloadIcon />
+                        </IconButton>
+                    </Tooltip>
+                )}
+                <Paper elevation={3} sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 2, border: '1px solid #e0e0e0', minHeight: 0, maxWidth: '100%' }}>
+                <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
+                    <Tabs
+                        value={activeCrop}
+                        onChange={(_, v) => setActiveCrop(v)}
+                        sx={{ minHeight: 40, '& .MuiTab-root': { minHeight: 40, fontWeight: 'bold', textTransform: 'none' } }}
+                    >
+                        {availableCrops.map((crop) => (
+                            <Tab
+                                key={crop}
+                                label={crop}
+                                value={crop}
+                                sx={{
+                                    bgcolor: activeCrop === crop ? CROP_COLORS[crop] || '#4caf50' : '#e8e8e8',
+                                    color: activeCrop === crop ? '#fff !important' : '#555',
+                                }}
+                            />
                         ))}
                     </Tabs>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        {isEditable && (
+                            <Button
+                                variant="text"
+                                startIcon={<AddIcon />}
+                                onClick={() => setCatDialog({ open: true, name: '' })}
+                                sx={{ color: cropColor, fontWeight: 600 }}
+                            >
+                                Add Category
+                            </Button>
+                        )}
+                    </Box>
                 </Box>
 
-                {/* Table */}
-                <TableContainer sx={{ maxHeight: 'calc(100vh - 300px)' }}>
-                    <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #f0f0f0', padding: '4px 10px' } }}>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 300 }}>Work Item</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: cropColor, textAlign: 'right', minWidth: 180 }}>
-                                    Day Amount (Rs.)
-                                </TableCell>
-                                <TableCell sx={{ fontWeight: 'bold', bgcolor: '#fafafa', minWidth: 100, textAlign: 'center' }}>Actions</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {categories.length === 0 && (
+                {loading ? (
+                    <Box display="flex" justifyContent="center" py={6}>
+                        <CircularProgress />
+                    </Box>
+                ) : (
+                    <TableContainer sx={{ flex: 1, minHeight: 0, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', overflowX: 'hidden' }}>
+                        <Table
+                            size="small"
+                            stickyHeader
+                            sx={{
+                                width: '100%',
+                                tableLayout: 'fixed',
+                                '& .MuiTableCell-root': { borderRight: '1px solid #f0f0f0', padding: '4px 10px' },
+                                '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_ONE_HEIGHT}px`,
+                                    backgroundColor: '#fff',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e6e6e6',
+                                },
+                                '& .MuiTableHead-root .MuiTableRow-root:nth-of-type(2) .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: HEADER_ROW_ONE_HEIGHT,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fff',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e6e6e6',
+                                },
+                                '& .MuiTableHead-root .MuiTableCell-root[rowspan="2"]': {
+                                    top: 0,
+                                    zIndex: 5,
+                                    height: `${HEADER_ROW_ONE_HEIGHT + HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fff',
+                                    backgroundImage: 'none',
+                                },
+                            }}
+                        >
+                            <TableHead>
                                 <TableRow>
-                                    <TableCell colSpan={3} align="center" sx={{ py: 6, color: '#aaa' }}>
-                                        <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
-                                        <Typography>No categories. Click "Add Category" to start.</Typography>
-                                    </TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', width: '24%' }}>Work Item</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#1b5e20' }}>Day</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#1b5e20' }}>Todate</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#555' }}>History</TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center', width: '12%' }}>Actions</TableCell>
                                 </TableRow>
-                            )}
-                            {categories.flatMap(cat => {
-                                const rows: React.ReactNode[] = [];
+                                <TableRow>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Last Month</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>YTD</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                {categories.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#888' }}>
+                                            <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
+                                            <Typography>No categories yet. Click Add Category to start.</Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
 
-                                // Category header row
-                                rows.push(
-                                    <TableRow key={`${cat.id}-header`}>
-                                        <TableCell colSpan={3} sx={{
-                                            bgcolor: cropColor + '18',
-                                            borderLeft: `4px solid ${cropColor}`,
-                                            py: 0.6,
-                                        }}>
-                                            <Box display="flex" alignItems="center" justifyContent="space-between">
-                                                <Box display="flex" alignItems="center" gap={1}>
-                                                    <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
-                                                    <Typography fontWeight="bold" sx={{ color: cropColor, fontSize: '0.82rem', textTransform: 'uppercase', letterSpacing: 0.8 }}>
-                                                        {cat.name}
-                                                    </Typography>
-                                                    <Chip label={`${cat.items.length} items`} size="small"
-                                                        sx={{ height: 17, fontSize: '0.63rem', bgcolor: cropColor + '33', color: cropColor }} />
-                                                </Box>
-                                                <Box display="flex" gap={0.5}>
+                                {categories.flatMap((category) => {
+                                    const rows: React.ReactNode[] = [];
+
+                                    rows.push(
+                                        <TableRow key={`${category.id}-header`}>
+                                            <TableCell colSpan={8} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
+                                                <Box display="flex" alignItems="center" justifyContent="space-between">
+                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                        <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
+                                                        <Typography fontWeight="bold" sx={{ color: cropColor }}>
+                                                            {category.name}
+                                                        </Typography>
+                                                        <Chip
+                                                            label={`${category.items.length} items`}
+                                                            size="small"
+                                                            sx={{ height: 18, fontSize: '0.68rem', bgcolor: `${cropColor}33`, color: cropColor }}
+                                                        />
+                                                    </Box>
                                                     {isEditable && (
-                                                        <>
-                                                            <Button size="small" startIcon={<AddIcon />}
-                                                                onClick={() => setItemDialog({ open: true, catId: cat.id, name: '' })}
-                                                                sx={{ fontSize: '0.68rem', color: cropColor, textTransform: 'none', py: 0.1, minWidth: 0 }}>
+                                                        <Box display="flex" alignItems="center" gap={0.5}>
+                                                            <Button
+                                                                size="small"
+                                                                startIcon={<AddIcon />}
+                                                                onClick={() => setItemDialog({ open: true, catId: category.id, name: '' })}
+                                                                sx={{ color: cropColor, textTransform: 'none' }}
+                                                            >
                                                                 Add Item
                                                             </Button>
                                                             <Tooltip title="Rename category">
-                                                                <IconButton size="small" onClick={() => setCatDialog({ open: true, editId: cat.id, name: cat.name })} sx={{ color: '#1976d2' }}>
-                                                                    <EditIcon sx={{ fontSize: 15 }} />
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() => setCatDialog({ open: true, editId: category.id, name: category.name })}
+                                                                    sx={{ color: '#1976d2' }}
+                                                                >
+                                                                    <EditIcon sx={{ fontSize: 16 }} />
                                                                 </IconButton>
                                                             </Tooltip>
                                                             <Tooltip title="Delete category">
-                                                                <IconButton size="small"
-                                                                    onClick={() => setDeleteDialog({ open: true, type: 'cat', catId: cat.id, label: cat.name })}
-                                                                    sx={{ color: '#c62828' }}>
-                                                                    <DeleteIcon sx={{ fontSize: 15 }} />
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() =>
+                                                                        setDeleteDialog({
+                                                                            open: true,
+                                                                            type: 'cat',
+                                                                            catId: category.id,
+                                                                            label: category.name,
+                                                                        })
+                                                                    }
+                                                                    sx={{ color: '#c62828' }}
+                                                                >
+                                                                    <DeleteIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                        </Box>
+                                                    )}
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>,
+                                    );
+
+                                    category.items.forEach((item) => {
+                                        rows.push(
+                                            <TableRow key={`${category.id}-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
+                                                <TableCell sx={{ pl: 4 }}>{item.name}</TableCell>
+                                                <TableCell align="right">
+                                                    <TextField
+                                                        size="small"
+                                                        type="number"
+                                                        disabled={!isEditable}
+                                                        value={item.dayAmount || ''}
+                                                        onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
+                                                        placeholder="0.00"
+                                                        sx={{ width: 150 }}
+                                                        InputProps={{
+                                                            startAdornment: (
+                                                                <InputAdornment position="start">
+                                                                    <Typography variant="caption">Rs.</Typography>
+                                                                </InputAdornment>
+                                                            ),
+                                                        }}
+                                                    />
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(item.dayAmount, weights.day, item.dayCostPerKgOverride)}
+                                                </TableCell>
+                                                <TableCell align="right">{fmtAmount(item.todateAmount)}</TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(item.todateAmount, weights.todate, item.todateCostPerKgOverride)}
+                                                </TableCell>
+                                                <TableCell align="right">{fmtAmount(item.lastMonthAmount)}</TableCell>
+                                                <TableCell align="right">{fmtAmount(item.ytdAmount)}</TableCell>
+                                                <TableCell align="center">
+                                                    {isEditable && (
+                                                        <>
+                                                            <Tooltip title="Rename item">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() =>
+                                                                        setItemDialog({
+                                                                            open: true,
+                                                                            catId: category.id,
+                                                                            editId: item.id,
+                                                                            name: item.name,
+                                                                        })
+                                                                    }
+                                                                    sx={{ color: '#1976d2' }}
+                                                                >
+                                                                    <EditIcon sx={{ fontSize: 16 }} />
+                                                                </IconButton>
+                                                            </Tooltip>
+                                                            <Tooltip title="Delete item">
+                                                                <IconButton
+                                                                    size="small"
+                                                                    onClick={() =>
+                                                                        setDeleteDialog({
+                                                                            open: true,
+                                                                            type: 'item',
+                                                                            catId: category.id,
+                                                                            itemId: item.id,
+                                                                            label: item.name,
+                                                                        })
+                                                                    }
+                                                                    sx={{ color: '#c62828' }}
+                                                                >
+                                                                    <DeleteIcon sx={{ fontSize: 16 }} />
                                                                 </IconButton>
                                                             </Tooltip>
                                                         </>
                                                     )}
-                                                </Box>
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                );
+                                                </TableCell>
+                                            </TableRow>,
+                                        );
+                                    });
 
-                                // Item rows
-                                cat.items.forEach(item => {
-                                    rows.push(
-                                        <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
-                                            <TableCell sx={{ pl: 4, color: '#333' }}>{item.name}</TableCell>
-                                            {/* Editable Day Amount */}
-                                            <TableCell align="right" sx={{ py: 0.3 }}>
-                                                <TextField
-                                                    size="small"
-                                                    type="number"
-                                                    disabled={!isEditable}
-                                                    value={(item.dayAmount as string) || ''}
-                                                    onChange={e => updateItemField(cat.id, item.id, 'dayAmount', e.target.value)}
-                                                    placeholder="0.00"
-                                                    sx={{
-                                                        width: 150,
-                                                        '& .MuiOutlinedInput-root': {
-                                                            '& fieldset': { borderColor: '#e0e0e0' },
-                                                            '&:hover fieldset': { borderColor: isEditable ? cropColor : '#e0e0e0' },
-                                                            '&.Mui-focused fieldset': { borderColor: cropColor },
-                                                        },
-                                                        '& input': { textAlign: 'right', fontSize: '0.9rem', p: '6px 10px', WebkitTextFillColor: isEditable ? 'inherit' : '#555' }
-                                                    }}
-                                                    InputProps={{ startAdornment: <InputAdornment position="start" sx={{ '& p': { fontSize: '0.8rem', color: '#aaa' } }}>Rs.</InputAdornment> }}
-                                                />
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ py: 0.3 }}>
-                                                {isEditable && (
-                                                    <>
-                                                        <Tooltip title="Rename">
-                                                            <IconButton size="small" onClick={() => setItemDialog({ open: true, catId: cat.id, editId: item.id, name: item.name })} sx={{ color: '#1976d2' }}>
-                                                                <EditIcon sx={{ fontSize: 16 }} />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                        <Tooltip title="Remove">
-                                                            <IconButton size="small"
-                                                                onClick={() => setDeleteDialog({ open: true, type: 'item', catId: cat.id, itemId: item.id, label: item.name })}
-                                                                sx={{ color: '#c62828' }}>
-                                                                <DeleteIcon sx={{ fontSize: 16 }} />
-                                                            </IconButton>
-                                                        </Tooltip>
-                                                    </>
-                                                )}
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                });
+                                    if (category.items.length === 0) {
+                                        rows.push(
+                                            <TableRow key={`${category.id}-empty`}>
+                                                <TableCell colSpan={8} sx={{ pl: 6, py: 1.5, color: '#999', fontStyle: 'italic' }}>
+                                                    No items yet. Use Add Item to create one.
+                                                </TableCell>
+                                            </TableRow>,
+                                        );
+                                    }
 
-                                // Empty placeholder
-                                if (cat.items.length === 0) {
                                     rows.push(
-                                        <TableRow key={`${cat.id}-empty`}>
-                                            <TableCell colSpan={3} sx={{ pl: 6, py: 1, color: '#bbb', fontStyle: 'italic', fontSize: '0.8rem' }}>
-                                                No items yet — click "Add Item" above
+                                        <TableRow key={`${category.id}-sum`} sx={{ bgcolor: '#eeeeee' }}>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>Total Cost for {category.name}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                                {fmtTotal(catDayTotal(category))}
                                             </TableCell>
-                                        </TableRow>
-                                    );
-                                }
-
-                                // Auto-total row
-                                if (cat.items.length > 0) {
-                                    const dayTotal = catTotal(cat, 'dayAmount');
-                                    rows.push(
-                                        <TableRow key={`${cat.id}-total`} sx={{ bgcolor: '#eeeeee', borderTop: '2px solid #ccc' }}>
-                                            <TableCell sx={{ fontWeight: 'bold', fontSize: '0.85rem', color: '#333', pl: 4 }}>
-                                                ∑ &nbsp; Total Cost for {cat.name}
+                                            <TableCell align="right" sx={{ color: '#888' }}>
+                                                {fmtPerKg(String(catDayTotal(category)), weights.day)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: cropColor }}>
-                                                {dayTotal > 0 ? `Rs. ${dayTotal.toLocaleString('en-LK', { minimumFractionDigits: 2 })}` : '-'}
+                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                                {fmtTotal(catFieldTotal(category, 'todateAmount'))}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#888' }}>
+                                                {fmtPerKg(String(catFieldTotal(category, 'todateAmount')), weights.todate)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                {fmtTotal(catFieldTotal(category, 'lastMonthAmount'))}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                {fmtTotal(catFieldTotal(category, 'ytdAmount'))}
                                             </TableCell>
                                             <TableCell />
-                                        </TableRow>
+                                        </TableRow>,
                                     );
-                                }
 
-                                return rows;
-                            })}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
-            </Paper>
+                                    return rows;
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
+                </Paper>
+            </Box>
 
-            {/* Add / Edit Category */}
             <Dialog open={catDialog.open} onClose={() => setCatDialog({ open: false, name: '' })} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold' }}>
-                    {catDialog.editId ? 'Rename Category' : 'Add New Category'}
-                </DialogTitle>
+                <DialogTitle>{catDialog.editId ? 'Rename Category' : 'Add Category'}</DialogTitle>
                 <DialogContent dividers>
-                    <TextField label="Category Name" value={catDialog.name}
-                        onChange={e => setCatDialog(d => ({ ...d, name: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && saveCat()}
-                        fullWidth autoFocus sx={{ mt: 1 }}
+                    <TextField
+                        fullWidth
+                        autoFocus
+                        label="Category Name"
+                        value={catDialog.name}
+                        onChange={(e) => setCatDialog((prev) => ({ ...prev, name: e.target.value }))}
+                        onKeyDown={(e) => e.key === 'Enter' && saveCategory()}
+                        sx={{ mt: 1 }}
                     />
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
+                <DialogActions>
                     <Button onClick={() => setCatDialog({ open: false, name: '' })}>Cancel</Button>
-                    <Button variant="contained" onClick={saveCat} sx={{ bgcolor: '#2e7d32' }}>Save Category</Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Add / Edit Item */}
-            <Dialog open={itemDialog.open} onClose={() => setItemDialog({ open: false, catId: '', name: '' })} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 'bold' }}>
-                    {itemDialog.editId ? 'Rename Item' : 'Add New Item'}
-                </DialogTitle>
-                <DialogContent dividers>
-                    <TextField label="Work Item Name" value={itemDialog.name}
-                        onChange={e => setItemDialog(d => ({ ...d, name: e.target.value }))}
-                        onKeyDown={e => e.key === 'Enter' && saveItem()}
-                        fullWidth autoFocus sx={{ mt: 1 }}
-                    />
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setItemDialog({ open: false, catId: '', name: '' })}>Cancel</Button>
-                    <Button variant="contained" onClick={saveItem} sx={{ bgcolor: '#2e7d32' }}>Save Item</Button>
-                </DialogActions>
-            </Dialog>
-
-            {/* Delete Confirmation */}
-            <Dialog open={!!deleteDialog} onClose={() => setDeleteDialog(null)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ color: '#d32f2f', fontWeight: 'bold' }}>Confirm Deletion</DialogTitle>
-                <DialogContent dividers>
-                    <Typography>
-                        Are you sure you want to delete the {deleteDialog?.type === 'cat' ? 'category' : 'item'} <strong>{deleteDialog?.label}</strong>?
-                    </Typography>
-                    {deleteDialog?.type === 'cat' && (
-                        <Typography variant="body2" color="error" sx={{ mt: 1 }}>
-                            This will also delete all items within this category!
-                        </Typography>
-                    )}
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setDeleteDialog(null)}>Cancel</Button>
-                    <Button variant="contained" color="error"
-                        onClick={() => deleteDialog?.type === 'cat' ? deleteCat(deleteDialog.catId) : deleteItem(deleteDialog!.catId, deleteDialog!.itemId!)}>
-                        Delete
+                    <Button variant="contained" onClick={saveCategory} sx={{ bgcolor: '#2e7d32' }}>
+                        Save
                     </Button>
                 </DialogActions>
             </Dialog>
 
+            <Dialog open={itemDialog.open} onClose={() => setItemDialog({ open: false, catId: '', name: '' })} maxWidth="xs" fullWidth>
+                <DialogTitle>{itemDialog.editId ? 'Rename Item' : 'Add Item'}</DialogTitle>
+                <DialogContent dividers>
+                    <TextField
+                        fullWidth
+                        autoFocus
+                        label="Work Item Name"
+                        value={itemDialog.name}
+                        onChange={(e) => setItemDialog((prev) => ({ ...prev, name: e.target.value }))}
+                        onKeyDown={(e) => e.key === 'Enter' && saveItem()}
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setItemDialog({ open: false, catId: '', name: '' })}>Cancel</Button>
+                    <Button variant="contained" onClick={saveItem} sx={{ bgcolor: '#2e7d32' }}>
+                        Save
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Dialog open={Boolean(deleteDialog)} onClose={() => setDeleteDialog(null)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ color: '#d32f2f' }}>Confirm Delete</DialogTitle>
+                <DialogContent dividers>
+                    <Typography>
+                        Are you sure you want to delete {deleteDialog?.type === 'cat' ? 'category' : 'item'} <strong>{deleteDialog?.label}</strong>?
+                    </Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setDeleteDialog(null)}>Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="error"
+                        onClick={() =>
+                            deleteDialog?.type === 'cat'
+                                ? deleteCategory(deleteDialog.catId)
+                                : deleteItem(deleteDialog!.catId, deleteDialog!.itemId!)
+                        }
+                    >
+                        Delete
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }

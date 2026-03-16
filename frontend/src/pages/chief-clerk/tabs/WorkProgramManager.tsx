@@ -3,9 +3,15 @@ import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Select, MenuItem,
-    FormControl, Button, Snackbar, Alert
+    FormControl, Button, Snackbar, Alert, Chip
 } from '@mui/material';
 import SaveIcon from '@mui/icons-material/Save';
+import EditIcon from '@mui/icons-material/Edit';
+
+const buildSocketUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${path}`;
+};
 
 export default function WorkProgramManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -13,7 +19,9 @@ export default function WorkProgramManager() {
 
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
-    const [snack, setSnack] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({ open: false, msg: '', sev: 'success' });
+    const [isEditable, setIsEditable] = useState(false);
+    const [realtimeEnabled, setRealtimeEnabled] = useState(false);
+    const [snack, setSnack] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' | 'info' }>({ open: false, msg: '', sev: 'success' });
 
     const now = new Date();
     const [year, setYear] = useState(now.getFullYear());
@@ -22,6 +30,7 @@ export default function WorkProgramManager() {
     // Tasks as full objects with parsed cropTypes array (multi-crop support)
     const [tasks, setTasks] = useState<Array<{ name: string; cropTypes: string[] }>>([]);
     const [program, setProgram] = useState<Record<string, string>>({});
+    const [baselineProgram, setBaselineProgram] = useState<Record<string, string>>({});
 
     // Crop tabs — built from task cropTypes
     const [availableCrops, setAvailableCrops] = useState<string[]>([]);
@@ -68,8 +77,11 @@ export default function WorkProgramManager() {
                 progMap[entry.taskName] = String(entry.workersNeeded || '');
             });
             setProgram(progMap);
+            setBaselineProgram(progMap);
+            setRealtimeEnabled(true);
         } catch (e) {
             console.error('Failed to load work program data', e);
+            setRealtimeEnabled(false);
         } finally {
             setLoading(false);
         }
@@ -77,8 +89,87 @@ export default function WorkProgramManager() {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    useEffect(() => {
+        if (!tenantId || !realtimeEnabled) return undefined;
+
+        let active = true;
+        let manuallyClosed = false;
+        let socket: WebSocket | null = null;
+        let reconnectTimer: number | null = null;
+
+        const connect = () => {
+            socket = new WebSocket(buildSocketUrl('/ws/work-program'));
+
+            socket.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    if (
+                        payload?.type !== 'work-program-updated' ||
+                        payload?.tenantId !== tenantId ||
+                        Number(payload?.year) !== year ||
+                        Number(payload?.month) !== month + 1
+                    ) {
+                        return;
+                    }
+
+                    if (isEditable) {
+                        setSnack({
+                            open: true,
+                            msg: 'Another update arrived for this month. Save or cancel to sync cleanly.',
+                            sev: 'info'
+                        });
+                        return;
+                    }
+
+                    fetchData();
+                } catch (error) {
+                    console.error('Failed to parse work program realtime update', error);
+                }
+            };
+
+            socket.onerror = () => {
+                // Fetch errors already surface backend outages; keep websocket noise quiet.
+            };
+
+            socket.onclose = () => {
+                if (!active || manuallyClosed) return;
+                reconnectTimer = window.setTimeout(connect, 2000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            active = false;
+            manuallyClosed = true;
+            if (reconnectTimer !== null) {
+                window.clearTimeout(reconnectTimer);
+            }
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.onmessage = null;
+                if (socket.readyState === WebSocket.OPEN) {
+                    socket.close();
+                }
+            }
+        };
+    }, [tenantId, year, month, isEditable, realtimeEnabled, fetchData]);
+
     const handleChange = (taskName: string, val: string) => {
+        if (!isEditable) return;
         setProgram(prev => ({ ...prev, [taskName]: val }));
+    };
+
+    const handleEdit = () => {
+        setBaselineProgram(program);
+        setIsEditable(true);
+    };
+
+    const handleCancel = () => {
+        setProgram(baselineProgram);
+        setIsEditable(false);
+        setSnack({ open: true, msg: 'Changes cancelled.', sev: 'success' });
     };
 
     const handleSave = async () => {
@@ -94,6 +185,10 @@ export default function WorkProgramManager() {
                 month: month + 1,
                 entries
             });
+            setBaselineProgram(
+                Object.fromEntries(tasks.map((t) => [t.name, String(entries[t.name] || 0)]))
+            );
+            setIsEditable(false);
             setSnack({ open: true, msg: 'Work program saved successfully!', sev: 'success' });
         } catch (e) {
             setSnack({ open: true, msg: 'Failed to save. Please try again.', sev: 'error' });
@@ -133,8 +228,10 @@ export default function WorkProgramManager() {
     return (
         <Box display="flex" height="calc(100vh - 80px)" flexDirection="column">
             {/* Header */}
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                <Typography variant="h4" fontWeight="bold" color="#1b5e20">Distribution of Works</Typography>
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} gap={2}>
+                <Box sx={{ minWidth: 0 }}>
+                    <Typography variant="h4" fontWeight="bold" color="#1b5e20">Distribution of Works</Typography>
+                </Box>
 
                 {/* Centre: Month/Year Selector */}
                 <Box display="flex" alignItems="center" gap={2}
@@ -157,12 +254,51 @@ export default function WorkProgramManager() {
                     </FormControl>
                 </Box>
 
-                {/* Save Button */}
-                <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} disabled={saving}
-                    sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, minWidth: 120 }}>
-                    {saving ? 'Saving...' : 'Save'}
-                </Button>
+                <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 280, justifyContent: 'flex-end' }}>
+                    {!isEditable ? (
+                        <Button
+                            variant="contained"
+                            startIcon={<EditIcon />}
+                            onClick={handleEdit}
+                            sx={{ bgcolor: '#e65100', '&:hover': { bgcolor: '#bf360c' }, minWidth: 135 }}
+                        >
+                            Edit Entry
+                        </Button>
+                    ) : (
+                        <>
+                            <Button
+                                variant="outlined"
+                                onClick={handleCancel}
+                                disabled={saving}
+                                sx={{ borderColor: '#9e9e9e', color: '#616161', minWidth: 110 }}
+                            >
+                                Cancel
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<SaveIcon />}
+                                onClick={handleSave}
+                                disabled={saving}
+                                sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, minWidth: 120 }}
+                            >
+                                {saving ? 'Saving...' : 'Save'}
+                            </Button>
+                        </>
+                    )}
+                </Box>
             </Box>
+
+            <Paper elevation={0} sx={{ mb: 2, p: 1.5, bgcolor: '#f5fbf5', border: '1px solid #c8e6c9', borderRadius: 2 }}>
+                <Box display="flex" alignItems="center" gap={1.5} flexWrap="wrap">
+                    <Chip label={`Month: ${monthNames[month]} ${year}`} size="small" sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 700 }} />
+                    {isEditable && <Chip label="Editing mode" color="warning" size="small" />}
+                    <Typography variant="body2" color="text.secondary">
+                        {isEditable
+                            ? 'Update workers needed, then save to publish the monthly work program to Field Officer.'
+                            : 'View mode. Click Edit Entry to update this month\'s work program.'}
+                    </Typography>
+                </Box>
+            </Paper>
 
             {/* Dynamic Crop Filter Tabs */}
             <Box display="flex" mb={0} sx={{ borderBottom: '1px solid #ccc' }}>
@@ -197,7 +333,7 @@ export default function WorkProgramManager() {
 
             {/* Table */}
             <TableContainer component={Paper} elevation={3}
-                sx={{ flex: 1, border: '2px solid #2e7d32', borderTop: 0, overflow: 'auto', borderRadius: '0 0 4px 4px' }}>
+                sx={{ flex: 1, border: '2px solid #2e7d32', borderTop: 0, overflow: 'auto', borderRadius: '0 0 8px 8px', boxShadow: '0 10px 26px rgba(46, 125, 50, 0.10)' }}>
                 <Table stickyHeader size="small">
                     <TableHead>
                         <TableRow>
@@ -221,6 +357,7 @@ export default function WorkProgramManager() {
                             <TableCell sx={{ borderRight: '1px solid #eee', p: '4px 12px !important' }}>
                                 <TextField
                                     variant="outlined" size="small" type="number" fullWidth
+                                    disabled={!isEditable}
                                     inputProps={{ min: 0, style: { textAlign: 'center', fontWeight: 'bold', color: '#1565c0' } }}
                                     placeholder="0"
                                     value={program[task.name] || ''}
