@@ -65,6 +65,7 @@ public class CostCalculationService {
      */
     public String calculateAmounts(String tenantId, String cropType, LocalDate date, String costDataJson) {
         try {
+            String normalizedCropType = cropType == null ? "" : cropType.trim();
             ArrayNode categories = normalizeCategories(costDataJson);
             
             // Calculate date ranges
@@ -81,12 +82,12 @@ public class CostCalculationService {
             LocalDate ytdStart = LocalDate.of(fiscalYearStart, 4, 1);
             
             // Fetch historical data up to yesterday to avoid reading old current-day data
-            List<DailyCost> todateRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeAndDateBetween(
-                tenantId, cropType, startOfMonth, date.minusDays(1)));
-            List<DailyCost> lastMonthRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeAndDateBetween(
-                tenantId, cropType, prevMonthStart, prevMonthEnd));
-            List<DailyCost> ytdRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeAndDateBetween(
-                tenantId, cropType, ytdStart, date.minusDays(1)));
+            List<DailyCost> todateRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDateBetween(
+                tenantId, normalizedCropType, startOfMonth, date.minusDays(1)));
+            List<DailyCost> lastMonthRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDateBetween(
+                tenantId, normalizedCropType, prevMonthStart, prevMonthEnd));
+            List<DailyCost> ytdRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDateBetween(
+                tenantId, normalizedCropType, ytdStart, date.minusDays(1)));
             
             // Build cumulative maps per item
             for (JsonNode catNode : categories) {

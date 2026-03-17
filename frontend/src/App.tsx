@@ -22,7 +22,6 @@ import CropAge from './pages/field-officer/tabs/CropAge';
 import MusterApproval from './pages/field-officer/tabs/MusterApproval';
 import MusterReview from './pages/field-officer/tabs/MusterReview';
 import GeneralStock from './pages/field-officer/tabs/GeneralStock';
-import KPIs from './pages/field-officer/tabs/KPIs';
 import PendingApprovals from './pages/manager/tabs/PendingApprovals';
 import MusterReviewManager from './pages/manager/tabs/MusterReviewManager';
 // import CropBook from './pages/manager/tabs/CropBook';
@@ -111,7 +110,7 @@ function App() {
           <Route path="order-request" element={<OrderRequest />} />
           <Route path="pending-orders" element={<PendingOrders />} />
           <Route path="stock" element={<GeneralStock />} />
-          <Route path="kpis" element={<KPIs />} />
+          <Route path="kpis" element={<Navigate to="/dashboard/field" replace />} />
           <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Main Store Keeper View */}
 
           {/* Manager Tabs */}

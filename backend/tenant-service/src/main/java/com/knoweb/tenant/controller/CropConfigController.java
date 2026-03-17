@@ -17,33 +17,34 @@ public class CropConfigController {
 
     @GetMapping
     public ResponseEntity<CropConfig> getConfig(@RequestParam String tenantId, @RequestParam String cropType) {
-        Optional<CropConfig> config = configRepository.findByTenantIdAndCropType(tenantId, cropType);
+        Optional<CropConfig> config = configRepository.findByTenantIdAndCropTypeIgnoreCase(tenantId, cropType);
         return config.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.ok(new CropConfig())); // Return empty if not found
     }
 
     @PostMapping
     public ResponseEntity<CropConfig> saveConfig(@RequestBody CropConfig newConfig) {
-        Optional<CropConfig> existing = configRepository.findByTenantIdAndCropType(newConfig.getTenantId(), newConfig.getCropType());
+        Optional<CropConfig> existing = configRepository.findByTenantIdAndCropTypeIgnoreCase(newConfig.getTenantId(), newConfig.getCropType());
         if (existing.isPresent()) {
             CropConfig configToUpdate = existing.get();
-            configToUpdate.setBudgetYear(newConfig.getBudgetYear());
-            configToUpdate.setBudgetApr(newConfig.getBudgetApr());
-            configToUpdate.setBudgetMay(newConfig.getBudgetMay());
-            configToUpdate.setBudgetJun(newConfig.getBudgetJun());
-            configToUpdate.setBudgetJul(newConfig.getBudgetJul());
-            configToUpdate.setBudgetAug(newConfig.getBudgetAug());
-            configToUpdate.setBudgetSep(newConfig.getBudgetSep());
-            configToUpdate.setBudgetOct(newConfig.getBudgetOct());
-            configToUpdate.setBudgetNov(newConfig.getBudgetNov());
-            configToUpdate.setBudgetDec(newConfig.getBudgetDec());
-            configToUpdate.setBudgetJan(newConfig.getBudgetJan());
-            configToUpdate.setBudgetFeb(newConfig.getBudgetFeb());
-            configToUpdate.setBudgetMar(newConfig.getBudgetMar());
-            configToUpdate.setAththamaWage(newConfig.getAththamaWage());
-            configToUpdate.setOverKiloRate(newConfig.getOverKiloRate());
-            configToUpdate.setCashKiloRate(newConfig.getCashKiloRate());
-            configToUpdate.setCostItems(newConfig.getCostItems());
+            configToUpdate.setCropType(newConfig.getCropType());
+            if (newConfig.getBudgetYear() != null) configToUpdate.setBudgetYear(newConfig.getBudgetYear());
+            if (newConfig.getBudgetApr() != null) configToUpdate.setBudgetApr(newConfig.getBudgetApr());
+            if (newConfig.getBudgetMay() != null) configToUpdate.setBudgetMay(newConfig.getBudgetMay());
+            if (newConfig.getBudgetJun() != null) configToUpdate.setBudgetJun(newConfig.getBudgetJun());
+            if (newConfig.getBudgetJul() != null) configToUpdate.setBudgetJul(newConfig.getBudgetJul());
+            if (newConfig.getBudgetAug() != null) configToUpdate.setBudgetAug(newConfig.getBudgetAug());
+            if (newConfig.getBudgetSep() != null) configToUpdate.setBudgetSep(newConfig.getBudgetSep());
+            if (newConfig.getBudgetOct() != null) configToUpdate.setBudgetOct(newConfig.getBudgetOct());
+            if (newConfig.getBudgetNov() != null) configToUpdate.setBudgetNov(newConfig.getBudgetNov());
+            if (newConfig.getBudgetDec() != null) configToUpdate.setBudgetDec(newConfig.getBudgetDec());
+            if (newConfig.getBudgetJan() != null) configToUpdate.setBudgetJan(newConfig.getBudgetJan());
+            if (newConfig.getBudgetFeb() != null) configToUpdate.setBudgetFeb(newConfig.getBudgetFeb());
+            if (newConfig.getBudgetMar() != null) configToUpdate.setBudgetMar(newConfig.getBudgetMar());
+            if (newConfig.getAththamaWage() != null) configToUpdate.setAththamaWage(newConfig.getAththamaWage());
+            if (newConfig.getOverKiloRate() != null) configToUpdate.setOverKiloRate(newConfig.getOverKiloRate());
+            if (newConfig.getCashKiloRate() != null) configToUpdate.setCashKiloRate(newConfig.getCashKiloRate());
+            if (newConfig.getCostItems() != null) configToUpdate.setCostItems(newConfig.getCostItems());
             return ResponseEntity.ok(configRepository.save(configToUpdate));
         } else {
             return ResponseEntity.ok(configRepository.save(newConfig));

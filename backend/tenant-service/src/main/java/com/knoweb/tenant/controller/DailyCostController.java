@@ -29,6 +29,7 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.UUID;
+import java.util.Locale;
 
 @RestController
 @RequestMapping("/api/daily-costs")
@@ -73,8 +74,9 @@ public class DailyCostController {
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate startDate,
             @RequestParam @DateTimeFormat(iso = DateTimeFormat.ISO.DATE) LocalDate endDate) {
 
-        List<DailyCost> costs = dailyCostRepository.findByTenantIdAndCropTypeAndDateBetween(
-                tenantId, cropType, startDate, endDate);
+        String normalizedCropType = normalizeCropType(cropType);
+        List<DailyCost> costs = dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDateBetween(
+                tenantId, normalizedCropType, startDate, endDate);
         return ResponseEntity.ok(costs);
     }
 
@@ -363,47 +365,55 @@ public class DailyCostController {
     }
 
     private DailyCost upsertDailyCost(String tenantId, String cropType, LocalDate date, String costData) {
-        Optional<DailyCost> existing = dailyCostRepository.findByTenantIdAndCropTypeAndDate(tenantId, cropType, date);
-        String calculatedCostData = costCalculationService.calculateAmounts(tenantId, cropType, date, costData);
+        String normalizedCropType = normalizeCropType(cropType);
+        Optional<DailyCost> existing = dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDate(tenantId, normalizedCropType, date);
+        String calculatedCostData = costCalculationService.calculateAmounts(tenantId, normalizedCropType, date, costData);
 
         if (existing.isPresent()) {
             DailyCost toUpdate = existing.get();
+            toUpdate.setCropType(normalizedCropType);
             toUpdate.setCostData(calculatedCostData);
             return dailyCostRepository.save(toUpdate);
         }
 
         DailyCost toCreate = new DailyCost();
         toCreate.setTenantId(tenantId);
-        toCreate.setCropType(cropType);
+        toCreate.setCropType(normalizedCropType);
         toCreate.setDate(date);
         toCreate.setCostData(calculatedCostData);
         return dailyCostRepository.save(toCreate);
     }
 
     private DailyCost resolveDailyCost(String tenantId, String cropType, LocalDate date) {
-        Optional<DailyCost> dailyCost = dailyCostRepository.findByTenantIdAndCropTypeAndDate(tenantId, cropType, date);
+        String normalizedCropType = normalizeCropType(cropType);
+        Optional<DailyCost> dailyCost = dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDate(tenantId, normalizedCropType, date);
         if (dailyCost.isPresent()) {
             DailyCost cost = dailyCost.get();
-            String updatedCostData = costCalculationService.calculateAmounts(tenantId, cropType, date, cost.getCostData());
+            cost.setCropType(normalizedCropType);
+            String updatedCostData = costCalculationService.calculateAmounts(tenantId, normalizedCropType, date, cost.getCostData());
             cost.setCostData(updatedCostData);
             dailyCostRepository.save(cost);
             return cost;
         }
 
-        Optional<com.knoweb.tenant.entity.CropConfig> config = cropConfigRepository.findByTenantIdAndCropType(tenantId, cropType);
+        Optional<com.knoweb.tenant.entity.CropConfig> config = cropConfigRepository.findByTenantIdAndCropTypeIgnoreCase(tenantId, normalizedCropType);
         if (config.isEmpty() || config.get().getCostItems() == null) {
             return null;
         }
 
         String calculatedCostData = costCalculationService.calculateAmounts(
-                tenantId, cropType, date, config.get().getCostItems());
+                tenantId, normalizedCropType, date, config.get().getCostItems());
 
         DailyCost dynamicCost = new DailyCost();
         dynamicCost.setTenantId(tenantId);
-        dynamicCost.setCropType(cropType);
+        dynamicCost.setCropType(normalizedCropType);
         dynamicCost.setDate(date);
         dynamicCost.setCostData(calculatedCostData);
         return dynamicCost;
+    }
+
+    private String normalizeCropType(String cropType) {
+        return cropType == null ? "" : cropType.trim().toUpperCase(Locale.ROOT);
     }
 
     private double parseAmount(String text) {

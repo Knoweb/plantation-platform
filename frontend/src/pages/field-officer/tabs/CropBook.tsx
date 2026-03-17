@@ -395,8 +395,8 @@ export default function CropBook() {
                         cashKilosTodate: (!isFuture && cKToDate) ? cKToDate.toFixed(1) : '',
                         pluckingAverageDay: (!isFuture && pAvgDay) ? pAvgDay.toFixed(2) : '',
                         pluckingAverageTodate: (!isFuture && pAvgToDate) ? pAvgToDate.toFixed(2) : '',
-                        pluckingCostPerKgDay: (!isFuture && costDayPerKg > 0) ? costDayPerKg.toFixed(2) : '',
-                        pluckingCostPerKgTodate: (!isFuture && costToDatePerKg > 0) ? costToDatePerKg.toFixed(2) : ''
+                        pluckingCostPerKgDay: (!isFuture && d.permAndCasualWeightDay > 0) ? costDayPerKg.toFixed(2) : '',
+                        pluckingCostPerKgTodate: (!isFuture && permCasWtToDate > 0) ? costToDatePerKg.toFixed(2) : ''
                     });
                 }
 

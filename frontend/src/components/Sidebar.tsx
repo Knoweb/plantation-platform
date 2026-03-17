@@ -23,7 +23,6 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import ScienceIcon from '@mui/icons-material/Science';
 
 import GroupIcon from '@mui/icons-material/Group';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import ChatIcon from '@mui/icons-material/Chat';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -57,7 +56,6 @@ const menuItems = [
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
-    { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER'] },
     { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER'] },
     { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
