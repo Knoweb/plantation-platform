@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
   cloud:
     gateway:
       discovery:
@@ -30,6 +34,16 @@ spring:
           uri: lb://TENANT-SERVICE
           predicates:
             - Path=/api/tenants,/api/tenants/**,/api/divisions,/api/divisions/**,/api/workers,/api/workers/**,/api/fields,/api/fields/**,/api/crop-configs,/api/crop-configs/**,/api/daily-costs,/api/daily-costs/**,/api/work-program,/api/work-program/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: tenantServiceCB
+                fallbackUri: forward:/fallback/general
         - id: tenant-service-ws
           uri: lb:ws://TENANT-SERVICE
           predicates:
@@ -38,14 +52,47 @@ spring:
           uri: lb://INVENTORY-SERVICE
           predicates:
             - Path=/api/inventory,/api/inventory/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: inventoryServiceCB
+                fallbackUri: forward:/fallback/general
         - id: operation-service
           uri: lb://OPERATION-SERVICE
           predicates:
             - Path=/api/operations,/api/operations/**,/api/messages,/api/messages/**
+          filters:
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 10
+                redis-rate-limiter.burstCapacity: 20
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: operationServiceCB
+                fallbackUri: forward:/fallback/general
         - id: operation-service-ws
           uri: lb:ws://OPERATION-SERVICE
           predicates:
             - Path=/ws/distribution-works,/ws/distribution-works/**
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
 
 eureka:
   client:
