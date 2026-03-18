@@ -8,6 +8,7 @@ import com.knoweb.tenant.entity.Tenant;
 import com.knoweb.tenant.entity.User;
 import com.knoweb.tenant.repository.TenantRepository;
 import com.knoweb.tenant.repository.UserRepository;
+import com.knoweb.tenant.util.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,14 +22,16 @@ public class TenantService {
     private final UserRepository userRepository;
     private final com.knoweb.tenant.repository.DivisionRepository divisionRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtUtil jwtUtil;
 
     public TenantService(TenantRepository tenantRepository, UserRepository userRepository,
             com.knoweb.tenant.repository.DivisionRepository divisionRepository,
-            PasswordEncoder passwordEncoder) {
+            PasswordEncoder passwordEncoder, JwtUtil jwtUtil) {
         this.tenantRepository = tenantRepository;
         this.userRepository = userRepository;
         this.divisionRepository = divisionRepository;
         this.passwordEncoder = passwordEncoder;
+        this.jwtUtil = jwtUtil;
     }
 
     @Transactional
@@ -151,7 +154,15 @@ public class TenantService {
         Tenant tenant = tenantRepository.findById(user.getTenantId())
                 .orElseThrow(() -> new RuntimeException("Tenant configuration error"));
 
-        // 4. Return Response
+        // 4. Generate JWT Token
+        String token = jwtUtil.generateToken(
+                user.getUserId(),
+                user.getUsername(),
+                user.getRole(),
+                tenant.getTenantId()
+        );
+
+        // 5. Return Response
         return new AuthResponse(
                 user.getUserId(),
                 user.getUsername(),
@@ -162,7 +173,8 @@ public class TenantService {
                 tenant.getLogoUrl(),
                 tenant.getSubDomain(),
                 user.getDivisionAccess(),
-                tenant.getConfigJson()); // Pass the list of Division IDs and Tenant Config
+                tenant.getConfigJson(),
+                token); // Pass the list of Division IDs, Tenant Config, and the new JWT Token
     }
 
     @Transactional

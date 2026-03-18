@@ -5,6 +5,25 @@ import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
 import theme from './theme/theme';
 import './index.css';
+import axios from 'axios';
+
+// Global Axios Interceptor for JWT Authentication
+axios.interceptors.request.use(
+  (config) => {
+    const userStr = sessionStorage.getItem('user');
+    if (userStr) {
+      const user = JSON.parse(userStr);
+      if (user && user.token) {
+        config.headers['Authorization'] = `Bearer ${user.token}`;
+      }
+    }
+    return config;
+  },
+  (error) => {
+    return Promise.reject(error);
+  }
+);
+import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

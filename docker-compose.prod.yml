@@ -25,14 +25,24 @@ services:
       - plantation-network
     restart: always
 
+  redis:
+    image: redis:7-alpine
+    container_name: redis
+    networks:
+      - plantation-network
+    restart: always
+
   api-gateway:
     build: 
       context: ./backend/api-gateway
       dockerfile: Dockerfile
     environment:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
     depends_on:
       - discovery-server
+      - redis
     networks:
       - plantation-network
     restart: always

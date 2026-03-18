@@ -18,9 +18,13 @@ public class AuthResponse {
     private java.util.List<String> divisionAccess;
     private java.util.Map<String, Object> config;
 
+    // Additional auth
+    private String token;
+
     public AuthResponse(UUID userId, String username, String fullName, String role,
             UUID tenantId, String companyName, String logoUrl, String subDomain,
-            java.util.List<String> divisionAccess, java.util.Map<String, Object> config) {
+            java.util.List<String> divisionAccess, java.util.Map<String, Object> config,
+            String token) {
         this.userId = userId;
         this.username = username;
         this.fullName = fullName;
@@ -31,6 +35,7 @@ public class AuthResponse {
         this.subDomain = subDomain;
         this.divisionAccess = divisionAccess;
         this.config = config;
+        this.token = token;
     }
 
     // Getters
@@ -72,5 +77,9 @@ public class AuthResponse {
 
     public java.util.Map<String, Object> getConfig() {
         return config;
+    }
+
+    public String getToken() {
+        return token;
     }
 }
