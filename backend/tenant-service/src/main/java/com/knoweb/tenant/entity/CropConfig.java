@@ -33,6 +33,19 @@ public class CropConfig {
     @Column(name = "budget_feb") private Double budgetFeb;
     @Column(name = "budget_mar") private Double budgetMar;
 
+    @Column(name = "working_days_apr") private Double workingDaysApr;
+    @Column(name = "working_days_may") private Double workingDaysMay;
+    @Column(name = "working_days_jun") private Double workingDaysJun;
+    @Column(name = "working_days_jul") private Double workingDaysJul;
+    @Column(name = "working_days_aug") private Double workingDaysAug;
+    @Column(name = "working_days_sep") private Double workingDaysSep;
+    @Column(name = "working_days_oct") private Double workingDaysOct;
+    @Column(name = "working_days_nov") private Double workingDaysNov;
+    @Column(name = "working_days_dec") private Double workingDaysDec;
+    @Column(name = "working_days_jan") private Double workingDaysJan;
+    @Column(name = "working_days_feb") private Double workingDaysFeb;
+    @Column(name = "working_days_mar") private Double workingDaysMar;
+
     @Column(name = "aththama_wage")
     private Double aththamaWage;
 
@@ -45,6 +58,9 @@ public class CropConfig {
     // JSON string storing cost analysis items, managed by Chief Clerk
     @Column(name = "cost_items", columnDefinition = "TEXT")
     private String costItems;
+
+    @Column(name = "working_day_calendar", columnDefinition = "TEXT")
+    private String workingDayCalendar;
 
     public UUID getId() {
         return id;
@@ -103,6 +119,31 @@ public class CropConfig {
     public Double getBudgetMar() { return budgetMar; }
     public void setBudgetMar(Double budgetMar) { this.budgetMar = budgetMar; }
 
+    public Double getWorkingDaysApr() { return workingDaysApr; }
+    public void setWorkingDaysApr(Double workingDaysApr) { this.workingDaysApr = workingDaysApr; }
+    public Double getWorkingDaysMay() { return workingDaysMay; }
+    public void setWorkingDaysMay(Double workingDaysMay) { this.workingDaysMay = workingDaysMay; }
+    public Double getWorkingDaysJun() { return workingDaysJun; }
+    public void setWorkingDaysJun(Double workingDaysJun) { this.workingDaysJun = workingDaysJun; }
+    public Double getWorkingDaysJul() { return workingDaysJul; }
+    public void setWorkingDaysJul(Double workingDaysJul) { this.workingDaysJul = workingDaysJul; }
+    public Double getWorkingDaysAug() { return workingDaysAug; }
+    public void setWorkingDaysAug(Double workingDaysAug) { this.workingDaysAug = workingDaysAug; }
+    public Double getWorkingDaysSep() { return workingDaysSep; }
+    public void setWorkingDaysSep(Double workingDaysSep) { this.workingDaysSep = workingDaysSep; }
+    public Double getWorkingDaysOct() { return workingDaysOct; }
+    public void setWorkingDaysOct(Double workingDaysOct) { this.workingDaysOct = workingDaysOct; }
+    public Double getWorkingDaysNov() { return workingDaysNov; }
+    public void setWorkingDaysNov(Double workingDaysNov) { this.workingDaysNov = workingDaysNov; }
+    public Double getWorkingDaysDec() { return workingDaysDec; }
+    public void setWorkingDaysDec(Double workingDaysDec) { this.workingDaysDec = workingDaysDec; }
+    public Double getWorkingDaysJan() { return workingDaysJan; }
+    public void setWorkingDaysJan(Double workingDaysJan) { this.workingDaysJan = workingDaysJan; }
+    public Double getWorkingDaysFeb() { return workingDaysFeb; }
+    public void setWorkingDaysFeb(Double workingDaysFeb) { this.workingDaysFeb = workingDaysFeb; }
+    public Double getWorkingDaysMar() { return workingDaysMar; }
+    public void setWorkingDaysMar(Double workingDaysMar) { this.workingDaysMar = workingDaysMar; }
+
     public Double getAththamaWage() {
         return aththamaWage;
     }
@@ -133,5 +174,13 @@ public class CropConfig {
 
     public void setCostItems(String costItems) {
         this.costItems = costItems;
+    }
+
+    public String getWorkingDayCalendar() {
+        return workingDayCalendar;
+    }
+
+    public void setWorkingDayCalendar(String workingDayCalendar) {
+        this.workingDayCalendar = workingDayCalendar;
     }
 }

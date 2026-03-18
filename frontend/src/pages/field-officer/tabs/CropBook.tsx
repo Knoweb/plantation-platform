@@ -2,6 +2,15 @@ import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, Ta
 import EditIcon from '@mui/icons-material/Edit';
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import {
+    countWorkingDaysUpTo,
+    getWorkingDaysCountForMonth,
+    getWorkingDaysForMonth,
+    isWorkingDay,
+    parseWorkingDayCalendar,
+    serializeWorkingDayCalendar,
+    toggleWorkingDay,
+} from '../../../utils/workingDayCalendar';
 
 export default function CropBook() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -23,6 +32,11 @@ export default function CropBook() {
         budgetJul: '', budgetAug: '', budgetSep: '',
         budgetOct: '', budgetNov: '', budgetDec: '',
         budgetJan: '', budgetFeb: '', budgetMar: '',
+        workingDaysApr: '', workingDaysMay: '', workingDaysJun: '',
+        workingDaysJul: '', workingDaysAug: '', workingDaysSep: '',
+        workingDaysOct: '', workingDaysNov: '', workingDaysDec: '',
+        workingDaysJan: '', workingDaysFeb: '', workingDaysMar: '',
+        workingDayCalendar: '',
         aththamaWage: '',
         overKiloRate: '',
         cashKiloRate: ''
@@ -42,6 +56,11 @@ export default function CropBook() {
                     budgetJul: res.data.budgetJul || '', budgetAug: res.data.budgetAug || '', budgetSep: res.data.budgetSep || '',
                     budgetOct: res.data.budgetOct || '', budgetNov: res.data.budgetNov || '', budgetDec: res.data.budgetDec || '',
                     budgetJan: res.data.budgetJan || '', budgetFeb: res.data.budgetFeb || '', budgetMar: res.data.budgetMar || '',
+                    workingDaysApr: res.data.workingDaysApr || '', workingDaysMay: res.data.workingDaysMay || '', workingDaysJun: res.data.workingDaysJun || '',
+                    workingDaysJul: res.data.workingDaysJul || '', workingDaysAug: res.data.workingDaysAug || '', workingDaysSep: res.data.workingDaysSep || '',
+                    workingDaysOct: res.data.workingDaysOct || '', workingDaysNov: res.data.workingDaysNov || '', workingDaysDec: res.data.workingDaysDec || '',
+                    workingDaysJan: res.data.workingDaysJan || '', workingDaysFeb: res.data.workingDaysFeb || '', workingDaysMar: res.data.workingDaysMar || '',
+                    workingDayCalendar: res.data.workingDayCalendar || '',
                     aththamaWage: res.data.aththamaWage || '',
                     overKiloRate: res.data.overKiloRate || '',
                     cashKiloRate: res.data.cashKiloRate || ''
@@ -432,6 +451,22 @@ export default function CropBook() {
         '09': 'budgetSep', '10': 'budgetOct', '11': 'budgetNov', '12': 'budgetDec'
     };
 
+    const workingDaysPropertyMap: Record<string, string> = {
+        '01': 'workingDaysJan', '02': 'workingDaysFeb', '03': 'workingDaysMar', '04': 'workingDaysApr',
+        '05': 'workingDaysMay', '06': 'workingDaysJun', '07': 'workingDaysJul', '08': 'workingDaysAug',
+        '09': 'workingDaysSep', '10': 'workingDaysOct', '11': 'workingDaysNov', '12': 'workingDaysDec'
+    };
+
+    const workingDayCalendar = parseWorkingDayCalendar(config.workingDayCalendar);
+    const selectedMonthWorkingDays = getWorkingDaysForMonth(workingDayCalendar, selectedMonth);
+    const selectedMonthWorkingDaysCount = selectedMonthWorkingDays.length;
+    const calendarWeekLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+    const calendarLeadingBlankDays = (new Date(selYear, selMonth - 1, 1).getDay() + 6) % 7;
+    const calendarMonthTitle = new Date(selYear, selMonth - 1, 1).toLocaleDateString('en-US', {
+        month: 'long',
+        year: 'numeric'
+    });
+
     const sysMonths = ['04', '05', '06', '07', '08', '09', '10', '11', '12', '01', '02', '03'];
 
     // Auto-calculate Budget up to last month (sum from April to month before selectedMonth)
@@ -447,8 +482,13 @@ export default function CropBook() {
 
     const budgetMonthCalculated = Number(config[monthPropertyMap[selMonthStr]] || 0);
 
-    // Calculate the expected progress proportionally
-    const automatedBudgetToDate = (budgetMonthCalculated / totalDaysInMonth) * daysPassed;
+    const elapsedWorkingDays = daysPassed > 0
+        ? countWorkingDaysUpTo(workingDayCalendar, selectedMonth, daysPassed)
+        : 0;
+    const budgetPerWorkingDay = selectedMonthWorkingDaysCount > 0
+        ? budgetMonthCalculated / selectedMonthWorkingDaysCount
+        : 0;
+    const automatedBudgetToDate = budgetPerWorkingDay * elapsedWorkingDays;
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
     const prevMonthName = selMonth === 1 ? 'December' : monthNames[selMonth - 2];
@@ -474,10 +514,13 @@ export default function CropBook() {
 
     const handleSaveConfig = async () => {
         try {
+            const syncedCalendar = serializeWorkingDayCalendar(workingDayCalendar);
             await axios.post(`/api/crop-configs`, {
                 tenantId: userSession.tenantId,
                 cropType: activeCrop,
-                ...config
+                ...config,
+                workingDayCalendar: syncedCalendar,
+                [workingDaysPropertyMap[selMonthStr]]: selectedMonthWorkingDaysCount
             });
             setOpenConfig(false);
             setOpenWages(false);
@@ -485,6 +528,15 @@ export default function CropBook() {
         } catch (e) {
             console.error("Failed to save config", e);
         }
+    };
+
+    const handleToggleWorkingDay = (day: number) => {
+        const nextCalendar = toggleWorkingDay(workingDayCalendar, selectedMonth, day);
+        setConfig({
+            ...config,
+            workingDayCalendar: serializeWorkingDayCalendar(nextCalendar),
+            [workingDaysPropertyMap[selMonthStr]]: String(getWorkingDaysCountForMonth(nextCalendar, selectedMonth))
+        });
     };
 
     return (
@@ -803,6 +855,118 @@ export default function CropBook() {
                                 helperText={`Saving for: ${selectedMonth}`}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ endAdornment: <InputAdornment position="end">Kg</InputAdornment> }} />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField fullWidth label="Working Days for the Month" type="number" margin="normal"
+                                value={selectedMonthWorkingDaysCount}
+                                helperText={`Auto-count from working dates for: ${selectedMonth}`}
+                                InputLabelProps={{ shrink: true }}
+                                inputProps={{ min: 0, max: 31, step: 1 }}
+                                disabled
+                                InputProps={{ endAdornment: <InputAdornment position="end">days</InputAdornment> }} />
+                        </Grid>
+                        <Grid size={{ xs: 12 }}>
+                            <Box sx={{ mt: 1, p: 1.5, border: '1px solid #c8e6c9', borderRadius: 2, bgcolor: '#f8fff7' }}>
+                                <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1b5e20', mb: 0.25 }}>
+                                    Working Day Calendar
+                                </Typography>
+                                <Typography variant="caption" color="text.secondary">
+                                    Weekdays start as working days by default. Click a date to mark it on or off for {selectedMonth}.
+                                </Typography>
+                                <Box sx={{
+                                    mt: 1.5,
+                                    display: 'flex',
+                                    justifyContent: 'center',
+                                    alignItems: 'center'
+                                }}>
+                                    <Typography variant="body1" sx={{ fontWeight: 700, color: '#1b5e20', letterSpacing: 0.3, textAlign: 'center' }}>
+                                        {calendarMonthTitle}
+                                    </Typography>
+                                </Box>
+                                <Box sx={{
+                                    mt: 1.5,
+                                    display: 'grid',
+                                    gridTemplateColumns: 'repeat(7, minmax(0, 1fr))',
+                                    gap: 0.75
+                                }}>
+                                    {calendarWeekLabels.map((label) => (
+                                        <Box
+                                            key={label}
+                                            sx={{
+                                                textAlign: 'center',
+                                                py: 0.5,
+                                                borderRadius: 1,
+                                                bgcolor: '#edf7ed',
+                                                color: '#2e7d32',
+                                                fontWeight: 700,
+                                                fontSize: '0.78rem'
+                                            }}
+                                        >
+                                            {label}
+                                        </Box>
+                                    ))}
+                                    {Array.from({ length: calendarLeadingBlankDays }).map((_, index) => (
+                                        <Box
+                                            key={`blank-${index}`}
+                                            sx={{
+                                                minHeight: 42,
+                                                borderRadius: 1.5,
+                                                bgcolor: 'transparent'
+                                            }}
+                                        />
+                                    ))}
+                                    {Array.from({ length: totalDaysInMonth }).map((_, index) => {
+                                        const day = index + 1;
+                                        const dayOfWeek = new Date(selYear, selMonth - 1, day).getDay();
+                                        const weekend = dayOfWeek === 0 || dayOfWeek === 6;
+                                        const working = isWorkingDay(workingDayCalendar, selectedMonth, day);
+
+                                        return (
+                                            <Button
+                                                key={day}
+                                                variant={working ? 'contained' : 'outlined'}
+                                                color={working ? 'success' : 'inherit'}
+                                                onClick={() => handleToggleWorkingDay(day)}
+                                                sx={{
+                                                    minWidth: 0,
+                                                    px: 0,
+                                                    py: 0.75,
+                                                    minHeight: 42,
+                                                    fontWeight: 700,
+                                                    borderColor: weekend ? '#ef9a9a' : undefined,
+                                                    bgcolor: working
+                                                        ? '#43a047'
+                                                        : (weekend ? '#fff3f3' : '#ffffff'),
+                                                    color: working ? '#fff' : (weekend ? '#c62828' : '#1b5e20'),
+                                                    '&:hover': {
+                                                        bgcolor: working
+                                                            ? '#2e7d32'
+                                                            : (weekend ? '#ffe3e3' : '#f1f8e9')
+                                                    }
+                                                }}
+                                            >
+                                                {day}
+                                            </Button>
+                                        );
+                                    })}
+                                </Box>
+                                <Box sx={{ mt: 1.5, display: 'flex', justifyContent: 'center' }}>
+                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, justifyContent: 'center' }}>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#43a047' }} />
+                                            <Typography variant="caption" color="text.secondary">Working day</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#ffffff', border: '1px solid #c8e6c9' }} />
+                                            <Typography variant="caption" color="text.secondary">Off day</Typography>
+                                        </Box>
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#fff3f3', border: '1px solid #ef9a9a' }} />
+                                            <Typography variant="caption" color="text.secondary">Weekend</Typography>
+                                        </Box>
+                                    </Box>
+                                </Box>
+                            </Box>
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <Box sx={{ p: 1.5, bgcolor: '#e8f5e9', borderRadius: 1, border: '1px solid #a5d6a7', mt: 1 }}>

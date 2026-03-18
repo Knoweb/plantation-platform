@@ -286,6 +286,13 @@ public class DailyCostController {
             DataFormatter formatter = new DataFormatter();
             FormulaEvaluator evaluator = workbook.getCreationHelper().createFormulaEvaluator();
 
+            // ── Strict structure validation ────────────────────────────────
+            String structureError = validateExcelStructure(sheet, formatter, evaluator);
+            if (structureError != null) {
+                return ResponseEntity.badRequest().body(Map.of("message", structureError));
+            }
+            // ──────────────────────────────────────────────────────────────
+
             Map<String, List<ObjectNode>> byCategory = new LinkedHashMap<>();
             String currentCategory = null;
             for (int i = 0; i <= sheet.getLastRowNum(); i++) {
@@ -434,6 +441,83 @@ public class DailyCostController {
         itemNode.put("name", itemName);
         itemNode.put("dayAmount", String.valueOf(parseAmount(dayAmount)));
         return itemNode;
+    }
+
+    /**
+     * Validates that the uploaded Excel file matches the exact structure produced
+     * by the system's own download endpoint. Returns null if valid, or an error
+     * message describing the first problem found.
+     */
+    private String validateExcelStructure(Sheet sheet, DataFormatter formatter, FormulaEvaluator evaluator) {
+        // ── Row 0: Title must be "Cost Analysis" ───────────────────────────
+        Row titleRow = sheet.getRow(0);
+        if (titleRow == null) {
+            return "Invalid file: missing title row. Please upload the original system-generated Excel file.";
+        }
+        String title = formatter.formatCellValue(titleRow.getCell(0), evaluator).trim();
+        if (!title.equalsIgnoreCase("Cost Analysis")) {
+            return "Invalid file: expected title \"Cost Analysis\" in cell A1, but found \"" + title + "\". " +
+                    "Do not modify the file header.";
+        }
+
+        // ── Row 3: Group headers ─────────────────────────────────────────
+        Row groupRow = sheet.getRow(3);
+        if (groupRow == null) {
+            return "Invalid file: missing column group header row (row 4). File structure has been altered.";
+        }
+        String grpDay   = formatter.formatCellValue(groupRow.getCell(1), evaluator).trim();
+        String grpTodate = formatter.formatCellValue(groupRow.getCell(3), evaluator).trim();
+        String grpHist  = formatter.formatCellValue(groupRow.getCell(5), evaluator).trim();
+        if (!grpDay.equalsIgnoreCase("Day")) {
+            return "Invalid column structure: column B header should be \"Day\" but found \"" + grpDay + "\". " +
+                    "Do not add or remove columns.";
+        }
+        if (!grpTodate.equalsIgnoreCase("Todate")) {
+            return "Invalid column structure: column D header should be \"Todate\" but found \"" + grpTodate + "\". " +
+                    "Do not add or remove columns.";
+        }
+        if (!grpHist.equalsIgnoreCase("History")) {
+            return "Invalid column structure: column F header should be \"History\" but found \"" + grpHist + "\". " +
+                    "Do not add or remove columns.";
+        }
+
+        // ── Row 4: Sub-headers ───────────────────────────────────────────
+        Row subRow = sheet.getRow(4);
+        if (subRow == null) {
+            return "Invalid file: missing sub-header row (row 5). File structure has been altered.";
+        }
+        String[] expectedSubHeaders = {
+                "Work Item",     // col 0
+                "Amount (Rs.)",  // col 1 - Day
+                "Cost/Kg",       // col 2 - Day
+                "Amount (Rs.)",  // col 3 - Todate
+                "Cost/Kg",       // col 4 - Todate
+                "Last Month",    // col 5
+                "YTD"            // col 6
+        };
+        for (int col = 0; col < expectedSubHeaders.length; col++) {
+            String actual = formatter.formatCellValue(subRow.getCell(col), evaluator).trim();
+            if (!actual.equalsIgnoreCase(expectedSubHeaders[col])) {
+                return "Invalid column header at position " + (col + 1) + ": expected \"" +
+                        expectedSubHeaders[col] + "\" but found \"" + actual + "\". " +
+                        "Do not rename or reorder columns.";
+            }
+        }
+
+        // ── Check no extra columns beyond col 6 in any data row ──────────
+        for (int r = 5; r <= sheet.getLastRowNum(); r++) {
+            Row row = sheet.getRow(r);
+            if (row == null) continue;
+            for (int col = 7; col <= row.getLastCellNum(); col++) {
+                String extra = formatter.formatCellValue(row.getCell(col), evaluator).trim();
+                if (!extra.isEmpty()) {
+                    return "Extra data found in column " + (char) ('A' + col) + " at row " + (r + 1) +
+                            ". The template must not have any content beyond column G.";
+                }
+            }
+        }
+
+        return null; // valid
     }
 
     private void createAmountCell(Row row, int columnIndex, double value, CellStyle style) {

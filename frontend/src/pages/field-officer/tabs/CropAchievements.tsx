@@ -14,6 +14,12 @@ import {
     Typography,
 } from '@mui/material';
 import axios from 'axios';
+import {
+    countWorkingDaysUpTo,
+    getWorkingDaysCountForMonth,
+    isWorkingDay,
+    parseWorkingDayCalendar,
+} from '../../../utils/workingDayCalendar';
 
 type CropKey = 'TEA' | 'RUBBER' | 'CINNAMON';
 type PeriodKey = 'today' | 'toDate';
@@ -27,11 +33,41 @@ interface MetricRow {
 }
 
 interface CropAchievementMetrics {
+    budgetedCrop: MetricValues;
+    workOfferedDays: MetricValues;
     pluckingAverage: MetricValues;
     checkrollWeight: MetricValues;
     pluckingCost: MetricValues;
     weedingCost: MetricValues;
     cropAcre: MetricValues;
+}
+
+interface CropBudgetConfig {
+    budgetJan?: string | number;
+    budgetFeb?: string | number;
+    budgetMar?: string | number;
+    budgetApr?: string | number;
+    budgetMay?: string | number;
+    budgetJun?: string | number;
+    budgetJul?: string | number;
+    budgetAug?: string | number;
+    budgetSep?: string | number;
+    budgetOct?: string | number;
+    budgetNov?: string | number;
+    budgetDec?: string | number;
+    workingDayCalendar?: string;
+    workingDaysJan?: string | number;
+    workingDaysFeb?: string | number;
+    workingDaysMar?: string | number;
+    workingDaysApr?: string | number;
+    workingDaysMay?: string | number;
+    workingDaysJun?: string | number;
+    workingDaysJul?: string | number;
+    workingDaysAug?: string | number;
+    workingDaysSep?: string | number;
+    workingDaysOct?: string | number;
+    workingDaysNov?: string | number;
+    workingDaysDec?: string | number;
 }
 
 interface CostItem {
@@ -76,6 +112,8 @@ const defaultValues = (): MetricValues => ({
 });
 
 const defaultAchievementMetrics = (): CropAchievementMetrics => ({
+    budgetedCrop: defaultValues(),
+    workOfferedDays: defaultValues(),
     pluckingAverage: defaultValues(),
     checkrollWeight: defaultValues(),
     pluckingCost: defaultValues(),
@@ -194,6 +232,50 @@ const fmtPerKgValue = (amountTotal: number, weight?: number, overrideText?: stri
     return (amountTotal / weight).toFixed(2);
 };
 
+const budgetMonthPropertyMap: Record<string, keyof CropBudgetConfig> = {
+    '01': 'budgetJan',
+    '02': 'budgetFeb',
+    '03': 'budgetMar',
+    '04': 'budgetApr',
+    '05': 'budgetMay',
+    '06': 'budgetJun',
+    '07': 'budgetJul',
+    '08': 'budgetAug',
+    '09': 'budgetSep',
+    '10': 'budgetOct',
+    '11': 'budgetNov',
+    '12': 'budgetDec',
+};
+
+const calculateBudgetedCropToDate = (config: CropBudgetConfig | null | undefined, selectedDate: string) => {
+    const [year, month, day] = selectedDate.split('-');
+    const monthBudget = Number(config?.[budgetMonthPropertyMap[month] || 'budgetJan'] || 0);
+    const monthKey = `${year}-${month}`;
+    const workingDayCalendar = parseWorkingDayCalendar(config?.workingDayCalendar);
+    const totalWorkingDays = getWorkingDaysCountForMonth(workingDayCalendar, monthKey);
+    const elapsedWorkingDays = countWorkingDaysUpTo(workingDayCalendar, monthKey, Number(day) || 0);
+
+    if (monthBudget <= 0 || totalWorkingDays <= 0 || elapsedWorkingDays <= 0) {
+        return 0;
+    }
+
+    return (monthBudget / totalWorkingDays) * elapsedWorkingDays;
+};
+
+const calculateBudgetedCropForToday = (config: CropBudgetConfig | null | undefined, selectedDate: string) => {
+    const [year, month, day] = selectedDate.split('-');
+    const monthBudget = Number(config?.[budgetMonthPropertyMap[month] || 'budgetJan'] || 0);
+    const monthKey = `${year}-${month}`;
+    const workingDayCalendar = parseWorkingDayCalendar(config?.workingDayCalendar);
+    const totalWorkingDays = getWorkingDaysCountForMonth(workingDayCalendar, monthKey);
+
+    if (monthBudget <= 0 || totalWorkingDays <= 0 || !isWorkingDay(workingDayCalendar, monthKey, Number(day) || 0)) {
+        return 0;
+    }
+
+    return monthBudget / totalWorkingDays;
+};
+
 const metricRows: MetricRow[] = [
     { label: 'Budgeted Crop', values: defaultValues() },
     { label: 'Crop', values: defaultValues() },
@@ -299,6 +381,20 @@ export default function CropAchievements() {
                     })
                 );
                 const costCategoryMap = new Map<CropKey, CostCategory[]>(costResponses);
+
+                const cropConfigResponses = await Promise.all(
+                    cropsToShow.map(async (crop) => {
+                        try {
+                            const response = await axios.get('/api/crop-configs', {
+                                params: { tenantId, cropType: crop },
+                            });
+                            return [crop, (response.data || null) as CropBudgetConfig | null] as const;
+                        } catch {
+                            return [crop, null] as const;
+                        }
+                    })
+                );
+                const cropConfigMap = new Map<CropKey, CropBudgetConfig | null>(cropConfigResponses);
 
                 const workerTypeMap = new Map<string, string>();
                 workersList.forEach((worker: any) => {
@@ -486,6 +582,19 @@ export default function CropAchievements() {
                         (sum, category) => sum + catTotal(category.items, 'todateAmount'),
                         0
                     );
+                    const budgetedCropToDate = calculateBudgetedCropToDate(cropConfigMap.get(crop), reportDate);
+                    const budgetedCropToday = calculateBudgetedCropForToday(cropConfigMap.get(crop), reportDate);
+                    const cropWorkingDayCalendar = parseWorkingDayCalendar(cropConfigMap.get(crop)?.workingDayCalendar);
+                    const reportMonthKey = `${year}-${month}`;
+                    const elapsedWorkingDays = countWorkingDaysUpTo(cropWorkingDayCalendar, reportMonthKey, selectedDay);
+
+                    nextMetrics.budgetedCrop[crop].today =
+                        budgetedCropToday > 0 ? budgetedCropToday.toFixed(1) : '-';
+                    nextMetrics.budgetedCrop[crop].toDate =
+                        budgetedCropToDate > 0 ? budgetedCropToDate.toFixed(1) : '-';
+                    nextMetrics.workOfferedDays[crop].today =
+                        isWorkingDay(cropWorkingDayCalendar, reportMonthKey, selectedDay) ? '1' : '0';
+                    nextMetrics.workOfferedDays[crop].toDate = String(elapsedWorkingDays);
 
                     nextMetrics.pluckingAverage[crop].today =
                         pluckingAverageToday && Number.isFinite(pluckingAverageToday)
@@ -547,6 +656,12 @@ export default function CropAchievements() {
     const displayedRows = useMemo(
         () =>
             metricRows.map((row) => {
+                if (row.label === 'Budgeted Crop') {
+                    return { ...row, values: achievementMetrics.budgetedCrop };
+                }
+                if (row.label === 'Work Offered days') {
+                    return { ...row, values: achievementMetrics.workOfferedDays };
+                }
                 if (row.label === 'Plucking Average') {
                     return { ...row, values: achievementMetrics.pluckingAverage };
                 }
