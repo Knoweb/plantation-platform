@@ -32,6 +32,15 @@ services:
       - plantation-network
     restart: always
 
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: rabbitmq
+    ports:
+      - "15672:15672"  # Management UI (optional, for monitoring)
+    networks:
+      - plantation-network
+    restart: always
+
   api-gateway:
     build: 
       context: ./backend/api-gateway
@@ -72,9 +81,12 @@ services:
       spring.datasource.username: postgres
       spring.datasource.password: superman9
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
     depends_on:
       - postgres
       - discovery-server
+      - rabbitmq
     networks:
       - plantation-network
     restart: always
@@ -88,9 +100,12 @@ services:
       spring.datasource.username: postgres
       spring.datasource.password: superman9
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://discovery-server:8761/eureka
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_PORT: 5672
     depends_on:
       - postgres
       - discovery-server
+      - rabbitmq
     networks:
       - plantation-network
     restart: always

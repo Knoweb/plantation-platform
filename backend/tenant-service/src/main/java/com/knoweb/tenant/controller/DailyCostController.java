@@ -396,7 +396,7 @@ public class DailyCostController {
             return cost;
         }
 
-        Optional<com.knoweb.tenant.entity.CropConfig> config = cropConfigRepository.findByTenantIdAndCropTypeIgnoreCase(tenantId, normalizedCropType);
+        Optional<com.knoweb.tenant.entity.CropConfig> config = cropConfigRepository.findFirstByTenantIdAndCropTypeIgnoreCase(tenantId, normalizedCropType);
         if (config.isEmpty() || config.get().getCostItems() == null) {
             return null;
         }

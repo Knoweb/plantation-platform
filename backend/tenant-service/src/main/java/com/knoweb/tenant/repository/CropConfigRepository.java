@@ -9,5 +9,5 @@ import java.util.UUID;
 
 @Repository
 public interface CropConfigRepository extends JpaRepository<CropConfig, UUID> {
-    Optional<CropConfig> findByTenantIdAndCropTypeIgnoreCase(String tenantId, String cropType);
+    Optional<CropConfig> findFirstByTenantIdAndCropTypeIgnoreCase(String tenantId, String cropType);
 }

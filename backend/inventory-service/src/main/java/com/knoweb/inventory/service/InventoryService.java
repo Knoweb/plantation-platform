@@ -4,6 +4,7 @@ import com.knoweb.inventory.dto.StockTransactionRequest;
 import com.knoweb.inventory.entity.DivisionalStock;
 import com.knoweb.inventory.entity.InventoryItem;
 import com.knoweb.inventory.entity.InventoryTransaction;
+import com.knoweb.inventory.messaging.StockEventPublisher;
 import com.knoweb.inventory.repository.DivisionalStockRepository;
 import com.knoweb.inventory.repository.InventoryItemRepository;
 import com.knoweb.inventory.repository.InventoryTransactionRepository;
@@ -24,6 +25,9 @@ public class InventoryService {
 
     @Autowired
     private DivisionalStockRepository divisionalStockRepository;
+
+    @Autowired
+    private StockEventPublisher stockEventPublisher;
 
     public List<InventoryItem> getAllItems(String tenantId) {
         // Ensure new items are seeded
@@ -173,13 +177,20 @@ public class InventoryService {
                 autoReq.setItemId(item.getId());
                 autoReq.setItemName(item.getName());
                 autoReq.setType("RESTOCK_REQUEST");
-                autoReq.setQuantity(item.getBufferLevel()); // Default: Refill a buffer's worth
+                autoReq.setQuantity(item.getBufferLevel());
                 autoReq.setDate(LocalDateTime.now());
                 autoReq.setTenantId(tenantId);
                 autoReq.setIssuedTo("SYSTEM (Low Stock Auto-Refill)");
                 autoReq.setStatus("PENDING");
                 transactionRepository.save(autoReq);
-                System.out.println("Auto-generated Restock Request for " + item.getName());
+
+                // 📢 Publish STOCK_LOW event to RabbitMQ
+                try {
+                    stockEventPublisher.publishStockLow(item, tenantId);
+                } catch (Exception e) {
+                    // Fail silently — event publishing never blocks the main stock flow
+                    System.err.println("[RabbitMQ] Failed to publish STOCK_LOW event: " + e.getMessage());
+                }
             }
         }
     }

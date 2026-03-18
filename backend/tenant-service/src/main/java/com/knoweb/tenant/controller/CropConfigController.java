@@ -17,14 +17,14 @@ public class CropConfigController {
 
     @GetMapping
     public ResponseEntity<CropConfig> getConfig(@RequestParam String tenantId, @RequestParam String cropType) {
-        Optional<CropConfig> config = configRepository.findByTenantIdAndCropTypeIgnoreCase(tenantId, cropType);
+        Optional<CropConfig> config = configRepository.findFirstByTenantIdAndCropTypeIgnoreCase(tenantId, cropType);
         return config.map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.ok(new CropConfig())); // Return empty if not found
     }
 
     @PostMapping
     public ResponseEntity<CropConfig> saveConfig(@RequestBody CropConfig newConfig) {
-        Optional<CropConfig> existing = configRepository.findByTenantIdAndCropTypeIgnoreCase(newConfig.getTenantId(), newConfig.getCropType());
+        Optional<CropConfig> existing = configRepository.findFirstByTenantIdAndCropTypeIgnoreCase(newConfig.getTenantId(), newConfig.getCropType());
         if (existing.isPresent()) {
             CropConfig configToUpdate = existing.get();
             configToUpdate.setCropType(newConfig.getCropType());

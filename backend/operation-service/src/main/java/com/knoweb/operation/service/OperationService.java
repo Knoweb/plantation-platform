@@ -2,6 +2,7 @@ package com.knoweb.operation.service;
 
 import com.knoweb.operation.entity.HarvestLog;
 import com.knoweb.operation.entity.Muster;
+import com.knoweb.operation.messaging.HarvestEventPublisher;
 import com.knoweb.operation.repository.HarvestLogRepository;
 import com.knoweb.operation.repository.MusterRepository;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,6 +19,9 @@ public class OperationService {
 
     @Autowired
     private HarvestLogRepository harvestLogRepository;
+
+    @Autowired
+    private HarvestEventPublisher harvestEventPublisher;
 
     // Muster Operations
     public List<Muster> getMusters(String tenantId) {
@@ -78,6 +82,14 @@ public class OperationService {
     public HarvestLog logHarvest(HarvestLog log) {
         if (log.getDate() == null)
             log.setDate(LocalDate.now());
-        return harvestLogRepository.save(log);
+        HarvestLog saved = harvestLogRepository.save(log);
+        // 📢 Publish HARVEST_LOGGED event to RabbitMQ
+        try {
+            harvestEventPublisher.publishHarvestLogged(saved);
+        } catch (Exception e) {
+            // Fail silently — event publishing never breaks the main operation
+            System.err.println("[RabbitMQ] Failed to publish HARVEST_LOGGED event: " + e.getMessage());
+        }
+        return saved;
     }
 }

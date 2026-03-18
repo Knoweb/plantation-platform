@@ -38,8 +38,8 @@ spring:
             - name: AuthenticationFilter
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
@@ -57,8 +57,8 @@ spring:
             - name: AuthenticationFilter
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
@@ -72,8 +72,8 @@ spring:
             - name: AuthenticationFilter
             - name: RequestRateLimiter
               args:
-                redis-rate-limiter.replenishRate: 10
-                redis-rate-limiter.burstCapacity: 20
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
                 key-resolver: "#{@userKeyResolver}"
             - name: CircuitBreaker
               args:
@@ -101,3 +101,5 @@ eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true
