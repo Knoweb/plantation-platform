@@ -17,8 +17,13 @@ public class WorkerController {
     private WorkerService workerService;
 
     @PostMapping
-    public ResponseEntity<Worker> createWorker(@RequestBody Worker worker) {
-        return ResponseEntity.ok(workerService.createWorker(worker));
+    public ResponseEntity<?> createWorker(@RequestBody Worker worker) {
+        try {
+            return ResponseEntity.ok(workerService.createWorker(worker));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.status(500).body("Create Worker Error: " + e.getMessage());
+        }
     }
 
     @GetMapping
@@ -44,5 +49,19 @@ public class WorkerController {
     public ResponseEntity<Void> deleteWorker(@PathVariable UUID id) {
         workerService.deleteWorker(id);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/seed")
+    public ResponseEntity<String> seedWorkers(@RequestParam String tenantId) {
+        try {
+            workerService.seedWorkers(tenantId);
+            return ResponseEntity.ok("Success");
+        } catch (Exception e) {
+            StringBuilder sb = new StringBuilder(e.toString());
+            for (StackTraceElement element : e.getStackTrace()) {
+                sb.append("\n\tat ").append(element.toString());
+            }
+            return ResponseEntity.status(500).body("Error: " + sb.toString());
+        }
     }
 }

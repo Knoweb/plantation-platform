@@ -20,9 +20,9 @@ import LogoutIcon from '@mui/icons-material/Logout';
 import PeopleIcon from '@mui/icons-material/People';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
+import ScienceIcon from '@mui/icons-material/Science';
 
 import GroupIcon from '@mui/icons-material/Group';
-import AssessmentIcon from '@mui/icons-material/Assessment';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import ChatIcon from '@mui/icons-material/Chat';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -38,16 +38,17 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
-    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER'] },
+    { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER', 'CHIEF_CLERK'] },
     { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['MANAGER'] }, // Shared with Mgr
 
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
-    { text: 'Workers', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['FIELD_OFFICER'] },
-    { text: 'Attendance', icon: <HistoryIcon />, path: '/dashboard/attendance', roles: ['FIELD_OFFICER'] },
+    // Workers moved to Chief Clerk / Manager
+    { text: 'Worker Registry', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['CHIEF_CLERK', 'MANAGER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
-    { text: 'Crop Ages', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
+    { text: 'Field log', icon: <ForestIcon />, path: '/dashboard/crop-ages', roles: ['FIELD_OFFICER'] },
+    { text: 'Fertilizer Programme', icon: <ScienceIcon />, path: '/dashboard/fertilizer-programme', roles: ['FIELD_OFFICER'] },
     { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/distribution-works', roles: ['FIELD_OFFICER'] },
     { text: 'Leave Application', icon: <EventNoteIcon />, path: '/dashboard/leave-application', roles: ['FIELD_OFFICER'] },
     { text: 'Order Request', icon: <InventoryIcon />, path: '/dashboard/order-request', roles: ['FIELD_OFFICER'] },
@@ -55,15 +56,20 @@ const menuItems = [
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
-    { text: 'KPIs', icon: <AssessmentIcon />, path: '/dashboard/kpis', roles: ['FIELD_OFFICER', 'MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER'] },
     { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER'] },
-    { text: 'Correspondence', icon: <Badge badgeContent={3} color="error"><ChatIcon /></Badge>, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER'] },
+    { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
+
+    // Chief Clerk Specific Tabs
+    { text: 'Job Roles & Tasks', icon: <WorkHistoryIcon />, path: '/dashboard/job-roles', roles: ['CHIEF_CLERK'] },
+    { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/chief-cost-analysis', roles: ['CHIEF_CLERK'] },
+    { text: 'Distribution of Works', icon: <WorkHistoryIcon />, path: '/dashboard/chief-distribution-works', roles: ['CHIEF_CLERK'] },
+    { text: 'Inventory Management', icon: <InventoryIcon />, path: '/dashboard/chief-inventory', roles: ['CHIEF_CLERK'] },
 
     // Manager Specific Tabs
+    { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['MANAGER'] },
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
-    { text: 'Muster Review', icon: <GroupIcon />, path: '/dashboard/muster-review-manager', roles: ['MANAGER'] },
-    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER'] },
+    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER', 'CHIEF_CLERK'] },
 
 
     // Manager
@@ -71,7 +77,7 @@ const menuItems = [
 
     // Estate Admin / Manager
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/dashboard/users', roles: ['ESTATE_ADMIN'] }, // Removed MANAGER
-    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN', 'MANAGER'] },
+    { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
@@ -108,11 +114,15 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [musterReviewCount, setMusterReviewCount] = useState(0);
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
     const [storePendingCount, setStorePendingCount] = useState(0); // Store Keeper Approved FOs count
+    const [chiefClerkPendingCount, setChiefClerkPendingCount] = useState(0);
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
+    const [unreadChatCount, setUnreadChatCount] = useState(0);
+    const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
+    const [sidebarDivisions, setSidebarDivisions] = useState<any[]>([]);
 
     useEffect(() => {
         if (userSession.tenantId) {
-            if (userRole === 'MANAGER' || userRole === 'FIELD_OFFICER' || userRole === 'STORE_KEEPER') {
+            if (['MANAGER', 'FIELD_OFFICER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK', 'MANAGER_CLERK'].includes(userRole)) {
                 fetchAlerts();
 
                 // Poll every 10 seconds for real-time updates
@@ -130,24 +140,77 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         }
     }, [userRole, userSession.tenantId]);
 
+    useEffect(() => {
+        if (userSession.tenantId && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) {
+            const fetchManagerDivisions = async () => {
+                try {
+                    // Fetch latest user details dynamically to prevent stale session cache
+                    const myId = userSession.userId || userSession.id;
+                    let latestAccess = userSession.divisionAccess || [];
+                    try {
+                        const usersRes = await axios.get(`/api/tenants/${userSession.tenantId}/users`);
+                        const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                        if (me && me.divisionAccess) {
+                            latestAccess = me.divisionAccess;
+                        }
+                    } catch (e) {
+                        console.warn("Could not fetch latest user details, falling back to session");
+                    }
+
+                    const res = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
+                    let divs = res.data;
+
+                    if (latestAccess.length > 0) {
+                        divs = divs.filter((d: any) => latestAccess.includes(d.divisionId));
+                    }
+                    setSidebarDivisions(divs);
+                } catch (err) {
+                    console.error("Failed to load divisions for sidebar");
+                }
+            };
+            fetchManagerDivisions();
+
+            // Poll for dynamic updates
+            const divInterval = setInterval(fetchManagerDivisions, 10000);
+            return () => clearInterval(divInterval);
+        }
+    }, [userRole, userSession.tenantId]);
+
     const fetchAlerts = async () => {
         try {
-            // Stock Alerts
-            const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
-            const items = res.data;
-            const count = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
-            setAlertCount(count);
-
-            // Restock Requests (Pending) - For Manager
+            // Fetch Messages Alerts (For all roles)
+            try {
+                const myId = userSession.userId || userSession.id;
+                const msgRes = await axios.get(`/api/messages?userId=${myId}&userRole=${userRole}`, {
+                    headers: { 'X-Tenant-ID': userSession.tenantId }
+                });
+                const unread = msgRes.data.filter((m: any) => m.receiverId === myId && !m.read).length;
+                setUnreadChatCount(unread);
+            } catch (err) {
+                console.warn("Message alerts unavailable", err);
+            }
             // Restock Requests (Pending) - For Manager + Muster Review
-            if (userRole === 'MANAGER') {
+            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
                 const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
                 // Count Pending Restocks OR FO Requisitions
-                const reqCount = transRes.data.filter((t: any) =>
-                    (t.type === 'RESTOCK_REQUEST' || t.type === 'FO_REQUISITION') &&
+                const foCount = transRes.data.filter((t: any) =>
+                    t.type === 'FO_REQUISITION' &&
                     (t.status === 'PENDING' || t.status === null)
                 ).length;
-                setRestockCount(reqCount);
+                setAlertCount(foCount);
+
+                const restockC = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    (t.status === 'PENDING' || t.status === null) &&
+                    !(t.issuedTo && t.issuedTo.includes('SYSTEM')) // Hide auto-refills from Manager sidebar count
+                ).length;
+
+                // Count items below buffer level
+                const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
+                const items = res.data;
+                const lowStockCount = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
+
+                setRestockCount(restockC + lowStockCount);
 
                 // Muster Review Count
                 const workRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
@@ -156,6 +219,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     (item.status === 'PENDING' || !item.status)
                 ).length;
                 setMusterReviewCount(pendingMusters);
+
+                // Manager Worker Approvals Count
+                const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
+                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL' && item.employmentType !== 'CONTRACT_MEMBER').length;
+                setWorkerApprovalCount(pendingWorkers);
             }
 
             // Store Keeper Alerts
@@ -165,6 +233,16 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
                 ).length;
                 setStorePendingCount(approvedCount);
+            }
+
+            // Chief Clerk Alerts
+            if (userRole === 'CHIEF_CLERK') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const ccPending = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
+                ).length;
+                setChiefClerkPendingCount(ccPending);
             }
 
             // Field Officer Alerts
@@ -220,6 +298,23 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         }
     };
 
+    // Calculate sum of alerts across the entire sidebar to pass to the global Header bell
+    useEffect(() => {
+        let total = 0;
+        const alertsList: any[] = [];
+
+        if (alertCount > 0) { total += alertCount; alertsList.push({ id: 1, label: `${alertCount} Pending Approvals`, path: userRole === 'STORE_KEEPER' ? '/dashboard/store/approvals' : '/dashboard/approvals' }); }
+        if (restockCount > 0) { total += restockCount; alertsList.push({ id: 2, label: `${restockCount} General Stock Issues`, path: '/dashboard/stock' }); }
+        if (musterReviewCount > 0) { total += musterReviewCount; alertsList.push({ id: 3, label: `${musterReviewCount} Daily Muster Reviews`, path: '/dashboard/muster-review-manager' }); }
+        if (eveningPendingCount > 0) { total += eveningPendingCount; alertsList.push({ id: 4, label: `${eveningPendingCount} Evening Mustee Submissions`, path: '/dashboard/evening-muster' }); }
+        if (storePendingCount > 0) { total += storePendingCount; alertsList.push({ id: 5, label: `${storePendingCount} Dispatches`, path: '/dashboard/store/approvals' }); }
+        if (chiefClerkPendingCount > 0) { total += chiefClerkPendingCount; alertsList.push({ id: 6, label: `${chiefClerkPendingCount} Pending Inventory Actions`, path: '/dashboard/chief-inventory' }); }
+        if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} Unread Messages`, path: '/dashboard/correspondence' }); }
+        if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} Worker Approvals`, path: '/dashboard/workers' }); }
+
+        window.dispatchEvent(new CustomEvent('global-alerts-update', { detail: { total, alertsList } }));
+    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, userRole]);
+
     const handleLogout = () => {
         sessionStorage.removeItem('user');
         navigate('/login');
@@ -230,19 +325,41 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
 
     // We'll just render Divisions manually in the list below
+    const effectiveRoles = userRole === 'MANAGER_CLERK' ? ['MANAGER', 'CHIEF_CLERK'] : [userRole];
+
+    const getAlertCount = (item: any) => {
+        if (item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return alertCount;
+        if (item.text === 'General Stock' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return restockCount;
+        if (item.text === 'Pending Approvals' && userRole === 'STORE_KEEPER') return storePendingCount;
+        if (item.text === 'Inventory Management' && userRole === 'CHIEF_CLERK') return chiefClerkPendingCount;
+        if (item.text === 'Dashboard' && userRole === 'STORE_KEEPER') return alertCount;
+        if (item.text === 'Muster Review') return musterReviewCount;
+        if (item.text === 'Correspondence') return unreadChatCount;
+        if (item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return workerApprovalCount;
+        if (item.text === 'Evening Muster') return eveningPendingCount;
+        return 0;
+    };
 
     const filteredMenuItems = menuItems.filter(item =>
-        !item.roles || (userRole && item.roles.includes(userRole))
+        !item.roles || (effectiveRoles.some(r => item.roles.includes(r)))
     ).map(item => {
         if (item.text === 'Dashboard') {
             let dashboardPath = '/dashboard';
             if (userRole === 'ESTATE_ADMIN') dashboardPath = '/dashboard/admin';
-            else if (userRole === 'MANAGER') dashboardPath = '/dashboard/manager';
+            else if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') dashboardPath = '/dashboard/manager';
             else if (userRole === 'FIELD_OFFICER') dashboardPath = '/dashboard/field';
+            else if (userRole === 'CHIEF_CLERK') dashboardPath = '/dashboard/chief';
             return { ...item, path: dashboardPath };
         }
         return item;
-    });
+    }).map((item, index) => ({ item, index }))
+        .sort((a, b) => {
+            const countA = getAlertCount(a.item);
+            const countB = getAlertCount(b.item);
+            if (countA > 0 && countB === 0) return -1;
+            if (countB > 0 && countA === 0) return 1;
+            return a.index - b.index; // Stable sort for identical alert states
+        }).map(obj => obj.item);
 
     const drawerContent = (
         <>
@@ -283,11 +400,12 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         onClick={() => {
                             let path = '/dashboard';
                             if (userRole === 'ESTATE_ADMIN') path = '/dashboard/admin';
-                            else if (userRole === 'MANAGER') path = '/dashboard/manager';
+                            else if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') path = '/dashboard/manager';
                             else if (userRole === 'FIELD_OFFICER') path = '/dashboard/field';
+                            else if (userRole === 'CHIEF_CLERK') path = '/dashboard/chief';
                             navigate(path);
                         }}
-                        selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field'}
+                        selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field' || location.pathname === '/dashboard/chief'}
                         sx={{
                             borderRadius: 2,
                             mx: 1,
@@ -306,6 +424,68 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         <ListItemText primary="Dashboard" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
                     </ListItemButton>
                 </ListItem>
+
+                {/* Manager Divisions */}
+                {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && sidebarDivisions.length > 0 && (
+                    <Box sx={{ mt: 1, mb: 1 }}>
+                        <Typography variant="overline" sx={{ px: 3, color: 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>
+                            Divisions
+                        </Typography>
+                        {sidebarDivisions.map((div: any) => (
+                            <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
+                                <ListItemButton
+                                    onClick={() => navigate(`/dashboard/division-view/${div.divisionId}`)}
+                                    selected={location.pathname === `/dashboard/division-view/${div.divisionId}`}
+                                    sx={{
+                                        borderRadius: 2,
+                                        mx: 2,
+                                        minHeight: 36,
+                                        justifyContent: 'initial',
+                                        '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.2)' },
+                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                                    }}
+                                >
+                                    <ListItemIcon sx={{ color: 'white', minWidth: 32, justifyContent: 'center', mr: 1 }}>
+                                        <TerrainIcon fontSize="small" />
+                                    </ListItemIcon>
+                                    <ListItemText primary={div.name} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 400 }} />
+                                </ListItemButton>
+                            </ListItem>
+                        ))}
+                    </Box>
+                )}
+
+                {/* Muster Review directly below Divisions for Manager */}
+                {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && (
+                    <ListItem disablePadding sx={{ mb: 1 }}>
+                        <ListItemButton
+                            onClick={() => navigate('/dashboard/muster-review-manager')}
+                            selected={location.pathname === '/dashboard/muster-review-manager'}
+                            sx={{
+                                borderRadius: 2,
+                                mx: 1,
+                                minHeight: 48,
+                                justifyContent: 'initial',
+                                '&.Mui-selected': {
+                                    bgcolor: 'rgba(255,255,255,0.2)',
+                                    '&:hover': { bgcolor: 'rgba(255,255,255,0.25)' }
+                                },
+                                '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                            }}
+                        >
+                            <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
+                                {musterReviewCount > 0 ? (
+                                    <Badge badgeContent={musterReviewCount} color="error">
+                                        <GroupIcon />
+                                    </Badge>
+                                ) : (
+                                    <GroupIcon />
+                                )}
+                            </ListItemIcon>
+                            <ListItemText primary="Muster Review" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
+                        </ListItemButton>
+                    </ListItem>
+                )}
 
                 {/* Standard Menu Items (Excluding Dashboard) */}
                 {filteredMenuItems.filter(item => item.text !== 'Dashboard').map((item) => (
@@ -326,12 +506,20 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             }}
                         >
                             <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
-                                {item.text === 'Pending Approvals' && userRole === 'MANAGER' && (alertCount + restockCount) > 0 ? (
-                                    <Badge badgeContent={alertCount + restockCount} color="error">
+                                {item.text === 'Pending Approvals' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && alertCount > 0 ? (
+                                    <Badge badgeContent={alertCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'General Stock' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && restockCount > 0 ? (
+                                    <Badge badgeContent={restockCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : item.text === 'Pending Approvals' && userRole === 'STORE_KEEPER' && storePendingCount > 0 ? (
                                     <Badge badgeContent={storePendingCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Inventory Management' && userRole === 'CHIEF_CLERK' && chiefClerkPendingCount > 0 ? (
+                                    <Badge badgeContent={chiefClerkPendingCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : item.text === 'Dashboard' && userRole === 'STORE_KEEPER' && alertCount > 0 ? (
@@ -340,6 +528,14 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     </Badge>
                                 ) : item.text === 'Muster Review' && musterReviewCount > 0 ? (
                                     <Badge badgeContent={musterReviewCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Correspondence' && unreadChatCount > 0 ? (
+                                    <Badge badgeContent={unreadChatCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && workerApprovalCount > 0 ? (
+                                    <Badge badgeContent={workerApprovalCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : (

@@ -22,12 +22,19 @@ export default function StoreKeeperDashboard() {
     const [error, setError] = useState('');
     const [pendingItems, setPendingItems] = useState<Map<number, number>>(new Map());
     const [approvedOrders, setApprovedOrders] = useState<any[]>([]);
+    const [chiefClerkPending, setChiefClerkPending] = useState<any[]>([]);
+
+    const [ccApproveOpen, setCcApproveOpen] = useState(false);
+    const [ccSelectedOrder, setCcSelectedOrder] = useState<any>(null);
+    const [ccApproveQty, setCcApproveQty] = useState('');
+    const [ccRemarks, setCcRemarks] = useState('');
 
     // Tab Navigation via URL route
     const location = useLocation();
     let currentTab = 1; // Default to inventory
     if (location.pathname.includes('main')) currentTab = 0;
     else if (location.pathname.includes('approvals')) currentTab = 2;
+    else if (location.pathname.includes('inventory')) currentTab = 1;
 
     // Transaction Modal
     const [openModal, setOpenModal] = useState(false);
@@ -58,6 +65,9 @@ export default function StoreKeeperDashboard() {
         minimumLevel: 0,
         pricePerUnit: '' as any
     });
+
+    const [orderToIssue, setOrderToIssue] = useState<number | null>(null);
+    const [confirmIssueOpen, setConfirmIssueOpen] = useState(false);
 
     // Notification State
     const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'info' | 'warning' }>({
@@ -112,6 +122,12 @@ export default function StoreKeeperDashboard() {
             );
             setApprovedOrders(approvedFoOrders);
 
+            const ccPending = transRes.data.filter((t: any) =>
+                t.type === 'RESTOCK_REQUEST' &&
+                (t.status === 'CHIEF_CLERK_PENDING' || (t.status === 'PENDING' && t.issuedTo?.includes('SYSTEM')))
+            );
+            setChiefClerkPending(ccPending);
+
             setLoading(false);
         } catch (err) {
             console.error("Failed to fetch inventory. Ensure Inventory Service is running.");
@@ -130,14 +146,55 @@ export default function StoreKeeperDashboard() {
         setSelectedFields([]);
     };
 
-    const handleIssueOrder = async (orderId: number) => {
-        if (!window.confirm("Confirm issuance of stock to the Field Officer?")) return;
+    const handleIssueOrder = (orderId: number) => {
+        setOrderToIssue(orderId);
+        setConfirmIssueOpen(true);
+    };
+
+    const confirmIssueOrder = async () => {
+        if (!orderToIssue) return;
         try {
-            await axios.put(`/api/inventory/transactions/${orderId}/status?status=ISSUED`);
+            await axios.put(`/api/inventory/transactions/${orderToIssue}/status?status=ISSUED`);
             fetchInventory();
             showNotification('Stock Successfully Issued to Field Officer', 'success');
+            setConfirmIssueOpen(false);
         } catch (err: any) {
             showNotification('Failed to issue order: ' + (err.response?.data || err.message), 'error');
+        }
+    };
+
+    const handleChiefClerkApproveOpen = (order: any) => {
+        setCcSelectedOrder(order);
+        setCcApproveQty(String(order.quantity));
+        setCcApproveOpen(true);
+    };
+
+    const handleConfirmCcApprove = async () => {
+        if (!ccSelectedOrder || !ccApproveQty) return;
+        try {
+            const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
+            // Change status to PENDING but update issuedTo so the Manager now sees it
+            const issuedToParam = `&issuedTo=${encodeURIComponent(userSession.fullName + ' (Chief Clerk)')}`;
+            await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=PENDING&quantity=${ccApproveQty}${remarksParam}${issuedToParam}`);
+            setCcApproveOpen(false);
+            fetchInventory();
+            showNotification('Auto-Refill Request forwarded to Manager', 'success');
+        } catch (err: any) {
+            showNotification('Failed to forward order: ' + (err.response?.data || err.message), 'error');
+        }
+    };
+
+    const handleCcReject = async () => {
+        if (!ccSelectedOrder) return;
+        if (!window.confirm("Are you sure you want to REJECT this auto-refill request?")) return;
+        try {
+            const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
+            await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=REJECTED${remarksParam}`);
+            setCcApproveOpen(false);
+            fetchInventory();
+            showNotification('Auto-Refill Request Rejected', 'success');
+        } catch (err: any) {
+            showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
         }
     };
 
@@ -160,12 +217,22 @@ export default function StoreKeeperDashboard() {
         }
 
         try {
+            let finalIssuedTo = undefined;
+            if (modalType === 'RESTOCK_REQUEST') {
+                const uName = userSession.fullName || 'Chief Clerk';
+                // Only add (Chief Clerk) if the name doesn't already somehow include it
+                const roleSuffix = uName.includes('(Chief Clerk)') ? '' : ' (Chief Clerk)';
+                finalIssuedTo = issuedTo ? `${uName}${roleSuffix} - ${issuedTo}` : `${uName}${roleSuffix}`;
+            } else if (modalType === 'ISSUE') {
+                finalIssuedTo = issuedTo;
+            }
+
             await axios.post('/api/inventory/transaction', {
                 itemId: selectedItem,
                 quantity: Number(qty) || 0,
                 type: modalType,
                 tenantId: tenantId,
-                issuedTo: (modalType === 'ISSUE' || modalType === 'RESTOCK_REQUEST') ? issuedTo : undefined,
+                issuedTo: finalIssuedTo,
                 // Add Division / Field Info (Joined as comma-separated string)
                 divisionId: selectedDivisions.length > 0 ? selectedDivisions.join(',') : undefined,
                 divisionName: selectedDivisions.length > 0 ? selectedDivisions.map(id => divisions.find(d => d.divisionId === id)?.name).join(', ') : undefined,
@@ -254,7 +321,7 @@ export default function StoreKeeperDashboard() {
                     {currentTab === 0 ? "Dashboard & Messages" : currentTab === 1 ? "Inventory Records" : "Pending Approvals"}
                 </Typography>
 
-                {currentTab === 1 && (
+                {currentTab === 1 && userSession.role === 'CHIEF_CLERK' && (
                     <Box>
                         <Button
                             startIcon={<AddIcon />}
@@ -263,15 +330,6 @@ export default function StoreKeeperDashboard() {
                             onClick={() => { resetForm(); setNewItemOpen(true); }}
                         >
                             New Item
-                        </Button>
-
-                        <Button
-                            startIcon={<RemoveShoppingCartIcon />}
-                            variant="contained"
-                            color="warning"
-                            onClick={() => { setModalType('ISSUE'); setOpenModal(true); setQty(''); setSelectedDivisions([]); setSelectedFields([]); }}
-                        >
-                            Issue Stock
                         </Button>
                     </Box>
                 )}
@@ -322,48 +380,31 @@ export default function StoreKeeperDashboard() {
                 </Box>
             )}
 
-            {/* Approved Field Officer Orders Ready for Collection -> PENDING APPROVALS TAB */}
             {currentTab === 2 && (
-                <Box>
-                    {approvedOrders.length > 0 ? (
-                        <Card sx={{ mb: 4, borderLeft: '6px solid #2e7d32', bgcolor: '#f1f8e9' }}>
+                <Grid container spacing={3} mb={4}>
+
+                    {/* General Stock mini table */}
+                    <Grid size={{ xs: 12, md: 4 }}>
+                        <Card sx={{ borderTop: '4px solid #1976d2', height: '100%' }}>
                             <CardContent>
-                                <Box display="flex" alignItems="center" mb={2}>
-                                    <InventoryIcon color="success" sx={{ mr: 1, fontSize: 30 }} />
-                                    <Typography variant="h6" color="success" fontWeight="bold">
-                                        Approved Field Orders (Ready for Dispatch)
-                                    </Typography>
-                                </Box>
-                                <TableContainer>
-                                    <Table size="small">
+                                <Typography variant="h6" color="primary" fontWeight="bold" mb={2}>
+                                    General Stock Overview
+                                </Typography>
+                                <TableContainer sx={{ maxHeight: 400 }}>
+                                    <Table size="small" stickyHeader>
                                         <TableHead>
                                             <TableRow>
                                                 <TableCell><strong>Item</strong></TableCell>
-                                                <TableCell><strong>Quantity</strong></TableCell>
-                                                <TableCell><strong>Division</strong></TableCell>
-                                                <TableCell><strong>Requested By</strong></TableCell>
-                                                <TableCell><strong>Manager Remarks</strong></TableCell>
-                                                <TableCell align="center"><strong>Action</strong></TableCell>
+                                                <TableCell><strong>Unit</strong></TableCell>
+                                                <TableCell align="right"><strong>Qty</strong></TableCell>
                                             </TableRow>
                                         </TableHead>
                                         <TableBody>
-                                            {approvedOrders.map((order) => (
-                                                <TableRow key={order.id}>
-                                                    <TableCell>{order.itemName}</TableCell>
-                                                    <TableCell sx={{ fontWeight: 'bold' }}>{order.quantity}</TableCell>
-                                                    <TableCell>{order.divisionName || '-'}</TableCell>
-                                                    <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
-                                                    <TableCell>{order.managerRemarks || '-'}</TableCell>
-                                                    <TableCell align="center">
-                                                        <Button
-                                                            variant="contained"
-                                                            color="success"
-                                                            size="small"
-                                                            onClick={() => handleIssueOrder(order.id)}
-                                                        >
-                                                            Issue Stock
-                                                        </Button>
-                                                    </TableCell>
+                                            {items.map(item => (
+                                                <TableRow key={item.id}>
+                                                    <TableCell>{item.name}</TableCell>
+                                                    <TableCell>{item.unit}</TableCell>
+                                                    <TableCell align="right" sx={{ fontWeight: 'bold' }}>{item.currentQuantity}</TableCell>
                                                 </TableRow>
                                             ))}
                                         </TableBody>
@@ -371,138 +412,243 @@ export default function StoreKeeperDashboard() {
                                 </TableContainer>
                             </CardContent>
                         </Card>
-                    ) : (
-                        <Alert severity="info" sx={{ mb: 4 }}>
-                            There are no pending manager approvals waiting to be dispatched.
-                        </Alert>
-                    )}
-                </Box>
+                    </Grid>
+
+                    {/* Pending Approvals Table */}
+                    <Grid size={{ xs: 12, md: 8 }}>
+                        {approvedOrders.length > 0 ? (
+                            <Card sx={{ borderLeft: '6px solid #2e7d32', bgcolor: '#f1f8e9', height: '100%' }}>
+                                <CardContent>
+                                    <Box display="flex" alignItems="center" mb={2}>
+                                        <InventoryIcon color="success" sx={{ mr: 1, fontSize: 30 }} />
+                                        <Typography variant="h6" color="success" fontWeight="bold">
+                                            Approved Field Orders (Ready for Dispatch)
+                                        </Typography>
+                                    </Box>
+                                    <TableContainer>
+                                        <Table size="small">
+                                            <TableHead>
+                                                <TableRow>
+                                                    <TableCell><strong>Item</strong></TableCell>
+                                                    <TableCell><strong>Quantity</strong></TableCell>
+                                                    <TableCell><strong>Division</strong></TableCell>
+                                                    <TableCell><strong>Requested By</strong></TableCell>
+                                                    <TableCell><strong>Manager Remarks</strong></TableCell>
+                                                    <TableCell align="center"><strong>Action</strong></TableCell>
+                                                </TableRow>
+                                            </TableHead>
+                                            <TableBody>
+                                                {approvedOrders.map((order) => (
+                                                    <TableRow key={order.id}>
+                                                        <TableCell>{order.itemName}</TableCell>
+                                                        <TableCell sx={{ fontWeight: 'bold' }}>{order.quantity}</TableCell>
+                                                        <TableCell>{order.divisionName || '-'}</TableCell>
+                                                        <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
+                                                        <TableCell>{order.managerRemarks || '-'}</TableCell>
+                                                        <TableCell align="center">
+                                                            <Button
+                                                                variant="contained"
+                                                                color="success"
+                                                                size="small"
+                                                                onClick={() => handleIssueOrder(order.id)}
+                                                            >
+                                                                Issue Stock
+                                                            </Button>
+                                                        </TableCell>
+                                                    </TableRow>
+                                                ))}
+                                            </TableBody>
+                                        </Table>
+                                    </TableContainer>
+                                </CardContent>
+                            </Card>
+                        ) : (
+                            <Alert severity="info" sx={{ height: '100%' }}>
+                                There are no pending manager approvals waiting to be dispatched.
+                            </Alert>
+                        )}
+                    </Grid>
+                </Grid>
             )}
 
             {/* Full Inventory Table -> INVENTORY TAB */}
             {currentTab === 1 && (
-                <Card>
-                    <CardContent>
-                        <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
-                            <Box display="flex" alignItems="center">
-                                <InventoryIcon color="action" sx={{ mr: 1 }} />
-                                <Typography variant="h6">Current Inventory</Typography>
-                            </Box>
-                            <TextField
-                                placeholder="Search Items..."
-                                size="small"
-                                value={search}
-                                onChange={(e) => setSearch(e.target.value)}
-                                InputProps={{
-                                    startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
-                                }}
-                                sx={{ width: 300, bgcolor: 'white' }}
-                            />
-                        </Box>
-
-                        {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-
-                        <Table>
-                            <TableHead>
-                                <TableRow>
-                                    <TableCell>Item Name</TableCell>
-                                    <TableCell>Category</TableCell>
-                                    <TableCell align="right">Available Stock</TableCell>
-                                    <TableCell align="right">Total Value (Rs)</TableCell>
-                                    <TableCell align="right">Buffer Level</TableCell>
-                                    <TableCell align="right">Minimum Level</TableCell>
-                                    <TableCell align="center">Status</TableCell>
-                                    <TableCell align="center">Action</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 10 }}>
-                                            <Box display="flex" flexDirection="column" alignItems="center">
-                                                <SpaIcon
-                                                    sx={{
-                                                        fontSize: 60,
-                                                        color: '#2e7d32',
-                                                        animation: 'pulse 1.5s infinite ease-in-out',
-                                                        '@keyframes pulse': {
-                                                            '0%': { transform: 'scale(1)', opacity: 0.7 },
-                                                            '50%': { transform: 'scale(1.2)', opacity: 1 },
-                                                            '100%': { transform: 'scale(1)', opacity: 0.7 }
-                                                        }
-                                                    }}
-                                                />
-                                                <Typography variant="h6" color="primary" mt={2} fontWeight="bold">
-                                                    Loading Plantation Inventory...
-                                                </Typography>
-                                                <Typography variant="body2" color="text.secondary">
-                                                    Fetching fertilizers, tools, and harvest data.
+                <>
+                    {userSession.role === 'CHIEF_CLERK' && (
+                        <Grid container spacing={3} mb={4}>
+                            <Grid size={{ xs: 12 }}>
+                                {chiefClerkPending.length > 0 ? (
+                                    <Card sx={{ borderLeft: '6px solid #1976d2', bgcolor: '#e3f2fd', height: '100%' }}>
+                                        <CardContent>
+                                            <Box display="flex" alignItems="center" mb={2}>
+                                                <InventoryIcon color="primary" sx={{ mr: 1, fontSize: 30 }} />
+                                                <Typography variant="h6" color="primary" fontWeight="bold">
+                                                    System Refill Review (Chief Clerk)
                                                 </Typography>
                                             </Box>
-                                        </TableCell>
+                                            <Typography variant="body2" color="text.secondary" mb={2}>
+                                                The following low-stock auto-refill suggestions require Chief Clerk review before being sent to the Manager.
+                                            </Typography>
+                                            <TableContainer>
+                                                <Table size="small">
+                                                    <TableHead>
+                                                        <TableRow>
+                                                            <TableCell><strong>Item</strong></TableCell>
+                                                            <TableCell><strong>Quantity</strong></TableCell>
+                                                            <TableCell><strong>Issued To / Note</strong></TableCell>
+                                                            <TableCell align="center"><strong>Action</strong></TableCell>
+                                                        </TableRow>
+                                                    </TableHead>
+                                                    <TableBody>
+                                                        {chiefClerkPending.map((order) => (
+                                                            <TableRow key={order.id}>
+                                                                <TableCell>{order.itemName}</TableCell>
+                                                                <TableCell sx={{ fontWeight: 'bold' }}>{order.quantity}</TableCell>
+                                                                <TableCell>{order.issuedTo || '-'}</TableCell>
+                                                                <TableCell align="center">
+                                                                    <Button
+                                                                        variant="contained"
+                                                                        color="primary"
+                                                                        size="small"
+                                                                        onClick={() => {
+                                                                            setCcSelectedOrder(order);
+                                                                            setCcApproveQty(String(order.quantity));
+                                                                            setCcRemarks('');
+                                                                            setCcApproveOpen(true);
+                                                                        }}
+                                                                    >
+                                                                        Request Refill
+                                                                    </Button>
+                                                                </TableCell>
+                                                            </TableRow>
+                                                        ))}
+                                                    </TableBody>
+                                                </Table>
+                                            </TableContainer>
+                                        </CardContent>
+                                    </Card>
+                                ) : (
+                                    <Alert severity="info">
+                                        No pending auto-refill requests requiring Chief Clerk approval at this time.
+                                    </Alert>
+                                )}
+                            </Grid>
+                        </Grid>
+                    )}
+
+                    <Card>
+                        <CardContent>
+                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                                <Box display="flex" alignItems="center">
+                                    <InventoryIcon color="action" sx={{ mr: 1 }} />
+                                    <Typography variant="h6">Current Inventory</Typography>
+                                </Box>
+                                <TextField
+                                    placeholder="Search Items..."
+                                    size="small"
+                                    value={search}
+                                    onChange={(e) => setSearch(e.target.value)}
+                                    InputProps={{
+                                        startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
+                                    }}
+                                    sx={{ width: 300, bgcolor: 'white' }}
+                                />
+                            </Box>
+
+                            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
+
+                            <Table>
+                                <TableHead>
+                                    <TableRow>
+                                        <TableCell>Item Name</TableCell>
+                                        <TableCell>Category</TableCell>
+                                        <TableCell align="right">Available Stock</TableCell>
+                                        <TableCell align="right">Total Value (Rs)</TableCell>
+                                        <TableCell align="right">Buffer Level</TableCell>
+                                        <TableCell align="right">Minimum Level</TableCell>
+                                        <TableCell align="center">Status</TableCell>
+                                        <TableCell align="center">Actions</TableCell>
                                     </TableRow>
-                                ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
-                                        <TableCell><Chip label={item.category} size="small" /></TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
-                                            {item.currentQuantity} {item.unit}
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ color: 'text.secondary' }}>
-                                            {item.bufferLevel} {item.unit}
-                                        </TableCell>
-                                        <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
-                                            {item.minimumLevel || 0} {item.unit}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            {item.currentQuantity < item.bufferLevel ? (
-                                                <Chip label="LOW STOCK" color="error" size="small" />
-                                            ) : (
-                                                <Chip label="Good" color="success" size="small" />
-                                            )}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            {pendingItems.has(item.id) ? (
-                                                <Chip
-                                                    label={`Pending: ${pendingItems.get(item.id)} ${item.unit}`}
-                                                    color="warning"
-                                                    variant="outlined"
-                                                    size="small"
-                                                />
-                                            ) : (
+                                </TableHead>
+                                <TableBody>
+                                    {loading ? (
+                                        <TableRow>
+                                            <TableCell colSpan={9} align="center" sx={{ py: 10 }}>
+                                                <Box display="flex" flexDirection="column" alignItems="center">
+                                                    <SpaIcon
+                                                        sx={{
+                                                            fontSize: 60,
+                                                            color: '#2e7d32',
+                                                            animation: 'pulse 1.5s infinite ease-in-out',
+                                                            '@keyframes pulse': {
+                                                                '0%': { transform: 'scale(1)', opacity: 0.7 },
+                                                                '50%': { transform: 'scale(1.2)', opacity: 1 },
+                                                                '100%': { transform: 'scale(1)', opacity: 0.7 }
+                                                            }
+                                                        }}
+                                                    />
+                                                    <Typography variant="h6" color="primary" mt={2} fontWeight="bold">
+                                                        Loading Plantation Inventory...
+                                                    </Typography>
+                                                    <Typography variant="body2" color="text.secondary">
+                                                        Fetching fertilizers, tools, and harvest data.
+                                                    </Typography>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
+                                            <TableCell><Chip label={item.category} size="small" /></TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                                {item.currentQuantity} {item.unit}
+                                            </TableCell>
+                                            <TableCell align="right">
+                                                {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                                                {item.bufferLevel} {item.unit}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                                {item.minimumLevel || 0} {item.unit}
+                                            </TableCell>
+                                            <TableCell align="center">
+                                                {item.currentQuantity < item.bufferLevel ? (
+                                                    <Chip label="LOW STOCK" color="error" size="small" />
+                                                ) : (
+                                                    <Chip label="Good" color="success" size="small" />
+                                                )}
+                                            </TableCell>
+                                            <TableCell align="center">
                                                 <Button
                                                     variant="outlined"
-                                                    color="warning"
+                                                    color="primary"
                                                     size="small"
-                                                    startIcon={<AddAlertIcon />}
-                                                    onClick={() => handleRestockRequest(item)}
+                                                    onClick={() => {
+                                                        setSelectedItem(item.id);
+                                                        setModalType('RESTOCK_REQUEST');
+                                                        setQty('');
+                                                        setIssuedTo('');
+                                                        setSelectedDivisions([]);
+                                                        setSelectedFields([]);
+                                                        setOpenModal(true);
+                                                    }}
                                                 >
-                                                    Restock
+                                                    Request Refill
                                                 </Button>
-                                            )}
-                                            <Box display="inline-flex" ml={1}>
-                                                <IconButton size="small" onClick={() => handleEditItem(item)} title="Edit Details">
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
-                                                <IconButton size="small" onClick={() => handleDeleteItem(item.id)} color="error" title="Delete Item">
-                                                    <DeleteIcon fontSize="small" />
-                                                </IconButton>
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                                {!loading && items.length === 0 && !error && (
-                                    <TableRow>
-                                        <TableCell colSpan={8} align="center">No inventory items found.</TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </CardContent>
-                </Card>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                    {!loading && items.length === 0 && !error && (
+                                        <TableRow>
+                                            <TableCell colSpan={9} align="center">No inventory items found.</TableCell>
+                                        </TableRow>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </CardContent>
+                    </Card>
+                </>
             )}
 
             {/* Transaction Modal */}
@@ -725,7 +871,64 @@ export default function StoreKeeperDashboard() {
                     <Button onClick={() => setNewItemOpen(false)}>Cancel</Button>
                     <Button variant="contained" onClick={handleSaveItem}>{isEditing ? "Update Item" : "Create Item"}</Button>
                 </DialogActions>
+            </Dialog>
 
+            {/* Issue Order Confirmation Dialog */}
+            <Dialog open={confirmIssueOpen} onClose={() => setConfirmIssueOpen(false)}>
+                <DialogTitle>Confirm Issuance</DialogTitle>
+                <DialogContent>
+                    <Typography>Are you sure you want to confirm issuance of stock to the Field Officer?</Typography>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setConfirmIssueOpen(false)}>Cancel</Button>
+                    <Button onClick={confirmIssueOrder} color="success" variant="contained" autoFocus>
+                        Confirm
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* CC Request Auto-Refill Dialog */}
+            <Dialog open={ccApproveOpen} onClose={() => setCcApproveOpen(false)} maxWidth="sm" fullWidth>
+                <DialogTitle>Request Auto-Refill</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" mb={3} mt={1}>
+                        You are reviewing the system-generated auto-refill suggestion for <strong>{ccSelectedOrder?.itemName}</strong>.
+                        You can adjust the required quantity or add internal comments before forwarding your request to the Manager.
+                    </Typography>
+
+                    <TextField
+                        fullWidth
+                        label="Requested Quantity"
+                        type="number"
+                        variant="outlined"
+                        value={ccApproveQty}
+                        onChange={(e) => setCcApproveQty(e.target.value)}
+                        sx={{ mb: 2 }}
+                        InputProps={{ style: { fontWeight: 'bold' } }}
+                    />
+
+                    <TextField
+                        fullWidth
+                        label="Remarks / Adjustments Note (Optional)"
+                        multiline
+                        rows={3}
+                        variant="outlined"
+                        value={ccRemarks}
+                        onChange={(e) => setCcRemarks(e.target.value)}
+                        placeholder="e.g. Authorized extra 5 bags for upcoming schedule..."
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
+                    <Button onClick={() => setCcApproveOpen(false)} sx={{ color: 'text.secondary' }}>Cancel</Button>
+                    <Box gap={1} display="flex">
+                        <Button variant="contained" color="error" onClick={handleCcReject}>
+                            Reject Refill
+                        </Button>
+                        <Button variant="contained" color="success" onClick={handleConfirmCcApprove}>
+                            Forward to Manager
+                        </Button>
+                    </Box>
+                </DialogActions>
             </Dialog>
 
             {/* Notification Snackbar */}

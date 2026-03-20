@@ -152,6 +152,7 @@ export default function PendingOrders() {
                             <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                                 <TableRow>
                                     <TableCell rowSpan={2} sx={{ borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}><strong>Item</strong></TableCell>
+                                    <TableCell rowSpan={2} sx={{ borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}><strong>Division</strong></TableCell>
                                     <TableCell rowSpan={2} sx={{ borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}><strong>Unit</strong></TableCell>
                                     <TableCell rowSpan={2} align="center" sx={{ borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}><strong>Qty</strong></TableCell>
                                     <TableCell rowSpan={2} sx={{ borderRight: '1px solid #ddd', borderBottom: '1px solid #ddd' }}><strong>FO Remarks</strong></TableCell>
@@ -166,9 +167,11 @@ export default function PendingOrders() {
                             <TableBody>
                                 {orders.map(order => {
                                     const itemUnit = items.find(item => item.id === order.itemId)?.unit || '-';
+                                    const divName = divisions.find(d => d.divisionId === order.divisionId)?.name || '-';
                                     return (
                                         <TableRow key={order.id} sx={{ bgcolor: order.status === 'APPROVED' ? '#e8f5e9' : (order.status === 'DECLINED' ? '#ffebee' : 'inherit') }}>
                                             <TableCell sx={{ borderRight: '1px solid #ddd' }}>{order.itemName}</TableCell>
+                                            <TableCell sx={{ borderRight: '1px solid #ddd' }}>{divName}</TableCell>
                                             <TableCell sx={{ borderRight: '1px solid #ddd' }}>{itemUnit}</TableCell>
                                             <TableCell align="center" sx={{ fontWeight: 'bold', borderRight: '1px solid #ddd' }}>{order.quantity}</TableCell>
                                             <TableCell sx={{ borderRight: '1px solid #ddd' }}>{order.issuedTo?.split(' - ')[1] || '-'}</TableCell>
@@ -200,7 +203,7 @@ export default function PendingOrders() {
                                 })}
                                 {orders.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center">No recent orders</TableCell>
+                                        <TableCell colSpan={8} align="center">No recent orders</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>

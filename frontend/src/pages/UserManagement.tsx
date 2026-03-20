@@ -25,7 +25,9 @@ import {
     InputLabel,
     Select,
     OutlinedInput,
-    InputAdornment
+    InputAdornment,
+    Checkbox,
+    ListItemText
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -34,9 +36,10 @@ import Visibility from '@mui/icons-material/Visibility';
 import VisibilityOff from '@mui/icons-material/VisibilityOff';
 import axios from 'axios';
 
-// Roles Enum
 const ROLES = [
     { value: 'MANAGER', label: 'Estate Manager' },
+    { value: 'CHIEF_CLERK', label: 'Chief Clerk' },
+    { value: 'MANAGER_CLERK', label: 'Manager + Chief Clerk' },
     { value: 'FIELD_OFFICER', label: 'Field Officer' },
     { value: 'STORE_KEEPER', label: 'Store Keeper' }
 ];
@@ -336,7 +339,8 @@ export default function UserManagement() {
                                 >
                                     {divisions.map((div) => (
                                         <MenuItem key={div.divisionId} value={div.divisionId}>
-                                            {div.name}
+                                            <Checkbox checked={formData.divisionAccess.indexOf(div.divisionId) > -1} />
+                                            <ListItemText primary={div.name} />
                                         </MenuItem>
                                     ))}
                                 </Select>

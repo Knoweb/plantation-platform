@@ -45,7 +45,8 @@ export default function Login() {
                 tenantId: response.data.tenantId,
                 userId: response.data.userId,
                 divisionAccess: response.data.divisionAccess,
-                config: response.data.config
+                config: response.data.config,
+                token: response.data.token // Save the secure JWT token!
             };
             sessionStorage.setItem('user', JSON.stringify(sessionData));
 

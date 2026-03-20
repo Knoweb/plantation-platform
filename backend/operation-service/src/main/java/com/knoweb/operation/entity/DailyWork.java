@@ -43,6 +43,15 @@ public class DailyWork {
     @Column(name = "action_at")
     private java.time.LocalDateTime actionAt;
 
+    @Column(name = "remarks", columnDefinition = "TEXT")
+    private String remarks;
+
+    @Column(name = "bulk_weights", columnDefinition = "TEXT")
+    private String bulkWeights;
+
+    @Column(name = "submitted_at")
+    private java.time.LocalDateTime submittedAt;
+
     public DailyWork() {
     }
 
@@ -132,5 +141,29 @@ public class DailyWork {
 
     public void setActionAt(java.time.LocalDateTime actionAt) {
         this.actionAt = actionAt;
+    }
+
+    public String getRemarks() {
+        return remarks;
+    }
+
+    public void setRemarks(String remarks) {
+        this.remarks = remarks;
+    }
+
+    public String getBulkWeights() {
+        return bulkWeights;
+    }
+
+    public void setBulkWeights(String bulkWeights) {
+        this.bulkWeights = bulkWeights;
+    }
+
+    public java.time.LocalDateTime getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public void setSubmittedAt(java.time.LocalDateTime submittedAt) {
+        this.submittedAt = submittedAt;
     }
 }

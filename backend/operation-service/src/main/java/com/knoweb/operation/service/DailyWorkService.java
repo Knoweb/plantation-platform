@@ -1,7 +1,9 @@
 package com.knoweb.operation.service;
 
 import com.knoweb.operation.dto.DailyWorkRequest;
+import com.knoweb.operation.dto.ReviewRequest;
 import com.knoweb.operation.entity.DailyWork;
+import com.knoweb.operation.websocket.DistributionRealtimePublisher;
 import com.knoweb.operation.repository.DailyWorkRepository;
 import com.knoweb.operation.repository.AttendanceRepository;
 import com.knoweb.operation.entity.Attendance;
@@ -16,11 +18,18 @@ public class DailyWorkService {
 
     private final DailyWorkRepository dailyWorkRepository;
     private final AttendanceRepository attendanceRepository;
+    private final DistributionRealtimePublisher distributionRealtimePublisher;
     private final com.fasterxml.jackson.databind.ObjectMapper objectMapper;
 
-    public DailyWorkService(DailyWorkRepository dailyWorkRepository, AttendanceRepository attendanceRepository, com.fasterxml.jackson.databind.ObjectMapper objectMapper) {
+    public DailyWorkService(
+            DailyWorkRepository dailyWorkRepository,
+            AttendanceRepository attendanceRepository,
+            DistributionRealtimePublisher distributionRealtimePublisher,
+            com.fasterxml.jackson.databind.ObjectMapper objectMapper
+    ) {
         this.dailyWorkRepository = dailyWorkRepository;
         this.attendanceRepository = attendanceRepository;
+        this.distributionRealtimePublisher = distributionRealtimePublisher;
         this.objectMapper = objectMapper;
     }
 
@@ -40,16 +49,23 @@ public class DailyWorkService {
     }
 
     @Transactional
-    public DailyWork approveWork(UUID workId) {
+    public DailyWork approveWork(UUID workId, ReviewRequest request) {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
         
-        if ("APPROVED".equals(work.getStatus())) {
-            return work;
+        // Removed the early return for "APPROVED" to allow updating details/workers even if already approved.
+
+        if (request != null) {
+            if (request.getDetails() != null) work.setDetails(request.getDetails());
+            if (request.getWorkerCount() != null) work.setWorkerCount(request.getWorkerCount());
+            if (request.getRemarks() != null) work.setRemarks(request.getRemarks());
         }
 
         // Sync Attendance
         try {
+            // First clear out any existing attendance for this muster to prevent duplicates on update
+            attendanceRepository.deleteByDailyWorkId(workId);
+
             if (work.getDetails() != null && work.getDetails().trim().startsWith("[")) {
                 com.fasterxml.jackson.databind.JsonNode root = objectMapper.readTree(work.getDetails());
                 if (root.isArray()) {
@@ -86,9 +102,14 @@ public class DailyWorkService {
     }
 
     @Transactional
-    public DailyWork rejectWork(UUID workId) {
+    public DailyWork rejectWork(UUID workId, ReviewRequest request) {
         DailyWork work = dailyWorkRepository.findById(workId)
                 .orElseThrow(() -> new RuntimeException("Work record not found"));
+
+        if (request != null) {
+            if (request.getRemarks() != null) work.setRemarks(request.getRemarks());
+        }
+
         work.setStatus("REJECTED");
         work.setActionAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
         return dailyWorkRepository.save(work);
@@ -107,7 +128,26 @@ public class DailyWorkService {
     }
 
     @Transactional
+    public DailyWork updateBulkWeights(UUID workId, String bulkWeights, boolean isSubmission) {
+        DailyWork work = dailyWorkRepository.findById(workId)
+                .orElseThrow(() -> new RuntimeException("Work record not found"));
+        work.setBulkWeights(bulkWeights);
+        if (isSubmission) {
+            work.setSubmittedAt(java.time.LocalDateTime.now(java.time.ZoneId.of("Asia/Colombo")));
+        }
+        DailyWork saved = dailyWorkRepository.save(work);
+        if (isSubmission && saved.getTenantId() != null && saved.getWorkDate() != null) {
+            distributionRealtimePublisher.broadcastSubmittedMuster(saved.getTenantId(), saved.getWorkDate());
+        }
+        return saved;
+    }
+
+    @Transactional
     public void deleteWork(UUID id) {
+        DailyWork work = dailyWorkRepository.findById(id).orElse(null);
         dailyWorkRepository.deleteById(id);
+        if (work != null && work.getTenantId() != null && work.getWorkDate() != null) {
+            distributionRealtimePublisher.broadcastSubmittedMuster(work.getTenantId(), work.getWorkDate());
+        }
     }
 }

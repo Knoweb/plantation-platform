@@ -20,12 +20,19 @@ public class TaskType {
     @Column(name = "is_active")
     private Boolean isActive = true;
 
+    @Column(name = "expected_unit")
+    private String expectedUnit;
+
+    @Column(name = "crop_type")
+    private String cropType; // e.g. TEA, RUBBER, CINNAMON, GENERAL
+
     public TaskType() {
     }
 
-    public TaskType(UUID tenantId, String name) {
+    public TaskType(UUID tenantId, String name, String expectedUnit) {
         this.tenantId = tenantId;
         this.name = name;
+        this.expectedUnit = expectedUnit;
     }
 
     public UUID getId() {
@@ -58,5 +65,21 @@ public class TaskType {
 
     public void setActive(Boolean active) {
         isActive = active;
+    }
+
+    public String getExpectedUnit() {
+        return expectedUnit;
+    }
+
+    public void setExpectedUnit(String expectedUnit) {
+        this.expectedUnit = expectedUnit;
+    }
+
+    public String getCropType() {
+        return cropType;
+    }
+
+    public void setCropType(String cropType) {
+        this.cropType = cropType;
     }
 }

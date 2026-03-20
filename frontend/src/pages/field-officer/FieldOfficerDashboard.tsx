@@ -1,14 +1,11 @@
-import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, Autocomplete, Checkbox } from '@mui/material';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Box, Grid, Paper, Typography, Card, CardContent, Button, List, ListItem, ListItemText, Divider, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, TextField, MenuItem, Select, FormControl, InputLabel, Chip, Autocomplete, Checkbox, ToggleButton, ToggleButtonGroup } from '@mui/material';
+import { AreaChart, Area, BarChart, Bar, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer } from 'recharts';
 import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import GroupIcon from '@mui/icons-material/Group';
 import AddIcon from '@mui/icons-material/Add';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
-import ChatIcon from '@mui/icons-material/Chat';
-import ForestIcon from '@mui/icons-material/Forest';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import HistoryIcon from '@mui/icons-material/History';
+import PaidIcon from '@mui/icons-material/Paid';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 
@@ -33,22 +30,20 @@ interface HarvestLog {
 
 interface Field {
     fieldId: string;
+    id?: string;
     name: string;
     divisionId: string;
+    acreage?: number;
+    cropType?: string;
 }
 
 interface Worker {
     id: string;
     name: string;
-    jobRole: string;
+    name: string;
 }
 
-import { useNavigate } from 'react-router-dom';
-import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
-import EventNoteIcon from '@mui/icons-material/EventNote';
-
 export default function FieldOfficerDashboard() {
-    const navigate = useNavigate();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -63,8 +58,12 @@ export default function FieldOfficerDashboard() {
     const [dailyYield, setDailyYield] = useState(0);
     const [workerTurnout, setWorkerTurnout] = useState(0);
     const [fertilizerStock, setFertilizerStock] = useState('Checking...');
+    const [landProductivity, setLandProductivity] = useState(0);
+    const [laborEfficiency, setLaborEfficiency] = useState(0);
+    const [costPerKg, setCostPerKg] = useState(0);
 
     const [weeklyYieldData, setWeeklyYieldData] = useState<any[]>([]);
+    const [factoryWeightView, setFactoryWeightView] = useState<'daily' | 'weekly' | 'monthly' | 'yearly'>('daily');
     const [groupedMuster, setGroupedMuster] = useState<any[]>([]);
 
     // Forms
@@ -103,15 +102,24 @@ export default function FieldOfficerDashboard() {
             // Filter data based on User's Assigned Divisions
             const myDivisions = userSession.divisionAccess || [];
             const primaryDivisionId = myDivisions.length > 0 ? myDivisions[0] : '';
+            const today = new Date().toISOString().split('T')[0];
+            const now = new Date();
+            const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
-            const [musterRes, harvestRes, invRes, divRes, fieldRes] = await Promise.all([
+            const chartStartDate = `${now.getFullYear() - 3}-01-01`;
+
+            const [musterRes, harvestRes, invRes, fieldRes, allFieldsRes, workRes, chartWorkRes, attRes, workersRes] = await Promise.all([
                 axios.get(`/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
                 axios.get(`/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
                 axios.get(`/api/inventory?tenantId=${tenantId}`),
-                axios.get(`/api/divisions?tenantId=${tenantId}`),
                 axios.get(primaryDivisionId
                     ? `/api/fields?divisionId=${primaryDivisionId}`
-                    : `/api/fields?tenantId=${tenantId}`)
+                    : `/api/fields?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&startDate=${monthStart}&endDate=${today}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&startDate=${chartStartDate}&endDate=${today}`),
+                axios.get(`/api/operations/attendance?tenantId=${tenantId}&startDate=${monthStart}&endDate=${today}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`),
             ]);
 
             setMusters(musterRes.data);
@@ -120,8 +128,6 @@ export default function FieldOfficerDashboard() {
             setFields(fieldRes.data);
 
             // Calculate KPIs
-            const today = new Date().toISOString().split('T')[0];
-
             const todayHarvest = harvestRes.data
                 .filter((h: HarvestLog) => h.date === today)
                 .reduce((sum: number, h: HarvestLog) => sum + h.quantityKg, 0);
@@ -137,20 +143,317 @@ export default function FieldOfficerDashboard() {
                 .reduce((sum: number, i: any) => sum + i.currentQuantity, 0);
             setFertilizerStock(fertStock > 0 ? `${fertStock} kg` : 'Low Stock');
 
-            // Calculate Weekly Yield (Last 7 Days)
-            const last7Days = Array.from({ length: 7 }, (_, i) => {
-                const d = new Date();
-                d.setDate(d.getDate() - (6 - i));
-                return d.toISOString().split('T')[0];
+            // Use tenant-wide field list for KPI math to match CropBook calculations.
+            const accessibleFields: Field[] = allFieldsRes.data || [];
+            const fieldById = new Map<string, any>();
+            const availableCrops = new Set<string>();
+            accessibleFields.forEach((field: any) => {
+                const fieldKey = String(field.id || field.fieldId || '');
+                if (fieldKey) fieldById.set(fieldKey, field);
+                const crop = String(field.cropType || '').trim();
+                if (crop) availableCrops.add(crop);
             });
 
-            const weeklyData = last7Days.map(date => {
-                const dayYield = harvestRes.data
-                    .filter((h: HarvestLog) => h.date === date)
-                    .reduce((sum: number, h: HarvestLog) => sum + h.quantityKg, 0);
-                return { date: date.slice(5), yield: dayYield }; // MM-DD
+            // Match CropBook behavior: prefer Tea when it exists, otherwise use the first available crop.
+            const primaryCrop =
+                Array.from(availableCrops).find((crop) => crop.toLowerCase() === 'tea') ||
+                Array.from(availableCrops)[0] ||
+                'Tea';
+
+            let cropConfig: any = {};
+            try {
+                const cfgRes = await axios.get(`/api/crop-configs?tenantId=${tenantId}&cropType=${primaryCrop}`);
+                cropConfig = cfgRes.data || {};
+            } catch {
+                cropConfig = {};
+            }
+
+            const fieldByName = new Map<string, any>();
+            accessibleFields.forEach((field: any) => {
+                const nameKey = String(field.name || '').trim().toLowerCase();
+                if (nameKey) fieldByName.set(nameKey, field);
             });
-            setWeeklyYieldData(weeklyData);
+
+            const workBelongsToCrop = (work: any) => {
+                const directField = fieldById.get(String(work.fieldId || ''));
+                if (directField) {
+                    return String(directField.cropType || '').toLowerCase() === primaryCrop.toLowerCase();
+                }
+
+                const fieldNames = new Set<string>();
+
+                if (work.bulkWeights) {
+                    try {
+                        const bulkWeights = JSON.parse(work.bulkWeights);
+                        Object.keys(bulkWeights || {}).forEach((key) => {
+                            if (key !== '__FACTORY__') fieldNames.add(String(key).trim().toLowerCase());
+                        });
+                    } catch {
+                        // Ignore malformed bulk weights.
+                    }
+                }
+
+                if (work.details) {
+                    try {
+                        const details = JSON.parse(work.details);
+                        (Array.isArray(details) ? details : []).forEach((item: any) => {
+                            const fieldName = String(item?.field || '').trim().toLowerCase();
+                            if (fieldName) fieldNames.add(fieldName);
+                        });
+                    } catch {
+                        // Ignore malformed work details.
+                    }
+                }
+
+                for (const fieldName of fieldNames) {
+                    const field = fieldByName.get(fieldName);
+                    if (field && String(field.cropType || '').toLowerCase() === primaryCrop.toLowerCase()) {
+                        return true;
+                    }
+                }
+
+                return false;
+            };
+
+            const buildCropBookFactoryDays = (works: any[], year: number, month: number) => {
+                const monthKey = `${year}-${String(month).padStart(2, '0')}`;
+                const daysInMonth = new Date(year, month, 0).getDate();
+                const factoryDayMap = new Map<number, number>();
+
+                for (let i = 1; i <= daysInMonth; i++) {
+                    factoryDayMap.set(i, 0);
+                }
+
+                works.forEach((work: any) => {
+                    if (!workBelongsToCrop(work)) return;
+                    if (!work.workDate || !String(work.workDate).startsWith(monthKey)) return;
+
+                    const day = parseInt(String(work.workDate).split('-')[2], 10);
+                    if (!factoryDayMap.has(day) || !work.bulkWeights) return;
+
+                    try {
+                        const bulkWeights = JSON.parse(work.bulkWeights);
+                        const factoryWeight = Number(bulkWeights.__FACTORY__?.factoryWt || 0);
+                        factoryDayMap.set(day, (factoryDayMap.get(day) || 0) + factoryWeight);
+                    } catch {
+                        // Ignore malformed bulk weights.
+                    }
+                });
+
+                return factoryDayMap;
+            };
+
+            const workList = (workRes.data || []).filter((work: any) => workBelongsToCrop(work));
+            const chartWorkList = (chartWorkRes.data || []).filter((work: any) => workBelongsToCrop(work));
+            const workMap = new Map<string, any>();
+            workList.forEach((work: any) => {
+                workMap.set(String(work.workId || work.id || ''), work);
+            });
+
+            const workerTypeMap = new Map<string, string>();
+            (workersRes.data || []).forEach((worker: any) => {
+                workerTypeMap.set(String(worker.id), String(worker.employmentType || ''));
+            });
+
+            const relevantTask =
+                primaryCrop.toLowerCase() === 'tea' ? 'plucking' :
+                primaryCrop.toLowerCase() === 'rubber' ? 'tapping' :
+                '';
+
+            const fieldsList = accessibleFields;
+            const totalAcreage = fieldsList
+                .filter((field: any) => String(field.cropType || '').toLowerCase() === primaryCrop.toLowerCase())
+                .reduce((sum: number, field: any) => sum + Number(field.acreage || 0), 0);
+            const acreageDivisor = totalAcreage > 0 ? totalAcreage : 1;
+            const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).getDate();
+
+            const dayMap = new Map<number, any>();
+            for (let i = 1; i <= lastDayOfMonth; i++) {
+                dayMap.set(i, {
+                    day: i,
+                    factoryWeightDay: 0,
+                    noOfPluckersDay: 0,
+                    permAndCasualPluckersDay: 0,
+                    permAndCasualWeightDay: 0,
+                    overKilosDay: 0,
+                    cashKilosDay: 0,
+                    fullAththamaCount: 0,
+                    halfAththamaCount: 0,
+                    permCasualOverKilosDay: 0,
+                });
+            }
+
+            workList.forEach((work: any) => {
+                if (!work.workDate || !String(work.workDate).startsWith(monthStart.slice(0, 7))) return;
+                if (!workBelongsToCrop(work)) return;
+
+                const day = parseInt(String(work.workDate).split('-')[2], 10);
+                if (!dayMap.has(day)) return;
+
+                workMap.set(String(work.workId || work.id || ''), work);
+                if (!work.bulkWeights) return;
+
+                try {
+                    const bulkWeights = JSON.parse(work.bulkWeights);
+                    dayMap.get(day).factoryWeightDay += Number(bulkWeights.__FACTORY__?.factoryWt || 0);
+                } catch {
+                    // Ignore malformed bulk weights.
+                }
+            });
+
+            (attRes.data || []).forEach((attendance: any) => {
+                const work = workMap.get(String(attendance.dailyWorkId || ''));
+                if (!work || !work.bulkWeights) return;
+                if (relevantTask && String(attendance.workType || '').toLowerCase() !== relevantTask) return;
+                if (!attendance.workDate || !String(attendance.workDate).startsWith(monthStart.slice(0, 7))) return;
+
+                const day = parseInt(String(attendance.workDate).split('-')[2], 10);
+                if (!dayMap.has(day)) return;
+
+                const dayData = dayMap.get(day);
+                const status = String(attendance.status || '').toUpperCase();
+                const employmentType = String(workerTypeMap.get(String(attendance.workerId)) || '').toUpperCase();
+                const isPermOrCasual = employmentType === 'PERMANENT' || employmentType === 'CASUAL';
+                const am = Number(attendance.amWeight || attendance.am || 0);
+                const pm = Number(attendance.pmWeight || attendance.pm || 0);
+                const over = Number(attendance.overKilos || 0);
+                const cash = Number(attendance.cashKilos || 0);
+
+                if (status === 'PRESENT' || status === 'HALF_DAY') {
+                    dayData.noOfPluckersDay += 1;
+                    if (isPermOrCasual) {
+                        dayData.permAndCasualPluckersDay += 1;
+                        dayData.permAndCasualWeightDay += (am + pm);
+                        dayData.permCasualOverKilosDay += over;
+                        if (status === 'PRESENT') dayData.fullAththamaCount += 1;
+                        if (status === 'HALF_DAY') dayData.halfAththamaCount += 1;
+                    }
+                }
+
+                dayData.overKilosDay += over;
+                dayData.cashKilosDay += cash;
+            });
+
+            let factoryWeightMtd = 0;
+            let cashKilosMtd = 0;
+            let permAndCasualPluckersMtd = 0;
+            let permAndCasualWeightMtd = 0;
+            let fullAththamaCountMtd = 0;
+            let halfAththamaCountMtd = 0;
+            let permCasualOverKilosMtd = 0;
+
+            for (let i = 1; i <= now.getDate(); i++) {
+                const dayData = dayMap.get(i);
+                if (!dayData) continue;
+
+                factoryWeightMtd += dayData.factoryWeightDay;
+                cashKilosMtd += dayData.cashKilosDay;
+                permAndCasualPluckersMtd += dayData.permAndCasualPluckersDay;
+                permAndCasualWeightMtd += dayData.permAndCasualWeightDay;
+                fullAththamaCountMtd += dayData.fullAththamaCount;
+                halfAththamaCountMtd += dayData.halfAththamaCount;
+                permCasualOverKilosMtd += dayData.permCasualOverKilosDay;
+            }
+
+            const computedLandProductivity =
+                totalAcreage > 0 ? (permAndCasualWeightMtd / acreageDivisor) : 0;
+            const computedLaborEfficiency =
+                permAndCasualPluckersMtd > 0 ? (factoryWeightMtd - cashKilosMtd) / permAndCasualPluckersMtd : 0;
+
+            const aththamaWage = Number(cropConfig.aththamaWage || 0);
+            const overKiloRate = Number(cropConfig.overKiloRate || 0);
+            const computedCostPerKg =
+                permAndCasualWeightMtd > 0
+                    ? (
+                        (fullAththamaCountMtd * aththamaWage) +
+                        (halfAththamaCountMtd * (aththamaWage / 2)) +
+                        (permCasualOverKilosMtd * overKiloRate)
+                    ) / permAndCasualWeightMtd
+                    : 0;
+
+            setLandProductivity(Number.isFinite(computedLandProductivity) ? computedLandProductivity : 0);
+            setLaborEfficiency(Number.isFinite(computedLaborEfficiency) ? computedLaborEfficiency : 0);
+            setCostPerKg(Number.isFinite(computedCostPerKg) ? computedCostPerKg : 0);
+
+            const currentMonthFactoryDays = buildCropBookFactoryDays(chartWorkList, now.getFullYear(), now.getMonth() + 1);
+
+            const dailyData = Array.from({ length: now.getDate() }, (_, index) => {
+                return {
+                    label: String(index + 1).padStart(2, '0'),
+                    value: currentMonthFactoryDays.get(index + 1) || 0,
+                };
+            });
+
+            const weeklyData = [
+                {
+                    label: 'Week 1',
+                    value: Array.from({ length: Math.min(7, now.getDate()) }, (_, index) => currentMonthFactoryDays.get(index + 1) || 0)
+                        .reduce((sum, value) => sum + value, 0),
+                },
+                {
+                    label: 'Week 2',
+                    value: Array.from({ length: Math.max(0, Math.min(14, now.getDate()) - 7) }, (_, index) => currentMonthFactoryDays.get(index + 8) || 0)
+                        .reduce((sum, value) => sum + value, 0),
+                },
+                {
+                    label: 'Week 3',
+                    value: Array.from({ length: Math.max(0, Math.min(21, now.getDate()) - 14) }, (_, index) => currentMonthFactoryDays.get(index + 15) || 0)
+                        .reduce((sum, value) => sum + value, 0),
+                },
+                {
+                    label: 'Week 4',
+                    value: Array.from({ length: Math.max(0, now.getDate() - 21) }, (_, index) => currentMonthFactoryDays.get(index + 22) || 0)
+                        .reduce((sum, value) => sum + value, 0),
+                },
+            ];
+
+            const monthlyMap = new Map<string, number>();
+            for (let month = 1; month <= now.getMonth() + 1; month++) {
+                const monthKey = String(month).padStart(2, '0');
+                const monthFactoryDays = buildCropBookFactoryDays(chartWorkList, now.getFullYear(), month);
+                const monthTotal = Array.from(monthFactoryDays.values()).reduce((sum, value) => sum + value, 0);
+                monthlyMap.set(monthKey, monthTotal);
+            }
+
+            const monthlyData = Array.from({ length: now.getMonth() + 1 }, (_, index) => {
+                const monthDate = new Date(now.getFullYear(), index, 1);
+                const monthKey = String(index + 1).padStart(2, '0');
+                return {
+                    label: monthDate.toLocaleDateString('en-US', { month: 'short' }),
+                    value: monthlyMap.get(monthKey) || 0,
+                };
+            });
+
+            const yearlyMap = new Map<number, number>();
+            const chartYears = Array.from(
+                new Set(
+                    chartWorkList
+                        .map((work: any) => Number(String(work.workDate || '').slice(0, 4)))
+                        .filter((year: number) => Number.isFinite(year))
+                )
+            ).sort((a, b) => a - b);
+
+            chartYears.forEach((year) => {
+                let yearTotal = 0;
+                for (let month = 1; month <= 12; month++) {
+                    const monthFactoryDays = buildCropBookFactoryDays(chartWorkList, year, month);
+                    yearTotal += Array.from(monthFactoryDays.values()).reduce((sum, value) => sum + value, 0);
+                }
+                yearlyMap.set(year, yearTotal);
+            });
+
+            const yearlyData = Array.from(yearlyMap.entries())
+                .sort((a, b) => a[0] - b[0])
+                .map(([year, value]) => ({ label: String(year), value }));
+
+            const chartDataByView = {
+                daily: dailyData,
+                weekly: weeklyData,
+                monthly: monthlyData,
+                yearly: yearlyData,
+            };
+
+            setWeeklyYieldData(chartDataByView[factoryWeightView]);
 
             // Group Muster by Field & Task
             const grouped = musterRes.data
@@ -169,6 +472,29 @@ export default function FieldOfficerDashboard() {
             setLoading(false);
         }
     };
+
+    useEffect(() => {
+        fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [factoryWeightView]);
+
+    useEffect(() => {
+        const intervalId = window.setInterval(() => {
+            fetchData();
+        }, 30000);
+
+        const handleWindowFocus = () => {
+            fetchData();
+        };
+
+        window.addEventListener('focus', handleWindowFocus);
+
+        return () => {
+            window.clearInterval(intervalId);
+            window.removeEventListener('focus', handleWindowFocus);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [factoryWeightView]);
 
     const handleCreateMuster = async () => {
         try {
@@ -201,6 +527,13 @@ export default function FieldOfficerDashboard() {
 
     // handleApproveMuster removed as per request (Manager Only)
 
+    const chartDescriptionByView = {
+        daily: 'Daily factory output for the current month.',
+        weekly: 'Week-by-week factory output across the current month.',
+        monthly: 'Monthly trend for the current year.',
+        yearly: 'Year-over-year factory weight performance.',
+    } as const;
+
     return (
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -212,132 +545,262 @@ export default function FieldOfficerDashboard() {
                 </Box>
             </Box>
 
+            <Box mb={2}>
+                <Typography variant="h5" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                    Key Performance Indicators
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    At-a-glance plantation productivity and resource status for this month.
+                </Typography>
+            </Box>
+
             {/* KPI Section */}
             <Grid container spacing={3} mb={4}>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #4caf50' }}>
-                        <Typography variant="subtitle2" color="text.secondary">Daily Yield (Today)</Typography>
-                        <Typography variant="h4" fontWeight="bold">{dailyYield} kg</Typography>
-                        <Typography variant="caption" color="success.main">Live Updates</Typography>
-                    </Paper>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #2196f3' }}>
-                        <Typography variant="subtitle2" color="text.secondary">Worker Turnout</Typography>
-                        <Typography variant="h4" fontWeight="bold">{workerTurnout}</Typography>
-                        <Typography variant="caption" color="text.secondary">Workers Present</Typography>
-                    </Paper>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #ff9800' }}>
-                        <Typography variant="subtitle2" color="text.secondary">Avg Productivity</Typography>
-                        <Typography variant="h4" fontWeight="bold">{workerTurnout > 0 ? (dailyYield / workerTurnout).toFixed(1) : 0} kg/p</Typography>
-                        <Typography variant="caption" color="text.secondary">Target: 25 kg/p</Typography>
-                    </Paper>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Paper elevation={2} sx={{ p: 2, borderLeft: '4px solid #9c27b0' }}>
-                        <Typography variant="subtitle2" color="text.secondary">Fertilizer Stock</Typography>
-                        <Typography variant="h4" fontWeight="bold">{fertilizerStock}</Typography>
-                        <Typography variant="caption" color="error.main">Store Level</Typography>
-                    </Paper>
-                </Grid>
-            </Grid>
-
-            {/* Quick Actions */}
-            <Typography variant="h6" gutterBottom sx={{ mt: 2, mb: 1, color: 'text.secondary' }}>Quick Actions</Typography>
-            <Grid container spacing={3} mb={4}>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card
-                        sx={{
-                            cursor: 'pointer',
-                            transition: 'transform 0.2s, box-shadow 0.2s',
-                            '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
-                            borderLeft: '4px solid #1b5e20'
-                        }}
-                        onClick={() => navigate('/dashboard/distribution-works')}
-                    >
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e8f5e9', mr: 2 }}>
-                                <WorkHistoryIcon sx={{ color: '#1b5e20', fontSize: 30 }} />
+                {[
+                    {
+                        title: 'Yield per Acre',
+                        value: landProductivity > 0 ? landProductivity.toFixed(2) : '0.00',
+                        unit: 'kg / Acre',
+                        note: 'Crop Book MTD',
+                        noteColor: 'success.main',
+                        accent: '#43a047',
+                        softBg: 'linear-gradient(135deg, #f4fff5 0%, #ffffff 100%)',
+                        iconBg: 'rgba(67, 160, 71, 0.12)',
+                        icon: <TrendingUpIcon sx={{ color: '#2e7d32', fontSize: 28 }} />,
+                    },
+                    {
+                        title: 'Plucking Average',
+                        value: laborEfficiency > 0 ? laborEfficiency.toFixed(2) : '0.00',
+                        unit: 'kg / Worker',
+                        note: 'Month to Date',
+                        noteColor: 'success.main',
+                        accent: '#1e88e5',
+                        softBg: 'linear-gradient(135deg, #f3faff 0%, #ffffff 100%)',
+                        iconBg: 'rgba(30, 136, 229, 0.12)',
+                        icon: <GroupIcon sx={{ color: '#1565c0', fontSize: 28 }} />,
+                    },
+                    {
+                        title: 'Cost per Kg',
+                        value: `Rs. ${costPerKg > 0 ? costPerKg.toFixed(2) : '0.00'}`,
+                        unit: 'Production Cost',
+                        note: 'Month to Date',
+                        noteColor: 'text.secondary',
+                        accent: '#fb8c00',
+                        softBg: 'linear-gradient(135deg, #fff8ef 0%, #ffffff 100%)',
+                        iconBg: 'rgba(251, 140, 0, 0.14)',
+                        icon: <PaidIcon sx={{ color: '#ef6c00', fontSize: 28 }} />,
+                    },
+                ].map((card) => (
+                    <Grid key={card.title} size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                p: 1.75,
+                                height: '100%',
+                                borderRadius: 2.5,
+                                border: `1px solid ${card.accent}22`,
+                                borderTop: `4px solid ${card.accent}`,
+                                background: card.softBg,
+                                boxShadow: '0 8px 22px rgba(15, 23, 42, 0.07)',
+                                transition: 'transform 0.2s ease, box-shadow 0.2s ease',
+                                '&:hover': {
+                                    transform: 'translateY(-2px)',
+                                    boxShadow: '0 12px 26px rgba(15, 23, 42, 0.1)',
+                                },
+                            }}
+                        >
+                            <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.25}>
+                                <Box>
+                                    <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: 0.2, fontWeight: 700 }}>
+                                        {card.title}
+                                    </Typography>
+                                    <Typography sx={{ mt: 0.75, color: '#16324f', lineHeight: 1, fontSize: '2rem', fontWeight: 800 }}>
+                                        {card.value}
+                                    </Typography>
+                                </Box>
+                                <Box
+                                    sx={{
+                                        width: 40,
+                                        height: 40,
+                                        borderRadius: 2,
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'center',
+                                        bgcolor: card.iconBg,
+                                        boxShadow: 'inset 0 0 0 1px rgba(255,255,255,0.5)',
+                                    }}
+                                >
+                                    {card.icon}
+                                </Box>
                             </Box>
-                            <Box>
-                                <Typography variant="subtitle1" fontWeight="bold">Distribution of Works</Typography>
-                                <Typography variant="caption" color="text.secondary">Manage Monthly Plan</Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card
-                        sx={{
-                            cursor: 'pointer',
-                            transition: 'transform 0.2s, box-shadow 0.2s',
-                            '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 },
-                            borderLeft: '4px solid #fbc02d'
-                        }}
-                        onClick={() => navigate('/dashboard/leave-application')}
-                    >
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#fff9c4', mr: 2 }}>
-                                <EventNoteIcon sx={{ color: '#f57f17', fontSize: 30 }} />
-                            </Box>
-                            <Box>
-                                <Typography variant="subtitle1" fontWeight="bold">Leave Application</Typography>
-                                <Typography variant="caption" color="text.secondary">Apply & View Status</Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #1976d2' }} onClick={() => navigate('/dashboard/correspondence')}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e3f2fd', mr: 2 }}><ChatIcon sx={{ color: '#1976d2', fontSize: 30 }} /></Box>
-                            <Box><Typography variant="subtitle1" fontWeight="bold">Correspondence</Typography><Typography variant="caption" color="text.secondary">Team Messages</Typography></Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #388e3c' }} onClick={() => navigate('/dashboard/crop-ages')}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#e8f5e9', mr: 2 }}><ForestIcon sx={{ color: '#388e3c', fontSize: 30 }} /></Box>
-                            <Box><Typography variant="subtitle1" fontWeight="bold">Crop Ages</Typography><Typography variant="caption" color="text.secondary">Field Maturities</Typography></Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #7b1fa2' }} onClick={() => navigate('/dashboard/order-request')}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#f3e5f5', mr: 2 }}><InventoryIcon sx={{ color: '#7b1fa2', fontSize: 30 }} /></Box>
-                            <Box><Typography variant="subtitle1" fontWeight="bold">Order Request</Typography><Typography variant="caption" color="text.secondary">Store Requisitions</Typography></Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
-                <Grid size={{ xs: 12, sm: 6, md: 3 }}>
-                    <Card sx={{ cursor: 'pointer', transition: 'transform 0.2s, box-shadow 0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, borderLeft: '4px solid #d32f2f' }} onClick={() => navigate('/dashboard/pending-orders')}>
-                        <CardContent sx={{ display: 'flex', alignItems: 'center', p: 2, '&:last-child': { pb: 2 } }}>
-                            <Box sx={{ p: 1.5, borderRadius: 2, bgcolor: '#ffebee', mr: 2 }}><HistoryIcon sx={{ color: '#d32f2f', fontSize: 30 }} /></Box>
-                            <Box><Typography variant="subtitle1" fontWeight="bold">Pending Orders</Typography><Typography variant="caption" color="text.secondary">Status History</Typography></Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                            <Typography sx={{ color: '#4f6b87', fontWeight: 500, fontSize: '0.8rem' }}>
+                                {card.unit}
+                            </Typography>
+                            <Chip
+                                label={card.note}
+                                size="small"
+                                sx={{
+                                    mt: 1.25,
+                                    fontWeight: 700,
+                                    height: 24,
+                                    '& .MuiChip-label': {
+                                        px: 1,
+                                        fontSize: '0.72rem',
+                                    },
+                                    color: card.noteColor,
+                                    bgcolor: 'rgba(255,255,255,0.72)',
+                                    border: '1px solid rgba(15,23,42,0.06)',
+                                }}
+                            />
+                        </Paper>
+                    </Grid>
+                ))}
             </Grid>
 
             <Grid container spacing={3}>
                 {/* Chart Section */}
                 <Grid size={{ xs: 12, md: 8 }}>
-                    <Paper elevation={2} sx={{ p: 3, height: 400 }}>
-                        <Typography variant="h6" gutterBottom color="primary">Weekly Yield Performance</Typography>
+                    <Paper
+                        elevation={0}
+                        sx={{
+                            p: 3,
+                            height: 400,
+                            borderRadius: 3,
+                            border: '1px solid rgba(46,125,50,0.14)',
+                            background: 'linear-gradient(180deg, #ffffff 0%, #f8fcf8 100%)',
+                            boxShadow: '0 14px 32px rgba(15, 23, 42, 0.08)',
+                        }}
+                    >
+                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
+                            <Box>
+                                <Typography variant="h6" gutterBottom color="primary">Factory Weight Performance</Typography>
+                                <Typography variant="body2" color="text.secondary">
+                                    {chartDescriptionByView[factoryWeightView]}
+                                </Typography>
+                            </Box>
+                            <ToggleButtonGroup
+                                size="small"
+                                exclusive
+                                value={factoryWeightView}
+                                onChange={(_, value) => {
+                                    if (value) setFactoryWeightView(value);
+                                }}
+                                sx={{
+                                    '& .MuiToggleButton-root': {
+                                        textTransform: 'none',
+                                        fontWeight: 700,
+                                        px: 1.5,
+                                        borderColor: 'rgba(46,125,50,0.14)',
+                                        color: '#55708b',
+                                    },
+                                    '& .MuiToggleButton-root.Mui-selected': {
+                                        color: '#1b5e20',
+                                        bgcolor: 'rgba(46,125,50,0.08)',
+                                    },
+                                    '& .MuiToggleButton-root.Mui-selected:hover': {
+                                        bgcolor: 'rgba(46,125,50,0.12)',
+                                    },
+                                }}
+                            >
+                                <ToggleButton value="daily">Daily</ToggleButton>
+                                <ToggleButton value="weekly">Weekly</ToggleButton>
+                                <ToggleButton value="monthly">Monthly</ToggleButton>
+                                <ToggleButton value="yearly">Yearly</ToggleButton>
+                            </ToggleButtonGroup>
+                        </Box>
                         <Box sx={{ width: '100%', height: 320 }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <BarChart data={weeklyYieldData}>
-                                    <CartesianGrid strokeDasharray="3 3" />
-                                    <XAxis dataKey="date" />
-                                    <YAxis />
-                                    <RechartsTooltip />
-                                    <Legend />
-                                    <Bar dataKey="yield" fill="#4caf50" name="Yield (Kg)" radius={[4, 4, 0, 0]} />
-                                </BarChart>
+                                <>
+                                    {(factoryWeightView === 'daily' || factoryWeightView === 'weekly') && (
+                                        <BarChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="factoryWeightBar" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="0%" stopColor="#43a047" stopOpacity={0.95} />
+                                                    <stop offset="100%" stopColor="#1b5e20" stopOpacity={0.88} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <RechartsTooltip
+                                                cursor={{ fill: 'rgba(46,125,50,0.06)' }}
+                                                contentStyle={{
+                                                    borderRadius: 12,
+                                                    border: '1px solid rgba(46,125,50,0.14)',
+                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                                }}
+                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                                labelFormatter={(label) => `${factoryWeightView.charAt(0).toUpperCase() + factoryWeightView.slice(1)}: ${label}`}
+                                            />
+                                            <Bar
+                                                dataKey="value"
+                                                fill="url(#factoryWeightBar)"
+                                                radius={[10, 10, 4, 4]}
+                                                maxBarSize={48}
+                                                name="Factory Weight (Kg)"
+                                            />
+                                        </BarChart>
+                                    )}
+
+                                    {factoryWeightView === 'monthly' && (
+                                        <AreaChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                            <defs>
+                                                <linearGradient id="factoryWeightFill" x1="0" y1="0" x2="0" y2="1">
+                                                    <stop offset="5%" stopColor="#2e7d32" stopOpacity={0.38} />
+                                                    <stop offset="95%" stopColor="#2e7d32" stopOpacity={0.02} />
+                                                </linearGradient>
+                                            </defs>
+                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <RechartsTooltip
+                                                contentStyle={{
+                                                    borderRadius: 12,
+                                                    border: '1px solid rgba(46,125,50,0.14)',
+                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                                }}
+                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                                labelFormatter={(label) => `Monthly: ${label}`}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="value"
+                                                stroke="#2e7d32"
+                                                strokeWidth={3}
+                                                fill="url(#factoryWeightFill)"
+                                                dot={{ r: 4, strokeWidth: 2, fill: '#ffffff' }}
+                                                activeDot={{ r: 6 }}
+                                                name="Factory Weight (Kg)"
+                                            />
+                                        </AreaChart>
+                                    )}
+
+                                    {factoryWeightView === 'yearly' && (
+                                        <LineChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                            <RechartsTooltip
+                                                contentStyle={{
+                                                    borderRadius: 12,
+                                                    border: '1px solid rgba(46,125,50,0.14)',
+                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                                }}
+                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                                labelFormatter={(label) => `Year: ${label}`}
+                                            />
+                                            <Line
+                                                type="monotone"
+                                                dataKey="value"
+                                                stroke="#1b5e20"
+                                                strokeWidth={3}
+                                                dot={{ r: 5, strokeWidth: 2, fill: '#ffffff' }}
+                                                activeDot={{ r: 7 }}
+                                                name="Factory Weight (Kg)"
+                                            />
+                                        </LineChart>
+                                    )}
+                                </>
                             </ResponsiveContainer>
                         </Box>
                     </Paper>
@@ -431,8 +894,7 @@ export default function FieldOfficerDashboard() {
                     <Autocomplete
                         multiple
                         id="worker-select-grouped"
-                        options={workers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
-                        groupBy={(option) => option.jobRole}
+                        options={workers.sort((a, b) => a.name.localeCompare(b.name))}
                         getOptionLabel={(option) => option.name}
                         value={workers.filter(w => newMuster.workerIds.includes(w.id))}
                         onChange={(event, newValue) => {
@@ -455,11 +917,7 @@ export default function FieldOfficerDashboard() {
                                 />
                                 <Box>
                                     <Typography variant="body2">{option.name}</Typography>
-                                    <Typography variant="caption" color="text.secondary">
-                                        Reg: {option.id ? '...' : '' /* Should use RegNo but interface defines name/jobRole only */}
-                                        {/* Wait, Interface Worker only has id, name, jobRole. Need to add RegNo to interface? */}
-                                        {option.jobRole}
-                                    </Typography>
+                                    Reg: {option.id ? '...' : ''}
                                 </Box>
                             </li>
                         )}

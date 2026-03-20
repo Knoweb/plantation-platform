@@ -17,6 +17,7 @@ public class InventoryController {
     @Autowired
     private InventoryService service;
 
+    // Keep inventory endpoints centralized under /api/inventory for gateway routing.
     @GetMapping
     public List<InventoryItem> getInventory(@RequestParam String tenantId) {
         return service.getAllItems(tenantId);
@@ -58,8 +59,9 @@ public class InventoryController {
     public InventoryTransaction updateStatus(@PathVariable Long id,
             @RequestParam String status,
             @RequestParam(required = false) Integer quantity,
-            @RequestParam(required = false) String remarks) {
-        return service.updateTransactionStatus(id, status, quantity, remarks);
+            @RequestParam(required = false) String remarks,
+            @RequestParam(required = false) String issuedTo) {
+        return service.updateTransactionStatus(id, status, quantity, remarks, issuedTo);
     }
 
     @DeleteMapping("/{id}")

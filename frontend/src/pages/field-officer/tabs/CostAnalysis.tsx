@@ -1,134 +1,485 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab } from '@mui/material';
-import { useState } from 'react';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress, TextField } from '@mui/material';
+import { useState, useEffect } from 'react';
+import axios from 'axios';
 
-// Define the data structure based on the mock
-interface CostDataRow {
-    item: string;
-    dayAmount: string;
-    dayCostPerKg: string;
-    todateAmount: string;
-    todateCostPerKg: string;
-    isHeaderRow?: boolean;
-    isTotalRow?: boolean;
+interface CostItem {
+    id: string;
+    name: string;
+    dayAmount?: string;
+    todateAmount?: string;
+    lastMonthAmount?: string;
+    ytdAmount?: string;
+    dayCostPerKgOverride?: string;
+    todateCostPerKgOverride?: string;
 }
 
-const mockData: CostDataRow[] = [
-    { item: 'Pluckers', dayAmount: '15,000.00', dayCostPerKg: '45.00', todateAmount: '450,000.00', todateCostPerKg: '42.50' },
-    { item: 'Kanganies', dayAmount: '2,500.00', dayCostPerKg: '7.50', todateAmount: '75,000.00', todateCostPerKg: '7.00' },
-    { item: 'Sack Coolies', dayAmount: '1,500.00', dayCostPerKg: '4.50', todateAmount: '45,000.00', todateCostPerKg: '4.20' },
-    { item: 'Staff OT for Plucking', dayAmount: '800.00', dayCostPerKg: '2.40', todateAmount: '24,000.00', todateCostPerKg: '2.20' },
-    { item: 'Leaf Bags', dayAmount: '-', dayCostPerKg: '-', todateAmount: '12,000.00', todateCostPerKg: '1.10' },
-    { item: 'Cash Kilos', dayAmount: '4,000.00', dayCostPerKg: '12.00', todateAmount: '120,000.00', todateCostPerKg: '11.30' },
-    { item: 'Meals', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '90,000.00', todateCostPerKg: '8.50' },
-    { item: 'Over Kilos', dayAmount: '2,000.00', dayCostPerKg: '6.00', todateAmount: '60,000.00', todateCostPerKg: '5.60' },
-    { item: 'Total Plucking Cost', dayAmount: '28,800.00', dayCostPerKg: '86.40', todateAmount: '876,000.00', todateCostPerKg: '82.40', isTotalRow: true },
+interface CostCategory {
+    id: string;
+    name: string;
+    items: CostItem[];
+}
 
-    { item: 'Chemical Weeding ManDays', dayAmount: '5,000.00', dayCostPerKg: '15.00', todateAmount: '150,000.00', todateCostPerKg: '14.10' },
-    { item: 'Cost of Chemical', dayAmount: '12,000.00', dayCostPerKg: '36.00', todateAmount: '360,000.00', todateCostPerKg: '33.90' },
-    { item: 'Tank Repair', dayAmount: '-', dayCostPerKg: '-', todateAmount: '5,000.00', todateCostPerKg: '0.40' },
-    { item: 'Meals', dayAmount: '800.00', dayCostPerKg: '2.40', todateAmount: '24,000.00', todateCostPerKg: '2.20' },
-    { item: 'Transport', dayAmount: '1,500.00', dayCostPerKg: '4.50', todateAmount: '45,000.00', todateCostPerKg: '4.20' },
-    { item: 'Total Cost for Chemical weeding', dayAmount: '19,300.00', dayCostPerKg: '57.90', todateAmount: '584,000.00', todateCostPerKg: '54.80', isTotalRow: true },
-
-    { item: 'Manual Weeding ManDays', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '90,000.00', todateCostPerKg: '8.40' },
-    { item: 'Tools', dayAmount: '-', dayCostPerKg: '-', todateAmount: '8,000.00', todateCostPerKg: '0.70' },
-    { item: 'Total Cost for Manual weeding', dayAmount: '3,000.00', dayCostPerKg: '9.00', todateAmount: '98,000.00', todateCostPerKg: '9.10', isTotalRow: true },
-
-    { item: 'Fertilizer Cost', dayAmount: '-', dayCostPerKg: '-', todateAmount: '850,000.00', todateCostPerKg: '80.10', isTotalRow: true },
+const DEFAULT_CATEGORY_STRUCTURE = [
+    { name: 'Plucking', items: ['Pluckers', 'Kanganies', 'Sack Coolies', 'Staff OT for Plucking', 'Leaf Bags', 'Cash Kilos', 'Meals', 'Over Kilos'] },
+    { name: 'Chemical Weeding', items: ['Chemical Weeding ManDays', 'Cost of Chemical', 'Tank Repair', 'Meals', 'Transport'] },
+    { name: 'Manual Weeding', items: ['Manual Weeding ManDays', 'Tools'] },
+    { name: 'Fertilizing', items: ['Fertilizer Cost'] },
 ];
 
+const ITEM_TO_CATEGORY = new Map(
+    DEFAULT_CATEGORY_STRUCTURE.flatMap((category) => category.items.map((item) => [item, category.name] as const)),
+);
+const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORY_STRUCTURE.map((category) => category.name));
+const HEADER_ROW_ONE_HEIGHT = 38;
+const HEADER_ROW_TWO_HEIGHT = 44;
+
+const sanitizeCostPerKgOverride = (overrideText?: string, amountText?: string) => {
+    const trimmed = String(overrideText || '').trim();
+    if (!trimmed) return '';
+
+    const overrideValue = Number.parseFloat(trimmed);
+    const amountValue = Number.parseFloat(String(amountText || '0'));
+    if (!Number.isFinite(overrideValue) || overrideValue <= 0 || !Number.isFinite(amountValue) || amountValue <= 0) {
+        return '';
+    }
+
+    if (overrideValue >= 100 && amountValue >= 100) return '';
+    if (overrideValue >= amountValue * 0.2) return '';
+    return trimmed;
+};
+
+const normalizeCategories = (input: any): CostCategory[] => {
+    if (!Array.isArray(input)) return [];
+
+    const grouped = new Map<string, CostCategory>();
+    const ensureCategory = (name: string) => {
+        if (!grouped.has(name)) grouped.set(name, { id: `${name}-${Math.random().toString(36).slice(2, 8)}`, name, items: [] });
+        return grouped.get(name)!;
+    };
+
+    const repairMalformedItem = (workItemName: string, source: any): CostItem => {
+        const sourceName = String(source?.name || '').trim();
+        const sourceNameNumber = Number.parseFloat(sourceName);
+        const todateFromSource = String(source?.todateAmount || '').trim();
+        const ytdFromSource = String(source?.ytdAmount || '').trim();
+        const ytdNumber = Number.parseFloat(ytdFromSource || '0');
+        const todateNumber = Number.parseFloat(todateFromSource || '0');
+
+        const repaired: CostItem = {
+            id: source?.id || `${workItemName}-${Math.random().toString(36).slice(2, 8)}`,
+            name: workItemName,
+            dayAmount: String(source?.dayAmount || '0'),
+            lastMonthAmount: String(source?.lastMonthAmount || '0'),
+            ytdAmount: ytdFromSource,
+            dayCostPerKgOverride: sanitizeCostPerKgOverride(source?.dayCostPerKgOverride, source?.dayAmount),
+            todateCostPerKgOverride: sanitizeCostPerKgOverride(source?.todateCostPerKgOverride, source?.todateAmount),
+        };
+
+        if (!Number.isNaN(sourceNameNumber) && sourceNameNumber > 0 && (Math.abs(ytdNumber - sourceNameNumber) < 0.001 || todateNumber === 0)) {
+            repaired.todateAmount = sourceName;
+            if (!repaired.todateCostPerKgOverride && todateNumber > 0) {
+                repaired.todateCostPerKgOverride = todateFromSource;
+            }
+        } else {
+            repaired.todateAmount = String(source?.todateAmount || '0');
+        }
+
+        return repaired;
+    };
+
+    for (const rawCategory of input) {
+        const categoryName = String(rawCategory?.name || '').trim();
+        const rawItems = Array.isArray(rawCategory?.items) ? rawCategory.items : [];
+        if (!categoryName) continue;
+
+        if (ITEM_TO_CATEGORY.has(categoryName) && !KNOWN_CATEGORY_NAMES.has(categoryName)) {
+            const bucket = ensureCategory(ITEM_TO_CATEGORY.get(categoryName)!);
+            bucket.items.push(repairMalformedItem(categoryName, rawItems[0] || {}));
+            continue;
+        }
+
+        const bucket = ensureCategory(categoryName);
+        for (const rawItem of rawItems) {
+            const itemName = String(rawItem?.name || '').trim();
+            if (!itemName) continue;
+            bucket.items.push({
+                ...rawItem,
+                id: rawItem?.id || `${itemName}-${Math.random().toString(36).slice(2, 8)}`,
+                name: itemName,
+                dayCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.dayCostPerKgOverride, rawItem?.dayAmount),
+                todateCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.todateCostPerKgOverride, rawItem?.todateAmount),
+            });
+        }
+    }
+
+    return Array.from(grouped.values()).map((category) => ({
+        ...category,
+        items: category.items.filter((item, index, items) =>
+            items.findIndex((candidate) => candidate.name.toLowerCase() === item.name.toLowerCase()) === index,
+        ),
+    }));
+};
+
+const CROP_COLORS: Record<string, { tab: string; total: string }> = {
+    Tea: { tab: '#2e7d32', total: '#e8f5e9' },
+    Rubber: { tab: '#0277bd', total: '#e1f5fe' },
+    Cinnamon: { tab: '#e65100', total: '#fff3e0' },
+};
+const DEFAULT_COLOR = { tab: '#757575', total: '#f5f5f5' };
+
+const fmt = (val?: string) => {
+    const n = parseFloat(val || '0');
+    return Number.isFinite(n) ? n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
+};
+
+const catTotal = (items: CostItem[], field: keyof CostItem) =>
+    items.reduce((s, i) => s + (parseFloat((i[field] as string) || '0') || 0), 0);
+
+const fmtTotal = (n: number) => n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+const fmtPerKg = (amtTotal: number, weight?: number, overrideText?: string) => {
+    const sanitizedOverride = sanitizeCostPerKgOverride(overrideText, String(amtTotal));
+    if (sanitizedOverride && amtTotal > 0) return sanitizedOverride;
+    if (amtTotal === 0 || !weight || weight === 0) return '-';
+    return (amtTotal / weight).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
 export default function CostAnalysis() {
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
+    const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
+    const [categories, setCategories] = useState<CostCategory[]>([]);
+    const [loading, setLoading] = useState(false);
+    const [now, setNow] = useState(new Date());
+    
+    // date selection
+    const [selectedDate, setSelectedDate] = useState<string>(
+        new Date().toISOString().split('T')[0]
+    );
+
+    const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
+    const [weights, setWeights] = useState({ day: 0, todate: 0, lastMonth: 0, ytd: 0 });
+
+    // Live clock
+    useEffect(() => {
+        const timer = setInterval(() => setNow(new Date()), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    useEffect(() => {
+        axios.get(`/api/fields?tenantId=${userSession.tenantId}`)
+            .then(r => {
+                const crops = Array.from(new Set((r.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
+                if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
+                
+                const fMap = new Map<string, string>();
+                r.data.forEach((f: any) => {
+                    if (f.name && f.cropType) fMap.set(f.name.toLowerCase(), f.cropType.toUpperCase());
+                    if (f.id && f.cropType) fMap.set(String(f.id), f.cropType.toUpperCase());
+                });
+                setFieldCropMap(fMap);
+            }).catch(() => { });
+    }, [userSession.tenantId]);
+
+    useEffect(() => {
+        setLoading(true);
+        axios.get(`/api/daily-costs`, {
+            params: { tenantId: userSession.tenantId, cropType: activeCrop, date: selectedDate }
+        })
+        .then(r => {
+            if (r.status === 200 && r.data?.costData) {
+                try {
+                    const parsed = JSON.parse(r.data.costData);
+                    setCategories(normalizeCategories(parsed));
+                } catch {
+                    setCategories([]);
+                }
+            } else {
+                setCategories([]);
+            }
+        })
+        .catch(() => setCategories([]))
+        .finally(() => setLoading(false));
+        
+        // Fetch Daily Work for True Factory Weights
+        const reqDateForFetch = new Date(`${selectedDate}T00:00:00`);
+        const fwYearBase = reqDateForFetch.getMonth() >= 3 ? reqDateForFetch.getFullYear() : reqDateForFetch.getFullYear() - 1;
+        const startFetchStr = `${fwYearBase}-04-01`;
+
+        axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&startDate=${startFetchStr}&endDate=${selectedDate}`)
+            .then(r => {
+                let dWeight = 0, tWeight = 0, lmWeight = 0, ytdWeight = 0;
+                const reqDate = new Date(`${selectedDate}T00:00:00`);
+                const sYear = reqDate.getFullYear();
+                const sMonth = reqDate.getMonth();
+                const sDate = reqDate.getDate();
+
+                const fwYear = sMonth >= 3 ? sYear : sYear - 1;
+                const dYTD = new Date(fwYear, 3, 1);
+                const lDateStart = new Date(sYear, sMonth - 1, 1);
+                const lDateEnd = new Date(sYear, sMonth, 0);
+
+                const works = r.data || [];
+                works.forEach((w: any) => {
+                    if (w.bulkWeights) {
+                        try {
+                            const bw = JSON.parse(w.bulkWeights);
+                            let factorySum = 0;
+                            let belongsToCrop = false;
+
+                            // Check all fields inside bulkWeights to see if any match the active crop
+                            for (const key in bw) {
+                                if (key !== '__FACTORY__' && fieldCropMap.has(key.toLowerCase())) {
+                                    if (fieldCropMap.get(key.toLowerCase())?.toUpperCase() === activeCrop.toUpperCase()) {
+                                        belongsToCrop = true;
+                                    }
+                                }
+                            }
+
+                            if (belongsToCrop && bw.__FACTORY__ && bw.__FACTORY__.factoryWt) {
+                                factorySum = Number(bw.__FACTORY__.factoryWt) || 0;
+                            }
+                            
+                            if (factorySum > 0) {
+                                const wDateStr = w.workDate;
+                                if (!wDateStr) return;
+                                const wDate = new Date(`${wDateStr}T00:00:00`);
+                                
+                                if (wDateStr === selectedDate) dWeight += factorySum;
+                                if (wDate.getFullYear() === sYear && wDate.getMonth() === sMonth && wDate.getDate() <= sDate) tWeight += factorySum;
+                                if (wDate >= lDateStart && wDate <= lDateEnd) lmWeight += factorySum;
+                                if (wDate >= dYTD && wDate <= reqDate) ytdWeight += factorySum;
+                            }
+                        } catch(e) {}
+                    }
+                });
+                setWeights({ day: dWeight, todate: tWeight, lastMonth: lmWeight, ytd: ytdWeight });
+            }).catch(() => {});
+
+    }, [activeCrop, selectedDate, userSession.tenantId, fieldCropMap]);
+
+    const colors = CROP_COLORS[activeCrop] || DEFAULT_COLOR;
+
+    const headerCell = (label: string) => (
+        <TableCell
+            align="right"
+            sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', fontSize: '0.8rem', height: `${HEADER_ROW_TWO_HEIGHT}px` }}
+        >
+            {label}
+        </TableCell>
+    );
 
     return (
         <Box sx={{ pb: 4 }}>
-            {/* Header */}
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
+            {/* Title Header */}
+            <Box mb={2}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Cost Analysis
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
-                </Typography>
             </Box>
+
+            {/* Header Section */}
+            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #81c784' }}>
+                <Box display="flex" alignItems="center" gap={2}>
+                    <Typography variant="body1" fontWeight="bold" color="#1b5e20">Analysis Date:</Typography>
+                    <TextField
+                        type="date"
+                        variant="outlined"
+                        size="small"
+                        value={selectedDate}
+                        onChange={(e) => setSelectedDate(e.target.value)}
+                        sx={{ bgcolor: 'white', borderRadius: 1 }}
+                    />
+                </Box>
+            </Paper>
 
             <Paper elevation={3} sx={{ overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
-                {/* Crop Tabs (mimicking the colored cells in the mock) */}
+                {/* Excel-style top ribbon inside the table card */}
+                <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
+                    <Box sx={{ borderTop: '2px solid #1b5e20', borderBottom: '1px solid #ccc', textAlign: 'center', py: 0.5 }}>
+                        <Typography sx={{ fontSize: '1.2rem', color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                            Cost Analysis - {activeCrop}
+                        </Typography>
+                    </Box>
+                    <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc', py: 0.2 }}>
+                        <Box sx={{ flex: 1, borderRight: '1px solid #ccc' }} />
+                        <Box sx={{ flex: 3, textAlign: 'center' }}>
+                            <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                                {new Date(selectedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
+                            </Typography>
+                        </Box>
+                        <Box sx={{ flex: 1, textAlign: 'right', pr: 2, borderLeft: '1px solid #ccc' }}>
+                            <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                                {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                            </Typography>
+                        </Box>
+                    </Box>
+                </Box>
+                {/* Crop Tabs */}
                 <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
-                    <Tabs
-                        value={activeCrop}
-                        onChange={(_, v) => setActiveCrop(v)}
-                        sx={{
-                            minHeight: 36,
-                            '& .MuiTab-root': {
-                                minHeight: 36,
-                                py: 0.5,
-                                px: 3,
-                                fontWeight: 'bold',
-                                textTransform: 'none',
-                                color: '#000',
-                                borderRight: '1px solid #ccc'
-                            }
-                        }}
-                    >
-                        <Tab label="Tea" value="Tea" sx={{ bgcolor: activeCrop === 'Tea' ? '#4caf50' : '#81c784', '&.Mui-selected': { bgcolor: '#4caf50', color: '#fff !important' } }} />
-                        <Tab label="Rubber" value="Rubber" sx={{ bgcolor: activeCrop === 'Rubber' ? '#03a9f4' : '#81d4fa', '&.Mui-selected': { bgcolor: '#03a9f4', color: '#fff !important' } }} />
-                        <Tab label="Cinnamon" value="Cinnamon" sx={{ bgcolor: activeCrop === 'Cinnamon' ? '#ffc107' : '#ffe082', '&.Mui-selected': { bgcolor: '#ffc107', color: '#000 !important' } }} />
-                        <Tab label="General" value="General" sx={{ bgcolor: activeCrop === 'General' ? '#e0e0e0' : '#f5f5f5', '&.Mui-selected': { bgcolor: '#bdbdbd', color: '#000 !important' }, borderRight: 'none !important' }} />
+                    <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
+                        sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontWeight: 'bold', textTransform: 'none', borderRight: '1px solid #ccc' } }}>
+                        {availableCrops.map(crop => (
+                            <Tab key={crop} label={crop} value={crop} sx={{
+                                bgcolor: activeCrop === crop ? (CROP_COLORS[crop]?.tab || '#757575') : '#e8e8e8',
+                                color: activeCrop === crop ? '#fff !important' : '#555',
+                            }} />
+                        ))}
                     </Tabs>
                 </Box>
 
-                {/* Complex Data Table */}
-                <TableContainer sx={{ maxHeight: 'calc(100vh - 250px)' }}>
-                    <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', padding: '6px 16px' } }}>
+                {loading && (
+                    <Box display="flex" justifyContent="center" py={6}>
+                        <CircularProgress size={30} sx={{ color: colors.tab }} />
+                    </Box>
+                )}
 
-                        {/* Two-Tier Table Header */}
-                        <TableHead>
-                            <TableRow sx={{ '& th': { bgcolor: '#fafafa', color: '#1b5e20', fontWeight: 'bold', borderBottom: '1px solid #e0e0e0' } }}>
-                                <TableCell rowSpan={2} sx={{ width: '30%', minWidth: 250 }}>Work Item</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>Day</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>Todate</TableCell>
-                                <TableCell colSpan={2} align="center" sx={{ borderBottom: '1px solid #e0e0e0 !important' }}>History</TableCell>
-                            </TableRow>
-                            <TableRow sx={{ '& th': { bgcolor: '#fafafa', fontWeight: 'bold' } }}>
-                                {/* Day */}
-                                <TableCell align="right">Amount</TableCell>
-                                <TableCell align="right">Cost/Kg</TableCell>
-                                {/* Todate */}
-                                <TableCell align="right">Amount</TableCell>
-                                <TableCell align="right">Cost/Kg</TableCell>
-                                {/* History */}
-                                <TableCell align="right">Last Mth</TableCell>
-                                <TableCell align="right">YTD</TableCell>
-                            </TableRow>
-                        </TableHead>
-
-                        {/* Table Body */}
-                        <TableBody>
-                            {mockData.map((row, index) => (
-                                <TableRow
-                                    key={index}
-                                    sx={{
-                                        bgcolor: row.isTotalRow ? '#e0e0e0' : 'inherit',
-                                        '&:hover': { bgcolor: row.isTotalRow ? '#d5d5d5' : '#f5f5f5' }
-                                    }}
-                                >
-                                    <TableCell sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>
-                                        {row.item}
+                {!loading && (
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
+                        <Table
+                            size="small"
+                            stickyHeader
+                            sx={{
+                                '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' },
+                                tableLayout: 'fixed',
+                                '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: 0,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_ONE_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e0e0e0',
+                                },
+                                '& .MuiTableHead-root .MuiTableRow-root:nth-of-type(2) .MuiTableCell-root': {
+                                    position: 'sticky',
+                                    top: HEADER_ROW_ONE_HEIGHT,
+                                    zIndex: 4,
+                                    height: `${HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                    boxShadow: 'inset 0 -1px 0 #e0e0e0',
+                                },
+                                '& .MuiTableHead-root .MuiTableCell-root[rowspan="2"]': {
+                                    top: 0,
+                                    zIndex: 5,
+                                    height: `${HEADER_ROW_ONE_HEIGHT + HEADER_ROW_TWO_HEIGHT}px`,
+                                    backgroundColor: '#fafafa',
+                                    backgroundImage: 'none',
+                                },
+                            }}
+                        >
+                            <colgroup>
+                                <col style={{ width: '28%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                                <col style={{ width: '12%' }} />
+                            </colgroup>
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', width: '28%' }}>
+                                        Work Item
                                     </TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.dayAmount}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.dayCostPerKg}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.todateAmount}</TableCell>
-                                    <TableCell align="right" sx={{ fontWeight: row.isTotalRow ? 'bold' : 'normal' }}>{row.todateCostPerKg}</TableCell>
-                                    {/* History Placeholders */}
-                                    <TableCell align="right" sx={{ color: 'text.secondary' }}>-</TableCell>
-                                    <TableCell align="right" sx={{ color: 'text.secondary' }}>-</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                        Day
+                                    </TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                        Todate
+                                    </TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
+                                        History
+                                    </TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                                <TableRow>
+                                    {headerCell('Amount (Rs.)')}
+                                    {headerCell('Cost/Kg')}
+                                    {headerCell('Amount (Rs.)')}
+                                    {headerCell('Cost/Kg')}
+                                    {headerCell('Last Mth')}
+                                    {headerCell('YTD')}
+                                </TableRow>
+                            </TableHead>
+
+                            <TableBody>
+                                {categories.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                            <Typography variant="body2">
+                                                No published cost analysis is available yet for <strong>{activeCrop}</strong> on this date.<br />
+                                                The Chief Clerk must save or upload the report before it becomes visible here.
+                                            </Typography>
+                                        </TableCell>
+                                    </TableRow>
+                                )}
+
+                                {categories.flatMap(cat => {
+                                    const rows = cat.items.map((item, idx) => (
+                                        <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
+                                            <TableCell sx={{ pl: idx === 0 ? 2 : 4, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {item.name}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.dayAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmtPerKg(parseFloat(item.dayAmount || '0'), weights.day, item.dayCostPerKgOverride)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.todateAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmtPerKg(parseFloat(item.todateAmount || '0'), weights.todate, item.todateCostPerKgOverride)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.lastMonthAmount)}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {fmt(item.ytdAmount)}
+                                            </TableCell>
+                                        </TableRow>
+                                    ));
+
+                                    // Total row
+                                    if (cat.items.length > 0) {
+                                        const totalDayAmount = catTotal(cat.items, 'dayAmount');
+                                        const totalTodateAmount = catTotal(cat.items, 'todateAmount');
+                                        
+                                        rows.push(
+                                            <TableRow key={`${cat.id}-total`} sx={{ bgcolor: colors.total }}>
+                                                <TableCell sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.82rem' }}>
+                                                    Total Cost for {cat.name}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                    {fmtTotal(totalDayAmount)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(totalDayAmount, weights.day)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                    {fmtTotal(totalTodateAmount)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                    {fmtPerKg(totalTodateAmount, weights.todate)}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                    {fmtTotal(catTotal(cat.items, 'lastMonthAmount'))}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
+                                                    {fmtTotal(catTotal(cat.items, 'ytdAmount'))}
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    }
+                                    return rows;
+                                })}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
             </Paper>
         </Box>
     );

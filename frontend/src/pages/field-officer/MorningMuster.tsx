@@ -1,4 +1,4 @@
-import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, OutlinedInput, DialogActions, Autocomplete, Checkbox, TextField, Alert, Snackbar } from '@mui/material';
+import { Box, Paper, Typography, Card, CardContent, Avatar, Chip, Button, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, IconButton, Dialog, DialogTitle, DialogContent, FormControl, InputLabel, Select, MenuItem, DialogActions, Autocomplete, Checkbox, TextField, Alert, Snackbar } from '@mui/material';
 import { useState, useEffect, Fragment } from 'react';
 import axios from 'axios';
 import EditIcon from '@mui/icons-material/Edit';
@@ -23,9 +23,11 @@ interface Muster {
 interface Worker {
     id: string;
     name: string;
-    jobRole: string;
     gender: string;
+    status?: string;
     divisionIds?: string[]; // Worker assigned divisions
+    employmentType?: string;
+    registeredDate?: string;
 }
 
 interface Field {
@@ -77,10 +79,26 @@ export default function MorningMuster() {
     const [availableTasks, setAvailableTasks] = useState<string[]>([]);
 
     useEffect(() => {
-        fetchData();
-        if (tenantId && selectedDivisionId) {
-            checkApprovalStatus();
-        }
+        let isMounted = true;
+
+        const refreshData = async () => {
+            if (!isMounted) return;
+            await fetchData();
+            if (tenantId && selectedDivisionId) {
+                await checkApprovalStatus();
+            }
+        };
+
+        // Initial fetch
+        refreshData();
+
+        // Real-time sync polling every 5 seconds
+        const intervalId = setInterval(refreshData, 5000);
+
+        return () => {
+            isMounted = false;
+            clearInterval(intervalId);
+        };
     }, [tenantId, selectedDivisionId]);
 
     const checkApprovalStatus = async () => {
@@ -158,11 +176,17 @@ export default function MorningMuster() {
                 return;
             }
 
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const todayLocal = `${year}-${month}-${day}`;
+
             const payload = {
                 ...newMuster,
                 tenantId,
                 divisionId: selectedDivisionId,
-                date: new Date().toISOString().split('T')[0],
+                date: todayLocal,
                 workerCount: newMuster.workerIds.length
             };
 
@@ -205,8 +229,30 @@ export default function MorningMuster() {
         return relatedField ? relatedField.divisionId === activeDivId : true; // Show if unknown
     });
 
-    // Workers are available across all divisions (Floating Pool)
-    const filteredWorkers = workers;
+    const todayStr = (() => {
+        const d = new Date();
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    })();
+
+    // Workers are available across all divisions (Floating Pool) and must be ACTIVE to be assigned
+    const filteredWorkers = workers.filter(w => {
+        if (w.status !== 'ACTIVE') return false;
+
+        // Day Contract Workers are strictly for the current day based on when Chief Clerk logged them
+        if (w.employmentType === 'CONTRACT') {
+            return w.registeredDate === todayStr;
+        }
+
+        // Contract templates should never appear directly
+        if (w.employmentType === 'CONTRACT_MEMBER') {
+            return false;
+        }
+
+        return true;
+    });
 
     const filteredFields = fields.filter(f => f.divisionId === activeDivId);
 
@@ -290,16 +336,27 @@ export default function MorningMuster() {
                 filteredMusters.forEach(m => {
                     const assignedWorkers = m.workerIds?.map(wid => {
                         const w = workers.find(work => work.id === wid);
-                        return { id: wid, name: w ? w.name : 'Unknown' };
+                        return {
+                            id: wid,
+                            name: w ? w.name : 'Unknown',
+                            type: w ? (w.type || w.employmentType || w.workerType || 'CASUAL') : 'CASUAL'
+                        };
                     }) || [];
 
                     totalCount += m.workerCount;
-                    allAssignments.push({
-                        task: m.taskType,
-                        field: m.fieldName,
-                        count: m.workerCount,
-                        assigned: assignedWorkers
-                    });
+
+                    const existing = allAssignments.find(a => a.task === m.taskType && a.field === m.fieldName);
+                    if (existing) {
+                        existing.assigned.push(...assignedWorkers);
+                        existing.count += m.workerCount;
+                    } else {
+                        allAssignments.push({
+                            task: m.taskType,
+                            field: m.fieldName,
+                            count: m.workerCount,
+                            assigned: assignedWorkers
+                        });
+                    }
                 });
 
                 // Use local date for consistency
@@ -568,10 +625,16 @@ export default function MorningMuster() {
                                                 {muster.workerIds && muster.workerIds.length > 0 ? (
                                                     muster.workerIds.map(wId => {
                                                         const w = getWorkerDetails(wId);
+
+                                                        let avatarColor = "#9e9e9e"; // default
+                                                        if (w?.employmentType === 'PERMANENT') { avatarColor = "#2e7d32"; } // success.main
+                                                        if (w?.employmentType === 'CASUAL') { avatarColor = "#0288d1"; } // info.main
+                                                        if (w?.employmentType === 'CONTRACT' || w?.employmentType === 'CONTRACT_MEMBER') { avatarColor = "#9c27b0"; } // secondary.main
+
                                                         return (
                                                             <Chip
                                                                 key={wId}
-                                                                avatar={<Avatar sx={{ bgcolor: w?.gender === 'MALE' ? 'primary.main' : 'secondary.main' }}><PersonIcon /></Avatar>}
+                                                                avatar={<Avatar sx={{ bgcolor: avatarColor }}><PersonIcon sx={{ color: 'white' }} /></Avatar>}
                                                                 label={w ? w.name : 'Unknown'}
                                                                 variant="outlined"
                                                                 size="small"
@@ -639,11 +702,23 @@ export default function MorningMuster() {
                     <Autocomplete
                         multiple
                         id="worker-select-grouped-muster"
-                        options={filteredWorkers.sort((a, b) => a.jobRole.localeCompare(b.jobRole))}
-                        groupBy={(option) => option.jobRole}
+                        options={filteredWorkers.sort((a, b) => {
+                            const typeOrders: Record<string, number> = { 'PERMANENT': 1, 'CASUAL': 2, 'CONTRACT': 3, 'CONTRACT_MEMBER': 3 };
+                            const orderA = typeOrders[a.employmentType || ''] || 4;
+                            const orderB = typeOrders[b.employmentType || ''] || 4;
+                            if (orderA !== orderB) return orderA - orderB;
+                            return a.name.localeCompare(b.name);
+                        })}
+                        groupBy={(option) => {
+                            if (option.employmentType === 'PERMANENT') return '— PERMANENT —';
+                            if (option.employmentType === 'CASUAL') return '— CASUAL —';
+                            if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') return '— CONTRACT —';
+                            return '— OTHER —';
+                        }}
                         getOptionLabel={(option) => option.name}
+                        isOptionEqualToValue={(option, value) => option.id === value.id}
                         value={filteredWorkers.filter(w => newMuster.workerIds.includes(w.id))}
-                        onChange={(event, newValue) => {
+                        onChange={(_event, newValue) => {
                             setNewMuster({ ...newMuster, workerIds: newValue.map(w => w.id) });
                         }}
                         disableCloseOnSelect
@@ -655,6 +730,38 @@ export default function MorningMuster() {
                                 margin="dense"
                             />
                         )}
+                        renderTags={(value: readonly Worker[], getTagProps) =>
+                            value.map((option: Worker, index: number) => {
+                                let color: "success" | "info" | "default" = "default";
+                                let sxProps: any = {};
+                                if (option.employmentType === 'PERMANENT') color = "success";
+                                else if (option.employmentType === 'CASUAL') color = "info";
+                                else if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') {
+                                    sxProps = { color: '#9c27b0', borderColor: '#ce93d8' };
+                                }
+
+                                const { key, ...chipProps } = getTagProps({ index }) as any;
+
+                                return (
+                                    <Chip
+                                        key={option.id || key}
+                                        {...chipProps}
+                                        variant="outlined"
+                                        label={
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Typography variant="body2">{option.name}</Typography>
+                                                <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '10px', textTransform: 'capitalize' }}>
+                                                    ({option.employmentType?.replace('_', ' ').toLowerCase() || 'unknown'})
+                                                </Typography>
+                                            </Box>
+                                        }
+                                        size="small"
+                                        color={color}
+                                        sx={sxProps}
+                                    />
+                                );
+                            })
+                        }
                         renderOption={(props, option, { selected }) => {
                             // Check unavailable against ALL musters (Global Tenant Availability)
                             const isUnavailable = musters.some(m =>
@@ -662,8 +769,20 @@ export default function MorningMuster() {
                                 m.workerIds?.includes(option.id)
                             );
 
+                            let typeColor = "inherit"; // default
+
+                            if (option.employmentType === 'PERMANENT') { typeColor = "success.main"; }
+                            if (option.employmentType === 'CASUAL') { typeColor = "info.main"; }
+                            if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') {
+                                typeColor = "#9c27b0";
+                            }
+
+                            // Important: Mui passes a key in props, so we shouldn't pass it again using {...props} and key={} together inconsistently in React 18
+                            // However, Mui handles this internally usually. Let's destructure key if we need.
+                            const { key, ...otherProps } = props as any;
+
                             return (
-                                <li {...props} key={option.id}>
+                                <li key={option.id || key} {...otherProps}>
                                     <Checkbox
                                         icon={<CheckBoxOutlineBlankIcon fontSize="small" />}
                                         checkedIcon={<CheckBoxIcon fontSize="small" />}
@@ -671,12 +790,9 @@ export default function MorningMuster() {
                                         checked={selected}
                                         disabled={isUnavailable}
                                     />
-                                    <Box sx={{ opacity: isUnavailable ? 0.5 : 1 }}>
-                                        <Typography variant="body2">
+                                    <Box sx={{ opacity: isUnavailable ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                        <Typography variant="body2" sx={{ color: typeColor, fontWeight: selected ? 'bold' : 'normal' }}>
                                             {option.name} {isUnavailable ? '(Assigned)' : ''}
-                                        </Typography>
-                                        <Typography variant="caption" color="text.secondary">
-                                            {option.jobRole}
                                         </Typography>
                                     </Box>
                                 </li>
@@ -712,6 +828,6 @@ export default function MorningMuster() {
                     {snackbar.message}
                 </Alert>
             </Snackbar>
-        </Box>
+        </Box >
     );
 }

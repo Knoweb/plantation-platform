@@ -2,12 +2,15 @@ import { Box, Grid, Typography, Card, CardContent, Button, Table, TableBody, Tab
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import SettingsIcon from '@mui/icons-material/Settings'; // Added for Norm Setting
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 export default function ManagerDashboard() {
     const [pendingItems, setPendingItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const navigate = useNavigate();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -104,8 +107,26 @@ export default function ManagerDashboard() {
                     </Card>
                 </Grid>
 
+                {/* Norm Setting Section */}
+                <Grid item xs={12} md={3}>
+                    <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderTop: '4px solid #1b5e20', cursor: 'pointer' }} onClick={() => navigate('/dashboard/norms')}>
+                        <CardContent>
+                            <Box display="flex" alignItems="center" gap={1} mb={2}>
+                                <SettingsIcon color="primary" sx={{ fontSize: 32 }} />
+                                <Typography variant="h6">Operational Targets & Norms</Typography>
+                            </Box>
+                            <Typography variant="body2" color="text.secondary">
+                                Prepare and manage the monthly minimum yield targets for Tea Plucking & Rubber Tapping.
+                            </Typography>
+                            <Box mt={2} textAlign="right">
+                                <Button size="small" variant="text">Manage Norms</Button>
+                            </Box>
+                        </CardContent>
+                    </Card>
+                </Grid>
+
                 {/* Crop Book Section */}
-                <Grid item xs={12} md={7}>
+                <Grid item xs={12} md={4}>
                     <Card sx={{ height: '100%', borderTop: '4px solid #2e7d32' }}> {/* Plantation Green */}
                         <CardContent>
                             <Box display="flex" alignItems="center" mb={2} justifyContent="space-between">

@@ -4,6 +4,10 @@ server:
 spring:
   application:
     name: api-gateway
+  data:
+    redis:
+      host: localhost
+      port: 6379
   cloud:
     gateway:
       discovery:
@@ -11,9 +15,9 @@ spring:
           enabled: true
       globalcors:
         cors-configurations:
-          '[/**]':
+          "[/**]":
             allowedOrigins:
-              - "http://localhost:5173"
+              - "htt+p://localhost:5173"
               - "https://www.wevili.com"
               - "http://www.wevili.com"
             allowedMethods:
@@ -23,21 +27,79 @@ spring:
               - DELETE
               - OPTIONS
             allowedHeaders: "*"
+      default-filters:
+        - DedupeResponseHeader=Access-Control-Allow-Origin Access-Control-Allow-Credentials, RETAIN_UNIQUE
       routes:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
           predicates:
-            - Path=/api/tenants/**,/api/divisions/**,/api/workers/**,/api/fields/**
+            - Path=/api/tenants,/api/tenants/**,/api/divisions,/api/divisions/**,/api/workers,/api/workers/**,/api/fields,/api/fields/**,/api/crop-configs,/api/crop-configs/**,/api/daily-costs,/api/daily-costs/**,/api/work-program,/api/work-program/**,/api/fertilizer-programme,/api/fertilizer-programme/**,/api/fertilizer-master,/api/fertilizer-master/**,/api/fertilizer-applications,/api/fertilizer-applications/**,/api/fertilizer-target-ratio,/api/fertilizer-target-ratio/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: tenantServiceCB
+                fallbackUri: forward:/fallback/general
+        - id: tenant-service-ws
+          uri: lb:ws://TENANT-SERVICE
+          predicates:
+            - Path=/ws/work-program,/ws/work-program/**
         - id: inventory-service
           uri: lb://INVENTORY-SERVICE
           predicates:
-            - Path=/api/inventory/**
+            - Path=/api/inventory,/api/inventory/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: inventoryServiceCB
+                fallbackUri: forward:/fallback/general
         - id: operation-service
           uri: lb://OPERATION-SERVICE
           predicates:
-            - Path=/api/operations/**
+            - Path=/api/operations,/api/operations/**,/api/messages,/api/messages/**
+          filters:
+            - name: AuthenticationFilter
+            - name: RequestRateLimiter
+              args:
+                redis-rate-limiter.replenishRate: 100
+                redis-rate-limiter.burstCapacity: 500
+                key-resolver: "#{@userKeyResolver}"
+            - name: CircuitBreaker
+              args:
+                name: operationServiceCB
+                fallbackUri: forward:/fallback/general
+        - id: operation-service-ws
+          uri: lb:ws://OPERATION-SERVICE
+          predicates:
+            - Path=/ws/distribution-works,/ws/distribution-works/**
+
+resilience4j:
+  circuitbreaker:
+    configs:
+      default:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        minimumNumberOfCalls: 5
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        waitDurationInOpenState: 5s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
 
 eureka:
   client:
     service-url:
       defaultZone: http://localhost:8761/eureka/
+  instance:
+    prefer-ip-address: true

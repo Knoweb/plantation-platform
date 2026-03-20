@@ -27,7 +27,10 @@ public class FieldController {
             Double acreage = Double.valueOf(payload.get("acreage").toString());
             String cropType = (String) payload.get("cropType");
 
-            return ResponseEntity.ok(fieldService.createField(tenantId, divisionId, name, acreage, cropType));
+            Integer spa = payload.get("spa") != null ? Integer.valueOf(payload.get("spa").toString()) : null;
+            Integer bushCount = payload.get("bushCount") != null ? Integer.valueOf(payload.get("bushCount").toString()) : null;
+
+            return ResponseEntity.ok(fieldService.createField(tenantId, divisionId, name, acreage, cropType, spa, bushCount));
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }

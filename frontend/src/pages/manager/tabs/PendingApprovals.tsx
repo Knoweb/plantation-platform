@@ -95,7 +95,7 @@ export default function PendingApprovals() {
             setInventoryItems(itemsRes.data);
 
             invItems = invRes.data
-                .filter((t: any) => (t.type === 'RESTOCK_REQUEST' || t.type === 'FO_REQUISITION') && t.status === viewStatus)
+                .filter((t: any) => t.type === 'FO_REQUISITION' && (viewStatus === 'PENDING' ? t.status === 'PENDING' : t.status !== 'PENDING'))
                 .map((t: any) => ({
                     id: t.id,
                     displayId: `INV-${t.id}`,
@@ -111,7 +111,8 @@ export default function PendingApprovals() {
                     divisionName: t.divisionName || t.divisionId || '-',
                     fieldName: t.fieldName || t.fieldId || '-',
                     source: 'INVENTORY',
-                    actualType: t.type
+                    actualType: t.type,
+                    managerRemarks: t.managerRemarks
                 }));
         } catch (e) {
             console.warn("Inventory service unavailable", e);
@@ -212,10 +213,38 @@ export default function PendingApprovals() {
                             value={viewStatus}
                             exclusive
                             onChange={(_e, newStatus) => { if (newStatus) setViewStatus(newStatus); }}
-                            size="small"
+                            sx={{
+                                bgcolor: '#f1f5f9',
+                                p: 0.5,
+                                borderRadius: 8,
+                                border: '1px solid #e2e8f0',
+                                '& .MuiToggleButton-root': {
+                                    border: 'none',
+                                    borderRadius: 8,
+                                    mx: 0.5,
+                                    px: 3,
+                                    py: 0.8,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    color: '#64748b',
+                                    transition: 'all 0.2s ease',
+                                    '&.Mui-selected': {
+                                        bgcolor: '#ffffff',
+                                        color: '#0f172a',
+                                        boxShadow: '0 1px 3px rgba(0,0,0,0.1), 0 1px 2px rgba(0,0,0,0.06)',
+                                        '&:hover': {
+                                            bgcolor: '#ffffff',
+                                        },
+                                    },
+                                    '&:hover': {
+                                        bgcolor: '#e2e8f0',
+                                        color: '#334155',
+                                    },
+                                },
+                            }}
                         >
-                            <ToggleButton value="PENDING">Pending</ToggleButton>
-                            <ToggleButton value="APPROVED">History</ToggleButton>
+                            <ToggleButton value="PENDING">Pending Orders</ToggleButton>
+                            <ToggleButton value="APPROVED">Review History</ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
 
@@ -233,7 +262,6 @@ export default function PendingApprovals() {
                     <Table>
                         <TableHead>
                             <TableRow>
-                                <TableCell>ID</TableCell>
                                 <TableCell>Type</TableCell>
                                 <TableCell>Requested By</TableCell>
                                 <TableCell>Division</TableCell>
@@ -241,6 +269,7 @@ export default function PendingApprovals() {
                                 <TableCell>Time</TableCell>
                                 <TableCell>Status</TableCell>
                                 <TableCell>Details</TableCell>
+                                <TableCell>Quantity</TableCell>
                                 <TableCell align="right">Action</TableCell>
                             </TableRow>
                         </TableHead>
@@ -258,7 +287,6 @@ export default function PendingApprovals() {
                                 })
                                 .map(item => (
                                     <TableRow key={item.id}>
-                                        <TableCell>{item.displayId}</TableCell>
                                         <TableCell>{item.type}</TableCell>
                                         <TableCell>
                                             <span style={{ fontWeight: 600 }}>{item.source === 'INVENTORY' && item.issuedTo ? item.issuedTo.split(' - ')[0] : 'System/Manager'}</span>
@@ -272,6 +300,11 @@ export default function PendingApprovals() {
                                             <Chip label={item.status} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} />
                                         </TableCell>
                                         <TableCell><Typography variant="body2">{item.details}</Typography></TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', minWidth: '100px' }}>
+                                            {item.quantity} {item.source === 'INVENTORY'
+                                                ? inventoryItems.find((i: any) => i.id === item.itemId)?.unit || ''
+                                                : 'Workers'}
+                                        </TableCell>
                                         <TableCell align="right">
                                             <Box display="flex" gap={1} justifyContent="flex-end">
                                                 {viewStatus === 'PENDING' && (
@@ -294,7 +327,7 @@ export default function PendingApprovals() {
                                 ))}
                             {pendingItems.length === 0 && (
                                 <TableRow>
-                                    <TableCell colSpan={6} align="center">No pending approvals found.</TableCell>
+                                    <TableCell colSpan={9} align="center">No pending approvals found.</TableCell>
                                 </TableRow>
                             )}
                         </TableBody>
@@ -319,9 +352,22 @@ export default function PendingApprovals() {
                             </Grid>
                             <Grid size={{ xs: 6 }}>
                                 <Typography variant="caption" color="text.secondary">Quantity Request</Typography>
-                                <Typography variant="body1" fontWeight="bold">
-                                    {approveItem?.quantity} {inventoryItems.find((i: any) => i.id === approveItem?.itemId)?.unit}
-                                </Typography>
+                                {approveItem?.status === 'PENDING' ? (
+                                    <Box display="flex" alignItems="center">
+                                        <TextField
+                                            size="small"
+                                            type="number"
+                                            value={approveQty}
+                                            onChange={(e) => setApproveQty(e.target.value)}
+                                            sx={{ width: 100, mr: 1 }}
+                                        />
+                                        <Typography variant="body2">{inventoryItems.find((i: any) => i.id === approveItem?.itemId)?.unit}</Typography>
+                                    </Box>
+                                ) : (
+                                    <Typography variant="body1" fontWeight="bold">
+                                        {approveItem?.quantity} {inventoryItems.find((i: any) => i.id === approveItem?.itemId)?.unit}
+                                    </Typography>
+                                )}
                             </Grid>
                             <Grid size={{ xs: 6 }}>
                                 <Typography variant="caption" color="text.secondary">Division</Typography>
@@ -340,9 +386,18 @@ export default function PendingApprovals() {
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[0] || '-'}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12 }}>
-                                <Typography variant="caption" color="text.secondary">Remarks</Typography>
+                                <Typography variant="caption" color="text.secondary">Field Officer Remarks</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[1] || '-'}</Typography>
                             </Grid>
+
+                            {approveItem?.status !== 'PENDING' && (
+                                <Grid size={{ xs: 12 }}>
+                                    <Typography variant="caption" color="text.secondary">Manager Remarks</Typography>
+                                    <Typography variant="body1" fontWeight="bold" sx={{ color: approveItem?.status === 'APPROVED' ? 'green' : 'red' }}>
+                                        {approveItem?.managerRemarks || 'No manager remarks provided.'}
+                                    </Typography>
+                                </Grid>
+                            )}
                         </Grid>
                     ) : (
                         <>
@@ -384,7 +439,7 @@ export default function PendingApprovals() {
                             )}
                         </>
                     )}
-                    {approveItem?.status !== 'APPROVED' && (
+                    {approveItem?.status === 'PENDING' && (
                         <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
                             <TextField
                                 fullWidth
@@ -398,8 +453,8 @@ export default function PendingApprovals() {
                         </Box>
                     )}
                 </DialogContent>
-                <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', justifyContent: approveItem?.status === 'APPROVED' ? 'flex-end' : 'space-between' }}>
-                    {approveItem?.status !== 'APPROVED' ? (
+                <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', justifyContent: approveItem?.status === 'PENDING' ? 'space-between' : 'flex-end' }}>
+                    {approveItem?.status === 'PENDING' ? (
                         <>
                             <Button variant="outlined" color="error" onClick={() => handleRejectInv(approveItem)}>Reject</Button>
                             <Box>

@@ -4,6 +4,7 @@ package com.knoweb.tenant.entity;
 import com.knoweb.tenant.enums.WorkerGender;
 import com.knoweb.tenant.enums.WorkerStatus;
 import jakarta.persistence.*;
+import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.UUID;
@@ -27,14 +28,34 @@ public class Worker {
     @Column(name = "gender", nullable = false)
     private WorkerGender gender;
 
-    @Column(name = "job_role", nullable = false)
-    private String jobRole;
+
 
     @Column(name = "epf_number")
     private String epfNumber;
 
+    @Column(name = "etf_number")
+    private String etfNumber;
+
+    @Column(name = "employment_type", length = 30)
+    private String employmentType; // PERMANENT, CASUAL, CONTRACT
+
+    @Column(name = "contractor_name")
+    private String contractorName;
+
+    @Column(name = "nic_number")
+    private String nicNumber;
+
+    @Column(name = "date_of_birth")
+    private LocalDate dateOfBirth;
+
+    @Column(name = "joined_date")
+    private LocalDate joinedDate;
+
     @Column(name = "tenant_id", nullable = false)
     private String tenantId;
+
+    @Column(name = "registered_date")
+    private LocalDate registeredDate = LocalDate.now();
 
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false)
@@ -48,12 +69,11 @@ public class Worker {
     public Worker() {
     }
 
-    public Worker(String registrationNumber, String name, WorkerGender gender, String jobRole, String epfNumber,
+    public Worker(String registrationNumber, String name, WorkerGender gender, String epfNumber,
             String tenantId, WorkerStatus status) {
         this.registrationNumber = registrationNumber;
         this.name = name;
         this.gender = gender;
-        this.jobRole = jobRole;
         this.epfNumber = epfNumber;
         this.tenantId = tenantId;
         this.status = status;
@@ -93,13 +113,7 @@ public class Worker {
         this.gender = gender;
     }
 
-    public String getJobRole() {
-        return jobRole;
-    }
 
-    public void setJobRole(String jobRole) {
-        this.jobRole = jobRole;
-    }
 
     public String getEpfNumber() {
         return epfNumber;
@@ -109,12 +123,68 @@ public class Worker {
         this.epfNumber = epfNumber;
     }
 
+    public String getEtfNumber() {
+        return etfNumber;
+    }
+
+    public void setEtfNumber(String etfNumber) {
+        this.etfNumber = etfNumber;
+    }
+
+    public String getEmploymentType() {
+        return employmentType;
+    }
+
+    public void setEmploymentType(String employmentType) {
+        this.employmentType = employmentType;
+    }
+
+    public String getContractorName() {
+        return contractorName;
+    }
+
+    public void setContractorName(String contractorName) {
+        this.contractorName = contractorName;
+    }
+
+    public String getNicNumber() {
+        return nicNumber;
+    }
+
+    public void setNicNumber(String nicNumber) {
+        this.nicNumber = nicNumber;
+    }
+
+    public LocalDate getDateOfBirth() {
+        return dateOfBirth;
+    }
+
+    public void setDateOfBirth(LocalDate dateOfBirth) {
+        this.dateOfBirth = dateOfBirth;
+    }
+
+    public LocalDate getJoinedDate() {
+        return joinedDate;
+    }
+
+    public void setJoinedDate(LocalDate joinedDate) {
+        this.joinedDate = joinedDate;
+    }
+
     public String getTenantId() {
         return tenantId;
     }
 
     public void setTenantId(String tenantId) {
         this.tenantId = tenantId;
+    }
+
+    public LocalDate getRegisteredDate() {
+        return registeredDate;
+    }
+
+    public void setRegisteredDate(LocalDate registeredDate) {
+        this.registeredDate = registeredDate;
     }
 
     public WorkerStatus getStatus() {

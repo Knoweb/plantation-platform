@@ -1,0 +1,161 @@
+========================================
+ PLANTATION PLATFORM DATABASE SCHEMAS
+========================================
+
+The platform uses a microservices architecture with 3 independent databases.
+The tables below are generated automatically by Spring Boot Hibernate.
+
+
+----------------------------------------
+ 1. plantation_db (Tenant Service)
+----------------------------------------
+Handles core master data, users, multi-tenant accounts, fields, and divisions.
+
+Table: tenant
+  * tenant_id (UUID) - Primary Key
+  * company_name (String)
+  * sub_domain (String)
+  * logo_url (String)
+  * subscription_status (String)
+  * config_json (JSON Map)
+  * created_at (Timestamp)
+
+Table: user
+  * user_id (UUID) - Primary Key
+  * tenant_id (UUID) 
+  * full_name (String)
+  * username (String)
+  * password_hash (String)
+  * role (String)
+  * email (String)
+  * reset_token (String)
+  * reset_token_expiry (Timestamp)
+
+Table: division (Linked Many-to-Many with User)
+  * division_id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * name (String)
+
+Table: worker
+  * id (UUID) - Primary Key
+  * registration_number (String)
+  * name (String)
+  * gender (Enum: MALE, FEMALE)
+  * job_role (String)
+  * epf_number (String)
+  * status (Enum: ACTIVE, INACTIVE)
+  * tenant_id (String)
+
+Table: field
+  * field_id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * division_id (UUID)
+  * name (String)
+  * acreage (Double)
+  * crop_type (String)
+  * planted_date (Date)
+
+
+----------------------------------------
+ 2. inventory_db (Inventory Service)
+----------------------------------------
+Handles fertilizer, tools, divisional stock bridging, and supply chain tracking.
+
+Table: inventory_item
+  * id (Long) - Primary Key
+  * tenant_id (String)
+  * name (String)
+  * category (String - FERTILIZER, CHEMICAL, TOOL)
+  * unit (String - kg, L, units)
+  * current_quantity (Integer)
+  * buffer_level (Integer)
+  * minimum_level (Integer)
+  * price_per_unit (Double)
+
+Table: divisional_stock
+  * id (Long) - Primary Key
+  * tenant_id (String)
+  * item_id (Long)
+  * item_name (String)
+  * division_id (String)
+  * division_name (String)
+  * quantity (Integer)
+
+Table: inventory_transaction
+  * id (Long) - Primary Key
+  * tenant_id (String)
+  * item_id (Long)
+  * item_name (String)
+  * type (String - ISSUE, RECEIPT, RESTOCK_REQUEST)
+  * quantity (Integer)
+  * date (Timestamp)
+  * issued_to (String)
+  * status (String)
+  * approved_date (Timestamp)
+  * division_id (String) / division_name (String)
+  * field_id (String) / field_name (String)
+  * manager_remarks (String)
+
+
+----------------------------------------
+ 3. operation_db (Operation Service)
+----------------------------------------
+Handles daily tasks, real-time worker attendance, harvest targets, and field assignments.
+
+Table: task_type
+  * id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * name (String)
+  * is_active (Boolean)
+
+Table: daily_work
+  * work_id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * division_id (String)
+  * work_date (Date)
+  * work_type (String)
+  * details (String)
+  * quantity (Double)
+  * worker_count (Integer)
+  * status (String - PENDING, APPROVED)
+  * created_at / action_at (Timestamp)
+
+Table: muster
+  * id (Long) - Primary Key
+  * tenant_id (String)
+  * date (Date)
+  * division_id (String)
+  * field_name (String)
+  * task_type (String)
+  * worker_count (Integer)
+  * status (String)
+  * worker_ids (List)
+
+Table: attendance
+  * id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * worker_id (String)
+  * work_date (Date)
+  * work_type (String)
+  * field_name (String)
+  * daily_work_id (UUID)
+  * am_weight / pm_weight (Double)
+  * status (String - PRESENT, ABSENT)
+
+Table: harvest_log
+  * id (Long) - Primary Key
+  * tenant_id (String)
+  * date (Date)
+  * division_id (String)
+  * worker_name (String)
+  * field_name (String)
+  * quantity_kg (Double)
+  * crop_type (String)
+
+Table: leave_quota
+  * id (UUID) - Primary Key
+  * tenant_id (UUID)
+  * user_id (UUID)
+  * duty_leave (Integer)
+  * annual_leave (Integer)
+  * casual_leave (Integer)

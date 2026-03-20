@@ -44,6 +44,14 @@ public class HarvestLog {
         this.tenantId = tenantId;
     }
 
+    public String getDivisionId() {
+        return divisionId;
+    }
+
+    public void setDivisionId(String divisionId) {
+        this.divisionId = divisionId;
+    }
+
     public String getWorkerName() {
         return workerName;
     }

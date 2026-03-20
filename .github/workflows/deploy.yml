@@ -43,9 +43,19 @@ jobs:
             git fetch origin $BRANCH_NAME
             git reset --hard origin/$BRANCH_NAME
             
-            # Start/Restart Services
-            # Using --build to ensure code changes are reflected in images
-            docker compose -f docker-compose.prod.yml up -d --build --remove-orphans
+            # Start/Restart Services with Zero Downtime Deployment (ZDD)
+            # Step 1: Pre-build new images purely in the background
+            docker compose -f docker-compose.prod.yml build
+            
+            # Step 2: Spin up the new V2 containers perfectly alongside the old V1 containers
+            # Nginx's built-in docker DNS automatically scales traffic across both immediately
+            docker compose -f docker-compose.prod.yml up -d --scale api-gateway=2 --scale frontend=2 --scale tenant-service=2 --scale inventory-service=2 --scale operation-service=2 --no-recreate
+            
+            # Step 3: Wait 30 seconds for the new Java backend contexts to boot and become perfectly healthy
+            sleep 30
+            
+            # Step 4: Gracefully terminate the old V1 containers leaving only the new ones
+            docker compose -f docker-compose.prod.yml up -d --scale api-gateway=1 --scale frontend=1 --scale tenant-service=1 --scale inventory-service=1 --scale operation-service=1 --remove-orphans
             
             # Force restart Nginx to pick up config changes
             docker compose -f docker-compose.prod.yml restart nginx

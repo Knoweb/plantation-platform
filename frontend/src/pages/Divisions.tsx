@@ -37,6 +37,8 @@ export default function Divisions() {
     // Field Management State
     const [openFieldDialog, setOpenFieldDialog] = useState(false);
     const [selectedDivisionForFields, setSelectedDivisionForFields] = useState<any>(null);
+    const [selectedFieldIdToEdit, setSelectedFieldIdToEdit] = useState<string | null>(null);
+    const [fieldDialogMode, setFieldDialogMode] = useState<'ADD' | 'EDIT' | 'MANAGE'>('MANAGE');
 
     const user = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = user?.tenantId;
@@ -54,9 +56,24 @@ export default function Divisions() {
             const response = await axios.get(`/api/divisions?tenantId=${tenantId}`);
             let data = response.data;
 
+            // Fetch latest user details to bypass stale sessionStorage
+            let latestAccess = assignedDivisions;
+            if (isManager) {
+                try {
+                    const myId = user.userId || user.id;
+                    const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
+                    const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                    if (me && me.divisionAccess) {
+                        latestAccess = me.divisionAccess;
+                    }
+                } catch (e) {
+                    console.warn("Could not fetch latest user details, falling back to session");
+                }
+            }
+
             // Filter for Manager
-            if (isManager && assignedDivisions.length > 0) {
-                data = data.filter((d: any) => assignedDivisions.includes(d.divisionId));
+            if (isManager && latestAccess.length > 0) {
+                data = data.filter((d: any) => latestAccess.includes(d.divisionId));
             } else if (isManager) {
                 // If manager has no assigned divisions, show empty
                 data = [];
@@ -117,8 +134,10 @@ export default function Divisions() {
         setFormData({ name: '' });
     };
 
-    const handleOpenFields = (division: any) => {
+    const handleOpenFields = (division: any, mode: 'ADD' | 'EDIT' | 'MANAGE', fieldId?: string) => {
         setSelectedDivisionForFields(division);
+        setFieldDialogMode(mode);
+        setSelectedFieldIdToEdit(fieldId || null);
         setOpenFieldDialog(true);
     }
 
@@ -154,7 +173,7 @@ export default function Divisions() {
                                     division={div}
                                     onEdit={() => handleOpen(div)}
                                     onDelete={() => handleDelete(div.divisionId)}
-                                    onManageFields={() => handleOpenFields(div)}
+                                    onManageFields={(mode, fieldId) => handleOpenFields(div, mode, fieldId)}
                                     readOnly={isManager}
                                 />
                             </Box>
@@ -206,6 +225,8 @@ export default function Divisions() {
                 divisionId={selectedDivisionForFields?.divisionId}
                 divisionName={selectedDivisionForFields?.name || ''}
                 tenantId={tenantId}
+                openWithFieldId={selectedFieldIdToEdit}
+                mode={fieldDialogMode}
             />
         </Container>
     );
@@ -215,7 +236,7 @@ interface DivisionMapTileProps {
     division: any;
     onEdit: () => void;
     onDelete: () => void;
-    onManageFields: () => void;
+    onManageFields: (mode: 'ADD' | 'EDIT' | 'MANAGE', fieldId?: string) => void;
     readOnly?: boolean;
 }
 
@@ -332,8 +353,9 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                                     cursor: readOnly ? 'default' : 'pointer',
                                     transition: 'all 0.2s',
                                     height: '100%', // Equal height
-                                    '&:hover': { transform: readOnly ? 'none' : 'translateY(-2px)', boxShadow: readOnly ? 0 : 1, borderColor: 'transparent' }
+                                    '&:hover': { transform: readOnly ? 'none' : 'translateY(-2px)', boxShadow: readOnly ? 0 : 1, borderColor: readOnly ? 'inherit' : 'primary.main' }
                                 }}
+                                onClick={() => !readOnly && onManageFields('EDIT', field.fieldId)}
                             >
                                 <Box
                                     sx={{
@@ -377,7 +399,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                                     gap: 1,
                                     '&:hover': { bgcolor: '#e8f5e9' }
                                 }}
-                                onClick={onManageFields}
+                                onClick={() => onManageFields('ADD')}
                             >
                                 <AddIcon fontSize="small" />
                                 <Typography variant="button" fontSize="0.75rem">Add Field</Typography>
@@ -413,7 +435,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                 {!readOnly && (
                     <Button
                         size="small"
-                        onClick={onManageFields}
+                        onClick={() => onManageFields('MANAGE')}
                         endIcon={<EditIcon sx={{ fontSize: 14 }} />}
                         sx={{
                             textTransform: 'none',

@@ -22,10 +22,9 @@ import CropAge from './pages/field-officer/tabs/CropAge';
 import MusterApproval from './pages/field-officer/tabs/MusterApproval';
 import MusterReview from './pages/field-officer/tabs/MusterReview';
 import GeneralStock from './pages/field-officer/tabs/GeneralStock';
-import KPIs from './pages/field-officer/tabs/KPIs';
 import PendingApprovals from './pages/manager/tabs/PendingApprovals';
 import MusterReviewManager from './pages/manager/tabs/MusterReviewManager';
-import CropBook from './pages/manager/tabs/CropBook';
+// import CropBook from './pages/manager/tabs/CropBook';
 import AttendanceReport from './pages/manager/tabs/AttendanceReport';
 import WorkerRegistry from './pages/field-officer/WorkerRegistry';
 import MorningMuster from './pages/field-officer/MorningMuster';
@@ -37,6 +36,15 @@ import PendingOrders from './pages/field-officer/tabs/PendingOrders';
 import Correspondence from './pages/field-officer/tabs/Correspondence';
 import CostAnalysis from './pages/field-officer/tabs/CostAnalysis';
 import FOCropBook from './pages/field-officer/tabs/CropBook';
+import Fertilizer from './pages/field-officer/tabs/Fertilizer';
+
+// Chief Clerk specific imports
+import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
+import NormSettings from './pages/manager/tabs/NormSettings';
+import TaskTypeSettings from './pages/chief-clerk/tabs/TaskTypeSettings';
+import CostAnalysisManager from './pages/chief-clerk/tabs/CostAnalysisManager';
+import WorkProgramManager from './pages/chief-clerk/tabs/WorkProgramManager';
+import DivisionView from './pages/manager/DivisionView';
 
 // Placeholder Component for the Main Dashboard View
 const DashboardHome = () => {
@@ -45,7 +53,8 @@ const DashboardHome = () => {
 
   if (role === 'SUPER_ADMIN') return <Navigate to="/super-admin" replace />;
   if (role === 'ESTATE_ADMIN') return <Navigate to="/dashboard/admin" replace />;
-  if (role === 'MANAGER') return <Navigate to="/dashboard/manager" replace />;
+  if (role === 'MANAGER' || role === 'MANAGER_CLERK') return <Navigate to="/dashboard/manager" replace />;
+  if (role === 'CHIEF_CLERK') return <Navigate to="/dashboard/chief" replace />;
   if (role === 'FIELD_OFFICER') return <Navigate to="/dashboard/field" replace />;
   if (role === 'STORE_KEEPER') return <Navigate to="/dashboard/store/main" replace />;
 
@@ -69,6 +78,7 @@ function App() {
           {/* Explicit Role Dashboards */}
           <Route path="admin" element={<EstateAdminDashboard />} />
           <Route path="manager" element={<ManagerDashboard />} />
+          <Route path="chief" element={<ChiefClerkDashboard />} />
           <Route path="field" element={<FieldOfficerDashboard />} />
           <Route path="store" element={<StoreKeeperDashboard />} />
           <Route path="store/main" element={<StoreKeeperDashboard />} />
@@ -92,6 +102,7 @@ function App() {
           <Route path="evening-muster" element={<DailyEntry />} />
           <Route path="crop-achievements" element={<CropAchievements />} />
           <Route path="crop-ages" element={<CropAge />} />
+          <Route path="fertilizer-programme" element={<Fertilizer />} />
           <Route path="distribution-works" element={<DistributionOfWorks />} />
           <Route path="leave-application" element={<LeaveApplication />} />
           <Route path="muster-approval" element={<MusterApproval />} />
@@ -99,15 +110,23 @@ function App() {
           <Route path="order-request" element={<OrderRequest />} />
           <Route path="pending-orders" element={<PendingOrders />} />
           <Route path="stock" element={<GeneralStock />} />
-          <Route path="kpis" element={<KPIs />} />
+          <Route path="kpis" element={<Navigate to="/dashboard/field" replace />} />
           <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Main Store Keeper View */}
 
           {/* Manager Tabs */}
           <Route path="approvals" element={<PendingApprovals />} />
           <Route path="muster-review-manager" element={<MusterReviewManager />} />
-          <Route path="crop-book" element={<CropBook />} />
+          <Route path="crop-book" element={<FOCropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
           <Route path="leave-management" element={<LeaveManagement />} />
+          <Route path="division-view/:divisionId" element={<DivisionView />} />
+
+          {/* Chief Clerk Tabs */}
+          <Route path="norms" element={<NormSettings />} />
+          <Route path="job-roles" element={<TaskTypeSettings />} />
+          <Route path="chief-cost-analysis" element={<CostAnalysisManager />} />
+          <Route path="chief-distribution-works" element={<WorkProgramManager />} />
+          <Route path="chief-inventory" element={<StoreKeeperDashboard />} />
         </Route>
 
         {/* Super Admin Routes */}
