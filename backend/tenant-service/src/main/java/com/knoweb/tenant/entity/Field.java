@@ -29,6 +29,12 @@ public class Field {
     @Column(name = "crop_type", length = 50)
     private String cropType; // Tea, Rubber, etc.
 
+    @Column(name = "spa")
+    private Integer spa; // standard plants per acre / planting density
+
+    @Column(name = "bush_count")
+    private Integer bushCount; // total bushes in this field
+
     @Column(name = "planted_date")
     private java.time.LocalDate plantedDate;
 
@@ -90,6 +96,22 @@ public class Field {
 
     public void setCropType(String cropType) {
         this.cropType = cropType;
+    }
+
+    public Integer getSpa() {
+        return spa;
+    }
+
+    public void setSpa(Integer spa) {
+        this.spa = spa;
+    }
+
+    public Integer getBushCount() {
+        return bushCount;
+    }
+
+    public void setBushCount(Integer bushCount) {
+        this.bushCount = bushCount;
     }
 
     public java.time.LocalDate getPlantedDate() {

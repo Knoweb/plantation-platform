@@ -16,8 +16,10 @@ public class FieldService {
         this.fieldRepository = fieldRepository;
     }
 
-    public Field createField(UUID tenantId, UUID divisionId, String name, Double acreage, String cropType) {
+    public Field createField(UUID tenantId, UUID divisionId, String name, Double acreage, String cropType, Integer spa, Integer bushCount) {
         Field field = new Field(tenantId, divisionId, name, acreage, cropType);
+        if (spa != null) field.setSpa(spa);
+        if (bushCount != null) field.setBushCount(bushCount);
         return fieldRepository.save(field);
     }
 
@@ -42,6 +44,8 @@ public class FieldService {
             if (updatedData.getName() != null) field.setName(updatedData.getName());
             if (updatedData.getAcreage() != null) field.setAcreage(updatedData.getAcreage());
             if (updatedData.getCropType() != null) field.setCropType(updatedData.getCropType());
+            if (updatedData.getSpa() != null) field.setSpa(updatedData.getSpa());
+            if (updatedData.getBushCount() != null) field.setBushCount(updatedData.getBushCount());
             if (updatedData.getPlantedDate() != null) field.setPlantedDate(updatedData.getPlantedDate());
             if (updatedData.getDivisionId() != null) field.setDivisionId(updatedData.getDivisionId());
             return fieldRepository.save(field);

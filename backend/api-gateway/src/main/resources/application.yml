@@ -33,7 +33,7 @@ spring:
         - id: tenant-service
           uri: lb://TENANT-SERVICE
           predicates:
-            - Path=/api/tenants,/api/tenants/**,/api/divisions,/api/divisions/**,/api/workers,/api/workers/**,/api/fields,/api/fields/**,/api/crop-configs,/api/crop-configs/**,/api/daily-costs,/api/daily-costs/**,/api/work-program,/api/work-program/**
+            - Path=/api/tenants,/api/tenants/**,/api/divisions,/api/divisions/**,/api/workers,/api/workers/**,/api/fields,/api/fields/**,/api/crop-configs,/api/crop-configs/**,/api/daily-costs,/api/daily-costs/**,/api/work-program,/api/work-program/**,/api/fertilizer-programme,/api/fertilizer-programme/**,/api/fertilizer-master,/api/fertilizer-master/**,/api/fertilizer-applications,/api/fertilizer-applications/**,/api/fertilizer-target-ratio,/api/fertilizer-target-ratio/**
           filters:
             - name: AuthenticationFilter
             - name: RequestRateLimiter
