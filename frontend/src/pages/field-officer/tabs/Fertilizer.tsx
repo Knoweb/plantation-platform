@@ -23,7 +23,7 @@ import {
     InputAdornment,
 } from '@mui/material';
 import { Assignment as AssignmentIcon, TableChart as TableChartIcon, Add as AddIcon, Close as CloseIcon, Check as CheckIcon, Edit as EditIcon } from '@mui/icons-material';
-import { useMemo, useState, useEffect, Fragment } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import axios from 'axios';
 
 type CropKey = string | 'ALL';
@@ -135,7 +135,7 @@ export default function Fertilizer() {
     const [editCropValue, setEditCropValue] = useState<string | number>('');
     const [entryMode, setEntryMode] = useState<boolean>(false);
     const [originalApps, setOriginalApps] = useState<FertilizerApplication[]>([]);
-    const [newMasterRow, setNewMasterRow] = useState<{ id: string; name: string; nitrogenPercent: number } | null>(null);
+    const [newMasterRow, setNewMasterRow] = useState<{ id: string; name: string; nitrogenPercent: string | number } | null>(null);
     const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
     const [editingRowId, setEditingRowId] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<{ fertilizerId: string; qtyKg: string }>({ fertilizerId: '', qtyKg: '0' });
@@ -918,7 +918,7 @@ export default function Fertilizer() {
                                     <TableHead>
                                         <TableRow>
                                             <TableCell sx={{ fontWeight: 800, fontSize: '0.78rem', bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', py: 0.75 }}>Fertilizer</TableCell>
-                                            <TableCell sx={{ fontWeight: 800, fontSize: '0.78rem', bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', py: 0.75, width: 60 }}>N %</TableCell>
+                                            <TableCell sx={{ fontWeight: 800, fontSize: '0.78rem', bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', py: 0.75, width: 60 }}>Nitrogen</TableCell>
                                             <TableCell sx={{ bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', py: 0.75, width: 48 }} />
                                         </TableRow>
                                     </TableHead>
@@ -926,7 +926,7 @@ export default function Fertilizer() {
                                         {masters.map((m) => (
                                             <TableRow key={String(m.id)} hover sx={{ '&:last-child td': { borderBottom: 0 } }}>
                                                 <TableCell sx={{ fontSize: '0.82rem', py: 0.6 }}>{m.name}</TableCell>
-                                                <TableCell sx={{ fontSize: '0.82rem', py: 0.6 }}>{m.nitrogenPercent}</TableCell>
+                                                <TableCell sx={{ fontSize: '0.82rem', py: 0.6 }}>{m.nitrogenPercent}%</TableCell>
                                                 <TableCell sx={{ py: 0.4 }}>
                                                     <Tooltip title="Remove">
                                                         <IconButton
@@ -962,8 +962,15 @@ export default function Fertilizer() {
                                                         type="number"
                                                         placeholder="N%"
                                                         value={newMasterRow.nitrogenPercent}
-                                                        onChange={(e) => setNewMasterRow({ ...newMasterRow, nitrogenPercent: Number(e.target.value) })}
-                                                        sx={{ width: 56, '& .MuiInputBase-input': { py: 0.4, fontSize: '0.8rem' } }}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value.replace(/^0+(?=\d)/, '');
+                                                            setNewMasterRow({ ...newMasterRow, nitrogenPercent: val });
+                                                        }}
+                                                        onKeyDown={(e) => { if (e.key === '-' || e.key === 'e') e.preventDefault(); }}
+                                                        sx={{ width: 85, '& .MuiInputBase-input': { py: 0.4, fontSize: '0.8rem' } }}
+                                                        InputProps={{ 
+                                                            endAdornment: <InputAdornment position="end" sx={{ ml: 0 }}><Typography variant="caption" sx={{ fontSize: '0.7rem' }}>%</Typography></InputAdornment> 
+                                                        }}
                                                     />
                                                 </TableCell>
                                                 <TableCell sx={{ py: 0.4 }}>
@@ -976,7 +983,7 @@ export default function Fertilizer() {
                                                                 onClick={() => {
                                                                     const nm = newMasterRow.name.trim();
                                                                     if (!nm) return;
-                                                                    void addMaster(nm, newMasterRow.nitrogenPercent);
+                                                                    void addMaster(nm, Number(newMasterRow.nitrogenPercent) || 0);
                                                                     setNewMasterRow(null);
                                                                 }}
                                                             >
