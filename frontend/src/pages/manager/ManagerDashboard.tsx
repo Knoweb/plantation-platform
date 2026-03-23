@@ -1,183 +1,237 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableBody, TableCell, TableHead, TableRow, Chip, CircularProgress } from '@mui/material';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import MenuBookIcon from '@mui/icons-material/MenuBook';
-import PendingActionsIcon from '@mui/icons-material/PendingActions';
-import SettingsIcon from '@mui/icons-material/Settings'; // Added for Norm Setting
-import { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import {
+    Box,
+    Typography,
+    Grid,
+    Paper,
+    Table,
+    TableBody,
+    TableCell,
+    TableContainer,
+    TableHead,
+    TableRow,
+    Button,
+    Chip,
+    CircularProgress,
+    Alert,
+    Tooltip,
+    Avatar,
+    IconButton
+} from '@mui/material';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import HighlightOffIcon from '@mui/icons-material/HighlightOff';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import PendingActionsIcon from '@mui/icons-material/PendingActions';
+import PersonIcon from '@mui/icons-material/Person';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
-export default function ManagerDashboard() {
-    const [pendingItems, setPendingItems] = useState<any[]>([]);
-    const [loading, setLoading] = useState(true);
-    const navigate = useNavigate();
+// Custom Analytics Components
+import YieldAnalytics from '../../components/manager/YieldAnalytics';
+import CostAnalytics from '../../components/manager/CostAnalytics';
+import CropPerformanceCard from '../../components/manager/CropPerformanceCard';
+
+const ManagerDashboard: React.FC = () => {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+
+    const [pendingWorks, setPendingWorks] = useState<any[]>([]);
+    const [loadingPending, setLoadingPending] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    // Fetch pending works for approval
+    const fetchPending = async () => {
+        setLoadingPending(true);
+        try {
+            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=PENDING`);
+            setPendingWorks(res.data || []);
+            setError(null);
+        } catch (err) {
+            console.error("Failed to fetch pending approvals", err);
+            setError("Could not load pending approvals");
+        } finally {
+            setLoadingPending(false);
+        }
+    };
 
     useEffect(() => {
         fetchPending();
     }, [tenantId]);
 
-    const fetchPending = async () => {
+    const handleApprove = async (workId: string) => {
         try {
-            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&status=PENDING`);
-            setPendingItems(res.data);
+            await axios.put(`/api/operations/daily-work/${workId}/approve`, {
+                status: 'APPROVED',
+                approverId: userSession.id
+            });
+            fetchPending();
         } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
+            console.error("Failed to approve work", err);
         }
     };
-
-    const handleApprove = async (id: string) => {
-        try {
-            await axios.put(`/api/operations/daily-work/${id}/approve`);
-            fetchPending(); // Refresh
-        } catch (err) {
-            alert("Failed to approve.");
-        }
-    };
-
-    if (loading) {
-        return <Box display="flex" justifyContent="center" mt={4}><CircularProgress /></Box>;
-    }
 
     return (
-        <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Dashboard
-            </Typography>
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                Manage approvals and oversee crop lifecycle records.
-            </Typography>
+        <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
+            {/* Header Section */}
+            <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-end">
+                <Box>
+                    <Typography 
+                        variant="h3" 
+                        fontWeight="900" 
+                        color="#1e293b" 
+                        sx={{ 
+                            fontSize: { xs: '1.75rem', md: '2.5rem' },
+                            letterSpacing: '-0.025em'
+                        }}
+                    >
+                        Manager Dashboard
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                        Welcome back, {userSession.name}. Here's what's happening today.
+                    </Typography>
+                </Box>
+                <Paper 
+                    variant="outlined" 
+                    sx={{ 
+                        p: 1.5, 
+                        px: 2, 
+                        borderRadius: 3, 
+                        bgcolor: '#ffffff',
+                        display: { xs: 'none', md: 'flex' },
+                        alignItems: 'center',
+                        gap: 2,
+                        border: '1px solid #e2e8f0'
+                    }}
+                >
+                    <CalendarMonthIcon sx={{ color: '#10b981' }} />
+                    <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>Current Date</Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: '800', color: '#1e293b' }}>
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </Typography>
+                    </Box>
+                </Paper>
+            </Box>
 
-            <Grid container spacing={3}>
-                {/* Pending Approvals Section */}
-                <Grid item xs={12} md={5}>
-                    <Card sx={{ height: '100%', borderTop: '4px solid #fbdc57' }}> {/* Warning Color */}
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <PendingActionsIcon color="warning" sx={{ mr: 1, fontSize: 32 }} />
-                                <Typography variant="h6">Pending Approvals</Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary" mb={2}>
-                                Actions requiring your immediate attention.
-                            </Typography>
-
-                            <Table size="small">
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Request</TableCell>
-                                        <TableCell align="right">Action</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    {pendingItems.map(item => (
-                                        <TableRow key={item.workId}>
-                                            <TableCell>
-                                                <Typography variant="subtitle2">{item.workType}</Typography>
-                                                <Typography variant="caption" color="text.secondary">
-                                                    {item.divisionId} • {item.workDate}
-                                                </Typography>
-                                            </TableCell>
-                                            <TableCell align="right">
-                                                <Button
-                                                    size="small"
-                                                    variant="contained"
-                                                    color="primary"
-                                                    onClick={() => handleApprove(item.workId)}
-                                                >
-                                                    Approve
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
-                                    {pendingItems.length === 0 && (
-                                        <TableRow>
-                                            <TableCell colSpan={2} align="center">No pending items.</TableCell>
-                                        </TableRow>
-                                    )}
-                                </TableBody>
-                            </Table>
-
-                            <Box mt={2} textAlign="center">
-                                <Button variant="text">View All Pending</Button>
-                            </Box>
-                        </CardContent>
-                    </Card>
+            {/* Main Analytics Grid */}
+            <Grid container spacing={4}>
+                {/* Crop Performance Card (Full Width) */}
+                <Grid size={{ xs: 12 }}>
+                    <CropPerformanceCard tenantId={tenantId} />
                 </Grid>
 
-                {/* Norm Setting Section */}
-                <Grid item xs={12} md={3}>
-                    <Card sx={{ height: '100%', borderRadius: 3, boxShadow: 2, borderTop: '4px solid #1b5e20', cursor: 'pointer' }} onClick={() => navigate('/dashboard/norms')}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" gap={1} mb={2}>
-                                <SettingsIcon color="primary" sx={{ fontSize: 32 }} />
-                                <Typography variant="h6">Operational Targets & Norms</Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">
-                                Prepare and manage the monthly minimum yield targets for Tea Plucking & Rubber Tapping.
-                            </Typography>
-                            <Box mt={2} textAlign="right">
-                                <Button size="small" variant="text">Manage Norms</Button>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                {/* Yield Analytics */}
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <YieldAnalytics tenantId={tenantId} />
                 </Grid>
 
-                {/* Crop Book Section */}
-                <Grid item xs={12} md={4}>
-                    <Card sx={{ height: '100%', borderTop: '4px solid #2e7d32' }}> {/* Plantation Green */}
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2} justifyContent="space-between">
-                                <Box display="flex" alignItems="center">
-                                    <MenuBookIcon color="success" sx={{ mr: 1, fontSize: 32 }} />
-                                    <Typography variant="h6">Crop Book</Typography>
+                {/* Cost Analytics */}
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <CostAnalytics tenantId={tenantId} />
+                </Grid>
+
+                {/* Pending Approvals Table */}
+                <Grid size={{ xs: 12 }}>
+                    <Paper 
+                        elevation={0} 
+                        variant="outlined" 
+                        sx={{ 
+                            borderRadius: 3, 
+                            overflow: 'hidden',
+                            borderColor: '#e2e8f0',
+                            bgcolor: '#ffffff'
+                        }}
+                    >
+                        <Box p={3} borderBottom="1px solid #f1f5f9" display="flex" justifyContent="space-between" alignItems="center">
+                            <Box display="flex" alignItems="center" gap={1.5}>
+                                <Avatar sx={{ bgcolor: '#f59e0b', width: 40, height: 40 }}>
+                                    <PendingActionsIcon />
+                                </Avatar>
+                                <Box>
+                                    <Typography variant="h6" fontWeight="bold" color="#1e293b">Pending Approvals</Typography>
+                                    <Typography variant="caption" color="text.secondary">Review and approve field operations</Typography>
                                 </Box>
-                                <Button variant="outlined" size="small">Add New Field</Button>
                             </Box>
-                            <Typography variant="body2" color="text.secondary" mb={3}>
-                                Comprehensive records of planting schedules, growth stages, and yield analysis.
-                            </Typography>
+                            <Chip 
+                                label={`${pendingWorks.length} Pending`} 
+                                color="warning" 
+                                size="small" 
+                                sx={{ fontWeight: 'bold' }} 
+                            />
+                        </Box>
 
-                            <Table>
-                                <TableHead>
-                                    <TableRow>
-                                        <TableCell>Field ID</TableCell>
-                                        <TableCell>Crop Type</TableCell>
-                                        <TableCell>Stage</TableCell>
-                                        <TableCell align="right">Est. Yield</TableCell>
-                                        <TableCell>Status</TableCell>
-                                    </TableRow>
-                                </TableHead>
-                                <TableBody>
-                                    <TableRow>
-                                        <TableCell><b>FD-001</b> (Upper)</TableCell>
-                                        <TableCell>Tea (VP 2023)</TableCell>
-                                        <TableCell>Mature</TableCell>
-                                        <TableCell align="right">1,200 kg/ha</TableCell>
-                                        <TableCell><Chip label="Healthy" color="success" size="small" /></TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell><b>FD-004</b> (Lower)</TableCell>
-                                        <TableCell>Tea (S-Clone)</TableCell>
-                                        <TableCell>Pruning</TableCell>
-                                        <TableCell align="right">-</TableCell>
-                                        <TableCell><Chip label="Maintenance" color="warning" size="small" /></TableCell>
-                                    </TableRow>
-                                    <TableRow>
-                                        <TableCell><b>FD-009</b> (New)</TableCell>
-                                        <TableCell>Rubber</TableCell>
-                                        <TableCell>Sapling</TableCell>
-                                        <TableCell align="right">-</TableCell>
-                                        <TableCell><Chip label="Growth" color="info" size="small" /></TableCell>
-                                    </TableRow>
-                                </TableBody>
-                            </Table>
-                        </CardContent>
-                    </Card>
+                        <TableContainer sx={{ minHeight: pendingWorks.length === 0 ? 200 : 'auto' }}>
+                            {loadingPending ? (
+                                <Box display="flex" justifyContent="center" py={8}><CircularProgress /></Box>
+                            ) : error ? (
+                                <Alert severity="error" sx={{ m: 2 }}>{error}</Alert>
+                            ) : pendingWorks.length === 0 ? (
+                                <Box display="flex" flexDirection="column" alignItems="center" py={8} sx={{ opacity: 0.6 }}>
+                                    <CheckCircleIcon sx={{ fontSize: 48, color: '#10b981', mb: 2 }} />
+                                    <Typography variant="subtitle1" fontWeight="bold">Nothing to approve!</Typography>
+                                    <Typography variant="body2" color="text.secondary">All field works are up to date.</Typography>
+                                </Box>
+                            ) : (
+                                <Table sx={{ '& .MuiTableCell-head': { bgcolor: '#f8fafc', fontWeight: 'bold', color: '#64748b' } }}>
+                                    <TableHead>
+                                        <TableRow>
+                                            <TableCell>Division</TableCell>
+                                            <TableCell>Date</TableCell>
+                                            <TableCell>Field Officer</TableCell>
+                                            <TableCell>Task Type</TableCell>
+                                            <TableCell align="center">Actions</TableCell>
+                                        </TableRow>
+                                    </TableHead>
+                                    <TableBody>
+                                        {pendingWorks.map((work) => (
+                                            <TableRow key={work.id} hover>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>{work.divisionName}</TableCell>
+                                                <TableCell>{new Date(work.workDate).toLocaleDateString()}</TableCell>
+                                                <TableCell>
+                                                    <Box display="flex" alignItems="center" gap={1}>
+                                                        <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}><PersonIcon fontSize="inherit" /></Avatar>
+                                                        {work.officerName}
+                                                    </Box>
+                                                </TableCell>
+                                                <TableCell>
+                                                    <Chip label={work.workType} size="small" variant="outlined" sx={{ color: '#6366f1', borderColor: '#c7d2fe' }} />
+                                                </TableCell>
+                                                <TableCell align="center">
+                                                    <Box display="flex" justifyContent="center" gap={1}>
+                                                        <Tooltip title="View Details">
+                                                            <Button size="small" startIcon={<VisibilityIcon />} variant="text" sx={{ color: '#64748b' }}>Details</Button>
+                                                        </Tooltip>
+                                                        <Button 
+                                                            size="small" 
+                                                            variant="contained" 
+                                                            color="success" 
+                                                            onClick={() => handleApprove(work.id)}
+                                                            sx={{ 
+                                                                bgcolor: '#10b981', 
+                                                                '&:hover': { bgcolor: '#059669' },
+                                                                borderRadius: 2,
+                                                                textTransform: 'none',
+                                                                fontWeight: 'bold'
+                                                            }}
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                        <IconButton size="small" color="error">
+                                                            <HighlightOffIcon />
+                                                        </IconButton>
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))}
+                                    </TableBody>
+                                </Table>
+                            )}
+                        </TableContainer>
+                    </Paper>
                 </Grid>
             </Grid>
         </Box>
     );
-}
+};
+
+export default ManagerDashboard;
