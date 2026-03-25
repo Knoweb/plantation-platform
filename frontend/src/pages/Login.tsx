@@ -71,7 +71,7 @@ export default function Login() {
             backgroundPosition: 'center',
             position: 'relative'
         }}>
-            {/* Mobile Gradient Overlay */}
+            {/* Mobile Mesh/Vibrant Overlay */}
             <Box
                 sx={{
                     display: { xs: 'block', md: 'none' },
@@ -80,8 +80,18 @@ export default function Login() {
                     left: 0,
                     right: 0,
                     bottom: 0,
-                    background: 'linear-gradient(135deg, rgba(27, 94, 32, 0.4) 0%, rgba(255, 255, 255, 0.8) 100%)',
-                    zIndex: 0
+                    backdropFilter: 'blur(3px)',
+                    background: `linear-gradient(135deg, rgba(27, 94, 32, 0.4) 0%, rgba(0, 0, 0, 0.1) 50%, rgba(76, 175, 80, 0.2) 100%)`,
+                    zIndex: 0,
+                    '&::before': {
+                        content: '""',
+                        position: 'absolute',
+                        top: 0,
+                        left: 0,
+                        right: 0,
+                        bottom: 0,
+                        background: 'radial-gradient(circle at 20% 30%, rgba(255, 255, 255, 0.15) 0%, transparent 50%)',
+                    }
                 }}
             />
 
@@ -108,16 +118,16 @@ export default function Login() {
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 3,
-                        p: { xs: 3.5, sm: 4, md: 0 },
-                        borderRadius: { xs: '24px', md: 0 },
-                        bgcolor: { xs: 'rgba(255, 255, 255, 0.9)', md: 'transparent' },
-                        backdropFilter: { xs: 'blur(10px)', md: 'none' },
-                        boxShadow: { xs: '0 20px 40px rgba(0,0,0,0.15)', md: 'none' },
-                        border: { xs: '1px solid rgba(255, 255, 255, 0.3)', md: 'none' },
-                        animation: 'fadeIn 0.8s ease-out',
-                        '@keyframes fadeIn': {
-                            '0%': { opacity: 0, transform: 'translateY(20px)' },
-                            '100%': { opacity: 1, transform: 'translateY(0)' },
+                        p: { xs: 4, sm: 5, md: 0 },
+                        borderRadius: { xs: '32px', md: 0 },
+                        bgcolor: { xs: 'rgba(255, 255, 255, 0.82)', md: 'transparent' },
+                        backdropFilter: { xs: 'blur(24px) saturate(180%)', md: 'none' },
+                        boxShadow: { xs: '0 24px 60px rgba(0,0,0,0.18), inset 0 0 0 1px rgba(255,255,255,0.4)', md: 'none' },
+                        border: { xs: 'none', md: 'none' },
+                        animation: 'fadeInUp 1s cubic-bezier(0.2, 0.8, 0.2, 1)',
+                        '@keyframes fadeInUp': {
+                            '0%': { opacity: 0, transform: 'translateY(40px) scale(0.98)' },
+                            '100%': { opacity: 1, transform: 'translateY(0) scale(1)' },
                         }
                     }}
                 >
@@ -170,19 +180,20 @@ export default function Login() {
                     </Box>
 
                     {/* Header Text */}
-                    <Box textAlign={{ xs: 'center', md: 'left' }} mb={1}>
+                    <Box textAlign={{ xs: 'center', md: 'left' }} mb={0.5}>
                         <Typography variant="h4" sx={{
                             fontWeight: 900,
-                            letterSpacing: '-0.5px',
+                            letterSpacing: '-1px',
                             mb: 1,
-                            fontFamily: '"Inter", "Roboto", sans-serif',
-                            background: 'linear-gradient(to right, #1b5e20 0%, #4caf50 100%)',
+                            fontFamily: '"Inter", "Outfit", sans-serif',
+                            background: 'linear-gradient(to right, #1b5e20 0%, #43a047 100%)',
                             WebkitBackgroundClip: 'text',
                             WebkitTextFillColor: 'transparent',
+                            fontSize: { xs: '1.75rem', md: '2.125rem' }
                         }}>
                             Welcome Back
                         </Typography>
-                        <Typography variant="body1" sx={{ color: '#555', fontWeight: 500, letterSpacing: '0.2px', fontSize: '0.95rem' }}>
+                        <Typography variant="body1" sx={{ color: '#444', fontWeight: 500, letterSpacing: '0.1px', fontSize: '1rem', opacity: 0.9 }}>
                             Enter your credentials to access your workspace.
                         </Typography>
                     </Box>
@@ -216,21 +227,21 @@ export default function Login() {
                             value={formData.username}
                             onChange={handleChange}
                             variant="outlined"
-                            InputLabelProps={{ sx: { color: '#888', fontWeight: 500 } }}
+                            InputLabelProps={{ sx: { color: '#666', fontWeight: 600, fontSize: '0.9rem' } }}
                             sx={{
-                                mb: 2,
+                                mb: 2.5,
                                 '& .MuiOutlinedInput-root': {
-                                    borderRadius: '12px',
-                                    bgcolor: '#f4fbf5',
-                                    transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-                                    '& fieldset': { borderColor: '#d1e3d3', borderWidth: '1px' },
-                                    '&:hover fieldset': { borderColor: '#81c784' },
+                                    borderRadius: '16px',
+                                    bgcolor: { xs: 'rgba(76, 175, 80, 0.04)', md: '#f4fbf5' },
+                                    transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                    '& fieldset': { borderColor: 'rgba(46, 125, 50, 0.15)', borderWidth: '1px' },
+                                    '&:hover fieldset': { borderColor: '#43a047' },
                                     '&.Mui-focused': {
                                         bgcolor: '#ffffff',
-                                        boxShadow: '0 4px 24px rgba(76, 175, 80, 0.12)',
-                                        '& fieldset': { borderColor: '#2e7d32', borderWidth: '1.5px' },
+                                        boxShadow: '0 8px 30px rgba(76, 175, 80, 0.15)',
+                                        '& fieldset': { borderColor: '#2e7d32', borderWidth: '2px' },
                                     },
-                                    '& input': { py: 2, px: 2 }
+                                    '& input': { py: 2.2, px: 2 }
                                 }
                             }}
                         />
@@ -327,7 +338,15 @@ export default function Login() {
 
                 {/* Mobile Footer Credit */}
                 <Box sx={{ width: '100%', textAlign: 'center', mt: 3, pb: 1 }}>
-                    <Typography variant="caption" sx={{ color: { xs: 'rgba(0,0,0,0.5)', md: 'text.disabled' }, fontWeight: 500 }}>
+                    <Typography 
+                        variant="caption" 
+                        sx={{ 
+                            color: { xs: 'rgba(255,255,255,0.85)', md: 'text.disabled' }, 
+                            fontWeight: 600,
+                            letterSpacing: '0.5px',
+                            textShadow: { xs: '0 1px 4px rgba(0,0,0,0.4)', md: 'none' }
+                        }}
+                    >
                         © 2026 Knoweb(PVT LTD). All rights reserved.
                     </Typography>
                 </Box>
