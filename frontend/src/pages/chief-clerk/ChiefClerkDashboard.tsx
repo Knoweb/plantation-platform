@@ -18,6 +18,7 @@ export default function ChiefClerkDashboard() {
     const [inventoryPending, setInventoryPending] = useState(0);
     const [workersActive, setWorkersActive] = useState(0);
     const [workersPending, setWorkersPending] = useState(0);
+    const [contractWorkersToday, setContractWorkersToday] = useState(0);
     const [costLoggedToday, setCostLoggedToday] = useState(false);
     const [unreadMessages, setUnreadMessages] = useState(0);
     const [todateYield, setTodateYield] = useState(0);
@@ -30,22 +31,26 @@ export default function ChiefClerkDashboard() {
         const fetchDashboardData = async () => {
             if (!tenantId) return;
             try {
-                const today = new Date().toISOString().split('T')[0];
-                const startOfMonth = today.substring(0, 8) + '01';
-                
-                // 1. Inventory Transactions (Chief Clerk reviews SYSTEM Restocks & FO requests)
-                const invTransRes = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
-                const ccPending = invTransRes.data.filter((t: any) => 
-                    t.type === 'RESTOCK_REQUEST' && 
-                    ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
-                ).length;
-                setInventoryPending(ccPending);
+            const now = new Date();
+            // Use local date (not UTC) to prevent off-by-one errors in IST (+05:30)
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            const startOfMonth = today.substring(0, 8) + '01';
+            
+            // 1. Inventory Transactions (Chief Clerk reviews SYSTEM Restocks & FO requests)
+            const invTransRes = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
+            const ccPending = invTransRes.data.filter((t: any) => 
+                t.type === 'RESTOCK_REQUEST' && 
+                ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
+            ).length;
+            setInventoryPending(ccPending);
 
-                // 2. Workers
-                const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
-                const wList = wRes.data || [];
-                setWorkersActive(wList.filter((w: any) => w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL').length);
-                setWorkersPending(wList.filter((w: any) => w.status === 'PENDING_APPROVAL' && w.employmentType !== 'CONTRACT_MEMBER').length);
+            // 2. Workers
+            const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
+            const wList = wRes.data || [];
+            setWorkersActive(wList.filter((w: any) => w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL').length);
+            setWorkersPending(wList.filter((w: any) => w.status === 'PENDING_APPROVAL' && w.employmentType !== 'CONTRACT_MEMBER').length);
+            // Count contract workers logged today (registeredDate matches today's local date)
+            setContractWorkersToday(wList.filter((w: any) => w.employmentType === 'CONTRACT' && w.registeredDate === today).length);
 
                 // 3. Messages
                 try {
@@ -162,7 +167,7 @@ export default function ChiefClerkDashboard() {
 
                 {/* WORKERS TILE */}
                 <Grid item xs={12} md={4}>
-                    <Card onClick={() => navigate('/dashboard/workers')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, border: '1px solid #e2e8f0' }}>
+                    <Card onClick={() => navigate('/dashboard/workers')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, border: contractWorkersToday === 0 ? '1px solid #fde68a' : '1px solid #e2e8f0', bgcolor: contractWorkersToday === 0 ? '#fffbeb' : '#ffffff' }}>
                         <CardContent sx={{ p: 3 }}>
                             <Box display="flex" justifyContent="space-between" alignItems="flex-start">
                                 <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
@@ -177,7 +182,13 @@ export default function ChiefClerkDashboard() {
                                 <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
                                     Worker Registry
                                 </Typography>
-                                <Typography variant="body2" sx={{ color: workersPending > 0 ? '#ea580c' : '#64748b', mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    {contractWorkersToday > 0
+                                        ? <><CheckCircleOutlineIcon fontSize="small" sx={{ color: '#16a34a' }}/> <span style={{ color: '#16a34a', fontWeight: 600 }}>{contractWorkersToday} contract</span> workers logged today</>
+                                        : <><WarningAmberIcon fontSize="small" sx={{ color: '#d97706' }}/> No contract workers logged today</>
+                                    }
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: workersPending > 0 ? '#ea580c' : '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                     {workersPending > 0 ? <><WarningAmberIcon fontSize="small"/> {workersPending} pending approval</> : <><CheckCircleOutlineIcon fontSize="small"/> Registry clean</>}
                                 </Typography>
                             </Box>

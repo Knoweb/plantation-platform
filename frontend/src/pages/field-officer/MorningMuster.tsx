@@ -8,6 +8,9 @@ import AddIcon from '@mui/icons-material/Add';
 import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
+import SmartToyIcon from '@mui/icons-material/SmartToy';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 
 interface Muster {
     id: number;
@@ -18,6 +21,7 @@ interface Muster {
     workerIds: string[];
     status: string;
     divisionId?: string; // Backend might send this
+    aiAdvisory?: string; // AI-suggested optimizations
 }
 
 interface Worker {
@@ -27,6 +31,8 @@ interface Worker {
     status?: string;
     divisionIds?: string[]; // Worker assigned divisions
     employmentType?: string;
+    type?: string;
+    workerType?: string;
     registeredDate?: string;
 }
 
@@ -77,6 +83,128 @@ export default function MorningMuster() {
     const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
     const [availableTasks, setAvailableTasks] = useState<string[]>([]);
+    const [weather, setWeather] = useState<{ advisory: string, rainEveningChance: number, rainAfternoonChance: number } | null>(null);
+
+    const fetchData = async () => {
+        try {
+            const [musterRes, workerRes, fieldRes, divisionRes, taskRes] = await Promise.all([
+                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`)
+            ]);
+
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const today = `${year}-${month}-${day}`;
+
+            const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
+            
+            setMusters(todaysMusters);
+            setWorkers(workerRes.data);
+            setFields(fieldRes.data);
+            setDivisions(divisionRes.data);
+            
+            const tasks = taskRes.data.map((t: any) => t.name);
+            setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
+            
+            if (divisionRes.data.length > 0 && !selectedDivisionId) {
+                const userDivisions = userSession.divisionAccess || [];
+                const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
+                const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
+                setSelectedDivisionId(exists ? preferredDiv : divisionRes.data[0].divisionId);
+            }
+        } catch (e) {
+            console.error("Failed to fetch muster data", e);
+        }
+    };
+
+    const checkApprovalStatus = async () => {
+        try {
+            const d = new Date();
+            const year = d.getFullYear();
+            const month = String(d.getMonth() + 1).padStart(2, '0');
+            const day = String(d.getDate()).padStart(2, '0');
+            const todayVal = `${year}-${month}-${day}`;
+
+            const res = await axios.get(`/api/operations/daily-work/check?tenantId=${tenantId}&divisionId=${selectedDivisionId}&date=${todayVal}`);
+            setIsReadOnly(!!res.data);
+        } catch (e) {
+            setIsReadOnly(false);
+        }
+    };
+
+    const fetchWeather = () => {
+        const buildAdvisory = (hourlyPrecip: number[]) => {
+            const afternoon = hourlyPrecip.slice(12, 16);
+            const evening = hourlyPrecip.slice(16, 21);
+            const maxAfternoon = Math.max(...afternoon);
+            const maxEvening = Math.max(...evening);
+            
+            let advisory = '';
+            if (maxEvening >= 70) advisory = `Heavy rain likely this evening (${maxEvening}%). Complete all outdoor plucking/fertilizer tasks before noon.`;
+            else if (maxEvening >= 40) advisory = `Moderate rain (${maxEvening}%) tonight. Safe to work outdoors until mid-afternoon. Avoid late fertilizer application.`;
+            else if (maxAfternoon >= 60) advisory = `Rain showers (${maxAfternoon}%) likely post-noon. Complete vulnerable field tasks early morning.`;
+            else if (maxAfternoon >= 30) advisory = `Slight chance of afternoon showers (${maxAfternoon}%). Generally good conditions for field operations.`;
+            else advisory = `Clear day expected. Excellent conditions for all plucking and fertilizer activities.`;
+            
+            return { advisory, rainEveningChance: maxEvening, rainAfternoonChance: maxAfternoon };
+        };
+
+        const getWeatherData = async (lat: number, lon: number) => {
+            try {
+                const res = await axios.get(
+                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation_probability&timezone=auto&forecast_days=1`
+                );
+                const hourlyPrecip = res.data.hourly.precipitation_probability as number[];
+                const result = buildAdvisory(hourlyPrecip);
+                setWeather(result);
+            } catch (err) {
+                console.error("Failed to fetch weather in muster", err);
+            }
+        };
+
+        const fetchByIp = async () => {
+            try {
+                const cachedLat = sessionStorage.getItem('user_lat');
+                const cachedLon = sessionStorage.getItem('user_lon');
+                if (cachedLat && cachedLon) {
+                    await getWeatherData(parseFloat(cachedLat), parseFloat(cachedLon));
+                    return;
+                }
+
+                const geoRes = await axios.get('https://ipapi.co/json/');
+                const { latitude, longitude } = geoRes.data;
+                sessionStorage.setItem('user_lat', latitude.toString());
+                sessionStorage.setItem('user_lon', longitude.toString());
+                await getWeatherData(latitude, longitude);
+            } catch (err: any) {
+                if (err.response?.status === 429) {
+                    console.warn("Muster Weather: Geolocation API rate limited. Using default.");
+                } else {
+                    console.error("Could not determine location via IP", err);
+                }
+            }
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (pos) => {
+                    const { latitude, longitude } = pos.coords;
+                    sessionStorage.setItem('user_lat', latitude.toString());
+                    sessionStorage.setItem('user_lon', longitude.toString());
+                    getWeatherData(latitude, longitude);
+                },
+                () => fetchByIp(),
+                { timeout: 5000 }
+            );
+        } else {
+            fetchByIp();
+        }
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -89,85 +217,17 @@ export default function MorningMuster() {
             }
         };
 
-        // Initial fetch
         refreshData();
+        fetchWeather();
 
-        // Real-time sync polling every 5 seconds
         const intervalId = setInterval(refreshData, 5000);
-
         return () => {
             isMounted = false;
             clearInterval(intervalId);
         };
     }, [tenantId, selectedDivisionId]);
 
-    const checkApprovalStatus = async () => {
-        try {
-            // Use local date for consistency
-            const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const today = `${year}-${month}-${day}`;
-            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&divisionId=${selectedDivisionId}`);
-            // Check if TODAY'S work for this division is SUBMITTED (Pending or Approved)
-            const submittedWork = res.data.find((w: any) => w.workDate === today && (w.status === 'APPROVED' || w.status === 'PENDING'));
-            setIsReadOnly(!!submittedWork);
-        } catch (e) {
-            console.error("Failed to check approval status", e);
-        }
-    };
 
-    const fetchData = async () => {
-        try {
-            const [musterRes, workerRes, fieldRes, divisionRes, taskRes] = await Promise.all([
-                axios.get(`/api/operations/muster?tenantId=${tenantId}`),
-                axios.get(`/api/workers?tenantId=${tenantId}`),
-                axios.get(`/api/fields?tenantId=${tenantId}`),
-                axios.get(`/api/divisions?tenantId=${tenantId}`),
-                axios.get(`/api/operations/task-types?tenantId=${tenantId}`)
-            ]);
-
-            // Use local date to avoid UTC mismatches in early morning
-            const d = new Date();
-            const year = d.getFullYear();
-            const month = String(d.getMonth() + 1).padStart(2, '0');
-            const day = String(d.getDate()).padStart(2, '0');
-            const today = `${year}-${month}-${day}`;
-
-            const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
-
-            // Set Available Tasks
-            const tasks = taskRes.data.map((t: any) => t.name);
-            setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
-
-            setMusters(todaysMusters);
-            setWorkers(workerRes.data);
-            setFields(fieldRes.data);
-            setDivisions(divisionRes.data);
-
-            // Set default division if available
-            if (divisionRes.data.length > 0 && !selectedDivisionId) {
-                // Ideally default to user's first assigned division, if any
-                const userDivisions = userSession.divisionAccess || [];
-                // Check if user's preferred division exists in fetched data
-                const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
-                const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
-
-                if (exists) {
-                    setSelectedDivisionId(preferredDiv);
-                } else {
-                    setSelectedDivisionId(divisionRes.data[0].divisionId);
-                }
-            } else if (divisionRes.data.length > 0 && selectedDivisionId) {
-                // Verify current selection still exists (e.g. after deletion)
-                const exists = divisionRes.data.find((d: Division) => d.divisionId === selectedDivisionId);
-                if (!exists) setSelectedDivisionId(divisionRes.data[0].divisionId);
-            }
-        } catch (err) {
-            console.error("Failed to fetch muster data", err);
-        }
-    };
 
     const handleCreateMuster = async () => {
         try {
@@ -213,6 +273,22 @@ export default function MorningMuster() {
         });
         setEditingMusterId(muster.id);
         setOpenMuster(true);
+    };
+
+    const handleDeleteMuster = (id: number) => {
+        setConfirmMessage("Are you sure you want to remove this specific assignment?");
+        setConfirmButtonText("Remove");
+        setConfirmButtonColor("error");
+        setConfirmAction(() => async () => {
+            try {
+                await axios.delete(`/api/operations/muster/${id}`);
+                fetchData();
+                setSnackbar({ open: true, message: "Assignment removed", severity: "success" });
+            } catch (e) {
+                setSnackbar({ open: true, message: "Failed to remove assignment", severity: "error" });
+            }
+        });
+        setConfirmOpen(true);
     };
 
     // --- Filtering Logic ---
@@ -323,7 +399,7 @@ export default function MorningMuster() {
     };
 
     const handleFinalize = () => {
-        setConfirmMessage("Are you sure you want to finalize the muster? This will submit the assignments for Manager Approval.");
+        setConfirmMessage("Are you sure you want to finalize the muster? This will submit all assignments for Manager Approval.");
         setConfirmButtonText("Confirm Submission");
         setConfirmButtonColor("success");
         setConfirmAction(() => async () => {
@@ -473,6 +549,27 @@ export default function MorningMuster() {
                 </Alert>
             )}
 
+            {/* AI Optimization Insight */}
+            {musters.some(m => m.aiAdvisory) && (
+                <Card sx={{ mb: 3, borderLeft: '6px solid #1e3c72', bgcolor: '#f0f4f8' }}>
+                    <CardContent sx={{ py: 1.5, '&:last-child': { pb: 1.5 } }}>
+                        <Box display="flex" alignItems="flex-start" gap={1.5}>
+                            <Avatar sx={{ bgcolor: '#1e3c72', width: 32, height: 32 }}>
+                                <SmartToyIcon sx={{ fontSize: 18 }} />
+                            </Avatar>
+                            <Box flex={1}>
+                                <Typography variant="subtitle2" sx={{ color: '#1e3c72', fontWeight: 800, mb: 0.5, letterSpacing: 0.5 }}>
+                                    AI SUPERVISOR OPTIMIZATION
+                                </Typography>
+                                <Typography variant="body2" sx={{ color: '#334e68', fontStyle: 'italic', lineHeight: 1.6 }}>
+                                    "{musters.find(m => m.aiAdvisory)?.aiAdvisory}"
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </CardContent>
+                </Card>
+            )}
+
             <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 3 }}>
                 {/* Left Panel: Muster Chit Summary */}
                 <Box sx={{ width: { xs: '100%', md: '32%' } }}>
@@ -616,9 +713,14 @@ export default function MorningMuster() {
                                                 <Typography variant="body2" color="text.secondary" gutterBottom>
                                                     Field: <strong>{muster.fieldName}</strong> • ({muster.workerCount} workers)
                                                 </Typography>
-                                                <IconButton size="small" onClick={() => handleEditMuster(muster)} disabled={isReadOnly}>
-                                                    <EditIcon fontSize="small" />
-                                                </IconButton>
+                                                <Box>
+                                                    <IconButton size="small" onClick={() => handleEditMuster(muster)} disabled={isReadOnly} sx={{ mr: 0.5 }}>
+                                                        <EditIcon fontSize="small" />
+                                                    </IconButton>
+                                                    <IconButton size="small" onClick={() => handleDeleteMuster(muster.id)} disabled={isReadOnly} color="error">
+                                                        <CloseIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Box>
                                             </Box>
 
                                             <Box display="flex" flexWrap="wrap" gap={1}>

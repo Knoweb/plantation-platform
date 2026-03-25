@@ -72,6 +72,7 @@ public class CropConfigController {
             if (newConfig.getAththamaWage() != null) configToUpdate.setAththamaWage(newConfig.getAththamaWage());
             if (newConfig.getOverKiloRate() != null) configToUpdate.setOverKiloRate(newConfig.getOverKiloRate());
             if (newConfig.getCashKiloRate() != null) configToUpdate.setCashKiloRate(newConfig.getCashKiloRate());
+            if (newConfig.getOtHourRate() != null) configToUpdate.setOtHourRate(newConfig.getOtHourRate());
             if (newConfig.getCostItems() != null) configToUpdate.setCostItems(newConfig.getCostItems());
             if (newConfig.getWorkingDayCalendar() != null) configToUpdate.setWorkingDayCalendar(newConfig.getWorkingDayCalendar());
             return ResponseEntity.ok(configRepository.save(configToUpdate));

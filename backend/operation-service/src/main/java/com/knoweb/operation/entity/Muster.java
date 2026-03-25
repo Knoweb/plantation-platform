@@ -27,6 +27,15 @@ public class Muster {
     private String taskType;
     private Integer workerCount;
     private String status; // PENDING, APPROVED
+    private String aiAdvisory; // AI-suggested optimizations
+
+    public String getAiAdvisory() {
+        return aiAdvisory;
+    }
+
+    public void setAiAdvisory(String aiAdvisory) {
+        this.aiAdvisory = aiAdvisory;
+    }
 
     public Long getId() {
         return id;

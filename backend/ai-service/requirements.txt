@@ -1,0 +1,5 @@
+crewai
+langchain-groq
+pika
+python-dotenv
+requests

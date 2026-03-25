@@ -55,6 +55,9 @@ public class CropConfig {
     @Column(name = "cash_kilo_rate")
     private Double cashKiloRate;
 
+    @Column(name = "ot_hour_rate")
+    private Double otHourRate;
+
     // JSON string storing cost analysis items, managed by Chief Clerk
     @Column(name = "cost_items", columnDefinition = "TEXT")
     private String costItems;
@@ -166,6 +169,14 @@ public class CropConfig {
 
     public void setCashKiloRate(Double cashKiloRate) {
         this.cashKiloRate = cashKiloRate;
+    }
+
+    public Double getOtHourRate() {
+        return otHourRate;
+    }
+
+    public void setOtHourRate(Double otHourRate) {
+        this.otHourRate = otHourRate;
     }
 
     public String getCostItems() {

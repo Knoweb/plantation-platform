@@ -16,9 +16,26 @@ public class RabbitMQConfig {
     // HARVEST events (operation-service publishes)
     public static final String HARVEST_ROUTING_KEY = "harvest.logged";
 
+    // AI events
+    public static final String AI_ROSTER_CHECK_ROUTING_KEY = "ai.roster.check";
+    
+    // AI Listener configurations
+    public static final String AI_ROSTER_REVISED_QUEUE = "ai.roster.queue.revised";
+    public static final String AI_ROSTER_REVISED_ROUTING_KEY = "ai.roster.revised";
+
     @Bean
     public TopicExchange plantationExchange() {
         return new TopicExchange(EXCHANGE, true, false);
+    }
+
+    @Bean
+    public Queue aiRosterRevisedQueue() {
+        return new Queue(AI_ROSTER_REVISED_QUEUE, true);
+    }
+
+    @Bean
+    public Binding aiRosterRevisedBinding(Queue aiRosterRevisedQueue, TopicExchange plantationExchange) {
+        return BindingBuilder.bind(aiRosterRevisedQueue).to(plantationExchange).with(AI_ROSTER_REVISED_ROUTING_KEY);
     }
 
     // Use JSON for cross-service message serialization

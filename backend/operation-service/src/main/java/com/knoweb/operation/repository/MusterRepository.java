@@ -8,4 +8,6 @@ public interface MusterRepository extends JpaRepository<Muster, Long> {
     List<Muster> findByTenantIdOrderByDateDesc(String tenantId);
 
     List<Muster> findByTenantIdAndDivisionIdOrderByDateDesc(String tenantId, String divisionId);
+
+    List<Muster> findByDivisionIdAndDate(String divisionId, java.time.LocalDate date);
 }

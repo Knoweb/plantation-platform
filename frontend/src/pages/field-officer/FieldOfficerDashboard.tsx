@@ -78,17 +78,162 @@ export default function FieldOfficerDashboard() {
     });
     // New Harvest State
     const [newHarvest, setNewHarvest] = useState({ fieldName: '', workerName: '', quantityKg: 0, cropType: 'Tea' });
+    const [weather, setWeather] = useState<{ 
+        temp: number, 
+        humidity: number, 
+        condition: string, 
+        icon: string, 
+        currentLoc: string, 
+        advisory: string, 
+        advisoryColor: string, 
+        rainMorningChance: number, 
+        rainEveningChance: number 
+    } | null>(null);
 
     useEffect(() => {
         fetchData();
         fetchWorkers(); // Fetch workers on mount
+        fetchWeather();
     }, []);
 
+
+    const fetchWeather = () => {
+        const weatherCodes: Record<number, {cond: string, icon: string}> = {
+            0: { cond: 'Clear Sky', icon: 'U+2600' }, 1: { cond: 'Mainly Clear', icon: 'U+1F324' },
+            2: { cond: 'Partly Cloudy', icon: 'U+26C5' }, 3: { cond: 'Overcast', icon: 'U+2601' },
+            45: { cond: 'Fog', icon: 'U+1F32B' }, 48: { cond: 'Fog', icon: 'U+1F32B' },
+            51: { cond: 'Light Drizzle', icon: 'U+1F326' }, 53: { cond: 'Drizzle', icon: 'U+1F326' }, 55: { cond: 'Dense Drizzle', icon: 'U+1F327' },
+            61: { cond: 'Slight Rain', icon: 'U+1F327' }, 63: { cond: 'Moderate Rain', icon: 'U+1F327' }, 65: { cond: 'Heavy Rain', icon: 'U+1F327' },
+            80: { cond: 'Rain Showers', icon: 'U+1F326' }, 81: { cond: 'Moderate Showers', icon: 'U+1F327' }, 82: { cond: 'Violent Showers', icon: 'U+26C8' },
+            95: { cond: 'Thunderstorm', icon: 'U+26C8' }, 96: { cond: 'Thunderstorm & Hail', icon: 'U+26C8' }, 99: { cond: 'Heavy Thunderstorm', icon: 'U+26C8' }
+        };
+
+        const buildAdvisory = (hourlyTimes: string[], hourlyPrecip: number[]) => {
+            // User definition: Morning (8-12) and Evening (12-4:30)
+            const morning = hourlyPrecip.slice(8, 12);
+            const evening = hourlyPrecip.slice(12, 17);
+            const maxMorning = Math.max(...morning);
+            const maxEvening = Math.max(...evening);
+            
+            let advisory = '';
+            let color = 'success.main';
+
+            if (maxEvening >= 70) {
+                advisory = "Heavy rain expected this afternoon/evening. Complete plucking early and avoid field chemicals.";
+                color = 'error.main';
+            } else if (maxEvening >= 40) {
+                advisory = "Moderate rain likely after noon. Safe for morning tasks but prepare for afternoon halt.";
+                color = 'warning.main';
+            } else if (maxMorning >= 60) {
+                advisory = "Rain showers likely this morning. Productivity may be reduced during the first shift.";
+                color = 'warning.main';
+            } else if (maxMorning >= 30) {
+                advisory = "Slight chance of scattered morning showers. Overall good for outdoor work.";
+                color = 'info.main';
+            } else {
+                advisory = "Strong conditions: Clear weather expected during both morning and afternoon work shifts.";
+                color = 'success.main';
+            }
+            return { advisory, color, rainEveningChance: maxEvening, rainMorningChance: maxMorning };
+        };
+
+        const getWeatherData = async (lat: number, lon: number, locName: string) => {
+            try {
+                const [weatherRes, geoRes] = await Promise.all([
+                    axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&hourly=precipitation_probability,weather_code&timezone=auto&forecast_days=1`),
+                    locName === 'Local' 
+                        ? axios.get(`https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lon}&format=json`).catch(() => null)
+                        : Promise.resolve(null)
+                ]);
+
+                const current = weatherRes.data.current;
+                const hourlyTimes = weatherRes.data.hourly.time as string[];
+                const hourlyPrecip = weatherRes.data.hourly.precipitation_probability as number[];
+                const hourlyCode = weatherRes.data.hourly.weather_code as number[];
+                const currentHour = new Date().getHours();
+
+                // Extract extremely precise name from reverse geo if available
+                let finalLoc = locName;
+                if (geoRes?.data?.address) {
+                    const addr = geoRes.data.address;
+                    // Order of granularity: most local to least local
+                    finalLoc = addr.neighbourhood || addr.hamlet || addr.village || addr.suburb || addr.town || addr.city || locName;
+                }
+
+            const w = weatherCodes[current.weather_code] || { cond: 'Cloudy', icon: 'U+2601' };
+            const icon = String.fromCodePoint(parseInt(w.icon.replace('U+', ''), 16));
+            const hum = current.relative_humidity_2m;
+            const { advisory, color, rainEveningChance, rainMorningChance } = buildAdvisory(hourlyTimes, hourlyPrecip);
+
+            const statusAdvisory = hum > 85 && rainMorningChance < 30
+                ? `High humidity (${hum}%) detected. Ideal plucking window but monitor afternoon sky. ${advisory}`
+                : advisory;
+
+            setWeather({
+                temp: Math.round(current.temperature_2m),
+                humidity: hum,
+                condition: w.cond,
+                icon,
+                currentLoc: finalLoc,
+                advisory: statusAdvisory,
+                advisoryColor: color,
+                rainMorningChance,
+                rainEveningChance
+            });
+            } catch (err) {
+                console.error("Failed to fetch weather", err);
+            }
+        };
+
+        const fetchByIp = async () => {
+            try {
+                // Check cache first
+                const cachedLat = sessionStorage.getItem('user_lat');
+                const cachedLon = sessionStorage.getItem('user_lon');
+                const cachedLoc = sessionStorage.getItem('user_loc_name');
+                
+                if (cachedLat && cachedLon) {
+                    await getWeatherData(parseFloat(cachedLat), parseFloat(cachedLon), cachedLoc || 'Local');
+                    return;
+                }
+
+                const geoRes = await axios.get('https://ipapi.co/json/');
+                const { latitude, longitude, city } = geoRes.data;
+                
+                // Cache for next time
+                sessionStorage.setItem('user_lat', latitude.toString());
+                sessionStorage.setItem('user_lon', longitude.toString());
+                sessionStorage.setItem('user_loc_name', city || 'Local');
+
+                await getWeatherData(latitude, longitude, city || 'Local');
+            } catch (err: any) {
+                if (err.response?.status === 429) {
+                    console.warn("Geolocation API rate limited. Using default/cached location.");
+                } else {
+                    console.error("Geolocation failed after all attempts", err);
+                }
+            }
+        };
+
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    const { latitude, longitude } = position.coords;
+                    sessionStorage.setItem('user_lat', latitude.toString());
+                    sessionStorage.setItem('user_lon', longitude.toString());
+                    await getWeatherData(latitude, longitude, 'Local');
+                },
+                async () => {
+                    await fetchByIp();
+                },
+                { timeout: 8000, enableHighAccuracy: true }
+            );
+        } else {
+            fetchByIp();
+        }
+    };
     const fetchWorkers = async () => {
         try {
-            const divisionAccess = userSession.divisionAccess || [];
-            // Ideally fetch by division, but for now fetch all active workers for tenant if no specific division filter
-            // Or if backend supports filtering by multiple divisions, we'd do that.
             // For now, let's just get all workers for the tenant to populate the dropdown.
             const res = await axios.get(`/api/workers?tenantId=${tenantId}`);
             setWorkers(res.data);
@@ -102,8 +247,9 @@ export default function FieldOfficerDashboard() {
             // Filter data based on User's Assigned Divisions
             const myDivisions = userSession.divisionAccess || [];
             const primaryDivisionId = myDivisions.length > 0 ? myDivisions[0] : '';
-            const today = new Date().toISOString().split('T')[0];
             const now = new Date();
+            // Use local date (not UTC) to prevent off-by-one errors in IST (+05:30)
+            const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const monthStart = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-01`;
 
             const chartStartDate = `${now.getFullYear() - 3}-01-01`;
@@ -428,8 +574,11 @@ export default function FieldOfficerDashboard() {
             const chartYears = Array.from(
                 new Set(
                     chartWorkList
-                        .map((work: any) => Number(String(work.workDate || '').slice(0, 4)))
-                        .filter((year: number) => Number.isFinite(year))
+                        .map((work: any) => {
+                            const dateStr = String(work.workDate || '');
+                            return dateStr ? Number(dateStr.slice(0, 4)) : 0;
+                        })
+                        .filter((year: number) => year > 0 && Number.isFinite(year))
                 )
             ).sort((a, b) => a - b);
 
@@ -536,26 +685,81 @@ export default function FieldOfficerDashboard() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
                     Field Operation Center
                 </Typography>
-                <Box>
-                    {/* Buttons removed as per request */}
-                </Box>
             </Box>
 
-            <Box mb={2}>
-                <Typography variant="h5" fontWeight="bold" sx={{ color: '#1b5e20' }}>
-                    Key Performance Indicators
-                </Typography>
-                <Typography variant="body2" color="text.secondary">
-                    At-a-glance plantation productivity and resource status for this month.
-                </Typography>
-            </Box>
+            {/* KPI Section with Weather and Primary Metrics */}
+            <Grid container spacing={2.5} mb={4} alignItems="stretch">
+                {/* Weather Advisory Card - Enhanced Exact Location & Details */}
+                {weather && (
+                    <Grid size={{ xs: 12, sm: 6, md: 3 }}>
+                        <Paper
+                            elevation={0}
+                            sx={{
+                                height: '100%',
+                                borderRadius: 3,
+                                overflow: 'hidden',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                border: '1px solid #e0ebf5',
+                                boxShadow: '0 8px 22px rgba(15, 23, 42, 0.07)',
+                                transition: 'all 0.3s ease',
+                                '&:hover': { transform: 'translateY(-3px)', boxShadow: '0 12px 28px rgba(15, 23, 42, 0.12)' }
+                            }}
+                        >
+                            <Box sx={{
+                                background: 'linear-gradient(160deg, #1e3c72 0%, #2a5298 100%)',
+                                color: 'white',
+                                px: 2,
+                                py: 1.5,
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'space-between'
+                            }}>
+                                <Box display="flex" alignItems="center" gap={1.5}>
+                                    <Typography sx={{ fontSize: '2rem' }}>{weather.icon}</Typography>
+                                    <Box>
+                                        <Typography variant="h5" fontWeight="900" sx={{ lineHeight: 1 }}>{weather.temp}&deg;C</Typography>
+                                        <Typography variant="caption" sx={{ opacity: 0.9, fontWeight: 700, fontSize: '0.7rem', display: 'block', mt: 0.3 }}>
+                                            {weather.currentLoc.toUpperCase()}
+                                        </Typography>
+                                    </Box>
+                                </Box>
+                                <Box sx={{ textAlign: 'right' }}>
+                                    <Typography variant="caption" sx={{ opacity: 0.7, fontSize: '0.6rem', display: 'block' }}>HUMIDITY</Typography>
+                                    <Typography variant="body2" fontWeight="bold">{weather.humidity || 0}%</Typography>
+                                </Box>
+                            </Box>
+                            <Box sx={{ p: 2, flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', bgcolor: 'white' }}>
+                                <Box>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                        <Box display="flex" alignItems="center" gap={1}>
+                                            <Typography variant="caption" fontWeight="800" sx={{ color: '#1e3c72', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>AI Field Insight</Typography>
+                                            <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: weather.rainEveningChance >= 60 ? '#ef5350' : weather.rainAfternoonChance >= 40 ? '#ff9800' : '#4caf50', animation: 'pulse 2s infinite' }} />
+                                        </Box>
+                                    </Box>
+                                    <Typography variant="body2" sx={{ color: 'text.primary', lineHeight: 1.5, fontSize: '0.8rem', fontWeight: 500 }}>
+                                        {weather.advisory}
+                                    </Typography>
+                                </Box>
+                                <Box display="flex" gap={1} mt={1.5}>
+                                    <Box sx={{ bgcolor: 'rgba(30,60,114,0.06)', borderRadius: 1.5, px: 1, py: 0.5, flex: 1, textAlign: 'center' }}>
+                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>MORNING</Typography>
+                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: '#1e3c72' }}>{weather.rainMorningChance}% Rain</Typography>
+                                    </Box>
+                                    <Box sx={{ bgcolor: weather.rainEveningChance >= 70 ? 'rgba(239,83,80,0.08)' : 'rgba(30,60,114,0.06)', borderRadius: 1.5, px: 1, py: 0.5, flex: 1, textAlign: 'center' }}>
+                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>EVENING</Typography>
+                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: weather.rainEveningChance >= 70 ? '#ef5350' : '#1e3c72' }}>{weather.rainEveningChance}% Rain</Typography>
+                                    </Box>
+                                </Box>
+                            </Box>
+                        </Paper>
+                    </Grid>
+                )}
 
-            {/* KPI Section */}
-            <Grid container spacing={3} mb={4}>
                 {[
                     {
                         title: 'Yield per Acre',
@@ -614,7 +818,7 @@ export default function FieldOfficerDashboard() {
                                     <Typography variant="caption" sx={{ color: 'text.secondary', letterSpacing: 0.2, fontWeight: 700 }}>
                                         {card.title}
                                     </Typography>
-                                    <Typography sx={{ mt: 0.75, color: '#16324f', lineHeight: 1, fontSize: '2rem', fontWeight: 800 }}>
+                                    <Typography sx={{ mt: 0.75, color: '#16324f', lineHeight: 1, fontSize: '1.8rem', fontWeight: 800 }}>
                                         {card.value}
                                     </Typography>
                                 </Box>
@@ -633,7 +837,7 @@ export default function FieldOfficerDashboard() {
                                     {card.icon}
                                 </Box>
                             </Box>
-                            <Typography sx={{ color: '#4f6b87', fontWeight: 500, fontSize: '0.8rem' }}>
+                            <Typography sx={{ color: '#4f6b87', fontWeight: 500, fontSize: '0.75rem' }}>
                                 {card.unit}
                             </Typography>
                             <Chip
@@ -642,10 +846,10 @@ export default function FieldOfficerDashboard() {
                                 sx={{
                                     mt: 1.25,
                                     fontWeight: 700,
-                                    height: 24,
+                                    height: 22,
                                     '& .MuiChip-label': {
                                         px: 1,
-                                        fontSize: '0.72rem',
+                                        fontSize: '0.68rem',
                                     },
                                     color: card.noteColor,
                                     bgcolor: 'rgba(255,255,255,0.72)',
@@ -710,97 +914,91 @@ export default function FieldOfficerDashboard() {
                         </Box>
                         <Box sx={{ width: '100%', height: 320 }}>
                             <ResponsiveContainer width="100%" height="100%">
-                                <>
-                                    {(factoryWeightView === 'daily' || factoryWeightView === 'weekly') && (
-                                        <BarChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="factoryWeightBar" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="0%" stopColor="#43a047" stopOpacity={0.95} />
-                                                    <stop offset="100%" stopColor="#1b5e20" stopOpacity={0.88} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <RechartsTooltip
-                                                cursor={{ fill: 'rgba(46,125,50,0.06)' }}
-                                                contentStyle={{
-                                                    borderRadius: 12,
-                                                    border: '1px solid rgba(46,125,50,0.14)',
-                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
-                                                }}
-                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
-                                                labelFormatter={(label) => `${factoryWeightView.charAt(0).toUpperCase() + factoryWeightView.slice(1)}: ${label}`}
-                                            />
-                                            <Bar
-                                                dataKey="value"
-                                                fill="url(#factoryWeightBar)"
-                                                radius={[10, 10, 4, 4]}
-                                                maxBarSize={48}
-                                                name="Factory Weight (Kg)"
-                                            />
-                                        </BarChart>
-                                    )}
-
-                                    {factoryWeightView === 'monthly' && (
-                                        <AreaChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-                                            <defs>
-                                                <linearGradient id="factoryWeightFill" x1="0" y1="0" x2="0" y2="1">
-                                                    <stop offset="5%" stopColor="#2e7d32" stopOpacity={0.38} />
-                                                    <stop offset="95%" stopColor="#2e7d32" stopOpacity={0.02} />
-                                                </linearGradient>
-                                            </defs>
-                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <RechartsTooltip
-                                                contentStyle={{
-                                                    borderRadius: 12,
-                                                    border: '1px solid rgba(46,125,50,0.14)',
-                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
-                                                }}
-                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
-                                                labelFormatter={(label) => `Monthly: ${label}`}
-                                            />
-                                            <Area
-                                                type="monotone"
-                                                dataKey="value"
-                                                stroke="#2e7d32"
-                                                strokeWidth={3}
-                                                fill="url(#factoryWeightFill)"
-                                                dot={{ r: 4, strokeWidth: 2, fill: '#ffffff' }}
-                                                activeDot={{ r: 6 }}
-                                                name="Factory Weight (Kg)"
-                                            />
-                                        </AreaChart>
-                                    )}
-
-                                    {factoryWeightView === 'yearly' && (
-                                        <LineChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
-                                            <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                            <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
-                                            <RechartsTooltip
-                                                contentStyle={{
-                                                    borderRadius: 12,
-                                                    border: '1px solid rgba(46,125,50,0.14)',
-                                                    boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
-                                                }}
-                                                formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
-                                                labelFormatter={(label) => `Year: ${label}`}
-                                            />
-                                            <Line
-                                                type="monotone"
-                                                dataKey="value"
-                                                stroke="#1b5e20"
-                                                strokeWidth={3}
-                                                dot={{ r: 5, strokeWidth: 2, fill: '#ffffff' }}
-                                                activeDot={{ r: 7 }}
-                                                name="Factory Weight (Kg)"
-                                            />
-                                        </LineChart>
-                                    )}
-                                </>
+                                {factoryWeightView === 'monthly' ? (
+                                    <AreaChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="factoryWeightFill" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="5%" stopColor="#2e7d32" stopOpacity={0.38} />
+                                                <stop offset="95%" stopColor="#2e7d32" stopOpacity={0.02} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <RechartsTooltip
+                                            contentStyle={{
+                                                borderRadius: 12,
+                                                border: '1px solid rgba(46,125,50,0.14)',
+                                                boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                            }}
+                                            formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                            labelFormatter={(label) => `Monthly: ${label}`}
+                                        />
+                                        <Area
+                                            type="monotone"
+                                            dataKey="value"
+                                            stroke="#2e7d32"
+                                            strokeWidth={3}
+                                            fill="url(#factoryWeightFill)"
+                                            dot={{ r: 4, strokeWidth: 2, fill: '#ffffff' }}
+                                            activeDot={{ r: 6 }}
+                                            name="Factory Weight (Kg)"
+                                        />
+                                    </AreaChart>
+                                ) : factoryWeightView === 'yearly' ? (
+                                    <LineChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                        <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <RechartsTooltip
+                                            contentStyle={{
+                                                borderRadius: 12,
+                                                border: '1px solid rgba(46,125,50,0.14)',
+                                                boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                            }}
+                                            formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                            labelFormatter={(label) => `Year: ${label}`}
+                                        />
+                                        <Line
+                                            type="monotone"
+                                            dataKey="value"
+                                            stroke="#1b5e20"
+                                            strokeWidth={3}
+                                            dot={{ r: 5, strokeWidth: 2, fill: '#ffffff' }}
+                                            activeDot={{ r: 7 }}
+                                            name="Factory Weight (Kg)"
+                                        />
+                                    </LineChart>
+                                ) : (
+                                    <BarChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
+                                        <defs>
+                                            <linearGradient id="factoryWeightBar" x1="0" y1="0" x2="0" y2="1">
+                                                <stop offset="0%" stopColor="#43a047" stopOpacity={0.95} />
+                                                <stop offset="100%" stopColor="#1b5e20" stopOpacity={0.88} />
+                                            </linearGradient>
+                                        </defs>
+                                        <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <RechartsTooltip
+                                            cursor={{ fill: 'rgba(46,125,50,0.06)' }}
+                                            contentStyle={{
+                                                borderRadius: 12,
+                                                border: '1px solid rgba(46,125,50,0.14)',
+                                                boxShadow: '0 18px 34px rgba(15, 23, 42, 0.12)',
+                                            }}
+                                            formatter={(value: number) => [`${Number(value).toFixed(1)} Kg`, 'Factory Weight']}
+                                            labelFormatter={(label) => `${factoryWeightView.charAt(0).toUpperCase() + factoryWeightView.slice(1)}: ${label}`}
+                                        />
+                                        <Bar
+                                            dataKey="value"
+                                            fill="url(#factoryWeightBar)"
+                                            radius={[10, 10, 4, 4]}
+                                            maxBarSize={48}
+                                            name="Factory Weight (Kg)"
+                                        />
+                                    </BarChart>
+                                )}
                             </ResponsiveContainer>
                         </Box>
                     </Paper>

@@ -16,6 +16,16 @@ public class OperationController {
     @Autowired
     private OperationService service;
 
+    @Autowired
+    private com.knoweb.operation.messaging.AiRosterEventPublisher aiPublisher;
+
+    // AI Test Endpoint
+    @PostMapping("/test-ai")
+    public ResponseEntity<String> testAiRosterCheck(@RequestParam String tenantId, @RequestParam String estateId, @RequestParam String date) {
+        aiPublisher.publishRosterCheckEvent(tenantId, estateId, date);
+        return ResponseEntity.ok("Successfully sent Roster Check Event to AI Queue for Tenant: " + tenantId + ", Estate: " + estateId);
+    }
+
     // Muster Endpoints
     @GetMapping("/muster")
     public ResponseEntity<?> getMusters(@RequestParam String tenantId,

@@ -81,4 +81,16 @@ public class DailyWorkController {
         }
         return ResponseEntity.ok(dailyWorkService.getRecordsByTenant(tenantId));
     }
+    @GetMapping("/check")
+    public ResponseEntity<?> checkWorkSubmission(
+            @RequestParam UUID tenantId,
+            @RequestParam String divisionId,
+            @RequestParam String date) {
+        try {
+            java.time.LocalDate workDate = java.time.LocalDate.parse(date);
+            return ResponseEntity.ok(dailyWorkService.checkWorkSubmission(tenantId, divisionId, workDate));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
 }

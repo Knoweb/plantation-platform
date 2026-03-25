@@ -150,4 +150,9 @@ public class DailyWorkService {
             distributionRealtimePublisher.broadcastSubmittedMuster(work.getTenantId(), work.getWorkDate());
         }
     }
+
+    public DailyWork checkWorkSubmission(UUID tenantId, String divisionId, java.time.LocalDate date) {
+        return dailyWorkRepository.findTopByTenantIdAndDivisionIdAndWorkDateOrderByCreatedAtDesc(tenantId, divisionId, date)
+                .orElse(null);
+    }
 }

@@ -39,7 +39,8 @@ export default function CropBook() {
         workingDayCalendar: '',
         aththamaWage: '',
         overKiloRate: '',
-        cashKiloRate: ''
+        cashKiloRate: '',
+        otHourRate: ''
     });
     const [achievedLastMonthAuto, setAchievedLastMonthAuto] = useState<number>(0);
     const [currentTime, setCurrentTime] = useState(new Date());
@@ -63,7 +64,8 @@ export default function CropBook() {
                     workingDayCalendar: res.data.workingDayCalendar || '',
                     aththamaWage: res.data.aththamaWage || '',
                     overKiloRate: res.data.overKiloRate || '',
-                    cashKiloRate: res.data.cashKiloRate || ''
+                    cashKiloRate: res.data.cashKiloRate || '',
+                    otHourRate: res.data.otHourRate || ''
                 });
             }
         } catch (e) {
@@ -223,7 +225,8 @@ export default function CropBook() {
                         overKilosDay: 0, cashKilosDay: 0,
                         fullAththamaCount: 0,   // PERM/CASUAL workers on FULL DAY
                         halfAththamaCount: 0,   // PERM/CASUAL workers on HALF DAY
-                        permCasualOverKilosDay: 0 // Over kilos for PERM/CASUAL workers only
+                        permCasualOverKilosDay: 0, // Over kilos for PERM/CASUAL workers only
+                        otHoursDay: 0            // Total OT hours for the day
                     });
                     dayActiveAcreage.set(i, 0);
                     daySeenFields.set(i, new Set());
@@ -326,6 +329,8 @@ export default function CropBook() {
                     if (a.pmWeight || a.pm) dayData.checkrollWeightDay += Number(a.pmWeight || a.pm);
                     if (a.overKilos) dayData.overKilosDay += Number(a.overKilos);
                     if (a.cashKilos) dayData.cashKilosDay += Number(a.cashKilos);
+                    // Accumulate OT hours for cost calculation
+                    if (a.otHours) dayData.otHoursDay += Number(a.otHours);
                 });
 
                 const finalData = [];
@@ -366,19 +371,21 @@ export default function CropBook() {
                     const yPerAcreToDate = (!isFuture && totalAcreage > 0) ? (permCasWtToDate / acreageDivisor) : 0;
 
                     // Plucking Cost Per Kg:
-                    // = (full athtama workers × wage) + (half athtama workers × wage/2) + (perm/casual over kilos × rate)
+                    // = (full athtama workers × wage) + (half athtama workers × wage/2) + (perm/casual over kilos × rate) + (OT hours × OT hour rate)
                     // Divided by total perm/casual weight (not factory weight)
                     const aththamaWage = Number(config.aththamaWage || 0);
                     const overKiloRate = Number(config.overKiloRate || 0);
+                    const otHourRate = Number(config.otHourRate || 0);
 
                     const costDay =
                         (d.fullAththamaCount * aththamaWage) +
                         (d.halfAththamaCount * (aththamaWage / 2)) +
-                        (d.permCasualOverKilosDay * overKiloRate);
+                        (d.permCasualOverKilosDay * overKiloRate) +
+                        (d.otHoursDay * otHourRate);
                     const costDayPerKg = (!isFuture && d.permAndCasualWeightDay > 0) ? (costDay / d.permAndCasualWeightDay) : 0;
 
                     // Todate accumulators for cost
-                    let fullAththamaTD = 0, halfAththamaTD = 0, permCasOverKgTD = 0;
+                    let fullAththamaTD = 0, halfAththamaTD = 0, permCasOverKgTD = 0, otHoursTD = 0;
                     for (let j = 1; j <= i; j++) {
                         const dj = dayMap.get(j);
                         const isFutureJ = (selY > currentY) ||
@@ -388,12 +395,14 @@ export default function CropBook() {
                             fullAththamaTD += dj.fullAththamaCount;
                             halfAththamaTD += dj.halfAththamaCount;
                             permCasOverKgTD += dj.permCasualOverKilosDay;
+                            otHoursTD += dj.otHoursDay;
                         }
                     }
                     const costToDate =
                         (fullAththamaTD * aththamaWage) +
                         (halfAththamaTD * (aththamaWage / 2)) +
-                        (permCasOverKgTD * overKiloRate);
+                        (permCasOverKgTD * overKiloRate) +
+                        (otHoursTD * otHourRate);
                     const costToDatePerKg = (!isFuture && permCasWtToDate > 0) ? (costToDate / permCasWtToDate) : 0;
 
                     finalData.push({
@@ -723,6 +732,12 @@ export default function CropBook() {
                                             රු. {config.cashKiloRate || 0}
                                         </Typography>
                                     </Box>
+                                    <Box sx={{ bgcolor: '#ede7f6', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #b39ddb' }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#4527a0', letterSpacing: 0.5 }}>OT Hour Rate (per Hour)</Typography>
+                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4527a0', mt: 0.5, textAlign: 'right' }}>
+                                            රු. {config.otHourRate || 0}
+                                        </Typography>
+                                    </Box>
                                 </Box>
                                 {isManagerOrChief && (
                                     <Box sx={{ p: 1.5, borderTop: '2px solid #ffe082', display: 'flex', justifyContent: 'center', bgcolor: '#fff8e1' }}>
@@ -1001,6 +1016,12 @@ export default function CropBook() {
                         <Grid size={{ xs: 12, sm: 6 }}>
                             <TextField fullWidth label="Cash Kilo Rate (රු. / Kg)" type="number" margin="normal"
                                 value={config.cashKiloRate} onChange={e => setConfig({ ...config, cashKiloRate: e.target.value.replace(/^0+(?=\d)/, '') })}
+                                InputLabelProps={{ shrink: true }}
+                                InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
+                        </Grid>
+                        <Grid size={{ xs: 12, sm: 6 }}>
+                            <TextField fullWidth label="OT Hour Rate (රු. / Hour)" type="number" margin="normal"
+                                value={config.otHourRate} onChange={e => setConfig({ ...config, otHourRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
