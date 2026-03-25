@@ -867,18 +867,19 @@ export default function FieldOfficerDashboard() {
                     <Paper
                         elevation={0}
                         sx={{
-                            p: 3,
-                            height: 400,
+                            p: { xs: 2, sm: 3 },
+                            height: { xs: 'auto', md: 400 },
                             borderRadius: 3,
                             border: '1px solid rgba(46,125,50,0.14)',
                             background: 'linear-gradient(180deg, #ffffff 0%, #f8fcf8 100%)',
                             boxShadow: '0 14px 32px rgba(15, 23, 42, 0.08)',
+                            mb: { xs: 2, md: 0 }
                         }}
                     >
-                        <Box display="flex" justifyContent="space-between" alignItems="center" mb={2} gap={2} flexWrap="wrap">
+                        <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={2} gap={2}>
                             <Box>
-                                <Typography variant="h6" gutterBottom color="primary">Factory Weight Performance</Typography>
-                                <Typography variant="body2" color="text.secondary">
+                                <Typography variant="h6" color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, fontWeight: 700 }}>Factory Weight Performance</Typography>
+                                <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
                                     {chartDescriptionByView[factoryWeightView]}
                                 </Typography>
                             </Box>
@@ -890,12 +891,15 @@ export default function FieldOfficerDashboard() {
                                     if (value) setFactoryWeightView(value);
                                 }}
                                 sx={{
+                                    alignSelf: { xs: 'stretch', sm: 'auto' },
                                     '& .MuiToggleButton-root': {
+                                        flex: { xs: 1, sm: 'none' },
                                         textTransform: 'none',
                                         fontWeight: 700,
                                         px: 1.5,
                                         borderColor: 'rgba(46,125,50,0.14)',
                                         color: '#55708b',
+                                        fontSize: '0.75rem'
                                     },
                                     '& .MuiToggleButton-root.Mui-selected': {
                                         color: '#1b5e20',
@@ -912,7 +916,7 @@ export default function FieldOfficerDashboard() {
                                 <ToggleButton value="yearly">Yearly</ToggleButton>
                             </ToggleButtonGroup>
                         </Box>
-                        <Box sx={{ width: '100%', height: 320 }}>
+                        <Box sx={{ width: '100%', height: { xs: 260, sm: 300, md: 320 } }}>
                             <ResponsiveContainer width="100%" height="100%">
                                 {factoryWeightView === 'monthly' ? (
                                     <AreaChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
@@ -923,7 +927,7 @@ export default function FieldOfficerDashboard() {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 10 }} minTickGap={15} />
                                         <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
                                         <RechartsTooltip
                                             contentStyle={{
@@ -948,7 +952,7 @@ export default function FieldOfficerDashboard() {
                                 ) : factoryWeightView === 'yearly' ? (
                                     <LineChart data={weeklyYieldData} margin={{ top: 10, right: 18, left: 0, bottom: 0 }}>
                                         <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 10 }} minTickGap={15} />
                                         <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
                                         <RechartsTooltip
                                             contentStyle={{
@@ -978,7 +982,7 @@ export default function FieldOfficerDashboard() {
                                             </linearGradient>
                                         </defs>
                                         <CartesianGrid strokeDasharray="4 4" stroke="rgba(27,94,32,0.12)" vertical={false} />
-                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
+                                        <XAxis dataKey="label" tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 10 }} minTickGap={15} />
                                         <YAxis tickLine={false} axisLine={false} tick={{ fill: '#5d7388', fontSize: 12 }} />
                                         <RechartsTooltip
                                             cursor={{ fill: 'rgba(46,125,50,0.06)' }}

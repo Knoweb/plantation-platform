@@ -1,6 +1,5 @@
 import { AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
-import SearchIcon from '@mui/icons-material/Search';
 import MenuIcon from '@mui/icons-material/Menu';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -80,14 +79,14 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                     <MenuIcon />
                 </IconButton>
 
-                <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 'bold', flexGrow: 1, textTransform: 'capitalize' }}>
-                    {dashboardTitle}
+                <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 'bold', flexGrow: 1, textTransform: 'capitalize', fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
+                    {dashboardTitle.replace('Dashboard', '').trim()}
+                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, ml: 0.5 }}>
+                        Dashboard
+                    </Box>
                 </Typography>
 
                 <Box display="flex" alignItems="center" gap={1}>
-                    <IconButton>
-                        <SearchIcon color="action" />
-                    </IconButton>
                     <IconButton onClick={(e) => setNotifAnchorEl(e.currentTarget)}>
                         <Badge badgeContent={globalAlerts.total} color="error">
                             <NotificationsIcon color="action" />
@@ -144,12 +143,9 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
                             {userName.charAt(0).toUpperCase()}
                         </Avatar>
-                        <Box>
+                        <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
                             <Typography variant="subtitle2" color="text.primary" lineHeight={1}>
                                 {userName}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                {userRole}
                             </Typography>
                         </Box>
                     </Box>
