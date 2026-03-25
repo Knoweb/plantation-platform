@@ -482,21 +482,23 @@ export default function MorningMuster() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}
+                gap={2} mb={3}>
                 <Box>
                     <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="h4" fontWeight="bold" color="primary.dark">
+                        <Typography variant="h5" fontWeight="bold" color="primary.dark">
                             {isReadOnly ? "Muster Review" : "Morning Muster"}
                         </Typography>
                         {isReadOnly && <Chip label="Read-Only Mode" color="info" size="small" />}
                     </Box>
-                    <Typography variant="subtitle1" color="text.secondary">
+                    <Typography variant="subtitle2" color="text.secondary">
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </Typography>
                 </Box>
 
                 {/* Division Selector */}
-                <FormControl sx={{ minWidth: 200 }} size="small">
+                <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }} size="small">
                     <InputLabel>Division</InputLabel>
                     <Select
                         value={selectedDivisionId}
@@ -511,8 +513,8 @@ export default function MorningMuster() {
                     </Select>
                 </FormControl>
 
-                <Box display="flex" gap={2}>
-                    <Button variant="contained" startIcon={<AddIcon />} onClick={() => {
+                <Box display="flex" gap={1} flexWrap="wrap">
+                    <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => {
                         setEditingMusterId(null);
                         setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
                         setOpenMuster(true);
@@ -521,15 +523,12 @@ export default function MorningMuster() {
                     </Button>
                     <Button
                         variant="contained"
-                        // Removed color="success" to use custom gradient
-                        size="large"
+                        size="small"
                         startIcon={<DoneAllIcon />}
                         onClick={handleFinalize}
                         disabled={filteredMusters.length === 0 || isReadOnly}
                         sx={{
-                            px: 4,
                             fontWeight: 'bold',
-                            fontSize: '1rem',
                             boxShadow: 3,
                             background: filteredMusters.length === 0 ? undefined : 'linear-gradient(45deg, #d32f2f 30%, #ef5350 90%)',
                             color: 'white'
@@ -537,7 +536,7 @@ export default function MorningMuster() {
                     >
                         Submit Muster
                     </Button>
-                    <Button variant="outlined" color="error" onClick={handleClearAll} disabled={filteredMusters.length === 0 || isReadOnly}>Clear All</Button>
+                    <Button variant="outlined" size="small" color="error" onClick={handleClearAll} disabled={filteredMusters.length === 0 || isReadOnly}>Clear All</Button>
                 </Box>
             </Box>
 

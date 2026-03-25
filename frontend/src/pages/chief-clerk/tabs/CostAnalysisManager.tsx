@@ -72,6 +72,7 @@ const DEFAULT_CATEGORIES: CostCategory[] = [
             { id: generateId(), name: 'Cash Kilos' },
             { id: generateId(), name: 'Meals' },
             { id: generateId(), name: 'Over Kilos' },
+            { id: generateId(), name: 'OT Wages' },
         ],
     },
     {
@@ -110,10 +111,9 @@ const makeDefaults = () =>
 const ITEM_TO_CATEGORY = new Map(
     DEFAULT_CATEGORIES.flatMap((category) => category.items.map((item) => [item.name, category.name] as const)),
 );
-const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORIES.map((category) => category.name));
 const HEADER_ROW_ONE_HEIGHT = 38;
 const HEADER_ROW_TWO_HEIGHT = 44;
-
+const HEADER_ROW_HEIGHT = 42;
 const sanitizeCostPerKgOverride = (overrideText: string | undefined, amountText: string | undefined) => {
     const trimmed = String(overrideText || '').trim();
     if (!trimmed) return '';
@@ -244,6 +244,16 @@ export default function CostAnalysisManager() {
     } | null>(null);
     const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
     const [weights, setWeights] = useState({ day: 0, todate: 0 });
+
+    // Rates Configuration State
+    const [rates, setRates] = useState({
+        aththamaWage: localStorage.getItem(`aththamaWage_${userSession.tenantId}`) || '1600',
+        overKiloRate: localStorage.getItem(`overKiloRate_${userSession.tenantId}`) || '45',
+        cashKiloRate: localStorage.getItem(`cashKiloRate_${userSession.tenantId}`) || '40',
+        otHourRate: localStorage.getItem(`otHourRate_${userSession.tenantId}`) || '250',
+    });
+    const [ratesDialogOpen, setRatesDialogOpen] = useState(false);
+    const [syncing, setSyncing] = useState(false);
 
     const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
     const canEditSelectedDate = selectedDate === getTodayLocalISO();
@@ -396,6 +406,77 @@ export default function CostAnalysisManager() {
             ),
         );
         markDirty();
+    };
+
+    const syncFromMuster = async () => {
+        setSyncing(true);
+        try {
+            // 1. Fetch Attendance for the selected date
+            const attRes = await axios.get(`/api/operations/attendance?tenantId=${userSession.tenantId}&date=${selectedDate}`);
+            const allAttendance = attRes.data || [];
+
+            // 2. Filter attendance for current active crop only
+            // We use the fieldCropMap we built from /api/fields
+            const cropAttendance = allAttendance.filter((att: any) => {
+                const fieldNameLower = String(att.fieldName || '').toLowerCase();
+                const crop = fieldCropMap.get(fieldNameLower);
+                return crop && crop.toUpperCase() === activeCrop.toUpperCase();
+            });
+
+            // 3. Count Totals
+            let workerCount = 0;
+            let totalOverKilos = 0;
+            let totalCashKilos = 0;
+            let totalOtHours = 0;
+
+            cropAttendance.forEach((att: any) => {
+                if (att.status === 'ABSENT') return;
+
+                // Total Workers (Permanent & Casual contribute to standard wage)
+                if (att.workerType !== 'CONTRACT') {
+                    workerCount += (att.status === 'HALF_DAY' ? 0.5 : 1);
+                }
+
+                totalOverKilos += (Number(att.overKilos) || 0);
+                totalCashKilos += (Number(att.cashKilos) || 0);
+                totalOtHours += (Number(att.otHours) || 0);
+            });
+
+            // 4. Update Categories with auto-calculated values
+            const nextCategories = categories.map((cat) => {
+                if (cat.name === 'Plucking') {
+                    return {
+                        ...cat,
+                        items: cat.items.map((item) => {
+                            if (item.name === 'Pluckers') return { ...item, dayAmount: String(workerCount * Number(rates.aththamaWage)) };
+                            if (item.name === 'Over Kilos') return { ...item, dayAmount: String(totalOverKilos * Number(rates.overKiloRate)) };
+                            if (item.name === 'Cash Kilos') return { ...item, dayAmount: String(totalCashKilos * Number(rates.cashKiloRate)) };
+                            if (item.name === 'OT Wages') return { ...item, dayAmount: String(totalOtHours * Number(rates.otHourRate)) };
+                            return item;
+                        }),
+                    };
+                }
+                return cat;
+            });
+
+            setCategories(nextCategories);
+            markDirty();
+            setMsg('Synchronized successfully from muster records.');
+        } catch (error) {
+            console.error('Sync failed:', error);
+            setMsg('Automatic sync failed. Check if muster data is available.');
+        } finally {
+            setSyncing(false);
+        }
+    };
+
+    const saveRates = () => {
+        localStorage.setItem(`aththamaWage_${userSession.tenantId}`, rates.aththamaWage);
+        localStorage.setItem(`overKiloRate_${userSession.tenantId}`, rates.overKiloRate);
+        localStorage.setItem(`cashKiloRate_${userSession.tenantId}`, rates.cashKiloRate);
+        localStorage.setItem(`otHourRate_${userSession.tenantId}`, rates.otHourRate);
+        setRatesDialogOpen(false);
+        setMsg('Wage rates updated.');
     };
 
     const saveCategory = () => {
@@ -672,17 +753,36 @@ export default function CostAnalysisManager() {
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}
                     />
                     {!isEditable ? (
-                        <Button
-                            variant="contained"
-                            startIcon={<EditIcon />}
-                            onClick={() => setIsEditable(true)}
-                            disabled={!canEditSelectedDate}
-                            sx={{ bgcolor: '#e65100' }}
-                        >
-                            Edit Entry
-                        </Button>
+                        <>
+                            <Button
+                                variant="outlined"
+                                startIcon={<SettingsIcon />}
+                                onClick={() => setRatesDialogOpen(true)}
+                                sx={{ borderColor: '#2e7d32', color: '#2e7d32' }}
+                            >
+                                Rates Config
+                            </Button>
+                            <Button
+                                variant="contained"
+                                startIcon={<EditIcon />}
+                                onClick={() => setIsEditable(true)}
+                                disabled={!canEditSelectedDate}
+                                sx={{ bgcolor: '#e65100' }}
+                            >
+                                Edit Entry
+                            </Button>
+                        </>
                     ) : (
                         <>
+                            <Button
+                                variant="contained"
+                                startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : <AutorenewIcon />}
+                                onClick={syncFromMuster}
+                                disabled={syncing}
+                                sx={{ bgcolor: '#0277bd', mr: 1 }}
+                            >
+                                {syncing ? 'Syncing...' : 'Sync from Muster'}
+                            </Button>
                             <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161' }}>
                                 Cancel
                             </Button>
@@ -1030,6 +1130,55 @@ export default function CostAnalysisManager() {
                 )}
                 </Paper>
             </Box>
+
+            <Dialog open={ratesDialogOpen} onClose={() => setRatesDialogOpen(false)} maxWidth="xs" fullWidth>
+                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Wage Rates Configuration</DialogTitle>
+                <DialogContent dividers>
+                    <Box display="flex" flexDirection="column" gap={2} mt={1}>
+                        <TextField
+                            label="Standard Daily Wage (Rs.)"
+                            value={rates.aththamaWage}
+                            onChange={(e) => setRates({ ...rates, aththamaWage: e.target.value })}
+                            type="number"
+                            fullWidth
+                            size="small"
+                        />
+                        <TextField
+                            label="Over Kilo Rate (Rs.)"
+                            value={rates.overKiloRate}
+                            onChange={(e) => setRates({ ...rates, overKiloRate: e.target.value })}
+                            type="number"
+                            fullWidth
+                            size="small"
+                        />
+                        <TextField
+                            label="Cash Kilo Rate (Rs.)"
+                            value={rates.cashKiloRate}
+                            onChange={(e) => setRates({ ...rates, cashKiloRate: e.target.value })}
+                            type="number"
+                            fullWidth
+                            size="small"
+                        />
+                        <TextField
+                            label="OT Hour Rate (Rs.)"
+                            value={rates.otHourRate}
+                            onChange={(e) => setRates({ ...rates, otHourRate: e.target.value })}
+                            type="number"
+                            fullWidth
+                            size="small"
+                        />
+                        <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
+                            These rates are used to automatically calculate costs from the daily muster records.
+                        </Alert>
+                    </Box>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={() => setRatesDialogOpen(false)}>Cancel</Button>
+                    <Button variant="contained" onClick={saveRates} sx={{ bgcolor: '#2e7d32' }}>
+                        Save Rates
+                    </Button>
+                </DialogActions>
+            </Dialog>
 
             <Dialog open={catDialog.open} onClose={() => setCatDialog({ open: false, name: '' })} maxWidth="xs" fullWidth>
                 <DialogTitle>{catDialog.editId ? 'Rename Category' : 'Add Category'}</DialogTitle>

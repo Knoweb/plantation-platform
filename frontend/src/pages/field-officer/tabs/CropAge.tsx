@@ -161,16 +161,15 @@ export default function CropAge() {
         }
     };
 
-    if (loading) return <Box p={4} display="flex" justifyContent="center"><CircularProgress /></Box>;
+    if (loading) return <Box sx={{ p: { xs: 2, sm: 4 } }} display="flex" justifyContent="center"><CircularProgress /></Box>;
 
     return (
-        <Box p={3}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
+        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
                 <Box>
-                    <Typography variant="h4" fontWeight="bold" color="primary">Field Log</Typography>
-                    <Typography variant="body1" color="text.secondary">Detailed field tracking and lifecycle management by division.</Typography>
+                    <Typography variant="h4" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>Field Log</Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>Detailed field tracking and lifecycle management by division.</Typography>
                 </Box>
-                {/* Global Add Button (optional, but requested per division mostly) */}
             </Box>
 
             {divisions.map(division => {
@@ -179,15 +178,15 @@ export default function CropAge() {
                 return (
                     <Box key={division.divisionId} mb={5}>
                         {/* Division Header with Add Button */}
-                        <Box display="flex" alignItems="center" gap={1} mb={2}>
+                        <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
                             <ForestIcon color="action" />
-                            <Typography variant="h5" fontWeight="500">{division.name}</Typography>
+                            <Typography variant="h5" fontWeight="500" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>{division.name}</Typography>
                             <Tooltip title="Add Field to Division">
-                                <IconButton onClick={() => handleOpenAdd(division.divisionId)} color="primary">
+                                <IconButton onClick={() => handleOpenAdd(division.divisionId)} color="primary" size="small">
                                     <AddCircleIcon fontSize="large" />
                                 </IconButton>
                             </Tooltip>
-                            <Chip label={`${divisionFields.length} Fields`} size="small" sx={{ ml: 1 }} />
+                            <Chip label={`${divisionFields.length} Fields`} size="small" sx={{ ml: { xs: 0, sm: 1 } }} />
                         </Box>
                         <Divider sx={{ mb: 2 }} />
 

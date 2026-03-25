@@ -63,17 +63,38 @@ export default function Login() {
     };
 
     return (
-        <Grid container component="main" sx={{ height: '100vh', overflow: 'hidden' }}>
-            {/* Left Side - Form */}
+        <Grid container component="main" sx={{ 
+            height: '100vh', 
+            overflow: 'hidden',
+            backgroundImage: { xs: `url(${loginBg})`, md: 'none' },
+            backgroundSize: 'cover',
+            backgroundPosition: 'center',
+            position: 'relative'
+        }}>
+            {/* Mobile Gradient Overlay */}
+            <Box
+                sx={{
+                    display: { xs: 'block', md: 'none' },
+                    position: 'absolute',
+                    top: 0,
+                    left: 0,
+                    right: 0,
+                    bottom: 0,
+                    background: 'linear-gradient(135deg, rgba(27, 94, 32, 0.4) 0%, rgba(255, 255, 255, 0.8) 100%)',
+                    zIndex: 0
+                }}
+            />
+
+            {/* Form Segment */}
             <Grid
                 size={{ xs: 12, md: 5, lg: 4 }}
                 sx={{
-                    bgcolor: 'background.paper',
+                    bgcolor: { xs: 'transparent', md: 'background.paper' },
                     display: 'flex',
                     flexDirection: 'column',
                     justifyContent: 'center',
                     alignItems: 'center',
-                    px: { xs: 4, sm: 8, md: 6 },
+                    px: { xs: 2.5, sm: 8, md: 6 },
                     position: 'relative',
                     zIndex: 1,
                     maxHeight: '100vh',
@@ -87,7 +108,12 @@ export default function Login() {
                         display: 'flex',
                         flexDirection: 'column',
                         gap: 3,
-                        mb: 4,
+                        p: { xs: 3.5, sm: 4, md: 0 },
+                        borderRadius: { xs: '24px', md: 0 },
+                        bgcolor: { xs: 'rgba(255, 255, 255, 0.9)', md: 'transparent' },
+                        backdropFilter: { xs: 'blur(10px)', md: 'none' },
+                        boxShadow: { xs: '0 20px 40px rgba(0,0,0,0.15)', md: 'none' },
+                        border: { xs: '1px solid rgba(255, 255, 255, 0.3)', md: 'none' },
                         animation: 'fadeIn 0.8s ease-out',
                         '@keyframes fadeIn': {
                             '0%': { opacity: 0, transform: 'translateY(20px)' },
@@ -95,9 +121,8 @@ export default function Login() {
                         }
                     }}
                 >
-                    {/* Logo */}
-                    {/* Logo - Styled Awesomely */}
-                    <Box display="flex" alignItems="center" gap={2} mb={3} sx={{ alignSelf: { xs: 'center', md: 'flex-start' } }}>
+                    {/* Logo Section */}
+                    <Box display="flex" alignItems="center" gap={2} mb={1} sx={{ alignSelf: { xs: 'center', md: 'flex-start' } }}>
                         <Box sx={{
                             p: 1.5,
                             borderRadius: '20px',
@@ -144,12 +169,12 @@ export default function Login() {
                         </Box>
                     </Box>
 
-                    {/* Header */}
-                    <Box mt={3} textAlign="center" mb={2}>
+                    {/* Header Text */}
+                    <Box textAlign={{ xs: 'center', md: 'left' }} mb={1}>
                         <Typography variant="h4" sx={{
                             fontWeight: 900,
                             letterSpacing: '-0.5px',
-                            mb: 1.5,
+                            mb: 1,
                             fontFamily: '"Inter", "Roboto", sans-serif',
                             background: 'linear-gradient(to right, #1b5e20 0%, #4caf50 100%)',
                             WebkitBackgroundClip: 'text',
@@ -157,7 +182,7 @@ export default function Login() {
                         }}>
                             Welcome Back
                         </Typography>
-                        <Typography variant="body1" sx={{ color: '#555', fontWeight: 500, letterSpacing: '0.2px' }}>
+                        <Typography variant="body1" sx={{ color: '#555', fontWeight: 500, letterSpacing: '0.2px', fontSize: '0.95rem' }}>
                             Enter your credentials to access your workspace.
                         </Typography>
                     </Box>
@@ -177,7 +202,7 @@ export default function Login() {
                         </Alert>
                     )}
 
-                    {/* Form */}
+                    {/* Login Form */}
                     <Box component="form" onSubmit={handleLogin} noValidate width="100%">
                         <TextField
                             margin="normal"
@@ -193,7 +218,7 @@ export default function Login() {
                             variant="outlined"
                             InputLabelProps={{ sx: { color: '#888', fontWeight: 500 } }}
                             sx={{
-                                mb: 2.5,
+                                mb: 2,
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '12px',
                                     bgcolor: '#f4fbf5',
@@ -224,7 +249,7 @@ export default function Login() {
                             variant="outlined"
                             InputLabelProps={{ sx: { color: '#888', fontWeight: 500 } }}
                             sx={{
-                                mb: 1.5,
+                                mb: 1,
                                 '& .MuiOutlinedInput-root': {
                                     borderRadius: '12px',
                                     bgcolor: '#f4fbf5',
@@ -256,8 +281,8 @@ export default function Login() {
                             }}
                         />
 
-                        <Box display="flex" justifyContent="flex-end" mb={3}>
-                            <Link href="/forgot-password" underline="hover" sx={{ color: '#2e7d32', fontSize: '0.875rem', fontWeight: 600 }}>
+                        <Box display="flex" justifyContent="flex-end" mb={2}>
+                            <Link href="/forgot-password" underline="hover" sx={{ color: '#2e7d32', fontSize: '0.85rem', fontWeight: 600 }}>
                                 Forgot Password?
                             </Link>
                         </Box>
@@ -268,8 +293,8 @@ export default function Login() {
                             variant="contained"
                             disabled={loading}
                             sx={{
-                                mb: 4,
-                                py: '16px',
+                                mb: 3,
+                                py: '14px',
                                 borderRadius: '12px',
                                 fontSize: '1rem',
                                 fontWeight: '700',
@@ -290,26 +315,25 @@ export default function Login() {
                         </Button>
 
                         <Box display="flex" justifyContent="center">
-                            <Typography variant="body2" sx={{ color: '#666' }}>
+                            <Typography variant="body2" sx={{ color: '#666', fontSize: '0.875rem' }}>
                                 New on our platform?{' '}
                                 <Link href="/register" underline="hover" sx={{ color: '#2e7d32', fontWeight: 700 }}>
                                     Create an account
-
                                 </Link>
                             </Typography>
                         </Box>
                     </Box>
                 </Box>
 
-                {/* Footer Copyright */}
-                <Box sx={{ width: '100%', textAlign: 'center', mt: 4, pb: 2 }}>
-                    <Typography variant="caption" color="text.disabled">
+                {/* Mobile Footer Credit */}
+                <Box sx={{ width: '100%', textAlign: 'center', mt: 3, pb: 1 }}>
+                    <Typography variant="caption" sx={{ color: { xs: 'rgba(0,0,0,0.5)', md: 'text.disabled' }, fontWeight: 500 }}>
                         © 2026 Knoweb(PVT LTD). All rights reserved.
                     </Typography>
                 </Box>
             </Grid>
 
-            {/* Right Side - Image */}
+            {/* Desktop Side Image (Hidden on mobile) */}
             <Grid
                 size={{ xs: 0, md: 7, lg: 8 }}
                 sx={{

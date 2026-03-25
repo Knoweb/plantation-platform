@@ -549,7 +549,7 @@ export default function CropBook() {
     };
 
     return (
-        <Box sx={{ pb: 4, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ pb: { xs: 2, md: 4 }, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', p: { xs: 1, sm: 2, md: 3 } }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
                 {/* Title */}
                 <Box sx={{ flex: '0 0 auto' }}>
@@ -606,10 +606,10 @@ export default function CropBook() {
                 {/* Right spacer to keep centre card balanced */}
                 <Box sx={{ flex: '0 0 auto', minWidth: 120 }} />
             </Box>
-            <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: isChiefClerk ? 'column' : 'row', overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+            <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: isChiefClerk ? 'column' : 'row' }, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
                 {/* Left Panel / Main Panel for Chief Clerk: Cost Analysis KPIs & Crop Tabs */}
-                <Box sx={{ width: isChiefClerk ? '100%' : 320, flex: isChiefClerk ? 1 : '0 0 auto', borderRight: isChiefClerk ? 'none' : '1px solid #e0e0e0', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box sx={{ width: { xs: '100%', md: isChiefClerk ? '100%' : 320 }, flex: { xs: 'none', md: isChiefClerk ? 1 : '0 0 auto' }, borderRight: isChiefClerk ? 'none' : { xs: 'none', md: '1px solid #e0e0e0' }, borderBottom: { xs: '1px solid #e0e0e0', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
                     <Tabs
                         value={availableCrops.includes(activeCrop) ? activeCrop : (availableCrops[0] || 'Tea')}
                         onChange={(_, v) => setActiveCrop(v)}
@@ -642,15 +642,15 @@ export default function CropBook() {
 
                     {/* For Chief Clerk: two-column layout with budget on left and wages on right */}
                     {isChiefClerk ? (
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'row', overflow: 'hidden' }}>
+                        <Box sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, overflow: 'auto' }}>
 
                             {/* LEFT: Budget KPI tiles */}
                             <Box sx={{
-                                flex: '0 0 62%',
+                                flex: { xs: 'none', lg: '0 0 62%' },
                                 display: 'flex',
                                 flexDirection: 'column',
                                 bgcolor: '#f9fbe7',
-                                overflow: 'hidden'
+                                overflow: 'visible'
                             }}>
                                 {/* Section Header */}
                                 <Box sx={{ px: 2, py: 1, bgcolor: '#558b2f', display: 'flex', alignItems: 'center' }}>
@@ -661,11 +661,11 @@ export default function CropBook() {
                                 <Box sx={{
                                     flex: 1,
                                     display: 'grid',
-                                    gridTemplateColumns: 'repeat(2, 1fr)',
+                                    gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
                                     gap: 1.5,
                                     p: 2,
                                     alignContent: 'flex-start',
-                                    overflowY: 'auto'
+                                    overflowY: 'visible'
                                 }}>
                                     {kpiData.map((kpi, idx) => (
                                         <Box key={idx} sx={{
@@ -697,7 +697,7 @@ export default function CropBook() {
                             </Box>
 
                             {/* DIVIDER */}
-                            <Box sx={{ width: '6px', bgcolor: '#bdbdbd', flexShrink: 0 }} />
+                            <Box sx={{ width: { xs: '100%', lg: '6px' }, height: { xs: '6px', lg: 'auto' }, bgcolor: '#bdbdbd', flexShrink: 0 }} />
 
                             {/* RIGHT: Wage Rate tiles */}
                             <Box sx={{

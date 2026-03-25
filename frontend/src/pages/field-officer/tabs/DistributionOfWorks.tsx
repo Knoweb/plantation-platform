@@ -313,12 +313,14 @@ export default function DistributionOfWorks() {
     });
 
     return (
-        <Box display="flex" height="calc(100vh - 80px)">
+        <Box display="flex" flexDirection="column" sx={{ minHeight: { xs: 'auto', sm: 'calc(100vh - 80px)' } }}>
             <Box flex={1} p={2} sx={{ overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 {/* Header */}
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                <Box display="flex" alignItems={{ xs: 'flex-start', sm: 'center' }}
+                    flexDirection={{ xs: 'column', sm: 'row' }}
+                    justifyContent="space-between" mb={2} gap={1}>
                     <Box>
-                        <Typography variant="h4" fontWeight="bold" color="#1b5e20">
+                        <Typography variant="h5" fontWeight="bold" color="#1b5e20">
                             Distribution of Works
                         </Typography>
                         <Box mt={0.5} display="flex" gap={1} flexWrap="wrap">
@@ -327,33 +329,31 @@ export default function DistributionOfWorks() {
                         </Box>
                     </Box>
 
-                    <Box display="flex" alignItems="center" gap={2}
-                        sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 3, px: 3, py: 1 }}>
-                        <FormControl size="small" variant="standard" sx={{ minWidth: 80 }}>
+                    <Box display="flex" alignItems="center" gap={1}
+                        sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 3, px: 2, py: 0.5 }}>
+                        <FormControl size="small" variant="standard" sx={{ minWidth: 70 }}>
                             <Select
                                 value={currentYear}
                                 onChange={(e) => setCurrentDate(new Date(Number(e.target.value), currentMonth, 1))}
                                 disableUnderline
-                                sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1b5e20' }}>
+                                sx={{ fontWeight: 'bold', fontSize: '1rem', color: '#1b5e20' }}>
                                 {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                                     <MenuItem key={y} value={y}>{y}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
-                        <FormControl size="small" variant="standard" sx={{ minWidth: 120 }}>
+                        <FormControl size="small" variant="standard" sx={{ minWidth: 100 }}>
                             <Select
                                 value={currentMonth}
                                 onChange={(e) => setCurrentDate(new Date(currentYear, Number(e.target.value), 1))}
                                 disableUnderline
-                                sx={{ fontWeight: 'bold', fontSize: '1.2rem', color: '#1b5e20' }}>
+                                sx={{ fontWeight: 'bold', fontSize: '1rem', color: '#1b5e20' }}>
                                 {MONTH_NAMES.map((m, i) => (
                                     <MenuItem key={m} value={i}>{m}</MenuItem>
                                 ))}
                             </Select>
                         </FormControl>
                     </Box>
-
-                    <Box sx={{ minWidth: 120 }} />
                 </Box>
 
                 {/* Crop Filter Tabs */}

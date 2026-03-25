@@ -270,25 +270,25 @@ export default function CostAnalysis() {
     );
 
     return (
-        <Box sx={{ pb: 4 }}>
+        <Box sx={{ pb: 4, p: { xs: 1.5, sm: 2, md: 3 } }}>
             {/* Title Header */}
             <Box mb={2}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
                     Cost Analysis
                 </Typography>
             </Box>
 
             {/* Header Section */}
-            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', borderRadius: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', border: '1px solid #81c784' }}>
-                <Box display="flex" alignItems="center" gap={2}>
-                    <Typography variant="body1" fontWeight="bold" color="#1b5e20">Analysis Date:</Typography>
+            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', borderRadius: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center', border: '1px solid #81c784', gap: 2 }}>
+                <Box display="flex" alignItems="center" gap={2} width={{ xs: '100%', sm: 'auto' }} justifyContent="center">
+                    <Typography variant="body1" fontWeight="bold" color="#1b5e20" sx={{ whiteSpace: 'nowrap' }}>Analysis Date:</Typography>
                     <TextField
                         type="date"
                         variant="outlined"
                         size="small"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        sx={{ bgcolor: 'white', borderRadius: 1 }}
+                        sx={{ bgcolor: 'white', borderRadius: 1, width: { xs: '100%', sm: 'auto' } }}
                     />
                 </Box>
             </Paper>
@@ -298,18 +298,18 @@ export default function CostAnalysis() {
                 {/* Excel-style top ribbon inside the table card */}
                 <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
                     <Box sx={{ borderTop: '2px solid #1b5e20', borderBottom: '1px solid #ccc', textAlign: 'center', py: 0.5 }}>
-                        <Typography sx={{ fontSize: '1.2rem', color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
+                        <Typography sx={{ fontSize: { xs: '1rem', sm: '1.2rem' }, color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
                             Cost Analysis - {activeCrop}
                         </Typography>
                     </Box>
-                    <Box sx={{ display: 'flex', borderBottom: '1px solid #ccc', py: 0.2 }}>
-                        <Box sx={{ flex: 1, borderRight: '1px solid #ccc' }} />
-                        <Box sx={{ flex: 3, textAlign: 'center' }}>
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, borderBottom: '1px solid #ccc', py: { xs: 0.5, sm: 0.2 } }}>
+                        <Box sx={{ flex: 1, borderRight: { xs: 'none', sm: '1px solid #ccc' }, borderBottom: { xs: '1px solid #ccc', sm: 'none' }, display: { xs: 'none', sm: 'block' } }} />
+                        <Box sx={{ flex: 3, textAlign: 'center', borderBottom: { xs: '1px solid #ccc', sm: 'none' }, py: { xs: 0.2, sm: 0 } }}>
                             <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
                                 {new Date(selectedDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
                             </Typography>
                         </Box>
-                        <Box sx={{ flex: 1, textAlign: 'right', pr: 2, borderLeft: '1px solid #ccc' }}>
+                        <Box sx={{ flex: 1, textAlign: { xs: 'center', sm: 'right' }, pr: { xs: 0, sm: 2 }, borderLeft: { xs: 'none', sm: '1px solid #ccc' }, py: { xs: 0.2, sm: 0 } }}>
                             <Typography sx={{ color: '#000', fontSize: '0.85rem', fontFamily: 'Calibri, Arial, sans-serif' }}>
                                 {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </Typography>
@@ -336,13 +336,14 @@ export default function CostAnalysis() {
                 )}
 
                 {!loading && (
-                    <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)' }}>
+                    <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)', overflowX: 'auto' }}>
                         <Table
                             size="small"
                             stickyHeader
                             sx={{
+                                minWidth: 800,
                                 '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' },
-                                tableLayout: 'fixed',
+                                tableLayout: { xs: 'auto', md: 'fixed' },
                                 '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
                                     position: 'sticky',
                                     top: 0,

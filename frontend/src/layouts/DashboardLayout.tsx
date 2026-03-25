@@ -21,9 +21,12 @@ export default function DashboardLayout() {
                 component="main"
                 sx={{
                     flexGrow: 1,
-                    p: 3,
+                    p: { xs: 1, sm: 2, md: 3 },
                     bgcolor: 'background.default',
-                    minHeight: '100vh'
+                    minHeight: '100vh',
+                    minWidth: 0,
+                    width: 0,
+                    flexBasis: 0,
                 }}
             >
                 <Toolbar /> {/* Spacer for fixed Header */}

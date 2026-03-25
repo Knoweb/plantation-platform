@@ -1,5 +1,5 @@
-import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, Card, CardContent, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox, InputAdornment } from '@mui/material';
-import { useState, useEffect, useRef, Fragment } from 'react';
+import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox, InputAdornment, useMediaQuery, useTheme } from '@mui/material';
+import React, { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import axios from 'axios';
 import {
     Check as CheckIcon,
@@ -12,7 +12,6 @@ import {
     Delete as DeleteIcon,
     Refresh as RefreshIcon
 } from '@mui/icons-material';
-import { PieChart, Pie, Cell, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 
 // --- Interfaces ---
 interface AttendanceRecord {
@@ -28,8 +27,8 @@ interface AttendanceRecord {
     status: string;
     workerName?: string;
     divisionId?: string;
-    workDate: string; // "YYYY-MM-DD"
-    updatedAt?: string; // ISO DateTime
+    workDate: string; 
+    updatedAt?: string;
     session?: string;
     tenantId?: string;
     dailyWorkId?: string;
@@ -40,7 +39,6 @@ const parseJavaDate = (dateVal: any) => {
     if (!dateVal) return null;
     if (typeof dateVal === 'string') return new Date(dateVal);
     if (Array.isArray(dateVal)) {
-        // Handle Java LocalDateTime array format: [year, month, day, hour, minute, second, nano]
         const [year, month, day, hour, minute, second] = dateVal;
         return new Date(year, month - 1, day, hour || 0, minute || 0, second || 0);
     }
@@ -52,115 +50,41 @@ export default function EveningMusterPage() {
     const [tabIndex, setTabIndex] = useState(0);
 
     return (
-        <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh' }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white', px: 3, pt: 2 }}>
-                <Typography variant="h4" fontWeight="bold" color="primary.dark">
-                    Evening Muster & Harvest
+        <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh', pb: 4 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white', px: { xs: 1, sm: 3 }, pt: 2 }}>
+                <Typography variant="h5" fontWeight="bold" color="#2e7d32">
+                    Field Officer Portal
                 </Typography>
-                <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 2 }}>
+                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
                     {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                 </Typography>
                 <Tabs
                     value={tabIndex}
                     onChange={(_, v) => setTabIndex(v)}
-                    TabIndicatorProps={{ style: { display: 'none' } }} // Hide default indicator for custom animation
+                    variant="scrollable"
+                    scrollButtons="auto"
                     sx={{
                         minHeight: 48,
-                        mb: 1
+                        '& .MuiTabs-indicator': { backgroundColor: '#2e7d32' },
+                        '& .MuiTab-root.Mui-selected': { color: '#2e7d32' }
                     }}
                 >
                     <Tab
-                        label="Daily Entry (Today)"
+                        label="Daily Entry"
                         icon={<EditStartIcon />}
                         iconPosition="start"
-                        sx={{
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            fontSize: '1.05rem',
-                            minHeight: 48,
-                            mr: 3,
-                            px: 3,
-                            color: 'text.secondary',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            zIndex: 1,
-                            transition: 'all 0.3s ease',
-                            '@keyframes borderSpin': {
-                                '0%': { transform: 'rotate(0deg)' },
-                                '100%': { transform: 'rotate(360deg)' }
-                            },
-                            '&.Mui-selected': {
-                                color: '#1b5e20',
-                                border: '1px solid transparent',
-                            },
-                            '&.Mui-selected::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: '-50%', left: '-50%', width: '200%', height: '200%',
-                                background: 'conic-gradient(transparent, transparent, transparent, #4caf50)',
-                                animation: 'borderSpin 2s linear infinite',
-                                zIndex: -2,
-                            },
-                            '&.Mui-selected::after': {
-                                content: '""',
-                                position: 'absolute',
-                                inset: '2px',
-                                bgcolor: '#f1f8e9',
-                                borderRadius: '6px',
-                                zIndex: -1,
-                            }
-                        }}
+                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
                     />
                     <Tab
-                        label="Muster History"
+                        label="History"
                         icon={<HistoryIcon />}
                         iconPosition="start"
-                        sx={{
-                            textTransform: 'none',
-                            fontWeight: 'bold',
-                            fontSize: '1.05rem',
-                            minHeight: 48,
-                            ml: 1,
-                            px: 3,
-                            color: 'text.secondary',
-                            border: '1px solid #e0e0e0',
-                            borderRadius: '8px',
-                            position: 'relative',
-                            overflow: 'hidden',
-                            zIndex: 1,
-                            transition: 'all 0.3s ease',
-                            '@keyframes borderSpin': {
-                                '0%': { transform: 'rotate(0deg)' },
-                                '100%': { transform: 'rotate(360deg)' }
-                            },
-                            '&.Mui-selected': {
-                                color: '#1b5e20',
-                                border: '1px solid transparent',
-                            },
-                            '&.Mui-selected::before': {
-                                content: '""',
-                                position: 'absolute',
-                                top: '-50%', left: '-50%', width: '200%', height: '200%',
-                                background: 'conic-gradient(transparent, transparent, transparent, #4caf50)',
-                                animation: 'borderSpin 2s linear infinite',
-                                zIndex: -2,
-                            },
-                            '&.Mui-selected::after': {
-                                content: '""',
-                                position: 'absolute',
-                                inset: '2px',
-                                bgcolor: '#f1f8e9',
-                                borderRadius: '6px',
-                                zIndex: -1,
-                            }
-                        }}
+                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
                     />
                 </Tabs>
             </Box>
 
-            <Box p={3}>
+            <Box sx={{ p: { xs: 1, sm: 2 } }}>
                 {tabIndex === 0 && <DailyEntryTab />}
                 {tabIndex === 1 && <HistoryTab />}
             </Box>
@@ -173,17 +97,14 @@ function DailyEntryTab() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const d = new Date();
-    const year = d.getFullYear();
-    const month = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    const today = `${year}-${month}-${day}`;
+    const today = d.toISOString().split('T')[0];
 
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
-    const [fields, setFields] = useState<any[]>([]); // To store field mapping
-    const [taskTypes, setTaskTypes] = useState<any[]>([]); // To store task configurations
-    const [selectedDivision, setSelectedDivision] = useState<string>('ALL'); // Default to ALL or first available
+    const [fields, setFields] = useState<any[]>([]);
+    const [taskTypes, setTaskTypes] = useState<any[]>([]);
+    const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
     const [norms, setNorms] = useState<any[]>([]);
     const [dailyWorks, setDailyWorks] = useState<any[]>([]);
@@ -193,68 +114,47 @@ function DailyEntryTab() {
     const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
     const [isEditingWeightsAfterSubmission, setIsEditingWeightsAfterSubmission] = useState(false);
     const [confirmWeightsOpen, setConfirmWeightsOpen] = useState(false);
-
-    // For assigning an evening worker
     const [allWorkers, setAllWorkers] = useState<any[]>([]);
     const [availableTasks, setAvailableTasks] = useState<string[]>([]);
     const [addWorkerOpen, setAddWorkerOpen] = useState(false);
     const [addWorkerTask, setAddWorkerTask] = useState<string>('');
     const [addWorkerField, setAddWorkerField] = useState<string>('');
+    const [dailyWeights, setDailyWeights] = useState<any>({});
 
-    useEffect(() => {
-        isEditModeRef.current = isEditMode;
-    }, [isEditMode]);
-
-    useEffect(() => {
-        let interval: any;
-        if (tenantId) {
-            fetchInitialData();
-            // Automatically poll for remarks and updates every 10 seconds
-            interval = setInterval(() => {
-                fetchInitialData(true); // silent fetch
-            }, 10000);
-        }
-        return () => clearInterval(interval);
-    }, [tenantId]);
-
-    const fetchInitialData = async (silent = false) => {
+    const fetchInitialData = useCallback(async (silent = false) => {
+        if (!tenantId) return;
         if (!silent) setLoading(true);
         try {
-            // Fetch Workers
-            const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
-            const wMap = new Map<string, string>();
-            const wTypeMap = new Map<string, string>();
+            const [attRes, fRes, wRes, tRes, dwRes, normsRes, allDivRes] = await Promise.all([
+                axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`),
+                axios.get(`/api/fields?tenantId=${tenantId}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`),
+                axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } }),
+                axios.get(`/api/divisions?tenantId=${tenantId}`)
+            ]);
+
+            setTaskTypes(tRes.data);
+            setAvailableTasks(tRes.data.map((t: any) => t.name));
+            setFields(fRes.data);
+            setNorms(normsRes.data);
+            setDailyWorks(dwRes.data);
+
+            const wMap = new Map<string, any>();
             wRes.data.forEach((w: any) => {
-                if (w.workerId) {
-                    wMap.set(w.workerId, w.name);
-                    wTypeMap.set(w.workerId, w.employmentType || 'PERMANENT');
-                }
-                wMap.set(w.id, w.name);
-                wTypeMap.set(w.id, w.employmentType || 'PERMANENT');
+                if (w.workerId) wMap.set(w.workerId, w);
+                wMap.set(w.id, w);
             });
             if (!isEditModeRef.current) setAllWorkers(wRes.data);
 
-            // Fetch Fields
-            const fRes = await axios.get(`/api/fields?tenantId=${tenantId}`);
-            setFields(fRes.data);
-
-            // Fetch All Divisions (for Name mapping)
-            const allDivRes = await axios.get(`/api/divisions?tenantId=${tenantId}`);
             const divNameMap = new Map<string, string>();
             allDivRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
 
-            // Fetch Today's Daily Work (Mappings)
-            const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
             const dwMap = new Map<string, string>();
-            // Since backend returns all works, let's keep all in dailyWorks
-            setDailyWorks(dwRes.data);
-
-            // Only map divisions for today's data to avoid leaking old stuff into active today UI
-            const todayWorks = dwRes.data.filter((dw: any) => dw.workDate === today);
-
             const dbWeights: any = {};
-            todayWorks.forEach((dw: any) => {
-                dwMap.set(dw.workId, dw.divisionId);
+            dwRes.data.forEach((dw: any) => {
+                dwMap.set(dw.workId || dw.id, dw.divisionId);
                 if (dw.bulkWeights) {
                     try {
                         dbWeights[dw.divisionId] = JSON.parse(dw.bulkWeights);
@@ -263,94 +163,49 @@ function DailyEntryTab() {
             });
 
             if (!isEditModeRef.current) {
-                setDailyWeights((prev: any) => {
-                    const combined = { ...prev };
-                    for (const div in dbWeights) {
-                        if (Object.keys(dbWeights[div]).length > 0) {
-                            combined[div] = dbWeights[div];
-                        }
-                    }
-                    return combined;
-                });
+                setDailyWeights((prev: any) => ({ ...prev, ...dbWeights }));
             }
-
-            // Fetch Today's Attendance
-            const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`);
 
             const enriched = attRes.data.map((rec: any) => {
                 let divId = dwMap.get(rec.dailyWorkId) || 'UNKNOWN';
                 if (divId === 'UNKNOWN') {
-                    const fieldNameStr = String(rec.fieldName || '').trim().toLowerCase();
-                    const f = fRes.data.find((fld: any) => fld.name && String(fld.name).trim().toLowerCase() === fieldNameStr);
-                    if (f) divId = f.divisionId;
+                    const field = fRes.data.find((f: any) => f.name?.toLowerCase() === rec.fieldName?.toLowerCase());
+                    if (field) divId = field.divisionId;
                 }
+                
                 const draftKey = `muster_draft_${tenantId}_${today}_${divId}`;
                 const submittedKey = `muster_submitted_${tenantId}_${today}_${divId}`;
                 const hasDraft = localStorage.getItem(draftKey) === 'true';
                 const hasSubmitted = localStorage.getItem(submittedKey) === 'true';
 
-                let defaultStatus = (!rec.status || rec.status === 'PENDING') ? '' : rec.status;
-
-                // If neither drafted nor submitted for evening, wipe the morning status so user has to verify manually
-                if (!hasDraft && !hasSubmitted) {
-                    defaultStatus = '';
-                }
-
-                let sessionVal = rec.session || 'FULL_DAY';
-
                 return {
                     ...rec,
-                    workerName: wMap.get(rec.workerId) || rec.workerId,
-                    workerType: wTypeMap.get(rec.workerId) || 'PERMANENT',
-                    status: defaultStatus,
+                    workerName: wMap.get(rec.workerId)?.name || rec.workerName || rec.workerId,
+                    workerType: wMap.get(rec.workerId)?.employmentType || 'PERMANENT',
+                    status: (hasDraft || hasSubmitted) ? rec.status : '',
                     amWeight: rec.amWeight ?? '',
                     pmWeight: rec.pmWeight ?? '',
                     overKilos: rec.overKilos ?? '',
                     otHours: rec.otHours ?? '',
-                    session: sessionVal,
+                    session: rec.session || 'FULL_DAY',
                     divisionId: divId,
                     tenantId: tenantId
                 };
             });
 
-            // Fetch Norms
-            const normsRes = await axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } });
-            setNorms(normsRes.data);
+            setAttendanceData(enriched);
 
-            // Fetch task types
-            const taskRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
-            setAvailableTasks(taskRes.data.map((t: any) => t.name));
-            if (!isEditModeRef.current) setTaskTypes(taskRes.data);
-
-            // Derive Available Divisions from Data
-            const uniqueDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId as string).filter((id: string) => id !== 'UNKNOWN')));
-            const activeDivs = uniqueDivIds.map(id => ({
-                divisionId: id as string,
-                name: divNameMap.get(id as string) || 'Unknown Division'
+            const activeDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId).filter((id: any) => id && id !== 'UNKNOWN')));
+            const activeDivs = activeDivIds.map(id => ({
+                divisionId: id,
+                name: divNameMap.get(id) || id
             })).sort((a, b) => a.name.localeCompare(b.name));
+            
+            setDivisions(activeDivs);
 
-            // Only overwrite UI state if not actively editing
-            if (!isEditModeRef.current) {
-                setAttendanceData(prev => {
-                    // Preserve any temp-id records not yet returned by the backend
-                    const tempRecords = prev.filter(r => String(r.id || '').startsWith('temp-'));
-                    if (tempRecords.length === 0) return enriched;
-                    // Key = workerId + workType — if backend already returned it, don't duplicate
-                    const backendKeys = new Set(enriched.map((r: any) => `${r.workerId}__${r.workType}__${r.session}`));
-                    const unresolvedTemps = tempRecords.filter(t =>
-                        !backendKeys.has(`${t.workerId}__${t.workType}__${t.session}`)
-                    );
-                    return [...enriched, ...unresolvedTemps];
-                });
-                setDivisions(activeDivs);
-            }
-
-            // Default selection logic (only update if not set to prevent UX jumping)
             setSelectedDivision(prev => {
                 if (activeDivs.length > 0 && (prev === '' || prev === 'ALL' || !activeDivs.find(d => d.divisionId === prev))) {
-                    return activeDivs[0].divisionId as string;
-                } else if (activeDivs.length === 0) {
-                    return '';
+                    return activeDivs[0].divisionId;
                 }
                 return prev;
             });
@@ -360,7 +215,28 @@ function DailyEntryTab() {
             if (!silent) setNotification({ open: true, message: "Failed to load data.", severity: 'error' });
         }
         if (!silent) setLoading(false);
-    };
+    }, [tenantId, today, isEditModeRef]);
+
+    useEffect(() => {
+        isEditModeRef.current = isEditMode;
+    }, [isEditMode]);
+
+    useEffect(() => {
+        if (tenantId) {
+            fetchInitialData();
+            const interval = setInterval(() => {
+                fetchInitialData(true);
+            }, 10000);
+            return () => clearInterval(interval);
+        }
+    }, [tenantId, fetchInitialData]);
+
+    // Handle shared fetch trigger
+    useEffect(() => {
+        const handler = () => fetchInitialData(true);
+        window.addEventListener('muster-update', handler);
+        return () => window.removeEventListener('muster-update', handler);
+    }, [fetchInitialData]);
 
     const handleUpdate = (id: string, field: keyof AttendanceRecord, value: any) => {
         setAttendanceData(prev => prev.map(item => {
@@ -372,7 +248,6 @@ function DailyEntryTab() {
     };
 
     const [confirmOpen, setConfirmOpen] = useState(false);
-    const [dailyWeights, setDailyWeights] = useState<any>({}); // { [divId]: { [field]: { fieldWt, factoryWt } } }
 
     const handleSaveDraft = async () => {
         setConfirmSaveDraftOpen(false);
@@ -427,12 +302,17 @@ function DailyEntryTab() {
 
     // Persist dailyWeights
     useEffect(() => {
-        if (tenantId && today) {
-            const key = `dailyWeights_${tenantId}_${today}`;
-            const saved = localStorage.getItem(key);
-            if (saved) {
-                try { setDailyWeights(JSON.parse(saved)); } catch (e) { }
-            }
+        if (!tenantId || !today) return;
+        const key = `dailyWeights_${tenantId}_${today}`;
+        const saved = localStorage.getItem(key);
+        if (saved) {
+            try { 
+                const parsed = JSON.parse(saved);
+                setDailyWeights((prev: any) => {
+                    if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev;
+                    return parsed;
+                });
+            } catch (e) { }
         }
     }, [tenantId, today]);
 
@@ -449,12 +329,19 @@ function DailyEntryTab() {
 
     // Check submission status on division change
     useEffect(() => {
-        if (selectedDivision) {
-            const status = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
-            setIsSubmitted(status);
-            if (status) setIsEditMode(false); // Force read-only if submitted
+        if (!selectedDivision || !tenantId || !today) return;
+        const status = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
+        setIsSubmitted(prev => {
+            if (prev === status) return prev;
+            return status;
+        });
+        if (status) {
+            setIsEditMode(prev => {
+                if (prev === false) return prev;
+                return false;
+            });
         }
-    }, [selectedDivision, tenantId, today]);
+    }, [selectedDivision, tenantId, today, getStorageKey]);
 
     const handleSubmit = async () => {
         // Build a set of workerIds whose last assignment (per task order) needs a status
@@ -649,7 +536,7 @@ function DailyEntryTab() {
                         </FormControl>
                     </Badge>
                     {attendanceData.length > 0 && selectedDivision && (
-                        <Box display="flex" gap={1}>
+                        <Box display="flex" gap={1} flexWrap="wrap">
                             {isSubmitted ? (
                                 <>
                                     <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
@@ -701,8 +588,8 @@ function DailyEntryTab() {
                                     <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
                                         <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
                                     </Box>
-                                    <Box>
-                                        <Table size="small" sx={{
+                                    <TableContainer sx={{ maxHeight: 600 }}>
+                                        <Table size="small" stickyHeader sx={{
                                             '& .MuiTableCell-root': { py: 0.5, px: 1, fontSize: '0.75rem' }
                                         }}>
                                             <TableHead sx={{ bgcolor: '#f5f5f5' }}>
@@ -807,7 +694,7 @@ function DailyEntryTab() {
                                                 </TableRow>
                                             </TableBody>
                                         </Table>
-                                    </Box>
+                                    </TableContainer>
                                 </Paper>
 
                                 {/* Manager Remarks Section */}
@@ -823,7 +710,6 @@ function DailyEntryTab() {
                                         <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap' }}>{dw.remarks}</Typography>
                                     </Alert>
                                 ))}
-
                             </Box>
 
                             {/* Detailed List */}
@@ -1270,29 +1156,33 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
 
     return (
         <>
-            <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }} >
-                {/* Header */}
-                <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2} flexWrap="wrap">
-                    <Typography variant="subtitle2" fontWeight="bold" color="#a2b5aa" sx={{ minWidth: 120, fontSize: '0.95rem' }}>{task}</Typography>
-                </Box>
+            <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
+            {/* Scrollable wrapper for mobile – keeps fixed-width columns accessible */}
+            <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
+                <Box sx={{ minWidth: 850 }}>
+                    {/* Header */}
+                    <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2}>
+                        <Typography variant="subtitle1" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 150, fontSize: '1rem' }}>{task}</Typography>
+                        <Chip label={taskConfig.label} size="small" variant="outlined" sx={{ fontWeight: 'bold', bgcolor: 'white' }} />
+                    </Box>
 
                 {/* Column Headers */}
                 {showInputs && (
                     <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f5f7f7" borderBottom="1px solid #eaeeef">
-                        <Box flex={1} minWidth={0}>
-                            <Typography variant="caption" fontWeight="bold" color="#b0babb">WORKER</Typography>
+                        <Box flex={1} minWidth={150} px={1}>
+                            <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
                         </Box>
                         <Box display="flex" alignItems="center">
-                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>AM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            <Typography sx={{ width: 65, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>PM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            <Typography sx={{ width: 50, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>TOTAL</Typography>
-                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
+                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>AM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
+                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>PM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
+                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>TOTAL</Typography>
+                            <Typography sx={{ width: 80, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
                             {hasCashKilos && (
-                                <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
+                                <Typography sx={{ width: 80, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
                             )}
-                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>OT<br />HRS</Typography>
-                            <Typography sx={{ width: 100, fontSize: '0.7rem', fontWeight: 'bold', color: '#b0babb', textAlign: 'center', lineHeight: 1.1 }}>SESSION</Typography>
-                            <Box sx={{ width: 120 }} /> {/* Spacer for Actions */}
+                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>OT<br />HRS</Typography>
+                            <Typography sx={{ width: 110, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>SESSION</Typography>
+                            <Box sx={{ width: 130 }} /> {/* Spacer for Actions */}
                         </Box>
                     </Box>
                 )}
@@ -1319,7 +1209,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                 return (
                                     <>
                                         {/* Worker Info */}
-                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={0}>
+                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={150}>
                                             <Avatar sx={{
                                                 bgcolor: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
                                                 width: 36, height: 36
@@ -1349,7 +1239,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         {showInputs && (
                                             <Box display="flex" alignItems="center">
                                                 {/* AM Input */}
-                                                <Box width={65} display="flex" justifyContent="center">
+                                                <Box width={75} display="flex" justifyContent="center">
                                                     <input
                                                         type="number"
                                                         min="0"
@@ -1368,16 +1258,16 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         }}
                                                         disabled={isSubmitted || item.status === 'ABSENT' || item.session === 'EVENING_SESSION'}
                                                         placeholder="AM"
-                                                        style={{ ...inputStyle, borderColor: item.session === 'EVENING_SESSION' ? '#e0e0e0' : '#81c784', width: 55, opacity: item.session === 'EVENING_SESSION' ? 0.4 : 1 }}
+                                                        style={{ ...inputStyle, borderColor: item.session === 'EVENING_SESSION' ? '#e0e0e0' : '#81c784', width: 65, opacity: item.session === 'EVENING_SESSION' ? 0.4 : 1 }}
                                                     />
                                                 </Box>
                                                 {/* PM Input */}
-                                                <Box width={65} display="flex" justifyContent="center">
+                                                <Box width={75} display="flex" justifyContent="center">
                                                     <input
                                                         type="number"
                                                         min="0"
                                                         onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                        style={{ ...inputStyle, borderColor: item.session === 'MORNING_SESSION' ? '#e0e0e0' : '#81c784', width: 55, opacity: item.session === 'MORNING_SESSION' ? 0.4 : 1 }}
+                                                        style={{ ...inputStyle, borderColor: item.session === 'MORNING_SESSION' ? '#e0e0e0' : '#81c784', width: 65, opacity: item.session === 'MORNING_SESSION' ? 0.4 : 1 }}
                                                         value={item.pmWeight ?? ''}
                                                         onChange={(e) => {
                                                             const val = e.target.value;
@@ -1395,12 +1285,12 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                     />
                                                 </Box>
                                                 {/* Total Badge */}
-                                                <Box width={50} display="flex" justifyContent="center">
+                                                <Box width={60} display="flex" justifyContent="center">
                                                     <Box
                                                         bgcolor="#2e7d32"
                                                         color="white"
                                                         borderRadius={1}
-                                                        width={45}
+                                                        width={55}
                                                         height={30}
                                                         display="flex"
                                                         alignItems="center"
@@ -1409,12 +1299,12 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         sx={{ boxShadow: 1 }}
                                                     >
                                                         <Typography variant="body2" fontWeight="bold" fontSize="0.9rem">
-                                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(0)}
+                                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}
                                                         </Typography>
                                                     </Box>
                                                 </Box>
                                                 {/* Over Kilos Input */}
-                                                <Box width={75} display="flex" justifyContent="center">
+                                                <Box width={80} display="flex" justifyContent="center">
                                                     {isPieceRate ? (
                                                         <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>Cash</Typography>
                                                     ) : (
@@ -1422,7 +1312,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                             type="number"
                                                             min="0"
                                                             onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                            style={{ ...inputStyle, borderColor: '#fbc02d', width: 65 }} // Highlight differently
+                                                            style={{ ...inputStyle, borderColor: '#fbc02d', width: 70 }} // Highlight differently
                                                             value={item.overKilos ?? ''}
                                                             onChange={(e) => {
                                                                 const val = e.target.value;
@@ -1435,13 +1325,13 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                 </Box>
                                                 {/* Cash Kilos Input - only show input for CONTRACT, spacer for others */}
                                                 {hasCashKilos && (
-                                                    <Box width={75} display="flex" justifyContent="center">
+                                                    <Box width={80} display="flex" justifyContent="center">
                                                         {isPieceRate ? (
                                                             <input
                                                                 type="number"
                                                                 min="0"
                                                                 onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                                style={{ ...inputStyle, borderColor: '#8bc34a' }}
+                                                                style={{ ...inputStyle, borderColor: '#8bc34a', width: 70 }}
                                                                 value={item.cashKilos ?? ''}
                                                                 onChange={(e) => {
                                                                     const val = e.target.value;
@@ -1477,7 +1367,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                     )}
                                                 </Box>
                                                 {/* Session Dropdown */}
-                                                <Box width={100} display="flex" justifyContent="center">
+                                                <Box width={110} display="flex" justifyContent="center">
                                                     <FormControl variant="standard" size="small" sx={{ width: '90%' }}>
                                                         <Select
                                                             value={item.session || 'FULL_DAY'}
@@ -1505,7 +1395,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                         )}
 
                                         {/* Actions */}
-                                        <Box width={120} display="flex" justifyContent="flex-end" alignItems="center" gap={0.5}>
+                                        <Box width={130} display="flex" justifyContent="flex-end" alignItems="center" gap={0.5}>
                                             {/* Remove button: for EVENING_SESSION workers OR temp (just-added) ones */}
                                             {!isSubmitted && onRemove && (item.session === 'EVENING_SESSION' || item.id.startsWith('temp-')) && (
                                                 <Tooltip title="Remove from this evening slot">
@@ -1636,6 +1526,8 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                             })()}
                         </Box>
                     ))}
+                </Box>
+                </Box>
                 </Box>
             </Paper>
 
@@ -1978,6 +1870,8 @@ function MorningPlanDisplay({ plans }: { plans: any[] }) {
 
 // --- Tab 2: History (Past Musters) ---
 function HistoryTab() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const [history, setHistory] = useState<any[]>([]);
@@ -2213,8 +2107,8 @@ function HistoryTab() {
     if (loading) return <Box display="flex" justifyItems="center" p={3}><CircularProgress /></Box>;
 
     return (
-        <Box sx={{ maxWidth: 1000, mx: 'auto', mt: 4 }}>
-            <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
+        <Box sx={{ maxWidth: 1000, mx: 'auto', mt: { xs: 1, sm: 4 }, px: { xs: 1, sm: 0 } }}>
+            <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 3 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
                     <Box display="flex" alignItems="center" gap={2}>
                         <HistoryIcon color="primary" sx={{ fontSize: 30 }} />
@@ -2295,10 +2189,10 @@ function HistoryTab() {
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }}>
                     Muster Review: {selectedDate}
                 </DialogTitle>
-                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: 1 }}>
-                    <Grid container spacing={3} wrap="nowrap" sx={{ overflowX: 'auto', minHeight: '60vh' }}>
+                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }}>
+                    <Grid container spacing={3} wrap={isMobile ? "wrap" : "nowrap"} sx={{ minHeight: '60vh' }}>
                         {/* LEFT: MORNING PLAN  */}
-                        <Grid size={4} sx={{ borderRight: '2px dashed #bdbdbd', minWidth: '35%' }}>
+                        <Grid size={{ xs: 12, md: 4 }} sx={{ borderRight: isMobile ? 'none' : '2px dashed #bdbdbd', borderBottom: isMobile ? '2px dashed #bdbdbd' : 'none', pb: isMobile ? 3 : 0 }}>
                             <Box mb={3}>
                                 <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
                                     <Avatar sx={{ bgcolor: 'orange', width: 24, height: 24 }}>🌞</Avatar>
@@ -2320,7 +2214,7 @@ function HistoryTab() {
                         </Grid>
 
                         {/* RIGHT: EVENING ACTUAL */}
-                        <Grid size={8} sx={{ minWidth: '65%' }}>
+                        <Grid size={{ xs: 12, md: 8 }}>
                             <Box mb={3}>
                                 <Box display="flex" alignItems="center" gap={1} mb={2} justifyContent="center">
                                     <Avatar sx={{ bgcolor: '#bdbdbd', width: 24, height: 24 }}>🌙</Avatar>

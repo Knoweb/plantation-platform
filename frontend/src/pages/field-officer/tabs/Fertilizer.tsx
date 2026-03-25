@@ -500,22 +500,22 @@ export default function Fertilizer() {
     };
 
     return (
-        <Box sx={{ p: 3, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+        <Box sx={{ p: { xs: 1, sm: 2, md: 3 }, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
+                <Typography variant="h5" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Fertilizer Programme
                 </Typography>
-                <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
+                <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }} sx={{ width: { xs: '100%', sm: 'auto' } }}>
                     <TextField
                         type="month"
                         size="small"
                         label="Plan Month"
                         value={planMonth}
                         onChange={(e) => setPlanMonth(e.target.value)}
-                        sx={{ minWidth: 170 }}
+                        sx={{ minWidth: { xs: '100%', sm: 170 } }}
                         InputLabelProps={{ shrink: true }}
                     />
-                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
                         <InputLabel>Division</InputLabel>
                         <Select
                             value={selectedDivision}
@@ -684,7 +684,7 @@ export default function Fertilizer() {
                         <CircularProgress color="success" />
                     </Box>
                 ) : tab === 'ENTRY' ? (
-                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'row', p: 1.5, gap: 2.5, overflow: 'hidden' }}>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, p: { xs: 1, sm: 1.5 }, gap: 2.5, overflow: 'auto' }}>
                         {/* ── LEFT COLUMN: Monthly Fertilizer Detail ── */}
                         <Paper
                             elevation={2}
@@ -707,14 +707,14 @@ export default function Fertilizer() {
                             <Stack
                                 direction={{ xs: 'column', sm: 'row' }}
                                 spacing={1.25}
-                                alignItems={{ xs: 'flex-start', sm: 'center' }}
+                                alignItems={{ xs: 'stretch', sm: 'center' }}
                                 justifyContent="space-between"
                                 sx={{ px: 2, py: 1.25 }}
                                 flexWrap="wrap"
                             >
                                 {/* Left: Year + Field filters */}
-                                <Stack direction="row" spacing={1.5} alignItems="center" flexWrap="wrap">
-                                    <FormControl size="small" sx={{ minWidth: 110 }}>
+                                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
+                                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 110 } }}>
                                         <InputLabel>Year</InputLabel>
                                         <Select
                                             value={entryYear}
@@ -731,7 +731,7 @@ export default function Fertilizer() {
                                             })}
                                         </Select>
                                     </FormControl>
-                                    <FormControl size="small" sx={{ minWidth: 160 }}>
+                                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
                                         <InputLabel>Field</InputLabel>
                                         <Select
                                             value={selectedFieldId}
@@ -749,13 +749,14 @@ export default function Fertilizer() {
                                 </Stack>
 
                                 {/* Right: action buttons */}
-                                <Stack direction="row" spacing={1} alignItems="center">
+                                <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }}>
                                     {!entryMode ? (
                                         <Button
                                             onClick={enterEditMode}
                                             variant="contained"
                                             color="success"
-                                            sx={{ fontWeight: 800, px: 2.5 }}
+                                            fullWidth={true}
+                                            sx={{ fontWeight: 800, px: 2.5, width: { xs: '100%', sm: 'auto' } }}
                                         >
                                             Edit Entry
                                         </Button>
@@ -766,7 +767,7 @@ export default function Fertilizer() {
                                                 variant="contained"
                                                 color="success"
                                                 disabled={savingEntry}
-                                                sx={{ fontWeight: 800 }}
+                                                sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
                                             >
                                                 {savingEntry ? 'Saving…' : 'Save'}
                                             </Button>
@@ -774,7 +775,7 @@ export default function Fertilizer() {
                                                 onClick={cancelEdit}
                                                 variant="outlined"
                                                 color="error"
-                                                sx={{ fontWeight: 800 }}
+                                                sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
                                                 disabled={savingEntry}
                                             >
                                                 Cancel
@@ -785,8 +786,8 @@ export default function Fertilizer() {
                             </Stack>
 
                             {/* Multi-fertilizer grouped table */}
-                            <Box sx={{ flex: 1, minHeight: 0, overflowY: 'auto' }}>
-                                <Table size="small" stickyHeader>
+                            <Box sx={{ flex: 1, minHeight: 0, overflowX: 'auto' }}>
+                                <Table size="small" stickyHeader sx={{ minWidth: 800 }}>
                                     <TableHead>
                                         <TableRow>
                                             {['Field','Month','Fertilizer','Qty (kg)','Nitrogen (kg)','Total Qty (kg)','Total Nitrogen (kg)'].map((h, i) => (
@@ -895,9 +896,9 @@ export default function Fertilizer() {
                         <Paper
                             elevation={2}
                             sx={{
-                                width: 320,
+                                width: { xs: '100%', lg: 320 },
                                 flexShrink: 0,
-                                alignSelf: 'flex-start',
+                                alignSelf: { xs: 'center', lg: 'flex-start' },
                                 border: '1.5px solid rgba(46,125,50,0.3)',
                                 overflow: 'hidden',
                                 display: 'flex',

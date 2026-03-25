@@ -153,18 +153,18 @@ export default function LeaveApplication() {
     return (
         <Box>
             {/* Standard Header */}
-            <Box sx={{ px: 3, py: 2 }}>
-                <Typography variant="h4" fontWeight="bold" color="primary.dark">
+            <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
+                <Typography variant="h4" fontWeight="bold" color="primary.dark" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
                     Leave Application
                 </Typography>
             </Box>
 
-            <Box p={3}>
+            <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
 
                 <Grid container spacing={4}>
                     {/* LEFT PANEL: Balances & Status */}
                     <Grid size={{ xs: 12, md: 4 }}>
-                        <Paper elevation={3} sx={{ p: 2, borderRadius: 2, bgcolor: '#f1f8e9' }}>
+                        <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: '#f1f8e9' }}>
 
                             {/* Role Tabs - Dynamic based on actual officers */}
                             <Box display="flex" mb={2} borderBottom="1px solid #c5e1a5" sx={{ overflowX: 'auto' }}>
@@ -211,8 +211,8 @@ export default function LeaveApplication() {
 
                             {/* Leave Balance Table */}
                             <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Leave Balance</Typography>
-                            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #c5e1a5', mb: 3 }}>
-                                <Table size="small">
+                            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #c5e1a5', mb: 3, overflowX: 'auto' }}>
+                                <Table size="small" sx={{ minWidth: 300 }}>
                                     <TableHead>
                                         <TableRow sx={{ bgcolor: '#dcedc8' }}>
                                             <TableCell sx={{ fontWeight: 'bold' }}>Metric</TableCell>
@@ -262,12 +262,12 @@ export default function LeaveApplication() {
                                 </Table>
                             </TableContainer>
 
-                            {/* Pending Leave Tracker - Only visible if there are requests */}
-                            {pendingRequests.length > 0 && (
-                                <>
-                                    <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Pending Leave Status:</Typography>
-                                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee' }}>
-                                        <Table size="small">
+                                    {/* Pending Leave Tracker - Only visible if there are requests */}
+                                    {pendingRequests.length > 0 && (
+                                        <>
+                                            <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Pending Leave Status:</Typography>
+                                            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee', overflowX: 'auto' }}>
+                                                <Table size="small" sx={{ minWidth: 400 }}>
                                             <TableHead sx={{ bgcolor: '#eeeeee' }}>
                                                 <TableRow>
                                                     <TableCell>Date</TableCell>
@@ -299,7 +299,7 @@ export default function LeaveApplication() {
 
                     {/* RIGHT PANEL: Application Form */}
                     <Grid size={{ xs: 12, md: 8 }}>
-                        <Paper elevation={3} sx={{ p: 4, borderRadius: 2 }}>
+                        <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: 2 }}>
                             <Grid container spacing={3}>
                                 {/* Static Info */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
