@@ -20,6 +20,7 @@ jobs:
           password: ${{ secrets.DO_PASSWORD }}
           port: 22
           envs: GITHUB_TOKEN,BRANCH_NAME
+          command_timeout: 60m
           script: |
             # Stop existing containers if running
             # docker compose -f /root/plantation-platform/docker-compose.prod.yml down || true
