@@ -32,7 +32,6 @@ import EditIcon from '@mui/icons-material/Edit';
 import FolderIcon from '@mui/icons-material/Folder';
 import SaveIcon from '@mui/icons-material/Save';
 import UploadIcon from '@mui/icons-material/Upload';
-import SettingsIcon from '@mui/icons-material/Settings';
 import AutorenewIcon from '@mui/icons-material/Autorenew';
 import axios from 'axios';
 
@@ -247,14 +246,12 @@ export default function CostAnalysisManager() {
     const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
     const [weights, setWeights] = useState({ day: 0, todate: 0 });
 
-    // Rates Configuration State
     const [rates, setRates] = useState({
-        aththamaWage: localStorage.getItem(`aththamaWage_${userSession.tenantId}`) || '1600',
-        overKiloRate: localStorage.getItem(`overKiloRate_${userSession.tenantId}`) || '45',
-        cashKiloRate: localStorage.getItem(`cashKiloRate_${userSession.tenantId}`) || '40',
-        otHourRate: localStorage.getItem(`otHourRate_${userSession.tenantId}`) || '250',
+        aththamaWage: '1600',
+        overKiloRate: '45',
+        cashKiloRate: '40',
+        otHourRate: '250',
     });
-    const [ratesDialogOpen, setRatesDialogOpen] = useState(false);
     const [syncing, setSyncing] = useState(false);
 
     const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
@@ -303,6 +300,16 @@ export default function CostAnalysisManager() {
             axios
                 .get(`/api/crop-configs?tenantId=${userSession.tenantId}&cropType=${activeCrop}`)
                 .then((res) => {
+                    // Update Rates from official database config
+                    if (res.data) {
+                        setRates({
+                            aththamaWage: res.data.aththamaWage || '1600',
+                            overKiloRate: res.data.overKiloRate || '45',
+                            cashKiloRate: res.data.cashKiloRate || '40',
+                            otHourRate: res.data.otHourRate || '250',
+                        });
+                    }
+
                     if (res.data?.costItems) {
                         const parsed = JSON.parse(res.data.costItems);
                         const nextCategories = normalizeCategories(parsed);
@@ -472,14 +479,7 @@ export default function CostAnalysisManager() {
         }
     };
 
-    const saveRates = () => {
-        localStorage.setItem(`aththamaWage_${userSession.tenantId}`, rates.aththamaWage);
-        localStorage.setItem(`overKiloRate_${userSession.tenantId}`, rates.overKiloRate);
-        localStorage.setItem(`cashKiloRate_${userSession.tenantId}`, rates.cashKiloRate);
-        localStorage.setItem(`otHourRate_${userSession.tenantId}`, rates.otHourRate);
-        setRatesDialogOpen(false);
-        setMsg('Wage rates updated.');
-    };
+    // saveRates is removed as users should use the Crop Book 'Edit Wages' section for official updates
 
     const saveCategory = () => {
         const name = catDialog.name.trim();
@@ -755,25 +755,15 @@ export default function CostAnalysisManager() {
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}
                     />
                     {!isEditable ? (
-                        <>
-                            <Button
-                                variant="outlined"
-                                startIcon={<SettingsIcon />}
-                                onClick={() => setRatesDialogOpen(true)}
-                                sx={{ borderColor: '#2e7d32', color: '#2e7d32' }}
-                            >
-                                Rates Config
-                            </Button>
-                            <Button
-                                variant="contained"
-                                startIcon={<EditIcon />}
-                                onClick={() => setIsEditable(true)}
-                                disabled={!canEditSelectedDate}
-                                sx={{ bgcolor: '#e65100' }}
-                            >
-                                Edit Entry
-                            </Button>
-                        </>
+                        <Button
+                            variant="contained"
+                            startIcon={<EditIcon />}
+                            onClick={() => setIsEditable(true)}
+                            disabled={!canEditSelectedDate}
+                            sx={{ bgcolor: '#e65100' }}
+                        >
+                            Edit Entry
+                        </Button>
                     ) : (
                         <>
                             <Button
@@ -1133,54 +1123,6 @@ export default function CostAnalysisManager() {
                 </Paper>
             </Box>
 
-            <Dialog open={ratesDialogOpen} onClose={() => setRatesDialogOpen(false)} maxWidth="xs" fullWidth>
-                <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Wage Rates Configuration</DialogTitle>
-                <DialogContent dividers>
-                    <Box display="flex" flexDirection="column" gap={2} mt={1}>
-                        <TextField
-                            label="Standard Daily Wage (Rs.)"
-                            value={rates.aththamaWage}
-                            onChange={(e) => setRates({ ...rates, aththamaWage: e.target.value })}
-                            type="number"
-                            fullWidth
-                            size="small"
-                        />
-                        <TextField
-                            label="Over Kilo Rate (Rs.)"
-                            value={rates.overKiloRate}
-                            onChange={(e) => setRates({ ...rates, overKiloRate: e.target.value })}
-                            type="number"
-                            fullWidth
-                            size="small"
-                        />
-                        <TextField
-                            label="Cash Kilo Rate (Rs.)"
-                            value={rates.cashKiloRate}
-                            onChange={(e) => setRates({ ...rates, cashKiloRate: e.target.value })}
-                            type="number"
-                            fullWidth
-                            size="small"
-                        />
-                        <TextField
-                            label="OT Hour Rate (Rs.)"
-                            value={rates.otHourRate}
-                            onChange={(e) => setRates({ ...rates, otHourRate: e.target.value })}
-                            type="number"
-                            fullWidth
-                            size="small"
-                        />
-                        <Alert severity="info" sx={{ fontSize: '0.8rem' }}>
-                            These rates are used to automatically calculate costs from the daily muster records.
-                        </Alert>
-                    </Box>
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setRatesDialogOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={saveRates} sx={{ bgcolor: '#2e7d32' }}>
-                        Save Rates
-                    </Button>
-                </DialogActions>
-            </Dialog>
 
             <Dialog open={catDialog.open} onClose={() => setCatDialog({ open: false, name: '' })} maxWidth="xs" fullWidth>
                 <DialogTitle>{catDialog.editId ? 'Rename Category' : 'Add Category'}</DialogTitle>
