@@ -193,9 +193,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                                 Logged in as: <strong>{userRole.replace('_', ' ')}</strong>
                             </Typography>
                         </Box>
-                        <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>View Profile</MenuItem>
-                        <Divider sx={{ my: 1 }} />
-                        <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                        <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold', py: 1.5 }}>
                             Logout
                         </MenuItem>
                     </Menu>
