@@ -4,6 +4,7 @@ import com.knoweb.tenant.dto.AuthRequest;
 import com.knoweb.tenant.dto.AuthResponse;
 import com.knoweb.tenant.dto.TenantRequest;
 import com.knoweb.tenant.dto.UserRequest;
+import com.knoweb.tenant.entity.Division;
 import com.knoweb.tenant.entity.Tenant;
 import com.knoweb.tenant.entity.User;
 import com.knoweb.tenant.repository.TenantRepository;
@@ -59,6 +60,19 @@ public class TenantService {
             tenant.setCreatedAt(LocalDateTime.now());
 
             tenant = tenantRepository.save(tenant);
+
+            if (request.getDivisions() != null && !request.getDivisions().isEmpty()) {
+                for (TenantRequest.DivisionPayload divisionPayload : request.getDivisions()) {
+                    if (divisionPayload == null) {
+                        continue;
+                    }
+                    String divisionName = divisionPayload.getName();
+                    if (divisionName == null || divisionName.trim().isEmpty()) {
+                        continue;
+                    }
+                    divisionRepository.save(new Division(tenant.getTenantId(), divisionName.trim()));
+                }
+            }
 
             // 3. Create Admin User (ESTATE OWNER)
             User adminUser = new User();

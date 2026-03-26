@@ -89,20 +89,9 @@ export default function TenantOnboarding({ isModal = false, onClose }: TenantOnb
                     adminEmail: tenantData.adminEmail,
                     adminPassword: tenantData.adminPassword,
                     logoUrl: tenantData.logo,
-                    configJson: tenantData.configJson
+                    configJson: tenantData.configJson,
+                    divisions: tenantData.divisions
                 });
-
-                const newTenantId = response.data.tenantId;
-
-                // 2. Save Divisions if any
-                if (tenantData.divisions && tenantData.divisions.length > 0) {
-                    await Promise.all(tenantData.divisions.map((div: any) =>
-                        axios.post('/api/divisions', {
-                            tenantId: newTenantId,
-                            name: div.name
-                        })
-                    ));
-                }
 
                 // 2. TODO: Call API to save Divisions (after we build that endpoint)
                 // 3. TODO: Call API to save Logo URL (after we build S3)

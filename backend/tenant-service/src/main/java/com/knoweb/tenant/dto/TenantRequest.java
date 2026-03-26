@@ -10,6 +10,19 @@ public class TenantRequest {
     private String adminEmail;
     private String adminPassword;
     private Map<String, Object> configJson;
+    private java.util.List<DivisionPayload> divisions;
+
+    public static class DivisionPayload {
+        private String name;
+
+        public String getName() {
+            return name;
+        }
+
+        public void setName(String name) {
+            this.name = name;
+        }
+    }
 
     // Getters and Setters
     public String getCompanyName() {
@@ -66,5 +79,13 @@ public class TenantRequest {
 
     public void setConfigJson(Map<String, Object> configJson) {
         this.configJson = configJson;
+    }
+
+    public java.util.List<DivisionPayload> getDivisions() {
+        return divisions;
+    }
+
+    public void setDivisions(java.util.List<DivisionPayload> divisions) {
+        this.divisions = divisions;
     }
 }
