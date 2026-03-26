@@ -115,6 +115,20 @@ public class TenantService {
 
     @Transactional
     public void deleteTenant(java.util.UUID tenantId) {
+        java.util.List<User> users = userRepository.findByTenantId(tenantId);
+        if (!users.isEmpty()) {
+            for (User user : users) {
+                user.setDivisions(new java.util.HashSet<>());
+            }
+            userRepository.saveAll(users);
+            userRepository.deleteAll(users);
+        }
+
+        java.util.List<com.knoweb.tenant.entity.Division> divisions = divisionRepository.findByTenantId(tenantId);
+        if (!divisions.isEmpty()) {
+            divisionRepository.deleteAll(divisions);
+        }
+
         tenantRepository.deleteById(tenantId);
     }
 
