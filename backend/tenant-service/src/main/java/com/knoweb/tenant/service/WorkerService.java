@@ -12,6 +12,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.UUID;
 
+import com.knoweb.tenant.websocket.TenantRealtimePublisher;
 import org.springframework.jdbc.core.JdbcTemplate;
 import jakarta.annotation.PostConstruct;
 
@@ -20,6 +21,9 @@ public class WorkerService {
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
+
+    @Autowired
+    private TenantRealtimePublisher publisher;
 
     @PostConstruct
     public void init() {
@@ -44,7 +48,9 @@ public class WorkerService {
         if (worker.getStatus() == null) {
             worker.setStatus(WorkerStatus.ACTIVE);
         }
-        return workerRepository.save(worker);
+        Worker saved = workerRepository.save(worker);
+        publisher.broadcastWorkerUpdated(saved.getTenantId(), saved.getId().toString(), saved.getStatus().toString());
+        return saved;
     }
 
     public List<Worker> getAllWorkers(String tenantId) {
@@ -74,14 +80,17 @@ public class WorkerService {
         worker.setDivisionIds(workerDetails.getDivisionIds());
         worker.setStatus(workerDetails.getStatus());
 
-        return workerRepository.save(worker);
+        Worker saved = workerRepository.save(worker);
+        publisher.broadcastWorkerUpdated(saved.getTenantId(), saved.getId().toString(), saved.getStatus().toString());
+        return saved;
     }
 
     public void deleteWorker(UUID id) {
         Worker worker = workerRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Worker not found with id: " + id));
         worker.setStatus(WorkerStatus.INACTIVE); // Soft delete
-        workerRepository.save(worker);
+        Worker saved = workerRepository.save(worker);
+        publisher.broadcastWorkerUpdated(saved.getTenantId(), saved.getId().toString(), "INACTIVE");
     }
 
     public void seedWorkers(String tenantId) {

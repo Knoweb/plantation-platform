@@ -6,11 +6,11 @@ import org.springframework.web.socket.WebSocketSession;
 import org.springframework.web.socket.handler.TextWebSocketHandler;
 
 @Component
-public class WorkProgramWebSocketHandler extends TextWebSocketHandler {
+public class WorkerWebSocketHandler extends TextWebSocketHandler {
 
     private final TenantRealtimePublisher publisher;
 
-    public WorkProgramWebSocketHandler(TenantRealtimePublisher publisher) {
+    public WorkerWebSocketHandler(TenantRealtimePublisher publisher) {
         this.publisher = publisher;
     }
 

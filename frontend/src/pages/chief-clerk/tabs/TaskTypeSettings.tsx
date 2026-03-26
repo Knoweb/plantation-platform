@@ -49,8 +49,15 @@ export default function TaskTypeSettings() {
 
     const fetchCrops = useCallback(async () => {
         try {
+            // 1. Get crops from session config (defined during onboarding)
+            const config = userSession.config || {};
+            const configCrops = Object.keys(config)
+                .filter(key => typeof config[key] === 'boolean' && config[key] === true)
+                .map(key => key.toUpperCase());
+
+            // 2. Get crops from existing fields (as supplementary)
             const res = await axios.get(`/api/fields?tenantId=${tenantId}`);
-            const crops: string[] = Array.from(
+            const fieldCrops: string[] = Array.from(
                 new Set(
                     (res.data as any[])
                         .map((f: any) => f.cropType)
@@ -58,11 +65,21 @@ export default function TaskTypeSettings() {
                         .map((c: string) => c.trim().toUpperCase())
                 )
             ) as string[];
-            setAvailableCrops(crops);
+            
+            // Combine both sets to ensure all options are available
+            const combined = Array.from(new Set([...configCrops, ...fieldCrops]));
+            if (combined.length > 0) {
+                setAvailableCrops(combined);
+            }
         } catch (e) {
-            console.warn('Could not fetch crops from fields');
+            console.warn('Could not fetch crops from fields, falling back to config');
+            const config = userSession.config || {};
+            const configCrops = Object.keys(config)
+                .filter(key => typeof config[key] === 'boolean' && config[key] === true)
+                .map(key => key.toUpperCase());
+            if (configCrops.length > 0) setAvailableCrops(configCrops);
         }
-    }, [tenantId]);
+    }, [tenantId, userSession.config]);
 
     useEffect(() => {
         if (tenantId) {

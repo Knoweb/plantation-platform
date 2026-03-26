@@ -255,6 +255,56 @@ export default function WorkerRegistry() {
         setSnackbar({ open: true, message, severity });
     };
 
+    const buildSocketUrl = (path: string) => {
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        return `${protocol}//${window.location.host}${path}`;
+    };
+
+    useEffect(() => {
+        if (!tenantId) return undefined;
+
+        let active = true;
+        let manuallyClosed = false;
+        let socket: WebSocket | null = null;
+        let reconnectTimer: number | null = null;
+
+        const connect = () => {
+            if (!active) return;
+            socket = new WebSocket(buildSocketUrl('/ws/workers'));
+
+            socket.onmessage = (event) => {
+                try {
+                    const payload = JSON.parse(event.data);
+                    // If it's a worker update for our tenant, refresh the list
+                    if (payload?.type === 'worker-updated' && payload?.tenantId === tenantId) {
+                        fetchWorkers();
+                    }
+                } catch (error) {
+                    console.error('Failed to parse worker realtime update', error);
+                }
+            };
+
+            socket.onclose = () => {
+                if (!active || manuallyClosed) return;
+                reconnectTimer = window.setTimeout(connect, 3000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            active = false;
+            manuallyClosed = true;
+            if (reconnectTimer !== null) window.clearTimeout(reconnectTimer);
+            if (socket) {
+                socket.onclose = null;
+                socket.onerror = null;
+                socket.onmessage = null;
+                if (socket.readyState === WebSocket.OPEN) socket.close();
+            }
+        };
+    }, [tenantId]);
+
     useEffect(() => {
         if (tenantId) {
             fetchWorkers();

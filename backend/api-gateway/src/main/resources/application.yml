@@ -48,7 +48,7 @@ spring:
         - id: tenant-service-ws
           uri: lb:ws://TENANT-SERVICE
           predicates:
-            - Path=/ws/work-program,/ws/work-program/**
+            - Path=/ws/work-program,/ws/work-program/**,/ws/workers,/ws/workers/**
         - id: inventory-service
           uri: lb://INVENTORY-SERVICE
           predicates:
