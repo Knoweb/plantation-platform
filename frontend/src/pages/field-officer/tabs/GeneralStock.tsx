@@ -43,6 +43,7 @@ export default function GeneralStock() {
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const isManager = userSession.role === 'MANAGER' || userSession.role === 'ESTATE_ADMIN';
     const fetchInventory = useCallback(async () => {
         try {
             const res = await axios.get(`/api/inventory?tenantId=${tenantId}`);
