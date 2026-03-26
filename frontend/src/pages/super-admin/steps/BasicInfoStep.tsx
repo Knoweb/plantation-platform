@@ -16,7 +16,7 @@ export default function BasicInfoStep({ data, updateData }: Props) {
     };
 
     return (
-        <Box component="form" noValidate sx={{ mt: 1 }}>
+        <Box component="form" noValidate autoComplete="off" sx={{ mt: 1 }}>
             <Grid container spacing={2}>
                 <Grid size={{ xs: 12 }}>
                     <Typography variant="subtitle1" fontWeight="bold" gutterBottom>
@@ -27,6 +27,7 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                         fullWidth
                         size="small"
                         label="Estate / Company Name"
+                        autoComplete="off"
                         value={data.companyName || ''}
                         onChange={handleChange('companyName')}
                         placeholder="E.g. Dunwatta Estate"
@@ -46,6 +47,7 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                         size="small"
                         label="Admin Email"
                         type="email"
+                        autoComplete="new-email"
                         value={data.adminEmail || ''}
                         onChange={handleChange('adminEmail')}
                         helperText="Used for notifications"
@@ -57,6 +59,7 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                         fullWidth
                         size="small"
                         label="Admin Username"
+                        autoComplete="new-username"
                         value={data.adminUsername || ''}
                         onChange={handleChange('adminUsername')}
                         helperText="Unique identifier"
@@ -69,6 +72,7 @@ export default function BasicInfoStep({ data, updateData }: Props) {
                         size="small"
                         type={showPassword ? 'text' : 'password'}
                         label="Password"
+                        autoComplete="new-password"
                         value={data.adminPassword || ''}
                         onChange={handleChange('adminPassword')}
                         InputProps={{
