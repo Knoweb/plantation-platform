@@ -80,7 +80,7 @@ const menuItems = [
     { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
-    { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['ESTATE_ADMIN', 'MANAGER'] }, // Field Officer uses specific tabs now
+    { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['MANAGER'] }, // Field Officer uses specific tabs now
 
     // Store Keeper
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/store/main', roles: ['STORE_KEEPER'] },
@@ -89,7 +89,7 @@ const menuItems = [
     { text: 'Recent Transactions', icon: <HistoryIcon />, path: '/dashboard/store/history', roles: ['STORE_KEEPER'] },
 
     // Settings
-    { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: ['ESTATE_ADMIN'] },
+    { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: [] },
 ];
 
 interface SidebarProps {
