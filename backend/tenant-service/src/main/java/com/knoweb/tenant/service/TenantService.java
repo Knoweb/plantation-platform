@@ -140,6 +140,14 @@ public class TenantService {
         return tenantRepository.save(tenant);
     }
 
+    @Transactional
+    public Tenant updateTenantConfig(java.util.UUID tenantId, java.util.Map<String, Object> configJson) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        tenant.setConfigJson(configJson);
+        return tenantRepository.save(tenant);
+    }
+
     public Tenant getTenantById(java.util.UUID tenantId) {
         return tenantRepository.findById(tenantId)
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));

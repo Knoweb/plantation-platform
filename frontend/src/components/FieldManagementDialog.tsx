@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
     Dialog,
     DialogTitle,
@@ -20,9 +20,8 @@ import {
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
-import SaveIcon from '@mui/icons-material/Save';
-import CloseIcon from '@mui/icons-material/Close';
 import axios from 'axios';
+import { Snackbar } from '@mui/material';
 
 interface Field {
     fieldId: string;
@@ -58,31 +57,13 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
     const [editFieldCrop, setEditFieldCrop] = useState('');
     const [editFieldAcreage, setEditFieldAcreage] = useState<number | ''>('');
 
-    useEffect(() => {
-        if (open && tenantId) {
-            fetchTenantDetails();
-        }
-    }, [open, tenantId]);
-
-    useEffect(() => {
-        if (open && divisionId) {
-            fetchFields();
-            // Reset form
-            setNewFieldName('');
-            setNewFieldCrop('');
-            setNewFieldAcreage('');
-            setError('');
-            setEditingFieldId(null);
-        }
-    }, [open, divisionId]);
-
-    const fetchTenantDetails = async () => {
+    const fetchTenantDetails = useCallback(async () => {
         try {
             const res = await axios.get(`/api/tenants/${tenantId}`);
             if (res.data.configJson) {
                 // Filter keys where value is true
                 const crops = Object.entries(res.data.configJson)
-                    .filter(([_, value]) => value === true)
+                    .filter(([, value]) => value === true)
                     .map(([key]) => key.toUpperCase());
 
                 setActiveCrops(crops);
@@ -93,9 +74,9 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
         } catch (err) {
             console.error("Failed to fetch tenant details", err);
         }
-    };
+    }, [tenantId]);
 
-    const fetchFields = async () => {
+    const fetchFields = useCallback(async () => {
         if (!divisionId) return;
         try {
             setLoading(true);
@@ -117,6 +98,32 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
         } finally {
             setLoading(false);
         }
+    }, [divisionId, openWithFieldId]);
+
+    useEffect(() => {
+        if (open && tenantId) {
+            fetchTenantDetails();
+        }
+    }, [open, tenantId, fetchTenantDetails]);
+
+    useEffect(() => {
+        if (open && divisionId) {
+            fetchFields();
+            // Reset form
+            setNewFieldName('');
+            setNewFieldCrop('');
+            setNewFieldAcreage('');
+            setError('');
+            setEditingFieldId(null);
+        }
+    }, [open, divisionId, fetchFields]);
+
+    const [snackbar, setSnackbar] = useState<{ open: boolean, message: string, severity: 'success' | 'error' }>({
+        open: false, message: '', severity: 'success'
+    });
+
+    const showSnackbar = (message: string, severity: 'success' | 'error') => {
+        setSnackbar({ open: true, message, severity });
     };
 
     const handleAddField = async () => {
@@ -141,12 +148,15 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
             setNewFieldName('');
             setNewFieldAcreage('');
             setError('');
-            alert("Field successfully added!");
-            onClose();
-            window.location.reload();
+            showSnackbar("Field successfully added!", "success");
+            setTimeout(() => {
+                onClose();
+                window.location.reload();
+            }, 1000);
         } catch (err) {
             console.error("Failed to add field", err);
             setError("Failed to add field. Name might be duplicate.");
+            showSnackbar("Failed to add field.", "error");
         }
     };
 
@@ -159,7 +169,7 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
 
     const handleEditSave = async (id: string) => {
         if (!editFieldName) {
-            alert("Field name is required.");
+            showSnackbar("Field name is required.", "error");
             return;
         }
         try {
@@ -169,12 +179,14 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
                 cropType: editFieldCrop
             });
             setEditingFieldId(null);
-            alert("Field successfully updated!");
-            onClose();
-            window.location.reload();
+            showSnackbar("Field successfully updated!", "success");
+            setTimeout(() => {
+                onClose();
+                window.location.reload();
+            }, 1000);
         } catch (err) {
             console.error("Failed to update field", err);
-            alert("Failed to update field.");
+            showSnackbar("Failed to update field.", "error");
         }
     };
 
@@ -183,8 +195,9 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
         try {
             await axios.delete(`/api/fields/${id}`);
             fetchFields();
+            showSnackbar("Field deleted.", "success");
         } catch (err) {
-            alert("Failed to delete field.");
+            showSnackbar("Failed to delete field.", "error");
         }
     };
 
@@ -341,6 +354,17 @@ export default function FieldManagementDialog({ open, onClose, divisionId, divis
             <DialogActions>
                 <Button onClick={onClose}>Close</Button>
             </DialogActions>
+
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert severity={snackbar.severity} sx={{ width: '100%', boxShadow: 3 }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Dialog >
     );
 }

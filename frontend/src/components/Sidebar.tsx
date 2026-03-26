@@ -89,7 +89,7 @@ const menuItems = [
     { text: 'Recent Transactions', icon: <HistoryIcon />, path: '/dashboard/store/history', roles: ['STORE_KEEPER'] },
 
     // Settings
-    { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: [] },
+    { text: 'Configuration', icon: <SettingsIcon />, path: '/dashboard/settings', roles: ['ESTATE_ADMIN'] },
 ];
 
 interface SidebarProps {

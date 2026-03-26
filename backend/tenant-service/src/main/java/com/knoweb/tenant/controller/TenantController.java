@@ -120,4 +120,13 @@ public class TenantController {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
+
+    @PutMapping("/{id}/config")
+    public ResponseEntity<?> updateConfig(@PathVariable java.util.UUID id, @RequestBody java.util.Map<String, Object> configJson) {
+        try {
+            return ResponseEntity.ok(tenantService.updateTenantConfig(id, configJson));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+        }
+    }
 }
