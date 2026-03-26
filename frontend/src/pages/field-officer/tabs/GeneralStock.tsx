@@ -4,10 +4,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info'; // For notification
 import SettingsIcon from '@mui/icons-material/Settings'; // For unconfigured status
-import AddShoppingCartIcon from '@mui/icons-material/AddShoppingCart';
-import CancelIcon from '@mui/icons-material/Cancel';
-import { FormControl, InputLabel, Select, MenuItem } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export default function GeneralStock() {
@@ -46,13 +43,7 @@ export default function GeneralStock() {
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
-    const isManager = userSession.role === 'MANAGER';
-
-    useEffect(() => {
-        fetchInventory();
-    }, [tenantId]);
-
-    const fetchInventory = async () => {
+    const fetchInventory = useCallback(async () => {
         try {
             const res = await axios.get(`/api/inventory?tenantId=${tenantId}`);
             setItems(res.data);
@@ -72,7 +63,11 @@ export default function GeneralStock() {
             setError("Failed to load inventory.");
             setLoading(false);
         }
-    };
+    }, [tenantId, isManager]);
+
+    useEffect(() => {
+        fetchInventory();
+    }, [fetchInventory]);
 
     const handleRequestAction = async (req: any) => {
         const isAuto = req.issuedTo && (req.issuedTo.includes('Auto-Refill') || req.issuedTo.includes('SYSTEM'));

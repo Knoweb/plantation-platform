@@ -15,7 +15,7 @@ import {
 export default function CropBook() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role;
-    const isManagerOrChief = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK' || userRole === 'CHIEF_CLERK';
+    const isManagerOrChief = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK' || userRole === 'CHIEF_CLERK' || userRole === 'ESTATE_ADMIN';
     const isChiefClerk = userRole === 'CHIEF_CLERK';
 
     const [activeCrop, setActiveCrop] = useState('Tea');

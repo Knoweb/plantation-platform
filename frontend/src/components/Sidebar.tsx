@@ -39,7 +39,7 @@ import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER', 'CHIEF_CLERK'] },
-    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['MANAGER'] }, // Shared with Mgr
+    { text: 'General Stock', icon: <InventoryIcon />, path: '/dashboard/stock', roles: ['MANAGER', 'ESTATE_ADMIN'] }, // Shared with Mgr
 
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
@@ -56,8 +56,8 @@ const menuItems = [
     // { text: 'Muster Approval', icon: <DoneAllIcon />, path: '/dashboard/muster-approval', roles: ['FIELD_OFFICER'] }, // Removed as per request (Manager Only)
     // Muster Review removed for Field Officer
 
-    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER'] },
-    { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER'] },
+    { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book-fo', roles: ['FIELD_OFFICER', 'ESTATE_ADMIN'] },
+    { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/cost-analysis', roles: ['FIELD_OFFICER', 'ESTATE_ADMIN'] },
     { text: 'Correspondence', icon: <ChatIcon />, path: '/dashboard/correspondence', roles: ['FIELD_OFFICER', 'MANAGER', 'STORE_KEEPER', 'ESTATE_ADMIN', 'CHIEF_CLERK'] },
 
     // Chief Clerk Specific Tabs
