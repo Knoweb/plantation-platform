@@ -193,22 +193,24 @@ function DailyEntryTab() {
                 };
             });
 
-            setAttendanceData(enriched);
+            if (!isEditModeRef.current) {
+                setAttendanceData(enriched);
 
-            const activeDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId).filter((id: any) => id && id !== 'UNKNOWN')));
-            const activeDivs = activeDivIds.map(id => ({
-                divisionId: id,
-                name: divNameMap.get(id) || id
-            })).sort((a, b) => a.name.localeCompare(b.name));
-            
-            setDivisions(activeDivs);
+                const activeDivIds = Array.from(new Set(enriched.map((i: any) => i.divisionId).filter((id: any) => id && id !== 'UNKNOWN')));
+                const activeDivs = activeDivIds.map(id => ({
+                    divisionId: id,
+                    name: divNameMap.get(id) || id
+                })).sort((a, b) => a.name.localeCompare(b.name));
+                
+                setDivisions(activeDivs);
 
-            setSelectedDivision(prev => {
-                if (activeDivs.length > 0 && (prev === '' || prev === 'ALL' || !activeDivs.find(d => d.divisionId === prev))) {
-                    return activeDivs[0].divisionId;
-                }
-                return prev;
-            });
+                setSelectedDivision(prev => {
+                    if (activeDivs.length > 0 && (prev === '' || prev === 'ALL' || !activeDivs.find(d => d.divisionId === prev))) {
+                        return activeDivs[0].divisionId;
+                    }
+                    return prev;
+                });
+            }
 
         } catch (e) {
             console.error("Failed", e);
