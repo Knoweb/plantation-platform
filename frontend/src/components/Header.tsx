@@ -29,7 +29,8 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
 
     // Load user info
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const userName = userSession.username || 'Guest User';
+    const userDisplayName = userSession.fullName || userSession.username || 'Guest User';
+    const userEmail = userSession.username || '';
     const userRole = userSession.role || 'Visitor';
 
     const getDashboardTitle = (role: string) => {
@@ -136,17 +137,29 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         ml={1}
                         display="flex"
                         alignItems="center"
-                        gap={1}
-                        sx={{ cursor: 'pointer' }}
+                        gap={1.5}
+                        sx={{ 
+                            cursor: 'pointer',
+                            p: 0.5,
+                            px: 1,
+                            borderRadius: '12px',
+                            transition: 'all 0.2s',
+                            '&:hover': { bgcolor: 'rgba(0,0,0,0.04)' }
+                        }}
                         onClick={handleMenu}
                     >
-                        <Avatar sx={{ width: 32, height: 32, bgcolor: 'secondary.main' }}>
-                            {userName.charAt(0).toUpperCase()}
+                        <Avatar sx={{ width: 32, height: 32, bgcolor: '#2e7d32', fontSize: '0.9rem', fontWeight: 'bold', boxShadow: '0 2px 8px rgba(46, 125, 50, 0.2)' }}>
+                            {userDisplayName.charAt(0).toUpperCase()}
                         </Avatar>
                         <Box sx={{ display: { xs: 'none', sm: 'block' } }}>
-                            <Typography variant="subtitle2" color="text.primary" lineHeight={1}>
-                                {userName}
+                            <Typography variant="subtitle2" color="text.primary" fontWeight="700" lineHeight={1.1}>
+                                {userDisplayName}
                             </Typography>
+                            {userEmail && (
+                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
+                                    {userEmail}
+                                </Typography>
+                            )}
                         </Box>
                     </Box>
 
@@ -154,7 +167,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         id="menu-appbar"
                         anchorEl={anchorEl}
                         anchorOrigin={{
-                            vertical: 'top',
+                            vertical: 'bottom',
                             horizontal: 'right',
                         }}
                         keepMounted
@@ -164,9 +177,27 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         }}
                         open={Boolean(anchorEl)}
                         onClose={handleClose}
+                        PaperProps={{
+                            elevation: 3,
+                            sx: {
+                                mt: 1,
+                                minWidth: 200,
+                                borderRadius: 2,
+                                border: '1px solid #eee'
+                            }
+                        }}
                     >
-                        <MenuItem onClick={handleClose}>Profile</MenuItem>
-                        <MenuItem onClick={handleLogout}>Logout</MenuItem>
+                        <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f0f0f0', mb: 1 }}>
+                            <Typography variant="subtitle2" fontWeight="800" color="primary">Account</Typography>
+                            <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mt: 0.5 }}>
+                                Logged in as: <strong>{userRole.replace('_', ' ')}</strong>
+                            </Typography>
+                        </Box>
+                        <MenuItem onClick={() => { handleClose(); navigate('/profile'); }}>View Profile</MenuItem>
+                        <Divider sx={{ my: 1 }} />
+                        <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                            Logout
+                        </MenuItem>
                     </Menu>
                 </Box>
             </Toolbar>
