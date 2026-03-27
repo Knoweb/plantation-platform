@@ -1,17 +1,5 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer } from '@mui/material';
-import InventoryIcon from '@mui/icons-material/Inventory';
-import WarningIcon from '@mui/icons-material/Warning';
-
-import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
-import AddIcon from '@mui/icons-material/Add';
-import SearchIcon from '@mui/icons-material/Search';
-
-import AddAlertIcon from '@mui/icons-material/AddAlert';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
-import SpaIcon from '@mui/icons-material/Spa';
-import { IconButton } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer, Tooltip } from '@mui/material';
+import { useState, useEffect, useCallback } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -101,56 +89,8 @@ export default function StoreKeeperDashboard() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
-    useEffect(() => {
-        if (tenantId) {
-            fetchInventory();
-            // Fetch Divisions for dropdown
-            axios.get(`/api/divisions?tenantId=${tenantId}`)
-                .then(res => setDivisions(res.data))
-                .catch(err => console.error("Failed to load divisions", err));
-        }
-    }, [tenantId]);
-
-    // WebSocket for Real-time Inventory Updates
-    useEffect(() => {
-        if (!tenantId) return;
-
-        let socket: WebSocket | null = null;
-        let reconnectTimer: any = null;
-
-        const connect = () => {
-            socket = new WebSocket(buildSocketUrl('/ws/inventory'));
-
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
-                        fetchInventory();
-                    }
-                } catch (e) {
-                    console.error("Failed to parse inventory socket message", e);
-                }
-            };
-
-            socket.onclose = () => {
-                reconnectTimer = setTimeout(connect, 3000);
-            };
-        };
-
-        connect();
-
-        return () => {
-            if (socket) {
-                socket.onclose = null;
-                socket.close();
-            }
-            if (reconnectTimer) clearTimeout(reconnectTimer);
-        };
-    }, [tenantId]);
-
-    const fetchInventory = async () => {
+    const fetchInventory = useCallback(async () => {
         try {
-            // Connect to Gateway -> Inventory Service (Fetch Items and Transactions)
             const [itemsRes, transRes] = await Promise.all([
                 axios.get(`/api/inventory?tenantId=${tenantId}`),
                 axios.get(`/api/inventory/transactions?tenantId=${tenantId}`)
@@ -158,7 +98,6 @@ export default function StoreKeeperDashboard() {
 
             setItems(itemsRes.data);
 
-            // Identify items with PENDING restock requests
             const pending = new Map<number, number>();
             transRes.data.forEach((t: any) => {
                 if (t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING') {
@@ -179,7 +118,6 @@ export default function StoreKeeperDashboard() {
             );
             setChiefClerkPending(ccPending);
 
-            // Fetch unread messages
             try {
                 const uId = userSession.userId || userSession.id;
                 const msgRes = await axios.get(`/api/messages?userId=${uId}&userRole=STORE_KEEPER`, {
@@ -190,11 +128,53 @@ export default function StoreKeeperDashboard() {
 
             setLoading(false);
         } catch (err) {
-            console.error("Failed to fetch inventory. Ensure Inventory Service is running.");
-            setError("Could not load inventory data. Please check connection.");
+            console.error("Failed to fetch inventory.");
+            setError("Could not load inventory data.");
             setLoading(false);
         }
-    };
+    }, [tenantId, userSession]);
+
+    useEffect(() => {
+        if (tenantId) {
+            fetchInventory();
+            axios.get(`/api/divisions?tenantId=${tenantId}`)
+                .then(res => setDivisions(res.data))
+                .catch(err => console.error("Failed to load divisions", err));
+        }
+    }, [tenantId, fetchInventory]);
+
+    useEffect(() => {
+        if (!tenantId) return;
+        let socket: WebSocket | null = null;
+        let reconnectTimer: any = null;
+
+        const connect = () => {
+            socket = new WebSocket(buildSocketUrl('/ws/inventory'));
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
+                        fetchInventory();
+                    }
+                } catch (e) {
+                    console.error("Failed to parse inventory socket message", e);
+                }
+            };
+            socket.onclose = () => {
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+            }
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
+    }, [tenantId, fetchInventory]);
 
     const handleRestockRequest = (item: any) => {
         setSelectedItem(item.id);
@@ -592,7 +572,8 @@ export default function StoreKeeperDashboard() {
                                             <TableHead>
                                                 <TableRow>
                                                     <TableCell><strong>Item</strong></TableCell>
-                                                    <TableCell><strong>Quantity</strong></TableCell>
+                                                    <TableCell><strong>Requested</strong></TableCell>
+                                                    <TableCell align="right"><strong>Stock Available</strong></TableCell>
                                                     <TableCell><strong>Division</strong></TableCell>
                                                     <TableCell><strong>Requested By</strong></TableCell>
                                                     <TableCell><strong>Manager Remarks</strong></TableCell>
@@ -600,25 +581,39 @@ export default function StoreKeeperDashboard() {
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {approvedOrders.map((order) => (
-                                                    <TableRow key={order.id}>
-                                                        <TableCell>{order.itemName}</TableCell>
-                                                        <TableCell sx={{ fontWeight: 'bold' }}>{order.quantity}</TableCell>
-                                                        <TableCell>{order.divisionName || '-'}</TableCell>
-                                                        <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
-                                                        <TableCell>{order.managerRemarks || '-'}</TableCell>
-                                                        <TableCell align="center">
-                                                            <Button
-                                                                variant="contained"
-                                                                color="success"
-                                                                size="small"
-                                                                onClick={() => handleIssueOrder(order.id)}
-                                                            >
-                                                                Issue Stock
-                                                            </Button>
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
+                                                {approvedOrders.map((order) => {
+                                                    const item = items.find(i => i.id === order.itemId);
+                                                    const isShortfall = item && item.currentQuantity < order.quantity;
+                                                    return (
+                                                        <TableRow key={order.id} sx={isShortfall ? { bgcolor: '#fff5f5' } : {}}>
+                                                            <TableCell>{order.itemName}</TableCell>
+                                                            <TableCell sx={{ fontWeight: 'bold', color: isShortfall ? 'error.main' : 'inherit' }}>
+                                                                {order.quantity}
+                                                                {isShortfall && (
+                                                                    <Chip label="Shortfall" size="small" color="error" sx={{ ml: 1, height: 18, fontSize: '10px' }} />
+                                                                )}
+                                                            </TableCell>
+                                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                                                <Typography variant="body2" sx={{ color: isShortfall ? 'error.main' : 'success.main', fontWeight: 'bold' }}>
+                                                                    {item ? `${item.currentQuantity} ${item.unit}` : 'N/A'}
+                                                                </Typography>
+                                                            </TableCell>
+                                                            <TableCell>{order.divisionName || '-'}</TableCell>
+                                                            <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
+                                                            <TableCell>{order.managerRemarks || '-'}</TableCell>
+                                                            <TableCell align="center">
+                                                                <Button
+                                                                    variant={isShortfall ? "outlined" : "contained"}
+                                                                    color={isShortfall ? "error" : "success"}
+                                                                    size="small"
+                                                                    onClick={() => handleIssueOrder(order.id)}
+                                                                >
+                                                                    {isShortfall ? "Force Issue" : "Issue Stock"}
+                                                                </Button>
+                                                            </TableCell>
+                                                        </TableRow>
+                                                    );
+                                                })}
                                             </TableBody>
                                         </Table>
                                     </TableContainer>
