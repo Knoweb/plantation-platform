@@ -20,20 +20,23 @@ import {
     DialogTitle,
     DialogContent,
     DialogContentText,
-    DialogActions
+    DialogActions,
+    CircularProgress,
+    Alert
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
-import AccessTimeIcon from '@mui/icons-material/AccessTime'; // Pending icon
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import PersonIcon from '@mui/icons-material/Person';
 import axios from 'axios';
 
 export default function LeaveApplication() {
-    // Current User Mock
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const userId = userSession.userId || userSession.id;
+    const tenantId = userSession.tenantId;
     const userName = userSession.fullName || userSession.username || 'Staff Member';
     const designation = userSession.role === 'FIELD_OFFICER' ? 'Field Officer' : 'Staff';
-    const appointmentDate = '2020-05-15'; // Mock
+    const appointmentDate = userSession.appointmentDate || '—';
 
     // Form State
     const [leaveType, setLeaveType] = useState('Annual');
@@ -46,83 +49,74 @@ export default function LeaveApplication() {
     const [actingPerson, setActingPerson] = useState('NONE');
     const [actingOfficers, setActingOfficers] = useState<any[]>([]);
 
+    // Loading / error
+    const [loadingBalances, setLoadingBalances] = useState(true);
+    const [submitLoading, setSubmitLoading] = useState(false);
+    const [balanceError, setBalanceError] = useState('');
+
+    // Leave Balance State — ALL from backend
+    const [quota, setQuota] = useState({ dutyLeave: 0, annualLeave: 0, casualLeave: 0 });
+    const [taken, setTaken] = useState({ dutyLeave: 0, annualLeave: 0, casualLeave: 0 });
+
+    // Past applications for this user
+    const [myApplications, setMyApplications] = useState<any[]>([]);
+
+    // Dialog
+    const [openSuccess, setOpenSuccess] = useState(false);
+
+    // ─── Fetch quota + taken days from backend ───────────────────────────────
+    const fetchBalances = async () => {
+        if (!userId) return;
+        setLoadingBalances(true);
+        setBalanceError('');
+        try {
+            const [quotaRes, takenRes, appsRes] = await Promise.all([
+                axios.get(`/api/operations/leaves/users/${userId}/quota`),
+                axios.get(`/api/operations/leaves/users/${userId}/taken`),
+                axios.get(`/api/operations/leaves/users/${userId}/applications`)
+            ]);
+            setQuota(quotaRes.data);
+            setTaken(takenRes.data);
+            setMyApplications(appsRes.data || []);
+        } catch (err) {
+            console.error('Failed to fetch leave balances', err);
+            setBalanceError('Could not load leave balance. Please try refreshing.');
+        } finally {
+            setLoadingBalances(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchBalances();
+    }, [userId]);
+
+    // ─── Fetch acting officers ───────────────────────────────────────────────
     useEffect(() => {
         const fetchOfficers = async () => {
-            if (!userSession.tenantId) return;
+            if (!tenantId) return;
             try {
-                const res = await axios.get(`/api/tenants/${userSession.tenantId}/users`);
+                const res = await axios.get(`/api/tenants/${tenantId}/users`);
                 const officers = res.data
                     .filter((u: any) =>
                         (u.role === 'FIELD_OFFICER' || u.role === 'ASST_FIELD_OFFICER') &&
-                        u.userId !== userSession.userId
+                        u.userId !== userId
                     )
-                    .map((u: any) => ({
-                        id: u.userId,
-                        name: u.fullName || u.username
-                    }));
+                    .map((u: any) => ({ id: u.userId, name: u.fullName || u.username }));
                 setActingOfficers(officers);
             } catch (err) {
-                console.error("Failed to fetch officers", err);
+                console.error('Failed to fetch officers', err);
             }
         };
         fetchOfficers();
-    }, [userSession.tenantId, userSession.userId]);
+    }, [tenantId, userId]);
 
-    // Mock Data for Leave Balances
-    const [balances, setBalances] = useState({
-        Duty: { available: 5, taken: 1, pending: 0 },
-        Annual: { available: 14, taken: 4, pending: 0 },
-        Casual: { available: 7, taken: 2, pending: 0 }
-    });
-
-    // Fetch quotas set by Manager
-    useEffect(() => {
-        // Use userSession.userId if available, fallback to 'FO' for dev
-        const userId = userSession.userId || 'FO';
-        const storedQuotas = localStorage.getItem(`leave_quota_${userId}`);
-
-        const fetchQuota = async () => {
-            try {
-                const response = await axios.get(`/api/operations/leaves/users/${userId}/quota`);
-                if (response.data) {
-                    setBalances(prev => ({
-                        ...prev,
-                        Duty: { ...prev.Duty, available: response.data.dutyLeave },
-                        Annual: { ...prev.Annual, available: response.data.annualLeave },
-                        Casual: { ...prev.Casual, available: response.data.casualLeave }
-                    }));
-                }
-            } catch (error) {
-                console.error("Failed to fetch quota", error);
-            }
-        };
-
-        if (storedQuotas) {
-            const parsed = JSON.parse(storedQuotas);
-            setBalances(prev => ({
-                ...prev,
-                Duty: { ...prev.Duty, available: parsed.duty },
-                Annual: { ...prev.Annual, available: parsed.annual },
-                Casual: { ...prev.Casual, available: parsed.casual }
-            }));
-        } else {
-            fetchQuota();
-        }
-    }, [userSession.userId]);
-
-    // Mock Pending Requests
-    const pendingRequests: any[] = [
-        // { date: '2024-06-20', acting: true, manager: false, reason: 'Personal' }
-    ];
-
-    // Calculate Days
+    // ─── Auto-calculate days ─────────────────────────────────────────────────
     useEffect(() => {
         if (fromDate && toDate) {
             const start = new Date(fromDate);
             const end = new Date(toDate);
             if (!isNaN(start.getTime()) && !isNaN(end.getTime()) && end >= start) {
-                const diffTime = Math.abs(end.getTime() - start.getTime());
-                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 setDaysApplying(diffDays);
             } else {
                 setDaysApplying(0);
@@ -132,17 +126,54 @@ export default function LeaveApplication() {
         }
     }, [fromDate, toDate]);
 
-    const [openSuccess, setOpenSuccess] = useState(false);
+    // ─── Helpers ─────────────────────────────────────────────────────────────
+    const getAvailable = (type: 'Duty' | 'Annual' | 'Casual') => {
+        if (type === 'Duty') return quota.dutyLeave;
+        if (type === 'Annual') return quota.annualLeave;
+        return quota.casualLeave;
+    };
+    const getTaken = (type: 'Duty' | 'Annual' | 'Casual') => {
+        if (type === 'Duty') return taken.dutyLeave;
+        if (type === 'Annual') return taken.annualLeave;
+        return taken.casualLeave;
+    };
+    const getApplying = (type: 'Duty' | 'Annual' | 'Casual') =>
+        leaveType === type ? daysApplying : 0;
+    const getBalance = (type: 'Duty' | 'Annual' | 'Casual') =>
+        getAvailable(type) - getTaken(type) - getApplying(type);
 
-    // Handle Submit
-    const handleSubmit = () => {
-        // Here you would typically send data to backend
-        setOpenSuccess(true);
+    // ─── Submit application to backend ───────────────────────────────────────
+    const handleSubmit = async () => {
+        if (!fromDate || !toDate || daysApplying <= 0) {
+            alert('Please fill in all required date fields.');
+            return;
+        }
+        setSubmitLoading(true);
+        try {
+            await axios.post('/api/operations/leaves/applications', {
+                tenantId,
+                userId,
+                userName,
+                leaveType,
+                fromDate,
+                toDate,
+                daysApplied: daysApplying,
+                reason,
+                address,
+                contactNo,
+                actingPersonId: actingPerson !== 'NONE' ? actingPerson : null,
+            });
+            setOpenSuccess(true);
+            fetchBalances(); // Refresh balance sheet immediately
+        } catch (err: any) {
+            alert('Failed to submit leave application: ' + (err.response?.data || err.message));
+        } finally {
+            setSubmitLoading(false);
+        }
     };
 
     const handleCloseSuccess = () => {
         setOpenSuccess(false);
-        // Reset form logic if desired
         setReason('');
         setFromDate('');
         setToDate('');
@@ -150,9 +181,10 @@ export default function LeaveApplication() {
         setActingPerson('NONE');
     };
 
+    const pendingApps = myApplications.filter(a => a.status === 'PENDING');
+
     return (
         <Box>
-            {/* Standard Header */}
             <Box sx={{ px: { xs: 1.5, sm: 3 }, py: { xs: 1.5, sm: 2 } }}>
                 <Typography variant="h4" fontWeight="bold" color="primary.dark" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
                     Leave Application
@@ -160,47 +192,24 @@ export default function LeaveApplication() {
             </Box>
 
             <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-
                 <Grid container spacing={4}>
-                    {/* LEFT PANEL: Balances & Status */}
+                    {/* ── LEFT PANEL: Balance Sheet ─────────────────────── */}
                     <Grid size={{ xs: 12, md: 4 }}>
                         <Paper elevation={3} sx={{ p: { xs: 1.5, sm: 2 }, borderRadius: 2, bgcolor: '#f1f8e9' }}>
 
-                            {/* Role Tabs - Dynamic based on actual officers */}
+                            {/* Role Tabs */}
                             <Box display="flex" mb={2} borderBottom="1px solid #c5e1a5" sx={{ overflowX: 'auto' }}>
-                                <Box
-                                    sx={{
-                                        px: 2, py: 1,
-                                        bgcolor: '#2e7d32',
-                                        color: 'white',
-                                        cursor: 'default',
-                                        fontWeight: 'bold',
-                                        fontSize: '0.85rem',
-                                        whiteSpace: 'nowrap'
-                                    }}
-                                >
+                                <Box sx={{ px: 2, py: 1, bgcolor: '#2e7d32', color: 'white', fontWeight: 'bold', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                                     FO
                                 </Box>
                                 {actingOfficers.map((officer, index) => (
-                                    <Box
-                                        key={officer.id}
-                                        title={officer.name}
-                                        sx={{
-                                            px: 2, py: 1,
-                                            bgcolor: 'transparent',
-                                            color: 'text.secondary',
-                                            cursor: 'default',
-                                            fontWeight: 'bold',
-                                            fontSize: '0.85rem',
-                                            whiteSpace: 'nowrap'
-                                        }}
-                                    >
+                                    <Box key={officer.id} title={officer.name} sx={{ px: 2, py: 1, color: 'text.secondary', fontWeight: 'bold', fontSize: '0.85rem', whiteSpace: 'nowrap' }}>
                                         AFO {index + 1}
                                     </Box>
                                 ))}
                             </Box>
 
-                            {/* Officer Info Card */}
+                            {/* Officer Info */}
                             <Box display="flex" alignItems="center" gap={2} mb={3} p={1} bgcolor="white" borderRadius={2} border="1px solid #e0e0e0">
                                 <Avatar sx={{ bgcolor: '#2e7d32' }}><PersonIcon /></Avatar>
                                 <Box>
@@ -211,82 +220,87 @@ export default function LeaveApplication() {
 
                             {/* Leave Balance Table */}
                             <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Leave Balance</Typography>
-                            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #c5e1a5', mb: 3, overflowX: 'auto' }}>
-                                <Table size="small" sx={{ minWidth: 300 }}>
-                                    <TableHead>
-                                        <TableRow sx={{ bgcolor: '#dcedc8' }}>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Metric</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>Duty</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>Annual</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold' }}>Casual</TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        <TableRow>
-                                            <TableCell component="th" scope="row">Available</TableCell>
-                                            <TableCell align="center">{balances.Duty.available}</TableCell>
-                                            <TableCell align="center">{balances.Annual.available}</TableCell>
-                                            <TableCell align="center">{balances.Casual.available}</TableCell>
-                                        </TableRow>
-                                        <TableRow sx={{ bgcolor: '#f9fbe7' }}>
-                                            <TableCell component="th" scope="row">Apply</TableCell>
-                                            <TableCell align="center">{leaveType === 'Duty' ? daysApplying : 0}</TableCell>
-                                            <TableCell align="center">{leaveType === 'Annual' ? daysApplying : 0}</TableCell>
-                                            <TableCell align="center">{leaveType === 'Casual' ? daysApplying : 0}</TableCell>
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell component="th" scope="row">Previous</TableCell>
-                                            <TableCell align="center">{balances.Duty.taken}</TableCell>
-                                            <TableCell align="center">{balances.Annual.taken}</TableCell>
-                                            <TableCell align="center">{balances.Casual.taken}</TableCell>
-                                        </TableRow>
-                                        <TableRow sx={{ bgcolor: '#fff3e0' }}>
-                                            <TableCell component="th" scope="row">To Date</TableCell>
-                                            <TableCell align="center">{balances.Duty.taken + (leaveType === 'Duty' ? daysApplying : 0)}</TableCell>
-                                            <TableCell align="center">{balances.Annual.taken + (leaveType === 'Annual' ? daysApplying : 0)}</TableCell>
-                                            <TableCell align="center">{balances.Casual.taken + (leaveType === 'Casual' ? daysApplying : 0)}</TableCell>
-                                        </TableRow>
-                                        <TableRow sx={{ borderTop: '2px solid #aed581' }}>
-                                            <TableCell component="th" scope="row" sx={{ fontWeight: 'bold' }}>Balance</TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
-                                                {balances.Duty.available - balances.Duty.taken - (leaveType === 'Duty' ? daysApplying : 0)}
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
-                                                {balances.Annual.available - balances.Annual.taken - (leaveType === 'Annual' ? daysApplying : 0)}
-                                            </TableCell>
-                                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>
-                                                {balances.Casual.available - balances.Casual.taken - (leaveType === 'Casual' ? daysApplying : 0)}
-                                            </TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
 
-                                    {/* Pending Leave Tracker - Only visible if there are requests */}
-                                    {pendingRequests.length > 0 && (
-                                        <>
-                                            <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Pending Leave Status:</Typography>
-                                            <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee', overflowX: 'auto' }}>
-                                                <Table size="small" sx={{ minWidth: 400 }}>
+                            {balanceError && (
+                                <Alert severity="error" sx={{ mb: 2, fontSize: '0.8rem' }}>{balanceError}</Alert>
+                            )}
+
+                            {loadingBalances ? (
+                                <Box display="flex" justifyContent="center" py={4}>
+                                    <CircularProgress size={28} color="success" />
+                                </Box>
+                            ) : (
+                                <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #c5e1a5', mb: 3, overflowX: 'auto' }}>
+                                    <Table size="small" sx={{ minWidth: 300 }}>
+                                        <TableHead>
+                                            <TableRow sx={{ bgcolor: '#dcedc8' }}>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>Metric</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Duty</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Annual</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Casual</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            <TableRow>
+                                                <TableCell component="th" scope="row">Available</TableCell>
+                                                <TableCell align="center">{getAvailable('Duty')}</TableCell>
+                                                <TableCell align="center">{getAvailable('Annual')}</TableCell>
+                                                <TableCell align="center">{getAvailable('Casual')}</TableCell>
+                                            </TableRow>
+                                            <TableRow sx={{ bgcolor: '#f9fbe7' }}>
+                                                <TableCell component="th" scope="row">Apply</TableCell>
+                                                <TableCell align="center">{getApplying('Duty')}</TableCell>
+                                                <TableCell align="center">{getApplying('Annual')}</TableCell>
+                                                <TableCell align="center">{getApplying('Casual')}</TableCell>
+                                            </TableRow>
+                                            <TableRow>
+                                                <TableCell component="th" scope="row">Previous</TableCell>
+                                                <TableCell align="center">{getTaken('Duty')}</TableCell>
+                                                <TableCell align="center">{getTaken('Annual')}</TableCell>
+                                                <TableCell align="center">{getTaken('Casual')}</TableCell>
+                                            </TableRow>
+                                            <TableRow sx={{ bgcolor: '#fff3e0' }}>
+                                                <TableCell component="th" scope="row">To Date</TableCell>
+                                                <TableCell align="center">{getTaken('Duty') + getApplying('Duty')}</TableCell>
+                                                <TableCell align="center">{getTaken('Annual') + getApplying('Annual')}</TableCell>
+                                                <TableCell align="center">{getTaken('Casual') + getApplying('Casual')}</TableCell>
+                                            </TableRow>
+                                            <TableRow sx={{ borderTop: '2px solid #aed581' }}>
+                                                <TableCell component="th" scope="row" sx={{ fontWeight: 'bold' }}>Balance</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold', color: getBalance('Duty') < 0 ? 'error.main' : '#1b5e20' }}>{getBalance('Duty')}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold', color: getBalance('Annual') < 0 ? 'error.main' : '#1b5e20' }}>{getBalance('Annual')}</TableCell>
+                                                <TableCell align="center" sx={{ fontWeight: 'bold', color: getBalance('Casual') < 0 ? 'error.main' : '#1b5e20' }}>{getBalance('Casual')}</TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            )}
+
+                            {/* Pending Leave Tracker */}
+                            {pendingApps.length > 0 && (
+                                <>
+                                    <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Pending Leave Status:</Typography>
+                                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee', overflowX: 'auto' }}>
+                                        <Table size="small" sx={{ minWidth: 300 }}>
                                             <TableHead sx={{ bgcolor: '#eeeeee' }}>
                                                 <TableRow>
-                                                    <TableCell>Date</TableCell>
-                                                    <TableCell align="center">Acting</TableCell>
-                                                    <TableCell align="center">Manager</TableCell>
-                                                    <TableCell>Reason</TableCell>
+                                                    <TableCell>Type</TableCell>
+                                                    <TableCell>From</TableCell>
+                                                    <TableCell align="center">Days</TableCell>
+                                                    <TableCell align="center">Status</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
-                                                {pendingRequests.map((req, idx) => (
-                                                    <TableRow key={idx}>
-                                                        <TableCell sx={{ fontSize: '0.8rem' }}>{req.date}</TableCell>
+                                                {pendingApps.map((app) => (
+                                                    <TableRow key={app.id}>
+                                                        <TableCell sx={{ fontSize: '0.8rem' }}>{app.leaveType}</TableCell>
+                                                        <TableCell sx={{ fontSize: '0.8rem' }}>{app.fromDate}</TableCell>
+                                                        <TableCell align="center" sx={{ fontSize: '0.8rem' }}>{app.daysApplied}</TableCell>
                                                         <TableCell align="center">
-                                                            {req.acting ? <CheckCircleIcon color="success" fontSize="small" /> : <AccessTimeIcon color="warning" fontSize="small" />}
+                                                            {app.status === 'PENDING' && <Chip label="Pending" color="warning" size="small" icon={<AccessTimeIcon />} />}
+                                                            {app.status === 'APPROVED' && <Chip label="Approved" color="success" size="small" icon={<CheckCircleIcon />} />}
+                                                            {app.status === 'REJECTED' && <Chip label="Rejected" color="error" size="small" icon={<CancelIcon />} />}
                                                         </TableCell>
-                                                        <TableCell align="center">
-                                                            {req.manager ? <CheckCircleIcon color="success" fontSize="small" /> : <CancelIcon color="error" fontSize="small" />}
-                                                        </TableCell>
-                                                        <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>{req.reason}</TableCell>
                                                     </TableRow>
                                                 ))}
                                             </TableBody>
@@ -297,11 +311,10 @@ export default function LeaveApplication() {
                         </Paper>
                     </Grid>
 
-                    {/* RIGHT PANEL: Application Form */}
+                    {/* ── RIGHT PANEL: Application Form ─────────────────── */}
                     <Grid size={{ xs: 12, md: 8 }}>
                         <Paper elevation={3} sx={{ p: { xs: 2, sm: 3, md: 4 }, borderRadius: 2 }}>
                             <Grid container spacing={3}>
-                                {/* Static Info */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField fullWidth label="Name" value={userName} disabled variant="filled" size="small" />
                                 </Grid>
@@ -313,15 +326,13 @@ export default function LeaveApplication() {
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField
-                                        fullWidth
-                                        label="No of Days Applying"
-                                        type="text"
+                                        fullWidth label="No of Days Applying" type="text"
                                         value={daysApplying}
                                         onChange={(e) => {
                                             const val = Number(e.target.value.replace(/[^0-9]/g, ''));
                                             setDaysApplying(val);
                                         }}
-                                        InputProps={{ inputProps: { min: 0, inputMode: 'numeric', pattern: '[0-9]*' } }}
+                                        InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }}
                                         sx={{ '& input': { fontWeight: 'bold', color: '#1b5e20' } }}
                                         size="small"
                                     />
@@ -331,24 +342,16 @@ export default function LeaveApplication() {
                                     <Divider sx={{ my: 1, borderColor: '#c5e1a5' }} />
                                 </Grid>
 
-                                {/* Dates */}
                                 <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField
-                                        fullWidth type="date" label="From" InputLabelProps={{ shrink: true }}
-                                        value={fromDate} onChange={(e) => setFromDate(e.target.value)} size="small"
-                                    />
+                                    <TextField fullWidth type="date" label="From" InputLabelProps={{ shrink: true }}
+                                        value={fromDate} onChange={(e) => setFromDate(e.target.value)} size="small" />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField
-                                        fullWidth type="date" label="To" InputLabelProps={{ shrink: true }}
-                                        value={toDate} onChange={(e) => setToDate(e.target.value)} size="small"
-                                    />
+                                    <TextField fullWidth type="date" label="To" InputLabelProps={{ shrink: true }}
+                                        value={toDate} onChange={(e) => setToDate(e.target.value)} size="small" />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField
-                                        select fullWidth label="Leave Type"
-                                        value={leaveType} onChange={(e) => setLeaveType(e.target.value)} size="small"
-                                    >
+                                    <TextField select fullWidth label="Leave Type" value={leaveType} onChange={(e) => setLeaveType(e.target.value)} size="small">
                                         <MenuItem value="Annual">Annual</MenuItem>
                                         <MenuItem value="Casual">Casual</MenuItem>
                                         <MenuItem value="Duty">Duty</MenuItem>
@@ -356,43 +359,25 @@ export default function LeaveApplication() {
                                     </TextField>
                                 </Grid>
 
-                                {/* Reason */}
                                 <Grid size={{ xs: 12 }}>
-                                    <TextField
-                                        fullWidth label="Reason For Leave" multiline rows={2}
-                                        value={reason} onChange={(e) => setReason(e.target.value)}
-                                    />
+                                    <TextField fullWidth label="Reason For Leave" multiline rows={2}
+                                        value={reason} onChange={(e) => setReason(e.target.value)} />
                                 </Grid>
-
-                                {/* Address & Contact */}
                                 <Grid size={{ xs: 12 }}>
-                                    <TextField
-                                        fullWidth label="Address While on Leave"
-                                        value={address} onChange={(e) => setAddress(e.target.value)}
-                                    />
+                                    <TextField fullWidth label="Address While on Leave"
+                                        value={address} onChange={(e) => setAddress(e.target.value)} />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth label="Additional Contact No"
-                                        value={contactNo} onChange={(e) => setContactNo(e.target.value)}
-                                    />
+                                    <TextField fullWidth label="Additional Contact No"
+                                        value={contactNo} onChange={(e) => setContactNo(e.target.value)} />
                                 </Grid>
-
-                                {/* Acting Arrangement */}
                                 <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        select fullWidth label="Acting Arrangement (Who covers?)"
-                                        value={actingPerson} onChange={(e) => setActingPerson(e.target.value)}
-                                        size="small"
-                                    >
-                                        <MenuItem value="NONE">
-                                            <em>None</em>
-                                        </MenuItem>
+                                    <TextField select fullWidth label="Acting Arrangement (Who covers?)"
+                                        value={actingPerson} onChange={(e) => setActingPerson(e.target.value)} size="small">
+                                        <MenuItem value="NONE"><em>None</em></MenuItem>
                                         {actingOfficers.length > 0 ? (
                                             actingOfficers.map((officer) => (
-                                                <MenuItem key={officer.id} value={officer.id}>
-                                                    {officer.name}
-                                                </MenuItem>
+                                                <MenuItem key={officer.id} value={officer.id}>{officer.name}</MenuItem>
                                             ))
                                         ) : (
                                             <MenuItem disabled value="">No other officers found</MenuItem>
@@ -400,18 +385,15 @@ export default function LeaveApplication() {
                                     </TextField>
                                 </Grid>
 
-                                {/* Submit Button */}
                                 <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 2 }}>
                                     <Button
-                                        variant="contained"
-                                        size="large"
+                                        variant="contained" size="large"
                                         onClick={handleSubmit}
-                                        sx={{
-                                            bgcolor: '#ffee58', color: 'black', fontWeight: 'bold', px: 4,
-                                            '&:hover': { bgcolor: '#fdd835' }
-                                        }}
+                                        disabled={submitLoading}
+                                        startIcon={submitLoading ? <CircularProgress size={18} color="inherit" /> : undefined}
+                                        sx={{ bgcolor: '#ffee58', color: 'black', fontWeight: 'bold', px: 4, '&:hover': { bgcolor: '#fdd835' } }}
                                     >
-                                        Submit Application
+                                        {submitLoading ? 'Submitting...' : 'Submit Application'}
                                     </Button>
                                 </Grid>
                             </Grid>
@@ -421,12 +403,8 @@ export default function LeaveApplication() {
             </Box>
 
             {/* Success Dialog */}
-            <Dialog
-                open={openSuccess}
-                onClose={handleCloseSuccess}
-                aria-labelledby="success-dialog-title"
-            >
-                <DialogTitle id="success-dialog-title" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Dialog open={openSuccess} onClose={handleCloseSuccess}>
+                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', display: 'flex', alignItems: 'center', gap: 1 }}>
                     <CheckCircleIcon color="success" /> Application Submitted
                 </DialogTitle>
                 <DialogContent sx={{ mt: 2 }}>
@@ -443,6 +421,6 @@ export default function LeaveApplication() {
                     </Button>
                 </DialogActions>
             </Dialog>
-        </Box >
+        </Box>
     );
 }
