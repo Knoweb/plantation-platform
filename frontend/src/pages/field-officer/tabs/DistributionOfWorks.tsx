@@ -26,10 +26,7 @@ const getSessionRank = (session?: string) => {
 
 export default function DistributionOfWorks() {
     const [loading, setLoading] = useState(true);
-    const [currentDate, setCurrentDate] = useState(() => {
-        const saved = localStorage.getItem('distribution_view_date');
-        return saved ? new Date(saved) : new Date();
-    });
+    const [currentDate, setCurrentDate] = useState(new Date());
 
     const [data, setData] = useState<Record<number, Record<string, number>>>({});
     const [totalsByItem, setTotalsByItem] = useState<Record<string, number>>({});
@@ -98,10 +95,16 @@ export default function DistributionOfWorks() {
             const dailyWorkRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
             const submittedDailyWorkIds = new Set<string>();
             (dailyWorkRes.data || []).forEach((work: any) => {
-                const workDate = String(work.workDate || '');
-                if (!workDate.startsWith(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-`)) return;
+                const workDateStr = String(work.workDate || '');
+                if (!workDateStr) return;
 
-                const isSubmitted = Boolean(work.submittedAt) || (typeof work.bulkWeights === 'string' && work.bulkWeights.trim() !== '');
+                // Robust date matching: parse and compare Year/Month
+                const d = new Date(workDateStr);
+                if (d.getFullYear() !== currentYear || d.getMonth() !== currentMonth) return;
+
+                // A work is considered submitted if it has a submission timestamp OR bulk weights are filled
+                const isSubmitted = Boolean(work.submittedAt) || (typeof work.bulkWeights === 'string' && work.bulkWeights.trim() !== '' && work.bulkWeights !== '{}');
+                
                 if (isSubmitted && work.workId) {
                     submittedDailyWorkIds.add(String(work.workId));
                 }
@@ -132,6 +135,7 @@ export default function DistributionOfWorks() {
 
             attendanceRecords.forEach((rec: any) => {
                 if (rec.status !== 'PRESENT' && rec.status !== 'HALF_DAY') return;
+                // Only include attendance items that belong to an officially submitted muster
                 if (!rec.dailyWorkId || !submittedDailyWorkIds.has(String(rec.dailyWorkId))) return;
 
                 const wDateStr = rec.workDate;
@@ -189,7 +193,12 @@ export default function DistributionOfWorks() {
         }
     }, [tenantId, currentYear, currentMonth, daysInMonth]);
 
-    useEffect(() => { fetchData(); }, [fetchData]);
+    useEffect(() => { 
+        fetchData(); 
+        // Manually refresh when a muster is updated (saved/submitted) in the other tab
+        window.addEventListener('muster-update', fetchData);
+        return () => window.removeEventListener('muster-update', fetchData);
+    }, [fetchData]);
 
     useEffect(() => {
         if (!tenantId || !realtimeEnabled) return undefined;
