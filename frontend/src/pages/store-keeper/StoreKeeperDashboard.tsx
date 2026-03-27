@@ -2,6 +2,16 @@ import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, Tab
 import { useState, useEffect, useCallback } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
+import { IconButton } from '@mui/material';
+import InventoryIcon from '@mui/icons-material/Inventory';
+import WarningIcon from '@mui/icons-material/Warning';
+import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
+import AddIcon from '@mui/icons-material/Add';
+import SearchIcon from '@mui/icons-material/Search';
+import AddAlertIcon from '@mui/icons-material/AddAlert';
+import EditIcon from '@mui/icons-material/Edit';
+import DeleteIcon from '@mui/icons-material/Delete';
+import SpaIcon from '@mui/icons-material/Spa';
 import ChatIcon from '@mui/icons-material/Chat';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -19,7 +29,6 @@ export default function StoreKeeperDashboard() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    const [pendingItems, setPendingItems] = useState<Map<number, number>>(new Map());
     const [approvedOrders, setApprovedOrders] = useState<any[]>([]);
     const [chiefClerkPending, setChiefClerkPending] = useState<any[]>([]);
     const [unreadMessages, setUnreadMessages] = useState(0);
@@ -147,27 +156,38 @@ export default function StoreKeeperDashboard() {
         if (!tenantId) return;
         let socket: WebSocket | null = null;
         let reconnectTimer: any = null;
+        let mountTimer: any = null;
 
         const connect = () => {
-            socket = new WebSocket(buildSocketUrl('/ws/inventory'));
-            socket.onmessage = (event) => {
-                try {
-                    const data = JSON.parse(event.data);
-                    if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
-                        fetchInventory();
+            if (socket) return;
+            try {
+                socket = new WebSocket(buildSocketUrl('/ws/inventory'));
+                socket.onmessage = (event) => {
+                    try {
+                        const data = JSON.parse(event.data);
+                        if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
+                            fetchInventory();
+                        }
+                    } catch (e) {
+                        console.error("WS parse error", e);
                     }
-                } catch (e) {
-                    console.error("Failed to parse inventory socket message", e);
-                }
-            };
-            socket.onclose = () => {
-                reconnectTimer = setTimeout(connect, 3000);
-            };
+                };
+                socket.onclose = () => {
+                    socket = null;
+                    reconnectTimer = setTimeout(connect, 3000);
+                };
+                socket.onerror = () => {
+                    if (socket) socket.close();
+                };
+            } catch (err) {
+                console.error("WS fallback", err);
+            }
         };
 
-        connect();
+        mountTimer = setTimeout(connect, 1000);
 
         return () => {
+            if (mountTimer) clearTimeout(mountTimer);
             if (socket) {
                 socket.onclose = null;
                 socket.close();
@@ -208,6 +228,7 @@ export default function StoreKeeperDashboard() {
         setCcApproveQty(String(order.quantity));
         setCcApproveOpen(true);
     };
+
 
     const handleConfirmCcApprove = async () => {
         if (!ccSelectedOrder || !ccApproveQty) return;
@@ -667,12 +688,7 @@ export default function StoreKeeperDashboard() {
                                                                         variant="contained"
                                                                         color="primary"
                                                                         size="small"
-                                                                        onClick={() => {
-                                                                            setCcSelectedOrder(order);
-                                                                            setCcApproveQty(String(order.quantity));
-                                                                            setCcRemarks('');
-                                                                            setCcApproveOpen(true);
-                                                                        }}
+                                                                        onClick={() => handleChiefClerkApproveOpen(order)}
                                                                     >
                                                                         Request Refill
                                                                     </Button>
