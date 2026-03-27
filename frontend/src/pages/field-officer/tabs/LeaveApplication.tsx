@@ -36,7 +36,7 @@ export default function LeaveApplication() {
     const tenantId = userSession.tenantId;
     const userName = userSession.fullName || userSession.username || 'Staff Member';
     const designation = userSession.role === 'FIELD_OFFICER' ? 'Field Officer' : 'Staff';
-    const appointmentDate = userSession.appointmentDate || '—';
+    const applicationDate = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD format (today)
 
     // Form State
     const [leaveType, setLeaveType] = useState('Annual');
@@ -322,7 +322,7 @@ export default function LeaveApplication() {
                                     <TextField fullWidth label="Designation" value={designation} disabled variant="filled" size="small" />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField fullWidth label="Date of Appointment" value={appointmentDate} disabled variant="filled" size="small" />
+                                    <TextField fullWidth label="Application Date" value={applicationDate} disabled variant="filled" size="small" />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField

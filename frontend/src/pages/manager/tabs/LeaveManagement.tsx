@@ -20,7 +20,11 @@ import {
     Chip,
     Avatar,
     CircularProgress,
-    Badge
+    Badge,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions
 } from '@mui/material';
 import EventAvailableIcon from '@mui/icons-material/EventAvailable';
 import PersonIcon from '@mui/icons-material/Person';
@@ -34,44 +38,63 @@ export default function LeaveManagement() {
     const [staffMembers, setStaffMembers] = useState<any[]>([]);
     const [selectedStaff, setSelectedStaff] = useState<string>('');
     const [loading, setLoading] = useState(true);
-    const [quotas, setQuotas] = useState({
-        duty: 5,
-        annual: 14,
-        casual: 7
-    });
-    const [pendingLeaves, setPendingLeaves] = useState<any[]>([]); // Future: Fetch real pending leaves
+    const [quotas, setQuotas] = useState({ duty: 5, annual: 14, casual: 7 });
 
-    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' }>({
-        open: false,
-        message: '',
-        severity: 'success'
+    // Leave Approvals State
+    const [pendingLeaves, setPendingLeaves] = useState<any[]>([]);
+    const [loadingLeaves, setLoadingLeaves] = useState(false);
+    const [rejectDialog, setRejectDialog] = useState<{ open: boolean; appId: string | null; remarks: string }>({
+        open: false, appId: null, remarks: ''
     });
 
-    // 1. Fetch Staff (Field Officers)
+    const [notification, setNotification] = useState<{ open: boolean; message: string; severity: 'success' | 'error' | 'warning' | 'info' }>({
+        open: false, message: '', severity: 'success'
+    });
+
+    const showNotification = (message: string, severity: 'success' | 'error' | 'warning' | 'info' = 'success') => {
+        setNotification({ open: true, message, severity });
+    };
+
+    // ─── Fetch pending leave applications for this tenant ────────────────────
+    const fetchPendingLeaves = async () => {
+        if (!tenantId) return;
+        setLoadingLeaves(true);
+        try {
+            const res = await axios.get(`/api/operations/leaves/tenant/${tenantId}/applications`);
+            const pending = (res.data || []).filter((a: any) => a.status === 'PENDING');
+            setPendingLeaves(pending);
+        } catch (err) {
+            console.error('Failed to fetch leave applications', err);
+        } finally {
+            setLoadingLeaves(false);
+        }
+    };
+
+    // ─── Fetch Field Officers ────────────────────────────────────────────────
     useEffect(() => {
         const fetchStaff = async () => {
             if (!tenantId) return;
             try {
                 const res = await axios.get(`/api/tenants/${tenantId}/users`);
-                // Filter for Field Officers
                 const officers = res.data
                     .filter((u: any) => u.role === 'FIELD_OFFICER' || u.role === 'ASST_FIELD_OFFICER')
                     .map((u: any) => ({
                         id: u.userId,
                         name: u.fullName || u.username,
-                        role: u.role === 'FIELD_OFFICER' ? 'Field Officer' : (u.role === 'ASST_FIELD_OFFICER' ? 'Asst. Field Officer' : u.role)
+                        role: u.role === 'FIELD_OFFICER' ? 'Field Officer' : 'Asst. Field Officer'
                     }));
                 setStaffMembers(officers);
-                setLoading(false);
             } catch (error) {
-                console.error("Failed to fetch staff", error);
+                console.error('Failed to fetch staff', error);
+            } finally {
                 setLoading(false);
             }
         };
         fetchStaff();
+        fetchPendingLeaves();
     }, [tenantId]);
 
-    // 2. Fetch Quota when Staff Selected
+    // ─── Fetch quota when a staff member is selected ─────────────────────────
     useEffect(() => {
         if (!selectedStaff) return;
         const fetchQuota = async () => {
@@ -84,9 +107,7 @@ export default function LeaveManagement() {
                         casual: res.data.casualLeave
                     });
                 }
-            } catch (error) {
-                // Determine if 404 (Not Found) -> Use Defaults, otherwise error
-                // For now, default to 5/14/7 if no record exists
+            } catch {
                 setQuotas({ duty: 5, annual: 14, casual: 7 });
             }
         };
@@ -96,26 +117,48 @@ export default function LeaveManagement() {
     const handleSaveQuota = async () => {
         if (!selectedStaff || !tenantId) return;
         try {
-            const payload = {
+            await axios.put(`/api/operations/leaves/users/${selectedStaff}/quota`, {
                 tenantId,
                 userId: selectedStaff,
                 dutyLeave: quotas.duty,
                 annualLeave: quotas.annual,
                 casualLeave: quotas.casual
-            };
-            await axios.put(`/api/operations/leaves/users/${selectedStaff}/quota`, payload);
-
+            });
             const staffName = staffMembers.find(s => s.id === selectedStaff)?.name || 'Staff';
-            setNotification({ open: true, message: `Quotas updated for ${staffName}`, severity: 'success' });
+            showNotification(`Quotas updated for ${staffName}`, 'success');
         } catch (error) {
-            console.error("Failed to save quota", error);
-            setNotification({ open: true, message: 'Failed to update quotas', severity: 'error' });
+            showNotification('Failed to update quotas', 'error');
+        }
+    };
+
+    // ─── Approve / Reject actions ────────────────────────────────────────────
+    const handleApprove = async (appId: string) => {
+        try {
+            await axios.put(`/api/operations/leaves/applications/${appId}/review?status=APPROVED`);
+            showNotification('Leave approved successfully', 'success');
+            fetchPendingLeaves();
+        } catch {
+            showNotification('Failed to approve leave', 'error');
+        }
+    };
+
+    const handleRejectConfirm = async () => {
+        if (!rejectDialog.appId) return;
+        try {
+            const remarksParam = rejectDialog.remarks
+                ? `&remarks=${encodeURIComponent(rejectDialog.remarks)}`
+                : '';
+            await axios.put(`/api/operations/leaves/applications/${rejectDialog.appId}/review?status=REJECTED${remarksParam}`);
+            showNotification('Leave rejected', 'info');
+            setRejectDialog({ open: false, appId: null, remarks: '' });
+            fetchPendingLeaves();
+        } catch {
+            showNotification('Failed to reject leave', 'error');
         }
     };
 
     return (
         <Box p={3}>
-            {/* ... headers ... */}
             <Typography variant="h4" fontWeight="bold" color="primary" gutterBottom>
                 Staff Leave Management
             </Typography>
@@ -136,14 +179,15 @@ export default function LeaveManagement() {
                 />
             </Tabs>
 
-            {/* TAB 1: CONFIGURE QUOTAS */}
+            {/* ── TAB 1: CONFIGURE QUOTAS ─────────────────────────────── */}
             {tabIndex === 0 && (
                 <Grid container spacing={3}>
-                    {/* ... (existing Grid content for Tab 1) ... */}
                     <Grid size={{ xs: 12, md: 4 }}>
                         <Paper sx={{ p: 2, height: '100%' }}>
                             <Typography variant="subtitle1" fontWeight="bold" mb={2}>Select Staff Member</Typography>
-                            {loading ? <CircularProgress /> : staffMembers.length === 0 ? <Typography>No field staff found.</Typography> : (
+                            {loading ? <CircularProgress /> : staffMembers.length === 0 ? (
+                                <Typography>No field staff found.</Typography>
+                            ) : (
                                 staffMembers.map(staff => (
                                     <Box
                                         key={staff.id}
@@ -175,49 +219,26 @@ export default function LeaveManagement() {
                                     Configure Quotas for {staffMembers.find(s => s.id === selectedStaff)?.name}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" mb={3}>
-                                    Set availability for the current year. Field Officers will see these values in their dashboard.
+                                    Set annual leave availability. Field Officers will see these values in their dashboard.
                                 </Typography>
-
                                 <Grid container spacing={3}>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField
-                                            fullWidth label="Duty Leave" type="text"
-                                            value={quotas.duty}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                                                setQuotas({ ...quotas, duty: val });
-                                            }}
-                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric', pattern: '[0-9]*' } }}
-                                        />
+                                        <TextField fullWidth label="Duty Leave" type="text" value={quotas.duty}
+                                            onChange={(e) => setQuotas({ ...quotas, duty: Number(e.target.value.replace(/[^0-9]/g, '')) })}
+                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField
-                                            fullWidth label="Annual Leave" type="text"
-                                            value={quotas.annual}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                                                setQuotas({ ...quotas, annual: val });
-                                            }}
-                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric', pattern: '[0-9]*' } }}
-                                        />
+                                        <TextField fullWidth label="Annual Leave" type="text" value={quotas.annual}
+                                            onChange={(e) => setQuotas({ ...quotas, annual: Number(e.target.value.replace(/[^0-9]/g, '')) })}
+                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField
-                                            fullWidth label="Casual Leave" type="text"
-                                            value={quotas.casual}
-                                            onChange={(e) => {
-                                                const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                                                setQuotas({ ...quotas, casual: val });
-                                            }}
-                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric', pattern: '[0-9]*' } }}
-                                        />
+                                        <TextField fullWidth label="Casual Leave" type="text" value={quotas.casual}
+                                            onChange={(e) => setQuotas({ ...quotas, casual: Number(e.target.value.replace(/[^0-9]/g, '')) })}
+                                            InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12 }}>
-                                        <Button
-                                            variant="contained" color="success" size="large"
-                                            onClick={handleSaveQuota}
-                                            sx={{ mt: 2 }}
-                                        >
+                                        <Button variant="contained" color="success" size="large" onClick={handleSaveQuota} sx={{ mt: 2 }}>
                                             Update Quotas
                                         </Button>
                                     </Grid>
@@ -228,7 +249,7 @@ export default function LeaveManagement() {
                 </Grid>
             )}
 
-            {/* TAB 2: APPROVALS */}
+            {/* ── TAB 2: LEAVE APPROVALS ──────────────────────────────── */}
             {tabIndex === 1 && (
                 <Paper sx={{ p: 2 }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
@@ -240,51 +261,95 @@ export default function LeaveManagement() {
 
                     {pendingLeaves.length > 0 && (
                         <Alert severity="warning" sx={{ mb: 2 }}>
-                            You have <b>{pendingLeaves.length} leave requests</b> pending approval. Please review them promptly.
+                            You have <b>{pendingLeaves.length} leave request{pendingLeaves.length > 1 ? 's' : ''}</b> pending approval. Please review them promptly.
                         </Alert>
                     )}
 
-                    <TableContainer>
-                        <Table>
-                            <TableHead sx={{ bgcolor: '#eeeeee' }}>
-                                <TableRow>
-                                    <TableCell>Staff Name</TableCell>
-                                    <TableCell>Leave Type</TableCell>
-                                    <TableCell>From</TableCell>
-                                    <TableCell>To</TableCell>
-                                    <TableCell>Days</TableCell>
-                                    <TableCell>Reason</TableCell>
-                                    <TableCell align="right">Action</TableCell>
-                                </TableRow>
-                            </TableHead>
-                            <TableBody>
-                                {pendingLeaves.length > 0 ? (
-                                    pendingLeaves.map((req) => (
-                                        <TableRow key={req.id}>
-                                            <TableCell>{req.name}</TableCell>
-                                            <TableCell><Chip label={req.type} color="primary" size="small" variant="outlined" /></TableCell>
-                                            <TableCell>{req.from}</TableCell>
-                                            <TableCell>{req.to}</TableCell>
-                                            <TableCell>{req.days}</TableCell>
-                                            <TableCell>{req.reason}</TableCell>
-                                            <TableCell align="right">
-                                                <Button size="small" color="error" sx={{ mr: 1 }}>Reject</Button>
-                                                <Button size="small" variant="contained" color="success">Approve</Button>
+                    {loadingLeaves ? (
+                        <Box display="flex" justifyContent="center" py={4}>
+                            <CircularProgress />
+                        </Box>
+                    ) : (
+                        <TableContainer>
+                            <Table>
+                                <TableHead sx={{ bgcolor: '#eeeeee' }}>
+                                    <TableRow>
+                                        <TableCell>Staff Name</TableCell>
+                                        <TableCell>Leave Type</TableCell>
+                                        <TableCell>From</TableCell>
+                                        <TableCell>To</TableCell>
+                                        <TableCell>Days</TableCell>
+                                        <TableCell>Reason</TableCell>
+                                        <TableCell>Applied On</TableCell>
+                                        <TableCell align="right">Action</TableCell>
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {pendingLeaves.length > 0 ? (
+                                        pendingLeaves.map((req) => (
+                                            <TableRow key={req.id}>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>{req.userName || '—'}</TableCell>
+                                                <TableCell>
+                                                    <Chip label={req.leaveType} color="primary" size="small" variant="outlined" />
+                                                </TableCell>
+                                                <TableCell>{req.fromDate}</TableCell>
+                                                <TableCell>{req.toDate}</TableCell>
+                                                <TableCell sx={{ fontWeight: 'bold' }}>{req.daysApplied}</TableCell>
+                                                <TableCell sx={{ color: 'text.secondary', maxWidth: 200 }}>{req.reason || '—'}</TableCell>
+                                                <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary' }}>
+                                                    {req.submittedAt ? new Date(req.submittedAt + (req.submittedAt.includes('Z') ? '' : 'Z')).toLocaleDateString() : '—'}
+                                                </TableCell>
+                                                <TableCell align="right">
+                                                    <Box display="flex" gap={1} justifyContent="flex-end">
+                                                        <Button
+                                                            size="small" color="error" variant="outlined"
+                                                            onClick={() => setRejectDialog({ open: true, appId: req.id, remarks: '' })}
+                                                        >
+                                                            Reject
+                                                        </Button>
+                                                        <Button
+                                                            size="small" variant="contained" color="success"
+                                                            onClick={() => handleApprove(req.id)}
+                                                        >
+                                                            Approve
+                                                        </Button>
+                                                    </Box>
+                                                </TableCell>
+                                            </TableRow>
+                                        ))
+                                    ) : (
+                                        <TableRow>
+                                            <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
+                                                <Typography color="text.secondary">No pending leave requests at this time.</Typography>
                                             </TableCell>
                                         </TableRow>
-                                    ))
-                                ) : (
-                                    <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 3 }}>
-                                            <Typography color="text.secondary">No pending leave requests.</Typography>
-                                        </TableCell>
-                                    </TableRow>
-                                )}
-                            </TableBody>
-                        </Table>
-                    </TableContainer>
+                                    )}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
+                    )}
                 </Paper>
             )}
+
+            {/* Reject Confirmation Dialog */}
+            <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, appId: null, remarks: '' })}>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>Reject Leave Request</DialogTitle>
+                <DialogContent sx={{ pt: 2 }}>
+                    <Typography variant="body2" mb={2} color="text.secondary">
+                        Optionally provide a reason for rejection. The Field Officer will see this message.
+                    </Typography>
+                    <TextField
+                        fullWidth label="Reason for Rejection (Optional)"
+                        multiline rows={3}
+                        value={rejectDialog.remarks}
+                        onChange={(e) => setRejectDialog(prev => ({ ...prev, remarks: e.target.value }))}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={() => setRejectDialog({ open: false, appId: null, remarks: '' })} sx={{ color: 'text.secondary' }}>Cancel</Button>
+                    <Button variant="contained" color="error" onClick={handleRejectConfirm}>Confirm Reject</Button>
+                </DialogActions>
+            </Dialog>
 
             <Snackbar open={notification.open} autoHideDuration={4000} onClose={() => setNotification({ ...notification, open: false })}>
                 <Alert severity={notification.severity} onClose={() => setNotification({ ...notification, open: false })}>
