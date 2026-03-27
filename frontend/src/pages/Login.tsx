@@ -24,6 +24,14 @@ export default function Login() {
     const [formData, setFormData] = useState({ username: '', password: '' });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
+    const [expiredMessage, setExpiredMessage] = useState(false);
+
+    useEffect(() => {
+        const params = new URLSearchParams(window.location.search);
+        if (params.get('expired') === 'true') {
+            setExpiredMessage(true);
+        }
+    }, []);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -210,6 +218,22 @@ export default function Login() {
                             }}
                         >
                             {error}
+                        </Alert>
+                    )}
+
+                    {expiredMessage && !error && (
+                        <Alert
+                            severity="warning"
+                            variant="outlined"
+                            sx={{
+                                borderRadius: 3,
+                                borderColor: '#ed6c02',
+                                color: '#e65100',
+                                bgcolor: '#fff3e0',
+                                fontWeight: 'bold'
+                            }}
+                        >
+                            Session expired. Please log in again to continue.
                         </Alert>
                     )}
 

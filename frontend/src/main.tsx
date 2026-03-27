@@ -23,6 +23,20 @@ axios.interceptors.request.use(
     return Promise.reject(error);
   }
 );
+
+// Global Axios Response Interceptor for Session Expiration (Auto-Logout)
+axios.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token has likely expired or is invalid. Clear session and redirect.
+      sessionStorage.clear();
+      // Use window.location as we are outside the React Router context
+      window.location.href = '/login?expired=true';
+    }
+    return Promise.reject(error);
+  }
+);
 import './index.css';
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
