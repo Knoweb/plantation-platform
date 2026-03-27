@@ -22,6 +22,11 @@ import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useLocation, useNavigate } from 'react-router-dom';
 
+const buildSocketUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${path}`;
+};
+
 export default function StoreKeeperDashboard() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -104,6 +109,43 @@ export default function StoreKeeperDashboard() {
                 .then(res => setDivisions(res.data))
                 .catch(err => console.error("Failed to load divisions", err));
         }
+    }, [tenantId]);
+
+    // WebSocket for Real-time Inventory Updates
+    useEffect(() => {
+        if (!tenantId) return;
+
+        let socket: WebSocket | null = null;
+        let reconnectTimer: any = null;
+
+        const connect = () => {
+            socket = new WebSocket(buildSocketUrl('/ws/inventory'));
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
+                        fetchInventory();
+                    }
+                } catch (e) {
+                    console.error("Failed to parse inventory socket message", e);
+                }
+            };
+
+            socket.onclose = () => {
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+            }
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
     }, [tenantId]);
 
     const fetchInventory = async () => {

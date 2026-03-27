@@ -8,11 +8,14 @@ import com.knoweb.inventory.messaging.StockEventPublisher;
 import com.knoweb.inventory.repository.DivisionalStockRepository;
 import com.knoweb.inventory.repository.InventoryItemRepository;
 import com.knoweb.inventory.repository.InventoryTransactionRepository;
+import com.knoweb.inventory.websocket.InventoryWebSocketHandler;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import com.fasterxml.jackson.databind.ObjectMapper;
 
 @Service
 public class InventoryService {
@@ -29,6 +32,24 @@ public class InventoryService {
     @Autowired
     private StockEventPublisher stockEventPublisher;
 
+    @Autowired
+    private InventoryWebSocketHandler webSocketHandler;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
+
+    private void broadcastUpdate(String tenantId, String type) {
+        try {
+            String json = objectMapper.writeValueAsString(Map.of(
+                "type", type,
+                "tenantId", tenantId,
+                "timestamp", LocalDateTime.now().toString()
+            ));
+            webSocketHandler.broadcast(json);
+        } catch (Exception e) {
+            System.err.println("Failed to broadcast inventory update: " + e.getMessage());
+        }
+    }
+
     public List<InventoryItem> getAllItems(String tenantId) {
         // Ensure new items are seeded
         // if (repository.findByTenantIdAndName(tenantId, "Glyphosate 360").isEmpty()) {
@@ -42,13 +63,17 @@ public class InventoryService {
     }
 
     public InventoryItem createItem(InventoryItem item) {
-        return repository.save(item);
+        InventoryItem saved = repository.save(item);
+        broadcastUpdate(item.getTenantId(), "inventory-updated");
+        return saved;
     }
 
     public InventoryItem updateBuffer(Long id, int newBuffer) {
         InventoryItem item = repository.findById(id).orElseThrow(() -> new RuntimeException("Item not found"));
         item.setBufferLevel(newBuffer);
-        return repository.save(item);
+        InventoryItem saved = repository.save(item);
+        broadcastUpdate(item.getTenantId(), "inventory-updated");
+        return saved;
     }
 
     public InventoryItem processTransaction(StockTransactionRequest req) {
@@ -94,7 +119,7 @@ public class InventoryService {
         }
 
         transactionRepository.save(trans);
-
+        broadcastUpdate(req.getTenantId(), "inventory-updated");
         return savedItem;
     }
 
@@ -161,7 +186,9 @@ public class InventoryService {
         }
 
         trans.setStatus(status);
-        return transactionRepository.save(trans);
+        InventoryTransaction savedTrans = transactionRepository.save(trans);
+        broadcastUpdate(trans.getTenantId(), "inventory-updated");
+        return savedTrans;
     }
     
     private void checkLowStockAlert(InventoryItem item, String tenantId) {
@@ -228,7 +255,12 @@ public class InventoryService {
     }
 
     public void deleteItem(Long id) {
-        repository.deleteById(id);
+        InventoryItem item = repository.findById(id).orElse(null);
+        if (item != null) {
+            String tId = item.getTenantId();
+            repository.deleteById(id);
+            broadcastUpdate(tId, "inventory-updated");
+        }
     }
 
     public InventoryItem updateItemDetails(Long id, InventoryItem updates) {
@@ -239,7 +271,9 @@ public class InventoryService {
         item.setMinimumLevel(updates.getMinimumLevel());
         item.setPricePerUnit(updates.getPricePerUnit());
         // Buffer Level and Quantity are NOT updated here (Security/Process rule)
-        return repository.save(item);
+        InventoryItem saved = repository.save(item);
+        broadcastUpdate(item.getTenantId(), "inventory-updated");
+        return saved;
     }
 
 }

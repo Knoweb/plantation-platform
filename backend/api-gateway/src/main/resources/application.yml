@@ -64,6 +64,10 @@ spring:
               args:
                 name: inventoryServiceCB
                 fallbackUri: forward:/fallback/general
+        - id: inventory-service-ws
+          uri: lb:ws://INVENTORY-SERVICE
+          predicates:
+            - Path=/ws/inventory,/ws/inventory/**
         - id: operation-service
           uri: lb://OPERATION-SERVICE
           predicates:

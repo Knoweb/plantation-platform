@@ -1,5 +1,5 @@
 import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, InputAdornment, Chip } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import SearchIcon from '@mui/icons-material/Search';
 
@@ -17,6 +17,11 @@ interface Transaction {
     fieldName?: string;
 }
 
+const buildSocketUrl = (path: string) => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    return `${protocol}//${window.location.host}${path}`;
+};
+
 export default function StoreTransactionHistory() {
     const [transactions, setTransactions] = useState<Transaction[]>([]);
     const [filtered, setFiltered] = useState<Transaction[]>([]);
@@ -27,8 +32,55 @@ export default function StoreTransactionHistory() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
+    const fetchTransactions = useCallback(async () => {
+        try {
+            const res = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
+            setTransactions(res.data);
+            setFiltered(res.data);
+        } catch (err) {
+            console.error("Failed to fetch transactions");
+        }
+    }, [tenantId]);
+
     useEffect(() => {
         fetchTransactions();
+    }, [fetchTransactions]);
+
+    // WebSocket for Real-time Transaction History Updates
+    useEffect(() => {
+        if (!tenantId) return;
+
+        let socket: WebSocket | null = null;
+        let reconnectTimer: any = null;
+
+        const connect = () => {
+            socket = new WebSocket(buildSocketUrl('/ws/inventory'));
+
+            socket.onmessage = (event) => {
+                try {
+                    const data = JSON.parse(event.data);
+                    if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
+                        fetchTransactions();
+                    }
+                } catch (e) {
+                    console.error("Failed to parse transaction socket message", e);
+                }
+            };
+
+            socket.onclose = () => {
+                reconnectTimer = setTimeout(connect, 3000);
+            };
+        };
+
+        connect();
+
+        return () => {
+            if (socket) {
+                socket.onclose = null;
+                socket.close();
+            }
+            if (reconnectTimer) clearTimeout(reconnectTimer);
+        };
     }, [tenantId]);
 
     useEffect(() => {
@@ -60,16 +112,6 @@ export default function StoreTransactionHistory() {
 
         setFiltered(res);
     }, [search, startDate, endDate, transactions]);
-
-    const fetchTransactions = async () => {
-        try {
-            const res = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
-            setTransactions(res.data);
-            setFiltered(res.data);
-        } catch (err) {
-            console.error("Failed to fetch transactions");
-        }
-    };
 
     const getTypeColor = (type: string) => {
         switch (type) {
