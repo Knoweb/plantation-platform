@@ -184,11 +184,11 @@ export default function StoreTransactionHistory() {
                                 <TableRow key={t.id} hover>
                                     <TableCell>
                                         {t.approvedDate ? (
-                                            <span title={`Requested: ${new Date(t.date).toLocaleString()}`}>
-                                                {new Date(t.approvedDate).toLocaleString()}
+                                            <span title={`Requested: ${new Date(t.date + (t.date.includes('Z') ? '' : 'Z')).toLocaleString()}`}>
+                                                {new Date(t.approvedDate + (t.approvedDate.includes('Z') ? '' : 'Z')).toLocaleString()}
                                             </span>
                                         ) : (
-                                            new Date(t.date).toLocaleString()
+                                            new Date(t.date + (t.date.includes('Z') ? '' : 'Z')).toLocaleString()
                                         )}
                                     </TableCell>
                                     <TableCell>{t.itemName}</TableCell>

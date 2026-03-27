@@ -210,6 +210,23 @@ export default function StoreKeeperDashboard() {
 
     const confirmIssueOrder = async () => {
         if (!orderToIssue) return;
+        
+        // Safety Validation: FALLING BELOW MANDATORY MINIMUM LEVEL
+        const order = approvedOrders.find(o => o.id === orderToIssue);
+        if (order) {
+            const item = items.find(i => i.id === order.itemId);
+            if (item) {
+                const projectedQty = item.currentQuantity - order.quantity;
+                const minLevel = item.minimumLevel || 0;
+                
+                if (projectedQty < minLevel) {
+                    showNotification(`SAFETY ALERT: Transaction Blocked! Issuing this order would leave only ${projectedQty} ${item.unit} in stock, violating the mandatory minimum level of ${minLevel} ${item.unit}.`, 'error');
+                    setConfirmIssueOpen(false);
+                    return;
+                }
+            }
+        }
+        
         try {
             await axios.put(`/api/inventory/transactions/${orderToIssue}/status?status=ISSUED`);
             fetchInventory();
