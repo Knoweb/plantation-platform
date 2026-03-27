@@ -1,5 +1,5 @@
 import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer, Tooltip } from '@mui/material';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
 import { IconButton } from '@mui/material';
@@ -95,10 +95,15 @@ export default function StoreKeeperDashboard() {
         setNotification({ ...notification, open: false });
     };
 
-    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const tenantId = userSession.tenantId;
+    const [user] = useState(() => JSON.parse(sessionStorage.getItem('user') || '{}'));
+    const tenantId = user?.tenantId;
+    const userId = user?.userId || user?.id;
+    const isFetching = useRef(false);
 
-    const fetchInventory = useCallback(async () => {
+    const fetchInventory = async (isFirstLoad = false) => {
+        if (!tenantId || isFetching.current) return;
+        isFetching.current = true;
+        if (isFirstLoad) setLoading(true);
         try {
             const [itemsRes, transRes] = await Promise.all([
                 axios.get(`/api/inventory?tenantId=${tenantId}`),
@@ -106,15 +111,6 @@ export default function StoreKeeperDashboard() {
             ]);
 
             setItems(itemsRes.data);
-
-            const pending = new Map<number, number>();
-            transRes.data.forEach((t: any) => {
-                if (t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING') {
-                    const current = pending.get(t.itemId) || 0;
-                    pending.set(t.itemId, current + t.quantity);
-                }
-            });
-            setPendingItems(pending);
 
             const approvedFoOrders = transRes.data.filter((t: any) =>
                 t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
@@ -128,29 +124,34 @@ export default function StoreKeeperDashboard() {
             setChiefClerkPending(ccPending);
 
             try {
-                const uId = userSession.userId || userSession.id;
-                const msgRes = await axios.get(`/api/messages?userId=${uId}&userRole=STORE_KEEPER`, {
+                const msgRes = await axios.get(`/api/messages?userId=${userId}&userRole=STORE_KEEPER`, {
                     headers: { 'X-Tenant-ID': tenantId }
                 });
-                setUnreadMessages(msgRes.data.filter((m: any) => m.receiverId === uId && !m.read).length);
+                setUnreadMessages(msgRes.data.filter((m: any) => m.receiverId === userId && !m.read).length);
             } catch (e) {}
 
-            setLoading(false);
+            setError('');
         } catch (err) {
-            console.error("Failed to fetch inventory.");
+            console.error("Failed to fetch inventory.", err);
             setError("Could not load inventory data.");
-            setLoading(false);
+        } finally {
+            isFetching.current = false;
+            if (isFirstLoad) setLoading(false);
         }
-    }, [tenantId, userSession]);
+    };
 
     useEffect(() => {
-        if (tenantId) {
-            fetchInventory();
-            axios.get(`/api/divisions?tenantId=${tenantId}`)
-                .then(res => setDivisions(res.data))
-                .catch(err => console.error("Failed to load divisions", err));
-        }
-    }, [tenantId, fetchInventory]);
+        if (!tenantId) return;
+        fetchInventory(true);
+        
+        axios.get(`/api/divisions?tenantId=${tenantId}`)
+            .then(res => setDivisions(res.data))
+            .catch(err => console.error("Failed to load divisions", err));
+            
+        axios.get(`/api/workers/officers?tenantId=${tenantId}`)
+            .then(res => setOfficers(res.data))
+            .catch(err => console.error("Failed to load officers", err));
+    }, [tenantId]); // ONLY depend on tenantId
 
     useEffect(() => {
         if (!tenantId) return;
@@ -166,7 +167,7 @@ export default function StoreKeeperDashboard() {
                     try {
                         const data = JSON.parse(event.data);
                         if (data.type === 'inventory-updated' && data.tenantId === tenantId) {
-                            fetchInventory();
+                            fetchInventory(); // Subtle fetch without full page reload
                         }
                     } catch (e) {
                         console.error("WS parse error", e);
@@ -174,17 +175,17 @@ export default function StoreKeeperDashboard() {
                 };
                 socket.onclose = () => {
                     socket = null;
-                    reconnectTimer = setTimeout(connect, 3000);
+                    reconnectTimer = setTimeout(connect, 5000); // Wait 5s before reconnect
                 };
                 socket.onerror = () => {
                     if (socket) socket.close();
                 };
             } catch (err) {
-                console.error("WS fallback", err);
+                console.error("WS error", err);
             }
         };
 
-        mountTimer = setTimeout(connect, 1000);
+        mountTimer = setTimeout(connect, 2000); // 2s delay to avoid mount race
 
         return () => {
             if (mountTimer) clearTimeout(mountTimer);
@@ -194,7 +195,7 @@ export default function StoreKeeperDashboard() {
             }
             if (reconnectTimer) clearTimeout(reconnectTimer);
         };
-    }, [tenantId, fetchInventory]);
+    }, [tenantId]);
 
     const handleRestockRequest = (item: any) => {
         setSelectedItem(item.id);
@@ -223,7 +224,7 @@ export default function StoreKeeperDashboard() {
         }
     };
 
-    const handleChiefClerkApproveOpen = (order: any) => {
+    const handleOpenCcApproveModal = (order: any) => {
         setCcSelectedOrder(order);
         setCcApproveQty(String(order.quantity));
         setCcApproveOpen(true);
@@ -231,11 +232,11 @@ export default function StoreKeeperDashboard() {
 
 
     const handleConfirmCcApprove = async () => {
-        if (!ccSelectedOrder || !ccApproveQty) return;
+        if (!ccSelectedOrder || !ccApproveQty || !user) return;
         try {
             const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
             // Change status to PENDING but update issuedTo so the Manager now sees it
-            const issuedToParam = `&issuedTo=${encodeURIComponent(userSession.fullName + ' (Chief Clerk)')}`;
+            const issuedToParam = `&issuedTo=${encodeURIComponent((user.fullName || user.username || 'Chief Clerk') + ' (Chief Clerk)')}`;
             await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=PENDING&quantity=${ccApproveQty}${remarksParam}${issuedToParam}`);
             setCcApproveOpen(false);
             fetchInventory();
@@ -280,7 +281,7 @@ export default function StoreKeeperDashboard() {
         try {
             let finalIssuedTo = undefined;
             if (modalType === 'RESTOCK_REQUEST') {
-                const uName = userSession.fullName || 'Chief Clerk';
+                const uName = user.fullName || 'Chief Clerk';
                 // Only add (Chief Clerk) if the name doesn't already somehow include it
                 const roleSuffix = uName.includes('(Chief Clerk)') ? '' : ' (Chief Clerk)';
                 finalIssuedTo = issuedTo ? `${uName}${roleSuffix} - ${issuedTo}` : `${uName}${roleSuffix}`;
@@ -382,7 +383,7 @@ export default function StoreKeeperDashboard() {
                     {currentTab === 0 ? "Dashboard & Messages" : currentTab === 1 ? "Inventory Records" : "Pending Approvals"}
                 </Typography>
 
-                {currentTab === 1 && userSession.role === 'CHIEF_CLERK' && (
+                {currentTab === 1 && user.role === 'CHIEF_CLERK' && (
                     <Box>
                         <Button
                             startIcon={<AddIcon />}
@@ -652,7 +653,7 @@ export default function StoreKeeperDashboard() {
             {/* Full Inventory Table -> INVENTORY TAB */}
             {currentTab === 1 && (
                 <>
-                    {userSession.role === 'CHIEF_CLERK' && (
+                    {user.role === 'CHIEF_CLERK' && (
                         <Grid container spacing={3} mb={4}>
                             <Grid size={{ xs: 12 }}>
                                 {chiefClerkPending.length > 0 ? (
@@ -688,7 +689,7 @@ export default function StoreKeeperDashboard() {
                                                                         variant="contained"
                                                                         color="primary"
                                                                         size="small"
-                                                                        onClick={() => handleChiefClerkApproveOpen(order)}
+                                                                        onClick={() => handleOpenCcApproveModal(order)}
                                                                     >
                                                                         Request Refill
                                                                     </Button>
