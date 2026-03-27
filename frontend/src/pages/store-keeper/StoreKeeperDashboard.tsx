@@ -1,16 +1,12 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer, Tooltip } from '@mui/material';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
 import { IconButton } from '@mui/material';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import WarningIcon from '@mui/icons-material/Warning';
-import RemoveShoppingCartIcon from '@mui/icons-material/RemoveShoppingCart';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
-import AddAlertIcon from '@mui/icons-material/AddAlert';
-import EditIcon from '@mui/icons-material/Edit';
-import DeleteIcon from '@mui/icons-material/Delete';
 import SpaIcon from '@mui/icons-material/Spa';
 import ChatIcon from '@mui/icons-material/Chat';
 import LocalShippingIcon from '@mui/icons-material/LocalShipping';
@@ -237,15 +233,51 @@ export default function StoreKeeperDashboard() {
         }
     };
 
-    const handleRejectOrder = async (orderId: number) => {
-        if (!window.confirm("Are you sure you want to REJECT this field requisition? This will remove it from the dispatch queue.")) return;
-        try {
-            await axios.put(`/api/inventory/transactions/${orderId}/status?status=REJECTED&remarks=${encodeURIComponent('Rejected by Store Keeper (Insufficient Stock)')}`);
-            fetchInventory();
-            showNotification('Order rejected and removed from queue', 'info');
-        } catch (err: any) {
-            showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
-        }
+    // --- Confirmation Dialog ---
+    const [confirmDialog, setConfirmDialog] = useState<{
+        open: boolean;
+        title: string;
+        message: string;
+        onConfirm: () => void | Promise<void>;
+    }>({
+        open: false,
+        title: '',
+        message: '',
+        onConfirm: () => {}
+    });
+
+    const triggerConfirm = (title: string, message: string, onConfirm: () => void | Promise<void>) => {
+        setConfirmDialog({
+            open: true,
+            title,
+            message,
+            onConfirm
+        });
+    };
+
+    const handleConfirmClose = () => {
+        setConfirmDialog(prev => ({ ...prev, open: false }));
+    };
+
+    const handleConfirmAction = async () => {
+        await confirmDialog.onConfirm();
+        handleConfirmClose();
+    };
+
+    const handleRejectOrder = (orderId: number) => {
+        triggerConfirm(
+            "Reject Field Requisition?",
+            "Are you sure you want to REJECT this field requisition? This will remove it from the dispatch queue.",
+            async () => {
+                try {
+                    await axios.put(`/api/inventory/transactions/${orderId}/status?status=REJECTED&remarks=${encodeURIComponent('Rejected by Store Keeper (Insufficient Stock)')}`);
+                    fetchInventory();
+                    showNotification('Order rejected and removed from queue', 'info');
+                } catch (err: any) {
+                    showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
+                }
+            }
+        );
     };
 
     const handleOpenCcApproveModal = (order: any) => {
@@ -253,7 +285,6 @@ export default function StoreKeeperDashboard() {
         setCcApproveQty(String(order.quantity));
         setCcApproveOpen(true);
     };
-
 
     const handleConfirmCcApprove = async () => {
         if (!ccSelectedOrder || !ccApproveQty || !user) return;
@@ -270,18 +301,23 @@ export default function StoreKeeperDashboard() {
         }
     };
 
-    const handleCcReject = async () => {
+    const handleCcReject = () => {
         if (!ccSelectedOrder) return;
-        if (!window.confirm("Are you sure you want to REJECT this auto-refill request?")) return;
-        try {
-            const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
-            await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=REJECTED${remarksParam}`);
-            setCcApproveOpen(false);
-            fetchInventory();
-            showNotification('Auto-Refill Request Rejected', 'success');
-        } catch (err: any) {
-            showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
-        }
+        triggerConfirm(
+            "Reject Auto-Refill?",
+            "Are you sure you want to REJECT this auto-refill request?",
+            async () => {
+                try {
+                    const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
+                    await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=REJECTED${remarksParam}`);
+                    setCcApproveOpen(false);
+                    fetchInventory();
+                    showNotification('Auto-Refill Request Rejected', 'success');
+                } catch (err: any) {
+                    showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
+                }
+            }
+        );
     };
 
     const handleTransaction = async () => {
@@ -364,32 +400,6 @@ export default function StoreKeeperDashboard() {
         } catch (err) {
             showNotification(isEditing ? "Failed to update item" : "Failed to create item", 'error');
         }
-    };
-
-    const handleDeleteItem = async (id: number) => {
-        if (!window.confirm("Are you sure you want to delete this item?")) return;
-        try {
-            await axios.delete(`/api/inventory/${id}`);
-            fetchInventory();
-            showNotification("Item Deleted", 'success');
-        } catch (err) {
-            showNotification("Failed to delete item", 'error');
-        }
-    };
-
-    const handleEditItem = (item: any) => {
-        setIsEditing(true);
-        setEditId(item.id);
-        setNewItem({
-            name: item.name,
-            category: item.category,
-            unit: item.unit,
-            currentQuantity: item.currentQuantity,
-            bufferLevel: item.bufferLevel,
-            minimumLevel: item.minimumLevel || 0,
-            pricePerUnit: item.pricePerUnit
-        });
-        setNewItemOpen(true);
     };
 
     const resetForm = () => {
@@ -1137,6 +1147,20 @@ export default function StoreKeeperDashboard() {
                             Forward to Manager
                         </Button>
                     </Box>
+                </DialogActions>
+            </Dialog>
+
+            {/* Global Confirmation Dialog */}
+            <Dialog open={confirmDialog.open} onClose={handleConfirmClose}>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>{confirmDialog.title}</DialogTitle>
+                <DialogContent>
+                    <Typography>{confirmDialog.message}</Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button onClick={handleConfirmClose} sx={{ color: 'text.secondary' }}>Cancel</Button>
+                    <Button onClick={handleConfirmAction} variant="contained" color="error">
+                        Confirm Action
+                    </Button>
                 </DialogActions>
             </Dialog>
 
