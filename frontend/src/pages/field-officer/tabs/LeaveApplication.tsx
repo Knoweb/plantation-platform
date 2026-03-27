@@ -42,7 +42,7 @@ export default function LeaveApplication() {
     const [leaveType, setLeaveType] = useState('Annual');
     const [fromDate, setFromDate] = useState('');
     const [toDate, setToDate] = useState('');
-    const [daysApplying, setDaysApplying] = useState(0);
+    const [daysApplying, setDaysApplying] = useState<number | ''>('');
     const [reason, setReason] = useState('');
     const [address, setAddress] = useState('');
     const [contactNo, setContactNo] = useState('');
@@ -119,10 +119,10 @@ export default function LeaveApplication() {
                 const diffDays = Math.ceil(Math.abs(end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24)) + 1;
                 setDaysApplying(diffDays);
             } else {
-                setDaysApplying(0);
+                setDaysApplying('');
             }
         } else {
-            setDaysApplying(0);
+            setDaysApplying('');
         }
     }, [fromDate, toDate]);
 
@@ -138,13 +138,13 @@ export default function LeaveApplication() {
         return taken.casualLeave;
     };
     const getApplying = (type: 'Duty' | 'Annual' | 'Casual') =>
-        leaveType === type ? daysApplying : 0;
+        leaveType === type ? (Number(daysApplying) || 0) : 0;
     const getBalance = (type: 'Duty' | 'Annual' | 'Casual') =>
         getAvailable(type) - getTaken(type) - getApplying(type);
 
     // ─── Submit application to backend ───────────────────────────────────────
     const handleSubmit = async () => {
-        if (!fromDate || !toDate || daysApplying <= 0) {
+        if (!fromDate || !toDate || !daysApplying || Number(daysApplying) <= 0) {
             alert('Please fill in all required date fields.');
             return;
         }
@@ -157,7 +157,7 @@ export default function LeaveApplication() {
                 leaveType,
                 fromDate,
                 toDate,
-                daysApplied: daysApplying,
+                daysApplied: Number(daysApplying),
                 reason,
                 address,
                 contactNo,
@@ -329,12 +329,13 @@ export default function LeaveApplication() {
                                         fullWidth label="No of Days Applying" type="text"
                                         value={daysApplying}
                                         onChange={(e) => {
-                                            const val = Number(e.target.value.replace(/[^0-9]/g, ''));
-                                            setDaysApplying(val);
+                                            const raw = e.target.value.replace(/[^0-9]/g, '');
+                                            setDaysApplying(raw === '' ? '' : Number(raw));
                                         }}
                                         InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }}
                                         sx={{ '& input': { fontWeight: 'bold', color: '#1b5e20' } }}
                                         size="small"
+                                        placeholder="Select dates above"
                                     />
                                 </Grid>
 
