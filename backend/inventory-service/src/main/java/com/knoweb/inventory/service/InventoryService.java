@@ -204,7 +204,8 @@ public class InventoryService {
                 autoReq.setItemId(item.getId());
                 autoReq.setItemName(item.getName());
                 autoReq.setType("RESTOCK_REQUEST");
-                autoReq.setQuantity(item.getBufferLevel());
+                // Suggest quantity to bring stock exactly back to buffer level
+                autoReq.setQuantity(Math.max(1, item.getBufferLevel() - item.getCurrentQuantity()));
                 autoReq.setDate(LocalDateTime.now());
                 autoReq.setTenantId(tenantId);
                 autoReq.setIssuedTo("SYSTEM (Low Stock Auto-Refill)");

@@ -146,8 +146,19 @@ export default function GeneralStock() {
             )}
 
             {isManager && items.some(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0) && (
-                <Alert severity="warning" sx={{ mb: 3 }}>
-                    Attention Manager: Some items are below their buffer level. Please review stock and authorize purchase requests.
+                <Alert 
+                    severity="warning" 
+                    sx={{ mb: 3 }}
+                    icon={<WarningIcon fontSize="inherit" />}
+                >
+                    <Box>
+                        <Typography variant="subtitle2" fontWeight="bold">Attention Manager: Inventory Shortfall Detected</Typography>
+                        <Typography variant="body2">
+                            The following items have dropped below their buffer levels: 
+                            <strong> {items.filter(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0).map(i => i.name).join(', ')}</strong>. 
+                            Please review the restock requests below and authorize purchase.
+                        </Typography>
+                    </Box>
                 </Alert>
             )}
 
@@ -171,9 +182,9 @@ export default function GeneralStock() {
                             </TableRow>
                         </TableHead>
                         <TableBody>
-                            {restockRequests.slice(0, 5).map(req => (
+                            {restockRequests.map(req => (
                                 <TableRow key={req.id}>
-                                    <TableCell>{new Date(req.date).toLocaleDateString()} {new Date(req.date).toLocaleTimeString()}</TableCell>
+                                    <TableCell>{new Date(req.date + (req.date.includes('Z') ? '' : 'Z')).toLocaleString()}</TableCell>
                                     <TableCell>{req.itemName}</TableCell>
                                     <TableCell>{req.quantity || '-'}</TableCell>
                                     <TableCell>{req.issuedTo || '-'}</TableCell>
