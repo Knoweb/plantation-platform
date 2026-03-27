@@ -58,7 +58,6 @@ export default function StoreKeeperDashboard() {
     // --- Division / Field Selection ---
     const [divisions, setDivisions] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
-    const [officers, setOfficers] = useState<any[]>([]);
     const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     // ----------------------------------
@@ -148,9 +147,6 @@ export default function StoreKeeperDashboard() {
             .then(res => setDivisions(res.data))
             .catch(err => console.error("Failed to load divisions", err));
             
-        axios.get(`/api/workers/officers?tenantId=${tenantId}`)
-            .then(res => setOfficers(res.data))
-            .catch(err => console.error("Failed to load officers", err));
     }, [tenantId]); // ONLY depend on tenantId
 
     useEffect(() => {
