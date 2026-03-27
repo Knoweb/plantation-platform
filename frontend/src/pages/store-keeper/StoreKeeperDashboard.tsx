@@ -220,6 +220,17 @@ export default function StoreKeeperDashboard() {
         }
     };
 
+    const handleRejectOrder = async (orderId: number) => {
+        if (!window.confirm("Are you sure you want to REJECT this field requisition? This will remove it from the dispatch queue.")) return;
+        try {
+            await axios.put(`/api/inventory/transactions/${orderId}/status?status=REJECTED&remarks=${encodeURIComponent('Rejected by Store Keeper (Insufficient Stock)')}`);
+            fetchInventory();
+            showNotification('Order rejected and removed from queue', 'info');
+        } catch (err: any) {
+            showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
+        }
+    };
+
     const handleOpenCcApproveModal = (order: any) => {
         setCcSelectedOrder(order);
         setCcApproveQty(String(order.quantity));
@@ -620,14 +631,25 @@ export default function StoreKeeperDashboard() {
                                                             <TableCell>{order.issuedTo?.split(' - ')[0] || '-'}</TableCell>
                                                             <TableCell>{order.managerRemarks || '-'}</TableCell>
                                                             <TableCell align="center">
-                                                                <Button
-                                                                    variant={isShortfall ? "outlined" : "contained"}
-                                                                    color={isShortfall ? "error" : "success"}
-                                                                    size="small"
-                                                                    onClick={() => handleIssueOrder(order.id)}
-                                                                >
-                                                                    {isShortfall ? "Force Issue" : "Issue Stock"}
-                                                                </Button>
+                                                                <Box display="flex" gap={1} justifyContent="center">
+                                                                    <Button
+                                                                        variant="contained"
+                                                                        color="success"
+                                                                        size="small"
+                                                                        disabled={!!isShortfall}
+                                                                        onClick={() => handleIssueOrder(order.id)}
+                                                                    >
+                                                                        Issue Stock
+                                                                    </Button>
+                                                                    <Button
+                                                                        variant="outlined"
+                                                                        color="error"
+                                                                        size="small"
+                                                                        onClick={() => handleRejectOrder(order.id)}
+                                                                    >
+                                                                        Reject
+                                                                    </Button>
+                                                                </Box>
                                                             </TableCell>
                                                         </TableRow>
                                                     );
