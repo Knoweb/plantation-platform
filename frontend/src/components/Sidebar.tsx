@@ -115,6 +115,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [eveningPendingCount, setEveningPendingCount] = useState(0);
     const [storePendingCount, setStorePendingCount] = useState(0); // Store Keeper Approved FOs count
     const [chiefClerkPendingCount, setChiefClerkPendingCount] = useState(0);
+    const [leaveApprovalCount, setLeaveApprovalCount] = useState(0); // Manager pending leave approvals
     const [pendingDivisions, setPendingDivisions] = useState<string[]>([]);
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
@@ -224,6 +225,15 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
                 const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL' && item.employmentType !== 'CONTRACT_MEMBER').length;
                 setWorkerApprovalCount(pendingWorkers);
+
+                // Leave Approval Count for Manager
+                try {
+                    const leaveRes = await axios.get(`/api/operations/leaves/tenant/${userSession.tenantId}/applications`);
+                    const pendingLeaves = (leaveRes.data || []).filter((a: any) => a.status === 'PENDING').length;
+                    setLeaveApprovalCount(pendingLeaves);
+                } catch (e) {
+                    console.warn('Leave approval count unavailable', e);
+                }
             }
 
             // Store Keeper Alerts
@@ -311,9 +321,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         if (chiefClerkPendingCount > 0) { total += chiefClerkPendingCount; alertsList.push({ id: 6, label: `${chiefClerkPendingCount} Pending Inventory Actions`, path: '/dashboard/chief-inventory' }); }
         if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} Unread Messages`, path: '/dashboard/correspondence' }); }
         if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} Worker Approvals`, path: '/dashboard/workers' }); }
+        if (leaveApprovalCount > 0) { total += leaveApprovalCount; alertsList.push({ id: 9, label: `${leaveApprovalCount} Leave Approval${leaveApprovalCount > 1 ? 's' : ''} Pending`, path: '/dashboard/leave-management' }); }
 
         window.dispatchEvent(new CustomEvent('global-alerts-update', { detail: { total, alertsList } }));
-    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, userRole]);
+    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, leaveApprovalCount, userRole]);
 
     const handleLogout = () => {
         sessionStorage.removeItem('user');
@@ -337,6 +348,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         if (item.text === 'Correspondence') return unreadChatCount;
         if (item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return workerApprovalCount;
         if (item.text === 'Evening Muster') return eveningPendingCount;
+        if (item.text === 'Leave Management' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return leaveApprovalCount;
         return 0;
     };
 
@@ -536,6 +548,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     </Badge>
                                 ) : item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && workerApprovalCount > 0 ? (
                                     <Badge badgeContent={workerApprovalCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Leave Management' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && leaveApprovalCount > 0 ? (
+                                    <Badge badgeContent={leaveApprovalCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : (
