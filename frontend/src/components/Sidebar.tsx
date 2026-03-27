@@ -80,7 +80,8 @@ const menuItems = [
     { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
-    { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: ['MANAGER'] }, // Field Officer uses specific tabs now
+    { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: [] }, // Removed from Manager
+
 
     // Store Keeper
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard/store/main', roles: ['STORE_KEEPER'] },
