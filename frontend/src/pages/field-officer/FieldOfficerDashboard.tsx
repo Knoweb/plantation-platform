@@ -1115,18 +1115,22 @@ export default function FieldOfficerDashboard() {
                                 margin="dense"
                             />
                         )}
-                        renderOption={(props, option, { selected }) => (
-                            <li {...props} key={option.id}>
-                                <Checkbox
-                                    checked={selected}
-                                    style={{ marginRight: 8 }}
-                                />
-                                <Box>
-                                    <Typography variant="body2">{option.name}</Typography>
-                                    Reg: {option.id ? '...' : ''}
-                                </Box>
-                            </li>
-                        )}
+                        renderOption={(props, option, { selected }) => {
+                            const isUnavailable = musters.some(m => m.date === today && m.workerIds?.includes(option.id));
+                            const { key, ...otherProps } = props as any;
+                            return (
+                                <li key={option.id || key} {...otherProps}>
+                                    <Checkbox
+                                        checked={selected}
+                                        style={{ marginRight: 8 }}
+                                        disabled={isUnavailable}
+                                    />
+                                    <Box sx={{ opacity: isUnavailable ? 0.5 : 1, display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                        <Typography variant="body2">{option.name} {isUnavailable ? '(Assigned)' : ''}</Typography>
+                                    </Box>
+                                </li>
+                            );
+                        }}
                         sx={{ mt: 2 }}
                     />
 
