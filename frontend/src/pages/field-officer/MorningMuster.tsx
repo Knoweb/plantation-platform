@@ -53,6 +53,8 @@ export default function MorningMuster() {
     const tenantId = userSession.tenantId;
 
     const [musters, setMusters] = useState<Muster[]>([]);
+    const [allTodaysMusters, setAllTodaysMusters] = useState<Muster[]>([]); // ALL divisions - for worker availability check
+    const [assignedWorkerIds, setAssignedWorkerIds] = useState<Set<string>>(new Set()); // Combined set from musters + daily_work
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [fields, setFields] = useState<Field[]>([]);
     const [divisions, setDivisions] = useState<Division[]>([]);
@@ -87,12 +89,14 @@ export default function MorningMuster() {
 
     const fetchData = async () => {
         try {
-            const [musterRes, workerRes, fieldRes, divisionRes, taskRes] = await Promise.all([
+            const [musterRes, allMusterRes, workerRes, fieldRes, divisionRes, taskRes, dailyWorkRes] = await Promise.all([
                 axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
+                axios.get(`/api/operations/muster?tenantId=${tenantId}`), // ALL divisions for availability check
                 axios.get(`/api/workers?tenantId=${tenantId}`),
                 axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
                 axios.get(`/api/divisions?tenantId=${tenantId}`),
-                axios.get(`/api/operations/task-types?tenantId=${tenantId}`)
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}`) // For Manager-added workers
             ]);
 
             const d = new Date();
@@ -102,8 +106,32 @@ export default function MorningMuster() {
             const today = `${year}-${month}-${day}`;
 
             const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
+            const allTodaysMustersList = allMusterRes.data.filter((m: Muster) => m.date === today);
+            
+            // Build a combined set of all assigned worker IDs for today:
+            // 1. From raw musters table (field officer assignments)
+            const assignedSet = new Set<string>();
+            allTodaysMustersList.forEach((m: Muster) => {
+                (m.workerIds || []).forEach(id => assignedSet.add(id));
+            });
+            // 2. From daily_work records (includes workers added by Manager during review)
+            dailyWorkRes.data.forEach((dw: any) => {
+                if (dw.workDate === today && dw.status !== 'REJECTED') {
+                    try {
+                        const details = JSON.parse(dw.details || '[]');
+                        details.forEach((det: any) => {
+                            (det.assigned || []).forEach((w: any) => {
+                                const wId = w.id || w.workerId;
+                                if (wId) assignedSet.add(wId);
+                            });
+                        });
+                    } catch (e) { /* skip malformed */ }
+                }
+            });
             
             setMusters(todaysMusters);
+            setAllTodaysMusters(allTodaysMustersList);
+            setAssignedWorkerIds(assignedSet);
             setWorkers(workerRes.data);
             setFields(fieldRes.data);
             setDivisions(divisionRes.data);
@@ -819,6 +847,12 @@ export default function MorningMuster() {
                         getOptionLabel={(option) => option.name}
                         isOptionEqualToValue={(option, value) => option.id === value.id}
                         value={filteredWorkers.filter(w => newMuster.workerIds.includes(w.id))}
+                        getOptionDisabled={(option) =>
+                            // Check combined set: covers both field officer musters AND Manager-added workers
+                            (assignedWorkerIds.has(option.id) &&
+                                // Still allow the worker if they're already in the muster being edited
+                                !((editingMusterId != null) && allTodaysMusters.find(m => m.id === editingMusterId)?.workerIds?.includes(option.id)))
+                        }
                         onChange={(_event, newValue) => {
                             setNewMuster({ ...newMuster, workerIds: newValue.map(w => w.id) });
                         }}

@@ -119,6 +119,7 @@ function DailyEntryTab() {
     const [addWorkerOpen, setAddWorkerOpen] = useState(false);
     const [addWorkerTask, setAddWorkerTask] = useState<string>('');
     const [addWorkerField, setAddWorkerField] = useState<string>('');
+    const [pendingEveningWorkers, setPendingEveningWorkers] = useState<any[]>([]);
     const [dailyWeights, setDailyWeights] = useState<any>({});
 
     const fetchInitialData = useCallback(async (silent = false) => {
@@ -302,28 +303,14 @@ function DailyEntryTab() {
         fetchInitialData(false); // Reset to last saved state
     };
 
-    // Persist dailyWeights
-    useEffect(() => {
-        if (!tenantId || !today) return;
-        const key = `dailyWeights_${tenantId}_${today}`;
-        const saved = localStorage.getItem(key);
-        if (saved) {
-            try { 
-                const parsed = JSON.parse(saved);
-                setDailyWeights((prev: any) => {
-                    if (JSON.stringify(prev) === JSON.stringify(parsed)) return prev;
-                    return parsed;
-                });
-            } catch (e) { }
-        }
-    }, [tenantId, today]);
-
+    // Note: dailyWeights are intentionally NOT restored from localStorage.
+    // They start blank each session. Submitted weights are loaded from the backend via fetchInitialData.
     useEffect(() => {
         if (tenantId && today) {
             const key = `dailyWeights_${tenantId}_${today}`;
-            localStorage.setItem(key, JSON.stringify(dailyWeights));
+            localStorage.removeItem(key); // Clear any stale saved weights
         }
-    }, [dailyWeights, tenantId, today]);
+    }, [tenantId, today]);
     const [isSubmitted, setIsSubmitted] = useState(false);
 
     // Persistence Key Helper
@@ -822,7 +809,7 @@ function DailyEntryTab() {
             </Dialog>
 
             {/* Add Evening Worker Dialog */}
-            <Dialog open={addWorkerOpen} onClose={() => setAddWorkerOpen(false)} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
+            <Dialog open={addWorkerOpen} onClose={() => { setAddWorkerOpen(false); setPendingEveningWorkers([]); }} maxWidth="sm" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
                 <DialogTitle sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Assign Evening Worker</DialogTitle>
                 <DialogContent>
                     <FormControl fullWidth margin="dense" sx={{ mt: 2 }}>
@@ -873,52 +860,25 @@ function DailyEntryTab() {
                             if (option.employmentType === 'CONTRACT' || option.employmentType === 'CONTRACT_MEMBER') return '— CONTRACT —';
                             return '— OTHER —';
                         }}
+                        multiple
+                        disableCloseOnSelect
                         getOptionLabel={(option: any) => option.name}
                         isOptionEqualToValue={(option: any, value: any) => option.id === value?.id}
-                        value={null} // Keep unselected by default since selecting adds immediately
-                        onChange={(_event, newValue: any) => {
-                            if (!newValue) return;
-                            const worker = newValue;
-                            if (worker && addWorkerTask && addWorkerField) {
-                                const itemsForDiv = attendanceData.filter(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
-                                let defaultDailyWorkId = itemsForDiv.length > 0 ? itemsForDiv[0].dailyWorkId : '00000000-0000-0000-0000-000000000000';
-
-                                const newRecord: AttendanceRecord = {
-                                    id: `temp-${Date.now()}`,
-                                    workerId: worker.workerId || worker.id,
-                                    workerName: worker.name,
-                                    workerType: worker.employmentType || 'PERMANENT',
-                                    workType: addWorkerTask,
-                                    fieldName: addWorkerField,
-                                    status: '', // Not selected by default!
-                                    session: 'EVENING_SESSION',
-                                    divisionId: selectedDivision,
-                                    workDate: today,
-                                    tenantId: tenantId,
-                                    dailyWorkId: defaultDailyWorkId
-                                };
-                                setAttendanceData(prev => [...prev, newRecord]);
-                                setAddWorkerOpen(false);
-                                setAddWorkerTask('');
-                                setAddWorkerField('');
-                            } else if (!addWorkerTask || !addWorkerField) {
-                                setNotification({ open: true, message: 'Please select both Task and Field first', severity: 'error' });
-                            }
+                        value={pendingEveningWorkers}
+                        onChange={(_event, newValue: any[]) => {
+                            setPendingEveningWorkers(newValue);
                         }}
                         getOptionDisabled={(option: any) => {
                             const wId = option.workerId || option.id;
+                            // Get all records for this worker in this division
+                            const workerRecords = attendanceData.filter(a =>
+                                (a.workerId === wId) && a.divisionId === selectedDivision
+                            );
+                            if (workerRecords.length === 0) return false; // Not assigned at all - available
 
-                            // 1. Is this worker already assigned to an evening task? -> Block.
-                            const hasEvening = attendanceData.some(a => a.workerId === wId && (a.session === 'EVENING_SESSION'));
-                            if (hasEvening) return true;
-
-                            // 2. Is this worker assigned to a MORNING_SESSION somewhere?
-                            // Based on user request: IT SHOULD ONLY FETCH WORKERS THAT THEIR SESSION STATUS IS = "MORNING"
-                            // If they are literally set to 'FULL_DAY', they belong to another muster completely and must be blocked.
-                            const hasMorningSession = attendanceData.some(a => a.workerId === wId && a.session === 'MORNING_SESSION');
-
-                            // If they don't explicitly have a Morning Session available, they are blocked.
-                            return !hasMorningSession;
+                            // If ALL their records are MORNING_SESSION, they can still be added for evening
+                            const allMorningOnly = workerRecords.every(a => a.session === 'MORNING_SESSION');
+                            return !allMorningOnly; // Block if FULL_DAY or EVENING_SESSION
                         }}
                         renderInput={(params) => (
                             <TextField
@@ -930,15 +890,15 @@ function DailyEntryTab() {
                         )}
                         renderOption={(props, option: any) => {
                             let color = "#757575";
-                            let isAssigned = false;
 
                             const wId = option.workerId || option.id;
 
-                            // Same visual logic to grey them out and mark as assigned
-                            const hasEvening = attendanceData.some(a => a.workerId === wId && (a.session === 'EVENING_SESSION'));
-                            const hasMorningSession = attendanceData.some(a => a.workerId === wId && a.session === 'MORNING_SESSION');
-
-                            if (hasEvening || !hasMorningSession) isAssigned = true;
+                            // Mark as assigned only if FULL_DAY or EVENING_SESSION (not morning-only)
+                            const workerRecords = attendanceData.filter(a =>
+                                (a.workerId === wId) && a.divisionId === selectedDivision
+                            );
+                            const allMorningOnly = workerRecords.length > 0 && workerRecords.every(a => a.session === 'MORNING_SESSION');
+                            const isAssigned = workerRecords.length > 0 && !allMorningOnly;
 
                             if (option.employmentType === 'PERMANENT') color = "#2e7d32";
                             else if (option.employmentType === 'CASUAL') color = "#0288d1";
@@ -949,14 +909,68 @@ function DailyEntryTab() {
                             return (
                                 <li key={key || option.id} {...optionProps} style={{ color, display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px' }}>
                                     <Checkbox checked={isAssigned} size="small" sx={{ p: 0 }} disabled />
-                                    <span>{option.name} {isAssigned ? '(Assigned)' : ''}</span>
+                                    <span>{option.name} {isAssigned ? '(Assigned)' : allMorningOnly ? '(Morning only)' : ''}</span>
                                 </li>
                             );
                         }}
                     />
                 </DialogContent>
-                <DialogActions sx={{ px: 3, pb: 3 }}>
-                    <Button onClick={() => setAddWorkerOpen(false)} color="inherit">Cancel</Button>
+                <DialogActions sx={{ px: 3, pb: 3, gap: 1 }}>
+                    <Button onClick={() => { setAddWorkerOpen(false); setPendingEveningWorkers([]); setAddWorkerTask(''); setAddWorkerField(''); }} color="inherit">Cancel</Button>
+                    <Button
+                        variant="contained"
+                        color="success"
+                        disabled={pendingEveningWorkers.length === 0 || !addWorkerTask || !addWorkerField}
+                        onClick={() => {
+                            if (!addWorkerTask || !addWorkerField) {
+                                setNotification({ open: true, message: 'Please select both Task and Field first', severity: 'error' });
+                                return;
+                            }
+                            const itemsForDiv = attendanceData.filter(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
+                            const defaultDailyWorkId = itemsForDiv.length > 0 ? itemsForDiv[0].dailyWorkId : '00000000-0000-0000-0000-000000000000';
+                            
+                            // Dedup guard: skip workers already present with EVENING_SESSION (handles background polling race conditions)
+                            const workersToAdd = pendingEveningWorkers.filter(worker => {
+                                const wId = worker.workerId || worker.id;
+                                return !attendanceData.some(a =>
+                                    a.workerId === wId &&
+                                    a.divisionId === selectedDivision &&
+                                    (a.session === 'EVENING_SESSION' || a.session === 'FULL_DAY')
+                                );
+                            });
+                            
+                            if (workersToAdd.length === 0) {
+                                setNotification({ open: true, message: 'All selected workers are already assigned for this evening.', severity: 'warning' });
+                                setAddWorkerOpen(false);
+                                setPendingEveningWorkers([]);
+                                setAddWorkerTask('');
+                                setAddWorkerField('');
+                                return;
+                            }
+                            
+                            const newRecords: AttendanceRecord[] = workersToAdd.map((worker, i) => ({
+                                id: `temp-${Date.now()}-${i}`,
+                                workerId: worker.workerId || worker.id,
+                                workerName: worker.name,
+                                workerType: worker.employmentType || 'PERMANENT',
+                                workType: addWorkerTask,
+                                fieldName: addWorkerField,
+                                status: '',
+                                session: 'EVENING_SESSION',
+                                divisionId: selectedDivision,
+                                workDate: today,
+                                tenantId: tenantId,
+                                dailyWorkId: defaultDailyWorkId
+                            }));
+                            setAttendanceData(prev => [...prev, ...newRecords]);
+                            setAddWorkerOpen(false);
+                            setPendingEveningWorkers([]);
+                            setAddWorkerTask('');
+                            setAddWorkerField('');
+                        }}
+                    >
+                        Assign {pendingEveningWorkers.length > 0 ? `(${pendingEveningWorkers.length})` : ''} Workers
+                    </Button>
                 </DialogActions>
             </Dialog>
             <Snackbar open={notification.open} autoHideDuration={4000} onClose={() => setNotification({ ...notification, open: false })}>
