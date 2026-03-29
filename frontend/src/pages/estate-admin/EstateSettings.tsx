@@ -24,6 +24,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import axios from 'axios';
+import InputAdornment from '@mui/material/InputAdornment';
+import Visibility from '@mui/icons-material/Visibility';
+import VisibilityOff from '@mui/icons-material/VisibilityOff';
+import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 
 const DEFAULT_CROPS = ['tea', 'rubber', 'cinnamon'];
 
@@ -53,6 +57,22 @@ export default function EstateSettings() {
         role: userSession.role || ''
     });
     const [newPassword, setNewPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+
+    const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (file) {
+            if (file.size > 5 * 1024 * 1024) {
+                setSnackbar({ open: true, message: 'Image size must be less than 5MB', severity: 'error' });
+                return;
+            }
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setLogoUrl(reader.result as string);
+            };
+            reader.readAsDataURL(file);
+        }
+    };
 
     const [saving, setSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
@@ -250,16 +270,35 @@ export default function EstateSettings() {
                         size="small"
                         InputProps={{ sx: { borderRadius: 2 } }}
                     />
-                    <TextField
-                        label="Estate Logo URL"
-                        value={logoUrl}
-                        onChange={(e) => setLogoUrl(e.target.value)}
-                        disabled={!isEditing}
-                        fullWidth
-                        size="small"
-                        InputProps={{ sx: { borderRadius: 2 } }}
-                        helperText={isEditing ? "Provide a publicly reachable image URL" : ""}
-                    />
+                    <Box>
+                        {isEditing && (
+                            <Box sx={{ display: 'flex', gap: 2, alignItems: 'center' }}>
+                                <Button
+                                    component="label"
+                                    variant="outlined"
+                                    startIcon={<CloudUploadIcon />}
+                                    sx={{ borderRadius: 2, height: 40 }}
+                                >
+                                    Upload Picture
+                                    <input
+                                        type="file"
+                                        hidden
+                                        accept="image/png, image/jpeg, image/jpg, image/webp"
+                                        onChange={handleImageUpload}
+                                    />
+                                </Button>
+                            </Box>
+                        )}
+                        {logoUrl && (
+                            <Box mt={isEditing ? 2 : 0}>
+                                <Typography variant="caption" color="text.secondary" display="block" mb={0.5}>Current Logo Preview:</Typography>
+                                <img src={logoUrl} alt="Estate Logo Preview" style={{ maxHeight: 60, borderRadius: 8, border: '1px solid #e0e0e0', objectFit: 'contain' }} />
+                            </Box>
+                        )}
+                        {!logoUrl && !isEditing && (
+                            <Typography variant="body2" color="text.disabled">No logo set</Typography>
+                        )}
+                    </Box>
                 </Box>
                 
                 <Divider sx={{ my: 4, borderStyle: 'dashed' }} />
@@ -281,12 +320,24 @@ export default function EstateSettings() {
                     {isEditing && (
                         <TextField
                             label="New Password"
-                            type="password"
+                            type={showPassword ? 'text' : 'password'}
                             value={newPassword}
                             onChange={(e) => setNewPassword(e.target.value)}
                             fullWidth
                             size="small"
-                            InputProps={{ sx: { borderRadius: 2 } }}
+                            InputProps={{ 
+                                sx: { borderRadius: 2 },
+                                endAdornment: (
+                                    <InputAdornment position="end">
+                                        <IconButton
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            edge="end"
+                                        >
+                                            {showPassword ? <VisibilityOff /> : <Visibility />}
+                                        </IconButton>
+                                    </InputAdornment>
+                                )
+                            }}
                             helperText="Leave blank to keep unchanged. Secure constraints apply."
                         />
                     )}
