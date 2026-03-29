@@ -1116,7 +1116,9 @@ export default function FieldOfficerDashboard() {
                             />
                         )}
                         renderOption={(props, option, { selected }) => {
-                            const isUnavailable = musters.some(m => m.date === today && m.workerIds?.includes(option.id));
+                            const d = new Date();
+                            const todayLocal = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                            const isUnavailable = musters.some(m => m.date === todayLocal && m.workerIds?.includes(option.id));
                             const { key, ...otherProps } = props as any;
                             return (
                                 <li key={option.id || key} {...otherProps}>
