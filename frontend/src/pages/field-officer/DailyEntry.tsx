@@ -96,8 +96,8 @@ export default function EveningMusterPage() {
 function DailyEntryTab() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
-    const d = new Date();
-    const today = d.toISOString().split('T')[0];
+    const now = new Date();
+    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);

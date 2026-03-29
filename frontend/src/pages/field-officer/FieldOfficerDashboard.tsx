@@ -648,11 +648,13 @@ export default function FieldOfficerDashboard() {
     const handleCreateMuster = async () => {
         try {
             const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
+            const now = new Date();
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             await axios.post('/api/operations/muster', {
                 ...newMuster,
                 tenantId,
                 divisionId,
-                date: new Date().toISOString().split('T')[0],
+                date: localDate,
                 workerCount: newMuster.workerIds.length // Optimistically send count, backend recalculates anyway
             });
             setOpenMuster(false);
@@ -666,7 +668,9 @@ export default function FieldOfficerDashboard() {
     const handleLogHarvest = async () => {
         try {
             const divisionId = (userSession.divisionAccess && userSession.divisionAccess.length > 0) ? userSession.divisionAccess[0] : null;
-            await axios.post('/api/operations/harvest', { ...newHarvest, tenantId, divisionId, date: new Date().toISOString().split('T')[0] });
+            const now = new Date();
+            const localDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+            await axios.post('/api/operations/harvest', { ...newHarvest, tenantId, divisionId, date: localDate });
             setOpenHarvest(false);
             fetchData();
         } catch (e) {
