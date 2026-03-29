@@ -38,8 +38,22 @@ export default function EstateSettings() {
         rubber: false,
         cinnamon: false
     });
-    
     const [customCrop, setCustomCrop] = useState('');
+    
+    // Company Profile State
+    const [companyName, setCompanyName] = useState(userSession.companyName || '');
+    const [logoUrl, setLogoUrl] = useState(userSession.logoUrl || '');
+
+    // Admin Profile State
+    const [userInfo, setUserInfo] = useState({
+        userId: userSession.userId || '',
+        fullName: userSession.fullName || '',
+        username: userSession.username || '',
+        email: userSession.email || '',
+        role: userSession.role || ''
+    });
+    const [newPassword, setNewPassword] = useState('');
+
     const [saving, setSaving] = useState(false);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
@@ -52,10 +66,34 @@ export default function EstateSettings() {
             .then(res => {
                 if (res.data.configJson) {
                     setConfig(res.data.configJson);
-                    // Update session to keep in sync
-                    const updatedUser = { ...userSession, config: res.data.configJson };
-                    sessionStorage.setItem('user', JSON.stringify(updatedUser));
                 }
+                setCompanyName(res.data.companyName || userSession.companyName);
+                if (res.data.logoUrl) setLogoUrl(res.data.logoUrl);
+
+                // Update session
+                const updatedUser = { 
+                    ...userSession, 
+                    config: res.data.configJson || userSession.config,
+                    companyName: res.data.companyName || userSession.companyName,
+                    logoUrl: res.data.logoUrl || userSession.logoUrl
+                };
+                sessionStorage.setItem('user', JSON.stringify(updatedUser));
+            })
+            .catch(err => {
+                console.warn("Could not refresh configuration from server, using session data.", err);
+            });
+
+            // Fetch User Details to get Email
+            axios.get(`/api/tenants/users/${userSession.userId}`, {
+                headers: { Authorization: `Bearer ${token}` }
+            })
+            .then(res => {
+                setUserInfo(prev => ({
+                    ...prev,
+                    email: res.data.email || prev.email,
+                    fullName: res.data.fullName || prev.fullName,
+                    username: res.data.username || prev.username
+                }));
             })
             .catch(err => {
                 console.warn("Could not refresh configuration from server, using session data.", err);
@@ -104,13 +142,42 @@ export default function EstateSettings() {
             await axios.put(`/api/tenants/${tenantId}/config`, config, {
                 headers: { Authorization: `Bearer ${token}` }
             });
+
+            await axios.put(`/api/tenants/${tenantId}/details`, {
+                companyName,
+                logoUrl
+            }, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
+
+            const userPayload: any = {
+                tenantId: tenantId,
+                fullName: userInfo.fullName,
+                username: userInfo.username,
+                email: userInfo.email,
+                role: userInfo.role
+            };
+            if (newPassword.trim()) {
+                userPayload.password = newPassword.trim();
+            }
+
+            await axios.put(`/api/tenants/users/${userInfo.userId}`, userPayload, {
+                headers: { Authorization: `Bearer ${token}` }
+            });
             
             // Success - update local session
-            const updatedUser = { ...userSession, config };
+            const updatedUser = { 
+                ...userSession, 
+                config, 
+                companyName, 
+                logoUrl,
+                email: userInfo.email
+            };
             sessionStorage.setItem('user', JSON.stringify(updatedUser));
 
-            setSnackbar({ open: true, message: 'Configuration saved successfully!', severity: 'success' });
+            setSnackbar({ open: true, message: 'Configuration and Profile saved successfully!', severity: 'success' });
             setIsEditing(false);
+            setNewPassword(''); // clear password field
             window.dispatchEvent(new Event('config-updated'));
         } catch (err: any) {
             console.error("Failed to update config:", err);
@@ -170,6 +237,63 @@ export default function EstateSettings() {
                 borderColor: isEditing ? 'primary.main' : 'divider',
                 transition: 'all 0.3s ease'
             }}>
+                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+                    Company Profile
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, mb: 4 }}>
+                    <TextField
+                        label="Estate Name (Company)"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
+                        disabled={!isEditing}
+                        fullWidth
+                        size="small"
+                        InputProps={{ sx: { borderRadius: 2 } }}
+                    />
+                    <TextField
+                        label="Estate Logo URL"
+                        value={logoUrl}
+                        onChange={(e) => setLogoUrl(e.target.value)}
+                        disabled={!isEditing}
+                        fullWidth
+                        size="small"
+                        InputProps={{ sx: { borderRadius: 2 } }}
+                        helperText={isEditing ? "Provide a publicly reachable image URL" : ""}
+                    />
+                </Box>
+                
+                <Divider sx={{ my: 4, borderStyle: 'dashed' }} />
+
+                <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 2 }}>
+                    Admin User Profile
+                </Typography>
+                <Box sx={{ display: 'grid', gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' }, gap: 3, mb: 4 }}>
+                    <TextField
+                        label="Email Address"
+                        type="email"
+                        value={userInfo.email}
+                        onChange={(e) => setUserInfo({...userInfo, email: e.target.value})}
+                        disabled={!isEditing}
+                        fullWidth
+                        size="small"
+                        InputProps={{ sx: { borderRadius: 2 } }}
+                    />
+                    {isEditing && (
+                        <TextField
+                            label="New Password"
+                            type="password"
+                            value={newPassword}
+                            onChange={(e) => setNewPassword(e.target.value)}
+                            fullWidth
+                            size="small"
+                            InputProps={{ sx: { borderRadius: 2 } }}
+                            helperText="Leave blank to keep unchanged. Secure constraints apply."
+                        />
+                    )}
+                </Box>
+                
+                <Divider sx={{ my: 4, borderStyle: 'dashed' }} />
+
                 <Typography variant="h6" fontWeight="bold" gutterBottom sx={{ mb: 3 }}>
                     Cultivated Crops
                 </Typography>

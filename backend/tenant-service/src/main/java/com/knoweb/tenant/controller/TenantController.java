@@ -95,6 +95,11 @@ public class TenantController {
         }
     }
 
+    @GetMapping("/users/{userId}")
+    public ResponseEntity<?> getUserById(@PathVariable java.util.UUID userId) {
+        return ResponseEntity.ok(tenantService.getUserById(userId));
+    }
+
     @DeleteMapping("/users/{userId}")
     public ResponseEntity<?> deleteUser(@PathVariable java.util.UUID userId) {
         tenantService.deleteUser(userId);
@@ -125,6 +130,15 @@ public class TenantController {
     public ResponseEntity<?> updateConfig(@PathVariable java.util.UUID id, @RequestBody java.util.Map<String, Object> configJson) {
         try {
             return ResponseEntity.ok(tenantService.updateTenantConfig(id, configJson));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+        }
+    }
+
+    @PutMapping("/{id}/details")
+    public ResponseEntity<?> updateDetails(@PathVariable java.util.UUID id, @RequestBody java.util.Map<String, String> request) {
+        try {
+            return ResponseEntity.ok(tenantService.updateTenantDetails(id, request.get("companyName"), request.get("logoUrl")));
         } catch (Exception e) {
             return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
         }

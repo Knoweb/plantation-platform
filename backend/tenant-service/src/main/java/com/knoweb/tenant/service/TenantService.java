@@ -153,6 +153,24 @@ public class TenantService {
                 .orElseThrow(() -> new RuntimeException("Tenant not found"));
     }
 
+    public User getUserById(java.util.UUID userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+    }
+
+    @Transactional
+    public Tenant updateTenantDetails(java.util.UUID tenantId, String companyName, String logoUrl) {
+        Tenant tenant = tenantRepository.findById(tenantId)
+                .orElseThrow(() -> new RuntimeException("Tenant not found"));
+        if (companyName != null && !companyName.trim().isEmpty()) {
+            tenant.setCompanyName(companyName);
+        }
+        if (logoUrl != null) {
+            tenant.setLogoUrl(logoUrl);
+        }
+        return tenantRepository.save(tenant);
+    }
+
     public java.util.List<User> getTenantUsers(java.util.UUID tenantId) {
         return userRepository.findByTenantId(tenantId);
     }
