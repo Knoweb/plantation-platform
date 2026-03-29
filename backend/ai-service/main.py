@@ -3,11 +3,19 @@ import json
 import logging
 import os
 import requests
+import chromadb
 from dotenv import load_dotenv, find_dotenv
 
 from crewai import Agent, Task, Crew, Process
 from crewai.tools import tool
 from langchain_groq import ChatGroq
+
+# Initialize ChromaDB connection (Persistent local DB)
+try:
+    chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    policy_collection = chroma_client.get_collection(name="plantation_policies")
+except Exception:
+    policy_collection = None
 
 # Aggressively load environment variables to ensure the new key is pulled
 load_dotenv(find_dotenv(), override=True)
@@ -22,6 +30,27 @@ QUEUE_NAME = 'ai.roster.queue'
 ROUTING_KEY_LISTEN = 'ai.roster.check'
 
 # --- 1. DEFINE CREWAI TOOLS ---
+@tool("Search Estate Policies")
+def search_policies(query: str) -> str:
+    """Search the estate's Standard Operating Procedures (SOPs) for relevant rules."""
+    try:
+        if not policy_collection:
+            return "Local Policy Database is empty or not seeded. Rely on general agricultural knowledge."
+        # Query ChromaDB for top 3 matching policies
+        results = policy_collection.query(
+            query_texts=[query],
+            n_results=3
+        )
+        if not results['documents'] or len(results['documents'][0]) == 0:
+            return "No specific policies found for this query."
+        
+        # Combine the results into a readable string
+        matched_policies = "\n".join([f"- {doc}" for doc in results['documents'][0]])
+        return f"Found the following active estate policies:\n{matched_policies}"
+    except Exception as e:
+        logger.error(f"Policy Search Error: {e}")
+        return f"Error accessing policy database: {str(e)}"
+
 @tool("Check Weather Forecast")
 def check_weather(location: str) -> str:
     """Fetch the real-time rainfall forecast for a specific estate location (e.g. 'Bogawantalawa')."""
@@ -113,15 +142,16 @@ def run_ai_roster_optimization(tenant_id: str, estate_id: str, date: str) -> str
 
     supervisor = Agent(
         role='Expert Plantation Operations Supervisor',
-        goal='Optimize daily labor rosters based on real weather conditions, strictly preventing chemical washout and protecting worker safety.',
+        goal='Optimize daily labor rosters based on real weather conditions, consulting the estate policies to ensure rules are followed.',
         backstory=(
             "You are a highly experienced agricultural operations head. You use the 'Check Weather Forecast' tool to get REAL data. "
+            "You MUST use the 'Search Estate Policies' tool to check the estate's specific rules regarding the weather forecast and tasks. "
             "If rain probability is high (above 60%), you MUST identify vulnerable outdoor tasks like 'Fertilizer Application', 'Plucking', or 'Tapping'. "
-            "You then use your expertise to recommend shifting that labor to indoor or weather-resilient tasks like 'Drain Cleaning' or 'Factory Maintenance'."
+            "Using the estate policies, you recommend shifting that labor to indoor or weather-resilient tasks like 'Drain Cleaning' or 'Factory Maintenance'."
             "Once you have a recommendation, you MUST notify the Field Officers using your 'Send Operational Notification' tool."
         ),
         allow_delegation=False,
-        tools=[check_weather, fetch_roster, send_notification],
+        tools=[check_weather, fetch_roster, search_policies, send_notification],
         llm="groq/llama-3.3-70b-versatile",
         verbose=True
     )
@@ -138,12 +168,13 @@ def run_ai_roster_optimization(tenant_id: str, estate_id: str, date: str) -> str
         description=(
             f"1. Fetch tomorrow's ({date}) weather forecast for the '{estate_id}' estate using your tool.\n"
             f"2. Fetch the actual drafted roster for context: '{roster_context}' using your tool.\n"
-            f"3. Analyze if the real rain risk (if any) conflicts with the scheduled outdoor tasks.\n"
-            f"4. If rain risk is above 60%, generate a sharp, data-driven Advisory Memo.\n"
-            f"5. IMPORTANT: If an advisory is generated, use 'Send Operational Notification' to send it to the 'FIELD_OFFICER' role for tenant '{tenant_id}'.\n"
-            f"6. Output a brief confirmation of the findings and the action taken."
+            f"3. Validate the weather risk against the estate's rules using the 'Search Estate Policies' tool.\n"
+            f"4. Analyze if the real rain risk conflicts with the scheduled outdoor tasks based on the policies.\n"
+            f"5. If a risk is detected, generate a sharp, data-driven Advisory Memo citing the specific policy.\n"
+            f"6. IMPORTANT: If an advisory is generated, use 'Send Operational Notification' to send it to the 'FIELD_OFFICER' role for tenant '{tenant_id}'.\n"
+            f"7. Output a brief confirmation of the findings and the action taken."
         ),
-        expected_output="A summary of the weather risk and a confirmation that the Field Officer has been notified of the adjustments.",
+        expected_output="A summary of the weather risk, the applicable estate policies consulted, and a confirmation that the Field Officer has been notified of the adjustments.",
         agent=supervisor
     )
 

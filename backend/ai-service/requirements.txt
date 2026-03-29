@@ -3,3 +3,4 @@ langchain-groq
 pika
 python-dotenv
 requests
+chromadb
