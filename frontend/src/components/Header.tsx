@@ -4,6 +4,7 @@ import MenuIcon from '@mui/icons-material/Menu';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@mui/material';
+import axios from 'axios';
 
 interface HeaderProps {
     handleDrawerToggle: () => void;
@@ -34,6 +35,8 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
             displayName: s.fullName || s.username || 'Guest User',
             email: s.username || '',
             role: s.role || 'Visitor',
+            tenantId: s.tenantId || '',
+            userId: s.userId || s.id || '',
         };
     };
     const [userInfo, setUserInfo] = useState(readSession);
@@ -42,10 +45,39 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
     const userRole = userInfo.role;
 
     useEffect(() => {
-        // Refresh from sessionStorage when Sidebar updates the estate name
+        // Fetch live user profile + estate name from backend
+        const fetchLiveInfo = async () => {
+            const session = JSON.parse(sessionStorage.getItem('user') || '{}');
+            const tenantId = session.tenantId;
+            const myId = session.userId || session.id;
+            if (!tenantId || !myId) return;
+            try {
+                const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
+                const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                if (me) {
+                    const newName = me.fullName || me.name || session.fullName;
+                    const newEmail = me.username || me.email || session.username;
+                    // Update sessionStorage
+                    session.fullName = newName;
+                    session.username = newEmail;
+                    sessionStorage.setItem('user', JSON.stringify(session));
+                    setUserInfo(prev => ({ ...prev, displayName: newName, email: newEmail }));
+                }
+            } catch {
+                // Silently keep using session values
+            }
+        };
+        fetchLiveInfo();
+        const interval = setInterval(fetchLiveInfo, 30000);
+
+        // Also react to Sidebar's estate-name update event
         const handleSessionUpdate = () => setUserInfo(readSession());
         window.addEventListener('user-session-updated', handleSessionUpdate);
-        return () => window.removeEventListener('user-session-updated', handleSessionUpdate);
+
+        return () => {
+            clearInterval(interval);
+            window.removeEventListener('user-session-updated', handleSessionUpdate);
+        };
     }, []);
 
     const getDashboardTitle = (role: string) => {
