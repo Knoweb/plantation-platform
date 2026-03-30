@@ -106,8 +106,35 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     // Load estate name & logo from backend session
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role;
-    const estateName = userSession.estateName || 'Plantation';
-    const estateLogo = userSession.estateLogo;
+    const [estateName, setEstateName] = useState<string>(userSession.estateName || 'Plantation');
+    const [estateLogo, setEstateLogo] = useState<string | null>(userSession.estateLogo || null);
+
+    // Fetch live estate name from backend so it updates when admin changes it
+    useEffect(() => {
+        const fetchEstateName = async () => {
+            if (!userSession.tenantId) return;
+            try {
+                const res = await axios.get(`/api/tenants/${userSession.tenantId}`);
+                const tenant = res.data;
+                if (tenant?.name) {
+                    setEstateName(tenant.name);
+                    // Also update sessionStorage so other components stay in sync
+                    const session = JSON.parse(sessionStorage.getItem('user') || '{}');
+                    session.estateName = tenant.name;
+                    if (tenant.logoUrl) {
+                        setEstateLogo(tenant.logoUrl);
+                        session.estateLogo = tenant.logoUrl;
+                    }
+                    sessionStorage.setItem('user', JSON.stringify(session));
+                }
+            } catch (e) {
+                // Silently ignore - keep using session value
+            }
+        };
+        fetchEstateName();
+        const interval = setInterval(fetchEstateName, 30000); // Re-check every 30s
+        return () => clearInterval(interval);
+    }, [userSession.tenantId]);
 
     // Alert Count for Manager
     const [alertCount, setAlertCount] = useState(0);
