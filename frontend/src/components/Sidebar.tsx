@@ -116,11 +116,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             try {
                 const res = await axios.get(`/api/tenants/${userSession.tenantId}`);
                 const tenant = res.data;
-                if (tenant?.name) {
-                    setEstateName(tenant.name);
+                if (tenant?.name || tenant?.companyName) {
+                    setEstateName(tenant.companyName || tenant.name);
                     // Also update sessionStorage so other components stay in sync
                     const session = JSON.parse(sessionStorage.getItem('user') || '{}');
-                    session.estateName = tenant.name;
+                    session.estateName = tenant.companyName || tenant.name;
                     if (tenant.logoUrl) {
                         setEstateLogo(tenant.logoUrl);
                         session.estateLogo = tenant.logoUrl;

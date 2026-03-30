@@ -32,7 +32,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
     const readSession = () => {
         const s = JSON.parse(sessionStorage.getItem('user') || '{}');
         return {
-            displayName: s.fullName || s.username || 'Guest User',
+            displayName: s.estateName || s.fullName || s.username || 'Guest User',  // estateName wins
             email: s.username || '',
             role: s.role || 'Visitor',
             tenantId: s.tenantId || '',
@@ -45,23 +45,19 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
     const userRole = userInfo.role;
 
     useEffect(() => {
-        // Fetch live user profile + estate name from backend
+        // Fetch live estate name from tenant API (same source as Sidebar)
         const fetchLiveInfo = async () => {
             const session = JSON.parse(sessionStorage.getItem('user') || '{}');
             const tenantId = session.tenantId;
-            const myId = session.userId || session.id;
-            if (!tenantId || !myId) return;
+            if (!tenantId) return;
             try {
-                const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
-                const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
-                if (me) {
-                    const newName = me.fullName || me.name || session.fullName;
-                    const newEmail = me.username || me.email || session.username;
-                    // Update sessionStorage
-                    session.fullName = newName;
-                    session.username = newEmail;
+                const res = await axios.get(`/api/tenants/${tenantId}`);
+                const tenant = res.data;
+                const name = tenant?.companyName || tenant?.name;
+                if (name) {
+                    session.estateName = name;
                     sessionStorage.setItem('user', JSON.stringify(session));
-                    setUserInfo(prev => ({ ...prev, displayName: newName, email: newEmail }));
+                    setUserInfo(prev => ({ ...prev, displayName: name }));
                 }
             } catch {
                 // Silently keep using session values
@@ -70,7 +66,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         fetchLiveInfo();
         const interval = setInterval(fetchLiveInfo, 30000);
 
-        // Also react to Sidebar's estate-name update event
+        // Also react to Sidebar's estate-name update event — re-read session which now has estateName
         const handleSessionUpdate = () => setUserInfo(readSession());
         window.addEventListener('user-session-updated', handleSessionUpdate);
 
@@ -202,11 +198,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                             <Typography variant="subtitle2" color="text.primary" fontWeight="700" lineHeight={1.1}>
                                 {userDisplayName}
                             </Typography>
-                            {userEmail && (
-                                <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.65rem', display: 'block' }}>
-                                    {userEmail}
-                                </Typography>
-                            )}
+
                         </Box>
                     </Box>
 
