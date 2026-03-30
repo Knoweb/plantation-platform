@@ -28,12 +28,15 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         return () => window.removeEventListener('global-alerts-update', handleGlobalAlerts);
     }, []);
 
-    // Load user info into state so it can react to live updates (e.g. estate name change)
+    // Load user info into state so it can react to live updates
     const readSession = () => {
         const s = JSON.parse(sessionStorage.getItem('user') || '{}');
+        const isAdmin = s.role === 'ESTATE_ADMIN';
         return {
-            displayName: s.estateName || s.fullName || s.username || 'Guest User',  // estateName wins
-            email: s.username || '',
+            // Estate admin → show estate name; others → show their personal fullName
+            displayName: isAdmin
+                ? (s.estateName || s.fullName || s.username || 'Estate Admin')
+                : (s.fullName || s.username || 'Guest User'),
             role: s.role || 'Visitor',
             tenantId: s.tenantId || '',
             userId: s.userId || s.id || '',
@@ -41,23 +44,36 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
     };
     const [userInfo, setUserInfo] = useState(readSession);
     const userDisplayName = userInfo.displayName;
-    const userEmail = userInfo.email;
     const userRole = userInfo.role;
 
     useEffect(() => {
-        // Fetch live estate name from tenant API (same source as Sidebar)
         const fetchLiveInfo = async () => {
             const session = JSON.parse(sessionStorage.getItem('user') || '{}');
             const tenantId = session.tenantId;
+            const myId = session.userId || session.id;
             if (!tenantId) return;
             try {
-                const res = await axios.get(`/api/tenants/${tenantId}`);
-                const tenant = res.data;
-                const name = tenant?.companyName || tenant?.name;
-                if (name) {
-                    session.estateName = name;
-                    sessionStorage.setItem('user', JSON.stringify(session));
-                    setUserInfo(prev => ({ ...prev, displayName: name }));
+                if (session.role === 'ESTATE_ADMIN') {
+                    // Estate admin: show estate name from tenant API
+                    const res = await axios.get(`/api/tenants/${tenantId}`);
+                    const name = res.data?.companyName || res.data?.name;
+                    if (name) {
+                        session.estateName = name;
+                        sessionStorage.setItem('user', JSON.stringify(session));
+                        setUserInfo(prev => ({ ...prev, displayName: name }));
+                    }
+                } else if (myId) {
+                    // Other roles: show personal name from their user record
+                    const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
+                    const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
+                    if (me) {
+                        const name = me.fullName || me.name || session.fullName;
+                        if (name) {
+                            session.fullName = name;
+                            sessionStorage.setItem('user', JSON.stringify(session));
+                            setUserInfo(prev => ({ ...prev, displayName: name }));
+                        }
+                    }
                 }
             } catch {
                 // Silently keep using session values
@@ -66,7 +82,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         fetchLiveInfo();
         const interval = setInterval(fetchLiveInfo, 30000);
 
-        // Also react to Sidebar's estate-name update event — re-read session which now has estateName
+        // Also react to Sidebar's estate-name update event
         const handleSessionUpdate = () => setUserInfo(readSession());
         window.addEventListener('user-session-updated', handleSessionUpdate);
 
