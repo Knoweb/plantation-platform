@@ -126,6 +126,8 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         session.estateLogo = tenant.logoUrl;
                     }
                     sessionStorage.setItem('user', JSON.stringify(session));
+                    // Notify Header to refresh its display
+                    window.dispatchEvent(new Event('user-session-updated'));
                 }
             } catch (e) {
                 // Silently ignore - keep using session value

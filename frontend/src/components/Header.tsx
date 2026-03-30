@@ -27,11 +27,26 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         return () => window.removeEventListener('global-alerts-update', handleGlobalAlerts);
     }, []);
 
-    // Load user info
-    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const userDisplayName = userSession.fullName || userSession.username || 'Guest User';
-    const userEmail = userSession.username || '';
-    const userRole = userSession.role || 'Visitor';
+    // Load user info into state so it can react to live updates (e.g. estate name change)
+    const readSession = () => {
+        const s = JSON.parse(sessionStorage.getItem('user') || '{}');
+        return {
+            displayName: s.fullName || s.username || 'Guest User',
+            email: s.username || '',
+            role: s.role || 'Visitor',
+        };
+    };
+    const [userInfo, setUserInfo] = useState(readSession);
+    const userDisplayName = userInfo.displayName;
+    const userEmail = userInfo.email;
+    const userRole = userInfo.role;
+
+    useEffect(() => {
+        // Refresh from sessionStorage when Sidebar updates the estate name
+        const handleSessionUpdate = () => setUserInfo(readSession());
+        window.addEventListener('user-session-updated', handleSessionUpdate);
+        return () => window.removeEventListener('user-session-updated', handleSessionUpdate);
+    }, []);
 
     const getDashboardTitle = (role: string) => {
         switch (role) {
