@@ -220,13 +220,13 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             const divToday = todayWork.filter((w: any) => w.divisionId === divId);
 
                             // Morning active = a Morning Muster record exists for this division today
-                            const morningActive = divToday.some((w: any) => w.workType === 'Morning Muster');
-                            // Evening done = an Evening Muster record exists for this division today
-                            // NOTE: Do NOT check status === 'APPROVED'/'SUBMITTED' globally —
-                            // that would fire when the Morning Muster itself gets approved.
-                            const eveningDone = divToday.some((w: any) =>
-                                w.workType === 'Evening Muster'
-                            );
+                            const morningMuster = divToday.find((w: any) => w.workType === 'Morning Muster');
+                            const morningActive = !!morningMuster;
+
+                            // Evening done = the Morning Muster record has submittedAt set
+                            // (There is NO separate 'Evening Muster' record — evening submission
+                            //  only updates the Morning Muster record's submittedAt field.)
+                            const eveningDone = !!(morningMuster && morningMuster.submittedAt);
 
                             newStatus[String(divId)] = morningActive && !eveningDone;
                         });
