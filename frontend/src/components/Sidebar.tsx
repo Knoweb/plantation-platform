@@ -221,11 +221,11 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
 
                             // Morning active = a Morning Muster record exists for this division today
                             const morningActive = divToday.some((w: any) => w.workType === 'Morning Muster');
-                            // Evening done = an Evening Muster record exists OR SUBMITTED status
+                            // Evening done = an Evening Muster record exists for this division today
+                            // NOTE: Do NOT check status === 'APPROVED'/'SUBMITTED' globally —
+                            // that would fire when the Morning Muster itself gets approved.
                             const eveningDone = divToday.some((w: any) =>
-                                w.workType === 'Evening Muster' ||
-                                w.status === 'SUBMITTED' ||
-                                w.status === 'APPROVED'
+                                w.workType === 'Evening Muster'
                             );
 
                             newStatus[String(divId)] = morningActive && !eveningDone;
