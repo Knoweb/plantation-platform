@@ -513,8 +513,6 @@ export default function CropBook() {
         { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: `Total Achieved To Date`, value: `${totalAchievedToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#a5d6a7' },
         { label: 'Achievement (vs Annual Budget)', value: config.budgetYear > 0 ? `${((totalAchievedToDate / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
-        { label: `Budgeted crop up to ${prevMonthName}`, value: `${budgetLastMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
-        { label: `Achievement up to ${prevMonthName}`, value: budgetLastMonthCalculated > 0 ? `${((achievedLastMonthAuto / budgetLastMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#81c784' },
         { label: `Budgeted crop for ${currentMonthName}`, value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
         { label: 'Budgeted Crop for todate', value: `${automatedBudgetToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: `Achievement For ${currentMonthName}`, value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
