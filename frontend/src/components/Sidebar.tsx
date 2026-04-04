@@ -202,32 +202,47 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     setSidebarDivisions(divs);
 
                     // ── Muster blink status per division ──────────────────────────────
-                    const d = new Date();
-                    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    // Uses same proven 2-step approach as Field Officer alerts:
+                    // 1. daily-work records → build workId→divisionId map
+                    // 2. attendance records → find which divisions have attendance today (= morning active)
+                    const dNow = new Date();
+                    const today = `${dNow.getFullYear()}-${String(dNow.getMonth() + 1).padStart(2, '0')}-${String(dNow.getDate()).padStart(2, '0')}`;
                     try {
+                        // Step 1 — all daily-work for today, build workId→divisionId map
                         const dwRes = await axios.get(
-                            `/api/operations/daily-work?tenantId=${userSession.tenantId}&date=${today}`
+                            `/api/operations/daily-work?tenantId=${userSession.tenantId}`
                         );
-                        const workList: any[] = dwRes.data || [];
+                        const workToDivMap = new Map<string, string>();
+                        const eveningDoneDivs = new Set<string>();
+                        (dwRes.data || []).forEach((w: any) => {
+                            if (!w.divisionId) return;
+                            const divId = String(w.divisionId);
+                            // Determine if the work date matches today
+                            const wDate = (w.workDate || '').slice(0, 10);
+                            if (wDate === today) {
+                                workToDivMap.set(String(w.workId || w.id), divId);
+                                // Evening done if record is SUBMITTED / APPROVED
+                                if (w.status === 'SUBMITTED' || w.status === 'APPROVED' || w.eveningSubmittedAt) {
+                                    eveningDoneDivs.add(divId);
+                                }
+                            }
+                        });
 
+                        // Step 2 — today's attendance to find morning-active divisions
+                        const attRes = await axios.get(
+                            `/api/operations/attendance?tenantId=${userSession.tenantId}&date=${today}`
+                        );
+                        const morningActiveDivs = new Set<string>();
+                        (attRes.data || []).forEach((rec: any) => {
+                            const divId = workToDivMap.get(String(rec.dailyWorkId || rec.workId));
+                            if (divId) morningActiveDivs.add(divId);
+                        });
+
+                        // Build per-division blink map
                         const newStatus: Record<string, boolean> = {};
                         divs.forEach((div: any) => {
                             const divId = String(div.divisionId);
-                            // Find today's daily-work records for this division
-                            const divWorks = workList.filter((w: any) => String(w.divisionId) === divId);
-
-                            // Morning muster is considered active if any daily-work record
-                            // for this division today has attendance (bulkWeights/attendanceCount > 0
-                            // OR submittedAt set), but NO record has been fully submitted for evening
-                            const morningStarted = divWorks.some((w: any) =>
-                                w.submittedAt || (w.bulkWeights && w.bulkWeights !== '{}' && w.bulkWeights !== '')
-                            );
-                            // Evening submitted = at least one record has status SUBMITTED or similar
-                            const eveningDone = divWorks.some((w: any) =>
-                                w.status === 'SUBMITTED' || w.status === 'APPROVED' || w.eveningSubmittedAt
-                            );
-
-                            newStatus[divId] = morningStarted && !eveningDone;
+                            newStatus[divId] = morningActiveDivs.has(divId) && !eveningDoneDivs.has(divId);
                         });
                         setDivMusterActive(newStatus);
                     } catch {
