@@ -150,6 +150,7 @@ export default function Fertilizer() {
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const isReadOnly = userSession.role === 'ESTATE_ADMIN';
 
     useEffect(() => {
         if (tenantId) fetchDivisions();
@@ -750,37 +751,39 @@ export default function Fertilizer() {
 
                                 {/* Right: action buttons */}
                                 <Stack direction="row" spacing={1} alignItems="center" justifyContent={{ xs: 'flex-start', sm: 'flex-end' }}>
-                                    {!entryMode ? (
-                                        <Button
-                                            onClick={enterEditMode}
-                                            variant="contained"
-                                            color="success"
-                                            fullWidth={true}
-                                            sx={{ fontWeight: 800, px: 2.5, width: { xs: '100%', sm: 'auto' } }}
-                                        >
-                                            Edit Entry
-                                        </Button>
-                                    ) : (
-                                        <>
+                                    {!isReadOnly && (
+                                        !entryMode ? (
                                             <Button
-                                                onClick={saveEntry}
+                                                onClick={enterEditMode}
                                                 variant="contained"
                                                 color="success"
-                                                disabled={savingEntry}
-                                                sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
+                                                fullWidth={true}
+                                                sx={{ fontWeight: 800, px: 2.5, width: { xs: '100%', sm: 'auto' } }}
                                             >
-                                                {savingEntry ? 'Saving…' : 'Save'}
+                                                Edit Entry
                                             </Button>
-                                            <Button
-                                                onClick={cancelEdit}
-                                                variant="outlined"
-                                                color="error"
-                                                sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
-                                                disabled={savingEntry}
-                                            >
-                                                Cancel
-                                            </Button>
-                                        </>
+                                        ) : (
+                                            <>
+                                                <Button
+                                                    onClick={saveEntry}
+                                                    variant="contained"
+                                                    color="success"
+                                                    disabled={savingEntry}
+                                                    sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
+                                                >
+                                                    {savingEntry ? 'Saving…' : 'Save'}
+                                                </Button>
+                                                <Button
+                                                    onClick={cancelEdit}
+                                                    variant="outlined"
+                                                    color="error"
+                                                    sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}
+                                                    disabled={savingEntry}
+                                                >
+                                                    Cancel
+                                                </Button>
+                                            </>
+                                        )
                                     )}
                                 </Stack>
                             </Stack>
@@ -793,7 +796,7 @@ export default function Fertilizer() {
                                             {['Field','Month','Fertilizer','Qty (kg)','Nitrogen (kg)','Total Qty (kg)','Total Nitrogen (kg)'].map((h, i) => (
                                                 <TableCell key={h} sx={{ fontWeight: 800, bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', py: 0.75, fontSize: '0.82rem', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</TableCell>
                                             ))}
-                                            {entryMode && <TableCell sx={{ bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', width: 72 }} />}
+                                            {!isReadOnly && entryMode && <TableCell sx={{ bgcolor: '#e8f5e9', borderBottom: '2px solid rgba(46,125,50,0.35)', width: 72 }} />}
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -809,7 +812,7 @@ export default function Fertilizer() {
                                                     <TableCell rowSpan={rowCount} sx={{ ...td, fontWeight: 700, verticalAlign: 'top', pt: 1.5 }}>
                                                         <Stack direction="row" alignItems="center" spacing={1}>
                                                             <span>{monthLabel(mg.month)}</span>
-                                                            {entryMode && (
+                                                            {!isReadOnly && entryMode && (
                                                                 <Tooltip title="Add Fertilizer">
                                                                     <IconButton size="small" color="success" sx={{ p: 0.1, bgcolor: '#e8f5e9' }} onClick={() => addFertToMonth(String(group.field.fieldId), mg.month)}>
                                                                         <AddIcon sx={{ fontSize: 13 }} />
@@ -840,7 +843,7 @@ export default function Fertilizer() {
                                                             <TableCell sx={{ ...td, textAlign: 'right', color: 'text.disabled' }}>—</TableCell>
                                                             <TableCell sx={{ ...td, textAlign: 'right', color: 'text.disabled' }}>—</TableCell>
                                                             {renderTotalsCells()}
-                                                            {entryMode && <TableCell sx={{ py: 0.3 }} />}
+                                                            {!isReadOnly && entryMode && <TableCell sx={{ py: 0.3 }} />}
                                                         </TableRow>
                                                     );
                                                 }
@@ -867,7 +870,7 @@ export default function Fertilizer() {
                                                             </TableCell>
                                                             <TableCell sx={{ ...td, textAlign: 'right', color: 'text.secondary' }}>{isEditing ? liveN : nKg.toFixed(2)}</TableCell>
                                                             {ri === 0 && renderTotalsCells()}
-                                                            {entryMode && (
+                                                            {!isReadOnly && entryMode && (
                                                                 <TableCell sx={{ py: 0.3 }}>
                                                                     {isEditing ? (
                                                                         <Stack direction="row" spacing={0.25} justifyContent="flex-end">
@@ -929,16 +932,18 @@ export default function Fertilizer() {
                                                 <TableCell sx={{ fontSize: '0.82rem', py: 0.6 }}>{m.name}</TableCell>
                                                 <TableCell sx={{ fontSize: '0.82rem', py: 0.6 }}>{m.nitrogenPercent}%</TableCell>
                                                 <TableCell sx={{ py: 0.4 }}>
-                                                    <Tooltip title="Remove">
-                                                        <IconButton
-                                                            size="small"
-                                                            color="error"
-                                                            onClick={() => void deleteMaster(String(m.id))}
-                                                            sx={{ p: 0.4 }}
-                                                        >
-                                                            <CloseIcon sx={{ fontSize: 15 }} />
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                    {!isReadOnly && (
+                                                        <Tooltip title="Remove">
+                                                            <IconButton
+                                                                size="small"
+                                                                color="error"
+                                                                onClick={() => void deleteMaster(String(m.id))}
+                                                                sx={{ p: 0.4 }}
+                                                            >
+                                                                <CloseIcon sx={{ fontSize: 15 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    )}
                                                 </TableCell>
                                             </TableRow>
                                         ))}
@@ -1004,23 +1009,25 @@ export default function Fertilizer() {
                                 </Table>
                             </Box>
 
-                            {/* Plantation-green + FAB */}
-                            <Box sx={{ display: 'flex', justifyContent: 'center', py: 1, borderTop: '1px solid rgba(46,125,50,0.12)', bgcolor: '#f7fbf7' }}>
-                                <Fab
-                                    size="small"
-                                    disabled={!!newMasterRow}
-                                    onClick={() => setNewMasterRow({ id: `new-${Date.now()}`, name: '', nitrogenPercent: 0 })}
-                                    sx={{
-                                        bgcolor: '#2e7d32',
-                                        color: '#fff',
-                                        '&:hover': { bgcolor: '#1b5e20' },
-                                        '&.Mui-disabled': { bgcolor: 'rgba(46,125,50,0.3)', color: '#fff' },
-                                        boxShadow: '0 2px 8px rgba(46,125,50,0.4)',
-                                    }}
-                                >
-                                    <AddIcon />
-                                </Fab>
-                            </Box>
+                            {/* Add FAB – hidden for read-only roles */}
+                            {!isReadOnly && (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', py: 1, borderTop: '1px solid rgba(46,125,50,0.12)', bgcolor: '#f7fbf7' }}>
+                                    <Fab
+                                        size="small"
+                                        disabled={!!newMasterRow}
+                                        onClick={() => setNewMasterRow({ id: `new-${Date.now()}`, name: '', nitrogenPercent: 0 })}
+                                        sx={{
+                                            bgcolor: '#2e7d32',
+                                            color: '#fff',
+                                            '&:hover': { bgcolor: '#1b5e20' },
+                                            '&.Mui-disabled': { bgcolor: 'rgba(46,125,50,0.3)', color: '#fff' },
+                                            boxShadow: '0 2px 8px rgba(46,125,50,0.4)',
+                                        }}
+                                    >
+                                        <AddIcon />
+                                    </Fab>
+                                </Box>
+                            )}
                         </Paper>
 
                     </Box>
@@ -1104,7 +1111,9 @@ export default function Fertilizer() {
                                                     ) : (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
                                                             <span>{row.bushCount.toLocaleString()}</span>
-                                                            <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingBushCountId(row.id); setEditBushCountValue(row.bushCount); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            {!isReadOnly && (
+                                                                <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingBushCountId(row.id); setEditBushCountValue(row.bushCount); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            )}
                                                         </Stack>
                                                     )}
                                                 </TableCell>
@@ -1128,7 +1137,9 @@ export default function Fertilizer() {
                                                     ) : (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
                                                             <span>{row.crop12m.toLocaleString()} kg</span>
-                                                            <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingCropId(row.id); setEditCropValue(row.crop12m); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            {!isReadOnly && (
+                                                                <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingCropId(row.id); setEditCropValue(row.crop12m); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            )}
                                                         </Stack>
                                                     )}
                                                 </TableCell>
@@ -1160,7 +1171,9 @@ export default function Fertilizer() {
                                                     ) : (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
                                                             <span>{row.targetRatioPercent}%</span>
-                                                            <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingTargetId(row.id); setEditTargetValue(row.targetRatioPercent); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            {!isReadOnly && (
+                                                                <Tooltip title="Edit"><IconButton size="small" color="success" sx={{ p: 0.3 }} onClick={() => { setEditingTargetId(row.id); setEditTargetValue(row.targetRatioPercent); }}><EditIcon sx={{ fontSize: 13 }} /></IconButton></Tooltip>
+                                                            )}
                                                         </Stack>
                                                     )}
                                                 </TableCell>

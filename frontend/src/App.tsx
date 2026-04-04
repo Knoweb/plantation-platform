@@ -38,7 +38,6 @@ import CostAnalysis from './pages/field-officer/tabs/CostAnalysis';
 import FOCropBook from './pages/field-officer/tabs/CropBook';
 import Fertilizer from './pages/field-officer/tabs/Fertilizer';
 import EstateSettings from './pages/estate-admin/EstateSettings';
-import EstateReports from './pages/estate-admin/EstateReports';
 
 // Chief Clerk specific imports
 import ChiefClerkDashboard from './pages/chief-clerk/ChiefClerkDashboard';
@@ -113,7 +112,6 @@ function App() {
           <Route path="pending-orders" element={<PendingOrders />} />
           <Route path="stock" element={<GeneralStock />} />
           <Route path="settings" element={<EstateSettings />} />
-          <Route path="reports" element={<EstateReports />} />
           <Route path="kpis" element={<Navigate to="/dashboard/field" replace />} />
           <Route path="inventory" element={<StoreKeeperDashboard />} /> {/* Main Store Keeper View */}
 
