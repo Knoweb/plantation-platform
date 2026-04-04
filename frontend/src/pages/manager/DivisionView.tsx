@@ -5,6 +5,7 @@ import axios from 'axios';
 import PersonIcon from '@mui/icons-material/Person';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 
 export default function DivisionView() {
     const { divisionId } = useParams();
@@ -13,6 +14,7 @@ export default function DivisionView() {
 
     const [loading, setLoading] = useState(true);
     const [divisionName, setDivisionName] = useState('Division');
+    const [isEveningDone, setIsEveningDone] = useState(false);
     const [workers, setWorkers] = useState<any[]>([]);
     const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -63,6 +65,10 @@ export default function DivisionView() {
                 dw.workDate === today &&
                 dw.workType === 'Morning Muster'
             );
+
+            // Check if evening muster has been submitted (submittedAt is set on the morning muster record)
+            const morningMuster = musters[0];
+            setIsEveningDone(!!(morningMuster && morningMuster.submittedAt));
 
             // Collect workers from JSON details
             for (const muster of musters) {
@@ -123,10 +129,18 @@ export default function DivisionView() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
                 <Box display="flex" alignItems="center" gap={2}>
-                    <TerrainIcon sx={{ fontSize: 40, color: '#2e7d32' }} />
+                    <TerrainIcon sx={{ fontSize: 40, color: isEveningDone ? '#388e3c' : '#2e7d32' }} />
                     <Typography variant="h4" fontWeight="bold" color="primary">
-                        {divisionName} - Active Workforce
+                        {divisionName} - {isEveningDone ? 'Day Complete' : 'Active Workforce'}
                     </Typography>
+                    {isEveningDone && (
+                        <Chip
+                            icon={<CheckCircleIcon />}
+                            label="Evening Submitted"
+                            color="success"
+                            sx={{ fontWeight: 'bold', fontSize: '0.85rem' }}
+                        />
+                    )}
                 </Box>
                 <Box display="flex" alignItems="center" gap={1} bgcolor="#e8f5e9" px={2} py={1} borderRadius={2} border="1px solid #c8e6c9">
                     <AccessTimeIcon sx={{ color: '#2e7d32' }} />
@@ -136,24 +150,38 @@ export default function DivisionView() {
                 </Box>
             </Box>
 
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                Real-time view of workers assigned to this division today. Use this for field verification.
-            </Typography>
-
-            {workers.length === 0 ? (
-                <Alert severity="info" sx={{ borderRadius: '16px', py: 0.5 }}>No workers are currently assigned to this division in today's muster.</Alert>
+            {isEveningDone ? (
+                <Alert
+                    severity="success"
+                    icon={<CheckCircleIcon fontSize="inherit" />}
+                    sx={{ mb: 3, borderRadius: 2, fontWeight: 'bold', fontSize: '1rem' }}
+                >
+                    Evening muster has been submitted for <strong>{divisionName}</strong>. The day's work is complete.
+                    Workers shown below are today's completed shift records.
+                </Alert>
             ) : (
+                <Typography variant="body1" color="text.secondary" mb={4}>
+                    Real-time view of workers assigned to this division today. Use this for field verification.
+                </Typography>
+            )}
+
+            {!isEveningDone && workers.length === 0 ? (
+                <Alert severity="info" sx={{ borderRadius: '16px', py: 0.5 }}>No workers are currently assigned to this division in today's muster.</Alert>
+            ) : !isEveningDone ? (
+                // eslint-disable-next-line react/jsx-no-useless-fragment
                 /* The outer "Division" bubble */
                 <Box
                     sx={{
-                        bgcolor: '#f8fafc',
-                        border: '1px solid #e2e8f0',
+                        bgcolor: isEveningDone ? '#f1f8e9' : '#f8fafc',
+                        border: isEveningDone ? '1px solid #c8e6c9' : '1px solid #e2e8f0',
                         borderRadius: '24px',
                         p: { xs: 2, md: 4 },
                         boxShadow: 'inset 0 2px 10px rgba(0,0,0,0.02)',
                         position: 'relative',
                         maxWidth: '1400px',
-                        mx: 'auto'
+                        mx: 'auto',
+                        opacity: isEveningDone ? 0.85 : 1,
+                        transition: 'all 0.3s ease'
                     }}
                 >
                     <Box display="flex" flexWrap="wrap" gap={3} justifyContent="center" alignItems="flex-start">
@@ -269,7 +297,7 @@ export default function DivisionView() {
                         ))}
                     </Box>
                 </Box>
-            )}
+            ) : null}
         </Box>
     );
 }
