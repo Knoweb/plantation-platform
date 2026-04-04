@@ -153,6 +153,8 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
     const [sidebarDivisions, setSidebarDivisions] = useState<any[]>([]);
+    // divisionId -> true means morning submitted but evening NOT yet submitted today
+    const [divMusterActive, setDivMusterActive] = useState<Record<string, boolean>>({});
 
     useEffect(() => {
         if (userSession.tenantId) {
@@ -198,6 +200,40 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         divs = divs.filter((d: any) => latestAccess.includes(d.divisionId));
                     }
                     setSidebarDivisions(divs);
+
+                    // ── Muster blink status per division ──────────────────────────────
+                    const d = new Date();
+                    const today = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+                    try {
+                        const dwRes = await axios.get(
+                            `/api/operations/daily-work?tenantId=${userSession.tenantId}&date=${today}`
+                        );
+                        const workList: any[] = dwRes.data || [];
+
+                        const newStatus: Record<string, boolean> = {};
+                        divs.forEach((div: any) => {
+                            const divId = String(div.divisionId);
+                            // Find today's daily-work records for this division
+                            const divWorks = workList.filter((w: any) => String(w.divisionId) === divId);
+
+                            // Morning muster is considered active if any daily-work record
+                            // for this division today has attendance (bulkWeights/attendanceCount > 0
+                            // OR submittedAt set), but NO record has been fully submitted for evening
+                            const morningStarted = divWorks.some((w: any) =>
+                                w.submittedAt || (w.bulkWeights && w.bulkWeights !== '{}' && w.bulkWeights !== '')
+                            );
+                            // Evening submitted = at least one record has status SUBMITTED or similar
+                            const eveningDone = divWorks.some((w: any) =>
+                                w.status === 'SUBMITTED' || w.status === 'APPROVED' || w.eveningSubmittedAt
+                            );
+
+                            newStatus[divId] = morningStarted && !eveningDone;
+                        });
+                        setDivMusterActive(newStatus);
+                    } catch {
+                        // Silently ignore — blink is best-effort
+                    }
+                    // ─────────────────────────────────────────────────────────────────
                 } catch (err) {
                     console.error("Failed to load divisions for sidebar");
                 }
@@ -205,7 +241,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             fetchManagerDivisions();
 
             // Poll for dynamic updates
-            const divInterval = setInterval(fetchManagerDivisions, 10000);
+            const divInterval = setInterval(fetchManagerDivisions, 30000);
             return () => clearInterval(divInterval);
         }
     }, [userRole, userSession.tenantId]);
@@ -476,27 +512,51 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         <Typography variant="overline" sx={{ px: 3, color: 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>
                             Divisions
                         </Typography>
-                        {sidebarDivisions.map((div: any) => (
-                            <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
-                                <ListItemButton
-                                    onClick={() => navigate(`/dashboard/division-view/${div.divisionId}`)}
-                                    selected={location.pathname === `/dashboard/division-view/${div.divisionId}`}
-                                    sx={{
-                                        borderRadius: 2,
-                                        mx: 2,
-                                        minHeight: 36,
-                                        justifyContent: 'initial',
-                                        '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.2)' },
-                                        '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
-                                    }}
-                                >
-                                    <ListItemIcon sx={{ color: 'white', minWidth: 32, justifyContent: 'center', mr: 1 }}>
-                                        <TerrainIcon fontSize="small" />
-                                    </ListItemIcon>
-                                    <ListItemText primary={div.name} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 400 }} />
-                                </ListItemButton>
-                            </ListItem>
-                        ))}
+                        {sidebarDivisions.map((div: any) => {
+                            const isActive = !!divMusterActive[String(div.divisionId)];
+                            return (
+                                <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
+                                    <ListItemButton
+                                        onClick={() => navigate(`/dashboard/division-view/${div.divisionId}`)}
+                                        selected={location.pathname === `/dashboard/division-view/${div.divisionId}`}
+                                        sx={{
+                                            borderRadius: 2,
+                                            mx: 2,
+                                            minHeight: 36,
+                                            justifyContent: 'initial',
+                                            '&.Mui-selected': { bgcolor: 'rgba(255,255,255,0.2)' },
+                                            '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' },
+                                        }}
+                                    >
+                                        <ListItemIcon sx={{ color: 'white', minWidth: 32, justifyContent: 'center', mr: 1 }}>
+                                            <TerrainIcon fontSize="small" />
+                                        </ListItemIcon>
+                                        <ListItemText primary={div.name} primaryTypographyProps={{ fontSize: '0.9rem', fontWeight: 400 }} />
+                                        {/* Green blinking dot: morning active, evening not yet submitted */}
+                                        {isActive && (
+                                            <Box
+                                                component="span"
+                                                sx={{
+                                                    width: 10,
+                                                    height: 10,
+                                                    borderRadius: '50%',
+                                                    bgcolor: '#69f0ae',
+                                                    flexShrink: 0,
+                                                    ml: 1,
+                                                    boxShadow: '0 0 6px 2px rgba(105,240,174,0.7)',
+                                                    '@keyframes muster-blink': {
+                                                        '0%, 100%': { opacity: 1, transform: 'scale(1)' },
+                                                        '50%': { opacity: 0.3, transform: 'scale(0.75)' },
+                                                    },
+                                                    animation: 'muster-blink 1.4s ease-in-out infinite',
+                                                }}
+                                                title="Morning muster started – evening pending"
+                                            />
+                                        )}
+                                    </ListItemButton>
+                                </ListItem>
+                            );
+                        })}
                     </Box>
                 )}
 
