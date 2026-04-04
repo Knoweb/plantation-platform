@@ -1,46 +1,71 @@
-import { Box, Grid, Typography, Card, CardContent, Button } from '@mui/material';
-import PeopleIcon from '@mui/icons-material/People';
-import DomainIcon from '@mui/icons-material/Domain';
+import React from 'react';
+import { Box, Typography, Grid } from '@mui/material';
+import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
 
-export default function EstateAdminDashboard() {
+import YieldAnalytics from '../../components/manager/YieldAnalytics';
+import CostAnalytics from '../../components/manager/CostAnalytics';
+import CropPerformanceCard from '../../components/manager/CropPerformanceCard';
+
+const EstateAdminDashboard: React.FC = () => {
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const tenantId = userSession.tenantId;
+
     return (
-        <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Dashboard
-            </Typography>
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                Welcome, Estate Owner. Here is the high-level overview of your entire plantation.
-            </Typography>
+        <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
 
-            <Grid container spacing={3}>
-                {/* Staff Overview */}
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%', borderLeft: '4px solid #9c27b0' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <PeopleIcon color="secondary" sx={{ fontSize: 40, mr: 2 }} />
-                                <Typography variant="h6">Staff Management</Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">Manage Managers, Field Officers, and Storekeepers.</Typography>
-                            <Button size="small" variant="contained" color="secondary" sx={{ mt: 2 }} href="/dashboard/users">Manage Staff</Button>
-                        </CardContent>
-                    </Card>
+            {/* Header */}
+            <Box mb={4} display="flex" justifyContent="space-between" alignItems="flex-end">
+                <Box>
+                    <Typography
+                        variant="h3"
+                        fontWeight="900"
+                        color="#1e293b"
+                        sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' }, letterSpacing: '-0.025em' }}
+                    >
+                        Estate Admin Dashboard
+                    </Typography>
+                    <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
+                        Overview of your plantation's performance and yield.
+                    </Typography>
+                </Box>
+                <Box
+                    sx={{
+                        p: 1.5, px: 2, borderRadius: 3, bgcolor: '#ffffff',
+                        display: { xs: 'none', md: 'flex' }, alignItems: 'center', gap: 2,
+                        border: '1px solid #e2e8f0',
+                    }}
+                >
+                    <CalendarMonthIcon sx={{ color: '#10b981' }} />
+                    <Box>
+                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>
+                            Current Date
+                        </Typography>
+                        <Typography variant="subtitle2" sx={{ fontWeight: '800', color: '#1e293b' }}>
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+                        </Typography>
+                    </Box>
+                </Box>
+            </Box>
+
+            {/* Analytics Grid */}
+            <Grid container spacing={4}>
+                {/* Crop Performance — full width */}
+                <Grid size={{ xs: 12 }}>
+                    <CropPerformanceCard tenantId={tenantId} />
                 </Grid>
 
-                {/* Divisions */}
-                <Grid item xs={12} md={6}>
-                    <Card sx={{ height: '100%', borderLeft: '4px solid #2196f3' }}>
-                        <CardContent>
-                            <Box display="flex" alignItems="center" mb={2}>
-                                <DomainIcon color="primary" sx={{ fontSize: 40, mr: 2 }} />
-                                <Typography variant="h6">Divisions</Typography>
-                            </Box>
-                            <Typography variant="body2" color="text.secondary">Configure plantation divisions and fields.</Typography>
-                            <Button size="small" variant="outlined" sx={{ mt: 2 }} href="/dashboard/divisions">View Divisions</Button>
-                        </CardContent>
-                    </Card>
+                {/* Yield Analytics — left half */}
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <YieldAnalytics tenantId={tenantId} />
+                </Grid>
+
+                {/* Cost Analytics — right half */}
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <CostAnalytics tenantId={tenantId} />
                 </Grid>
             </Grid>
         </Box>
     );
-}
+};
+
+export default EstateAdminDashboard;

@@ -35,6 +35,7 @@ import AssignmentTurnedInIcon from '@mui/icons-material/AssignmentTurnedIn';
 import ForestIcon from '@mui/icons-material/Forest';
 import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import EventNoteIcon from '@mui/icons-material/EventNote';
+import BarChartIcon from '@mui/icons-material/BarChart';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const menuItems = [
@@ -78,6 +79,7 @@ const menuItems = [
     // Estate Admin / Manager
     { text: 'Staff Management', icon: <PeopleIcon />, path: '/dashboard/users', roles: ['ESTATE_ADMIN'] }, // Removed MANAGER
     { text: 'Divisions', icon: <TerrainIcon />, path: '/dashboard/divisions', roles: ['ESTATE_ADMIN'] },
+    { text: 'Reports', icon: <BarChartIcon />, path: '/dashboard/reports', roles: ['ESTATE_ADMIN'] },
 
     // Common Operational
     { text: 'Harvest Logs', icon: <SpaIcon />, path: '/dashboard/harvest', roles: [] }, // Removed from Manager
