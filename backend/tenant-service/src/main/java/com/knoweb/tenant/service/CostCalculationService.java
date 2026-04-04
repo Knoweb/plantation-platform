@@ -77,9 +77,8 @@ public class CostCalculationService {
             LocalDate prevMonthStart = prevMonth.atDay(1);
             LocalDate prevMonthEnd = prevMonth.atEndOfMonth();
             
-            // Year-to-date (assuming fiscal year starts April 1)
-            int fiscalYearStart = date.getMonthValue() >= 4 ? date.getYear() : date.getYear() - 1;
-            LocalDate ytdStart = LocalDate.of(fiscalYearStart, 4, 1);
+            // Year-to-date (calendar year: January 1 to selected date)
+            LocalDate ytdStart = LocalDate.of(date.getYear(), 1, 1);
             
             // Fetch historical data up to yesterday to avoid reading old current-day data
             List<DailyCost> todateRecords = deduplicateByDate(dailyCostRepository.findByTenantIdAndCropTypeIgnoreCaseAndDateBetween(

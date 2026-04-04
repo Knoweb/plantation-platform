@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { Box, Toolbar } from '@mui/material';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useLocation } from 'react-router-dom';
 import Sidebar from '../components/Sidebar';
 import Header from '../components/Header';
 
@@ -8,6 +8,7 @@ const drawerWidth = 260;
 
 export default function DashboardLayout() {
     const [mobileOpen, setMobileOpen] = useState(false);
+    const location = useLocation();
 
     const handleDrawerToggle = () => {
         setMobileOpen(!mobileOpen);
@@ -30,7 +31,7 @@ export default function DashboardLayout() {
                 }}
             >
                 <Toolbar /> {/* Spacer for fixed Header */}
-                <Outlet />
+                <Outlet key={location.pathname} />
             </Box>
         </Box>
     );
