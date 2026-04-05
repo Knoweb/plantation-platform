@@ -8,6 +8,8 @@ import {
     Typography,
     ToggleButton,
     ToggleButtonGroup,
+    useMediaQuery,
+    useTheme,
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
@@ -89,24 +91,6 @@ interface CostCategory {
     name: string;
     items: CostItem[];
 }
-
-const cropPalette: Record<CropKey, { header: string; subHeader: string; text: string }> = {
-    TEA: {
-        header: '#0f9d58',
-        subHeader: '#31b86e',
-        text: '#ffffff',
-    },
-    RUBBER: {
-        header: '#1fa2ff',
-        subHeader: '#52b9ff',
-        text: '#ffffff',
-    },
-    CINNAMON: {
-        header: '#ffca28',
-        subHeader: '#ffd95f',
-        text: '#4e342e',
-    },
-};
 
 const defaultValues = (): MetricValues => ({
     TEA: { today: '-', toDate: '-' },
@@ -233,13 +217,6 @@ const normalizeCostCategories = (input: any): CostCategory[] => {
 const catTotal = (items: CostItem[], field: keyof CostItem) =>
     items.reduce((sum, item) => sum + (Number.parseFloat(String(item[field] || '0')) || 0), 0);
 
-const fmtPerKgValue = (amountTotal: number, weight?: number, overrideText?: string) => {
-    const sanitizedOverride = sanitizeCostPerKgOverride(overrideText, String(amountTotal));
-    if (sanitizedOverride && amountTotal > 0) return sanitizedOverride;
-    if (amountTotal === 0 || !weight || weight === 0) return '-';
-    return (amountTotal / weight).toFixed(2);
-};
-
 const budgetMonthPropertyMap: Record<string, keyof CropBudgetConfig> = {
     '01': 'budgetJan',
     '02': 'budgetFeb',
@@ -293,8 +270,6 @@ const fmtWithUnit = (raw: string, unit?: string) => {
     return `${value} ${u}`;
 };
 
-const fmtMaybeZero = (n: number, digits: number) => (Number.isFinite(n) ? n.toFixed(digits) : '-');
-
 type DisplayRow = {
     id: string;
     label: string;
@@ -319,9 +294,11 @@ const metricRows: MetricRow[] = [
 ];
 
 export default function CropAchievements() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
-    const divisionAccess: string[] = Array.isArray(userSession?.divisionAccess) ? userSession.divisionAccess : [];
+    const divisionAccess: string[] = useMemo(() => Array.isArray(userSession?.divisionAccess) ? userSession.divisionAccess : [], [userSession.divisionAccess]);
     const [reportDate, setReportDate] = useState(() => {
         const d = new Date();
         return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
@@ -738,7 +715,7 @@ export default function CropAchievements() {
         };
 
         loadCropAchievements();
-    }, [tenantId, reportDate]);
+    }, [tenantId, reportDate, divisionAccess]);
 
     const displayedRows = useMemo(
         () =>
@@ -801,27 +778,27 @@ export default function CropAchievements() {
             {
                 field: 'label',
                 headerName: 'Metric',
-                flex: 1.2,
-                minWidth: 240,
+                flex: isMobile ? 1 : 1.2,
+                minWidth: isMobile ? 130 : 200,
             },
             {
                 field: 'today',
                 headerName: 'Today',
-                flex: 0.7,
-                minWidth: 160,
+                flex: isMobile ? 0.6 : 0.7,
+                minWidth: isMobile ? 85 : 140,
                 align: 'right',
                 headerAlign: 'center',
             },
             {
                 field: 'toDate',
                 headerName: 'To Date',
-                flex: 0.7,
-                minWidth: 160,
+                flex: isMobile ? 0.6 : 0.7,
+                minWidth: isMobile ? 85 : 140,
                 align: 'right',
                 headerAlign: 'center',
             },
         ],
-        []
+        [isMobile]
     );
 
     if (loading) {
@@ -834,8 +811,8 @@ export default function CropAchievements() {
 
     return (
         <Box p={{ xs: 1.5, md: 3 }}>
-            <Box mb={2}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+            <Box mb={isMobile ? 1.5 : 2}>
+                <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" sx={{ color: '#1b5e20' }}>
                     Crop Achievements
                 </Typography>
             </Box>
@@ -843,10 +820,11 @@ export default function CropAchievements() {
             <Paper
                 elevation={0}
                 sx={{
-                    p: { xs: 2, md: 3.5 },
+                    p: { xs: 1, sm: 2, md: 3.5 },
                     borderRadius: 0,
                     border: '2px solid #2f2f2f',
                     background: '#ffffff',
+                    overflow: 'hidden'
                 }}
             >
                 <Box mb={2.5}>
@@ -863,17 +841,24 @@ export default function CropAchievements() {
                             bgcolor: '#f7fbf3',
                         }}
                     >
-                        <Box>
-                            <Typography sx={{ fontWeight: 800, color: '#1e2f18', lineHeight: 1.1 }}>
+                        <Box sx={{ width: isMobile ? '100%' : 'auto', textAlign: isMobile ? 'center' : 'left' }}>
+                            <Typography sx={{ fontWeight: 800, color: '#1e2f18', lineHeight: 1.1, fontSize: isMobile ? '0.9rem' : '1rem' }}>
                                 {formattedReportDate}
                             </Typography>
-                            <Typography sx={{ color: '#476a34', fontVariantNumeric: 'tabular-nums' }}>
+                            <Typography sx={{ color: '#476a34', fontVariantNumeric: 'tabular-nums', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
                                 {reportTime}
                             </Typography>
                         </Box>
-                        <Stack direction="row" spacing={1.25} alignItems="center" flexWrap="wrap" justifyContent="flex-end">
-                            <Stack direction="row" spacing={0.75} alignItems="center">
-                                <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: '0.88rem' }}>
+                        <Stack 
+                           direction={isMobile ? "column" : "row"} 
+                           spacing={1.25} 
+                           alignItems="center" 
+                           flexWrap="wrap" 
+                           justifyContent={isMobile ? "center" : "flex-end"}
+                           sx={{ width: isMobile ? '100%' : 'auto' }}
+                        >
+                            <Stack direction="row" spacing={0.75} alignItems="center" justifyContent={isMobile ? "center" : "flex-start"}>
+                                <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
                                     Crop
                                 </Typography>
                                 <ToggleButtonGroup
@@ -890,11 +875,12 @@ export default function CropAchievements() {
                                         '& .MuiToggleButton-root': {
                                             textTransform: 'none',
                                             fontWeight: 800,
-                                            px: 1.25,
+                                            px: isMobile ? 1 : 1.25,
                                             py: 0.35,
                                             borderColor: 'rgba(53,91,43,0.35)',
                                             color: '#355b2b',
-                                            minWidth: 72,
+                                            minWidth: isMobile ? 60 : 72,
+                                            fontSize: isMobile ? '0.75rem' : '0.8rem'
                                         },
                                         '& .MuiToggleButton-root.Mui-selected': {
                                             bgcolor: '#2e7d32',
@@ -919,8 +905,10 @@ export default function CropAchievements() {
                                 onChange={(e) => setReportDate(e.target.value)}
                                 sx={{
                                     bgcolor: '#fff',
-                                    maxWidth: 190,
+                                    maxWidth: isMobile ? '100%' : 190,
+                                    width: isMobile ? '100%' : 'auto',
                                     '& .MuiOutlinedInput-root': { borderRadius: 2 },
+                                    '& input': { py: 0.5, fontSize: isMobile ? '0.85rem' : '0.9rem' }
                                 }}
                             />
                         </Stack>
@@ -939,8 +927,9 @@ export default function CropAchievements() {
                         hideFooter
                         disableColumnMenu
                         disableRowSelectionOnClick
-                        columnHeaderHeight={44}
-                        getRowHeight={() => 36}
+                        autoHeight
+                        columnHeaderHeight={isMobile ? 38 : 44}
+                        getRowHeight={() => isMobile ? 42 : 36}
                         sx={{
                             border: 0,
                             '& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader': {
@@ -954,8 +943,8 @@ export default function CropAchievements() {
                             },
                             '& .MuiDataGrid-cell': {
                                 borderBottom: '1px solid rgba(53,91,43,0.45)',
-                                py: 0.25,
-                                fontSize: '0.92rem',
+                                py: isMobile ? 0.75 : 0.25,
+                                fontSize: isMobile ? '0.85rem' : '0.92rem',
                                 color: '#20361b',
                             },
                             '& .row-dark .MuiDataGrid-cell': {
