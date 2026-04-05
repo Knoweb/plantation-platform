@@ -13,6 +13,9 @@ import {
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
+import FilterAltIcon from '@mui/icons-material/FilterAlt';
+import EcoIcon from '@mui/icons-material/Eco';
+import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import {
     countWorkingDaysUpTo,
     getWorkingDaysCountForMonth,
@@ -851,16 +854,28 @@ export default function CropAchievements() {
                         </Box>
                         <Stack 
                            direction={isMobile ? "column" : "row"} 
-                           spacing={1.25} 
-                           alignItems="center" 
+                           spacing={isMobile ? 2 : 1.25} 
+                           alignItems={isMobile ? "stretch" : "center"} 
                            flexWrap="wrap" 
                            justifyContent={isMobile ? "center" : "flex-end"}
                            sx={{ width: isMobile ? '100%' : 'auto' }}
                         >
-                            <Stack direction="row" spacing={0.75} alignItems="center" justifyContent={isMobile ? "center" : "flex-start"}>
-                                <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
-                                    Crop
-                                </Typography>
+                            {isMobile && (
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: -0.5 }}>
+                                    <FilterAltIcon sx={{ color: '#2e7d32', fontSize: '1.1rem' }} />
+                                    <Typography sx={{ fontWeight: 900, color: '#2e7d32', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: 1 }}>
+                                        Quick Filters
+                                    </Typography>
+                                </Box>
+                            )}
+                            
+                            <Stack direction="row" spacing={1} alignItems="center" justifyContent={isMobile ? "space-between" : "flex-start"}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <EcoIcon sx={{ color: '#355b2b', fontSize: '1.2rem' }} />
+                                    <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
+                                        Crop
+                                    </Typography>
+                                </Box>
                                 <ToggleButtonGroup
                                     size="small"
                                     exclusive
@@ -871,20 +886,22 @@ export default function CropAchievements() {
                                     disabled={activeCrops.length <= 1}
                                     sx={{
                                         bgcolor: '#ffffff',
+                                        boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
                                         borderRadius: 2,
                                         '& .MuiToggleButton-root': {
                                             textTransform: 'none',
                                             fontWeight: 800,
-                                            px: isMobile ? 1 : 1.25,
+                                            px: isMobile ? 1.5 : 1.25,
                                             py: 0.35,
                                             borderColor: 'rgba(53,91,43,0.35)',
                                             color: '#355b2b',
-                                            minWidth: isMobile ? 60 : 72,
+                                            minWidth: isMobile ? 65 : 72,
                                             fontSize: isMobile ? '0.75rem' : '0.8rem'
                                         },
                                         '& .MuiToggleButton-root.Mui-selected': {
                                             bgcolor: '#2e7d32',
                                             color: '#fff',
+                                            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
                                         },
                                         '& .MuiToggleButton-root.Mui-selected:hover': {
                                             bgcolor: '#1b5e20',
@@ -898,19 +915,32 @@ export default function CropAchievements() {
                                     ))}
                                 </ToggleButtonGroup>
                             </Stack>
-                            <TextField
-                                type="date"
-                                size="small"
-                                value={reportDate}
-                                onChange={(e) => setReportDate(e.target.value)}
-                                sx={{
-                                    bgcolor: '#fff',
-                                    maxWidth: isMobile ? '100%' : 190,
-                                    width: isMobile ? '100%' : 'auto',
-                                    '& .MuiOutlinedInput-root': { borderRadius: 2 },
-                                    '& input': { py: 0.5, fontSize: isMobile ? '0.85rem' : '0.9rem' }
-                                }}
-                            />
+
+                            <Stack direction="row" spacing={1} alignItems="center" justifyContent={isMobile ? "space-between" : "flex-start"}>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <CalendarTodayIcon sx={{ color: '#355b2b', fontSize: '1.1rem' }} />
+                                    <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
+                                        Date
+                                    </Typography>
+                                </Box>
+                                <TextField
+                                    type="date"
+                                    size="small"
+                                    value={reportDate}
+                                    onChange={(e) => setReportDate(e.target.value)}
+                                    sx={{
+                                        bgcolor: '#fff',
+                                        maxWidth: isMobile ? 160 : 190,
+                                        width: isMobile ? '100%' : 'auto',
+                                        boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
+                                        '& .MuiOutlinedInput-root': { 
+                                            borderRadius: 2,
+                                            '& fieldset': { borderColor: 'rgba(53,91,43,0.35)' }
+                                        },
+                                        '& input': { py: 0.5, fontSize: isMobile ? '0.85rem' : '0.9rem' }
+                                    }}
+                                />
+                            </Stack>
                         </Stack>
                     </Stack>
                 </Box>
