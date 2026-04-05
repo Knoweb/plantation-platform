@@ -14,8 +14,6 @@ import {
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
 import FilterAltIcon from '@mui/icons-material/FilterAlt';
-import EcoIcon from '@mui/icons-material/Eco';
-import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import {
     countWorkingDaysUpTo,
     getWorkingDaysCountForMonth,
@@ -844,85 +842,110 @@ export default function CropAchievements() {
                             bgcolor: '#f7fbf3',
                         }}
                     >
-                        <Box sx={{ width: isMobile ? '100%' : 'auto', textAlign: isMobile ? 'center' : 'left' }}>
-                            <Typography sx={{ fontWeight: 800, color: '#1e2f18', lineHeight: 1.1, fontSize: isMobile ? '0.9rem' : '1rem' }}>
-                                {formattedReportDate}
-                            </Typography>
-                            <Typography sx={{ color: '#476a34', fontVariantNumeric: 'tabular-nums', fontSize: isMobile ? '0.8rem' : '0.9rem' }}>
-                                {reportTime}
-                            </Typography>
+                        <Box sx={{ width: isMobile ? '100%' : 'auto' }}>
+                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
+                                <Box>
+                                    <Typography sx={{ fontWeight: 800, color: '#1e2f18', lineHeight: 1, fontSize: isMobile ? '0.8rem' : '1rem' }}>
+                                        {formattedReportDate} {isMobile && `| ${reportTime.split(':').slice(0, 2).join(':')}`}
+                                    </Typography>
+                                    {!isMobile && (
+                                        <Typography sx={{ color: '#476a34', fontVariantNumeric: 'tabular-nums', fontSize: '0.9rem' }}>
+                                            {reportTime}
+                                        </Typography>
+                                    )}
+                                </Box>
+                                
+                                {isMobile && (
+                                    <ToggleButtonGroup
+                                        size="small"
+                                        exclusive
+                                        value={selectedCrop}
+                                        onChange={(_, value) => {
+                                            if (value) setSelectedCrop(value);
+                                        }}
+                                        disabled={activeCrops.length <= 1}
+                                        sx={{
+                                            bgcolor: '#ffffff',
+                                            borderRadius: 2,
+                                            height: 28,
+                                            '& .MuiToggleButton-root': {
+                                                textTransform: 'none',
+                                                fontWeight: 800,
+                                                px: 1.5,
+                                                borderColor: 'rgba(53,91,43,0.35)',
+                                                color: '#355b2b',
+                                                fontSize: '0.75rem',
+                                                minWidth: 'auto'
+                                            },
+                                            '& .MuiToggleButton-root.Mui-selected': {
+                                                bgcolor: '#2e7d32',
+                                                color: '#fff',
+                                            },
+                                        }}
+                                    >
+                                        {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
+                                            <ToggleButton key={crop} value={crop}>
+                                                {crop}
+                                            </ToggleButton>
+                                        ))}
+                                    </ToggleButtonGroup>
+                                )}
+                            </Stack>
                         </Box>
                         <Stack 
-                           direction={isMobile ? "column" : "row"} 
-                           spacing={isMobile ? 2 : 1.25} 
-                           alignItems={isMobile ? "stretch" : "center"} 
-                           flexWrap="wrap" 
-                           justifyContent={isMobile ? "center" : "flex-end"}
+                           direction={isMobile ? "row" : "row"} 
+                           spacing={1} 
+                           alignItems="center" 
+                           justifyContent={isMobile ? "space-between" : "flex-end"}
                            sx={{ width: isMobile ? '100%' : 'auto' }}
                         >
-                            {isMobile && (
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: -0.5 }}>
-                                    <FilterAltIcon sx={{ color: '#2e7d32', fontSize: '1.1rem' }} />
-                                    <Typography sx={{ fontWeight: 900, color: '#2e7d32', fontSize: '0.85rem', textTransform: 'uppercase', letterSpacing: 1 }}>
-                                        Quick Filters
-                                    </Typography>
-                                </Box>
+                            {!isMobile && (
+                                <>
+                                    <Stack direction="row" spacing={1} alignItems="center">
+                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                            <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: '0.88rem' }}>
+                                                Crop
+                                            </Typography>
+                                        </Box>
+                                        <ToggleButtonGroup
+                                            size="small"
+                                            exclusive
+                                            value={selectedCrop}
+                                            onChange={(_, value) => {
+                                                if (value) setSelectedCrop(value);
+                                            }}
+                                            disabled={activeCrops.length <= 1}
+                                            sx={{
+                                                bgcolor: '#ffffff',
+                                                borderRadius: 2,
+                                                '& .MuiToggleButton-root': {
+                                                    textTransform: 'none',
+                                                    fontWeight: 800,
+                                                    px: 1.25,
+                                                    py: 0.35,
+                                                    borderColor: 'rgba(53,91,43,0.35)',
+                                                    color: '#355b2b',
+                                                    minWidth: 72,
+                                                    fontSize: '0.8rem'
+                                                },
+                                                '& .MuiToggleButton-root.Mui-selected': {
+                                                    bgcolor: '#2e7d32',
+                                                    color: '#fff',
+                                                },
+                                            }}
+                                        >
+                                            {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
+                                                <ToggleButton key={crop} value={crop}>
+                                                    {crop}
+                                                </ToggleButton>
+                                            ))}
+                                        </ToggleButtonGroup>
+                                    </Stack>
+                                </>
                             )}
-                            
-                            <Stack direction="row" spacing={1} alignItems="center" justifyContent={isMobile ? "space-between" : "flex-start"}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <EcoIcon sx={{ color: '#355b2b', fontSize: '1.2rem' }} />
-                                    <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
-                                        Crop
-                                    </Typography>
-                                </Box>
-                                <ToggleButtonGroup
-                                    size="small"
-                                    exclusive
-                                    value={selectedCrop}
-                                    onChange={(_, value) => {
-                                        if (value) setSelectedCrop(value);
-                                    }}
-                                    disabled={activeCrops.length <= 1}
-                                    sx={{
-                                        bgcolor: '#ffffff',
-                                        boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
-                                        borderRadius: 2,
-                                        '& .MuiToggleButton-root': {
-                                            textTransform: 'none',
-                                            fontWeight: 800,
-                                            px: isMobile ? 1.5 : 1.25,
-                                            py: 0.35,
-                                            borderColor: 'rgba(53,91,43,0.35)',
-                                            color: '#355b2b',
-                                            minWidth: isMobile ? 65 : 72,
-                                            fontSize: isMobile ? '0.75rem' : '0.8rem'
-                                        },
-                                        '& .MuiToggleButton-root.Mui-selected': {
-                                            bgcolor: '#2e7d32',
-                                            color: '#fff',
-                                            boxShadow: 'inset 0 1px 3px rgba(0,0,0,0.1)'
-                                        },
-                                        '& .MuiToggleButton-root.Mui-selected:hover': {
-                                            bgcolor: '#1b5e20',
-                                        },
-                                    }}
-                                >
-                                    {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
-                                        <ToggleButton key={crop} value={crop}>
-                                            {crop}
-                                        </ToggleButton>
-                                    ))}
-                                </ToggleButtonGroup>
-                            </Stack>
 
-                            <Stack direction="row" spacing={1} alignItems="center" justifyContent={isMobile ? "space-between" : "flex-start"}>
-                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <CalendarTodayIcon sx={{ color: '#355b2b', fontSize: '1.1rem' }} />
-                                    <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: isMobile ? '0.8rem' : '0.88rem' }}>
-                                        Date
-                                    </Typography>
-                                </Box>
+                            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: isMobile ? '100%' : 'auto' }}>
+                                {isMobile && <FilterAltIcon sx={{ color: '#2e7d32', fontSize: '1rem' }} />}
                                 <TextField
                                     type="date"
                                     size="small"
@@ -930,14 +953,14 @@ export default function CropAchievements() {
                                     onChange={(e) => setReportDate(e.target.value)}
                                     sx={{
                                         bgcolor: '#fff',
-                                        maxWidth: isMobile ? 160 : 190,
+                                        maxWidth: isMobile ? '100%' : 190,
                                         width: isMobile ? '100%' : 'auto',
-                                        boxShadow: isMobile ? '0 2px 4px rgba(0,0,0,0.05)' : 'none',
                                         '& .MuiOutlinedInput-root': { 
                                             borderRadius: 2,
+                                            height: isMobile ? 32 : 40,
                                             '& fieldset': { borderColor: 'rgba(53,91,43,0.35)' }
                                         },
-                                        '& input': { py: 0.5, fontSize: isMobile ? '0.85rem' : '0.9rem' }
+                                        '& input': { py: 0.5, fontSize: isMobile ? '0.8rem' : '0.9rem' }
                                     }}
                                 />
                             </Stack>
