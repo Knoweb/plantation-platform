@@ -55,6 +55,7 @@ export default function FieldOfficerDashboard() {
     const [inventory, setInventory] = useState<any[]>([]);
     const [fields, setFields] = useState<Field[]>([]);
     const [workers, setWorkers] = useState<Worker[]>([]); // Added workers state
+    const [divisions, setDivisions] = useState<any[]>([]);
 
     // KPIs
     const [dailyYield, setDailyYield] = useState(0);
@@ -97,6 +98,23 @@ export default function FieldOfficerDashboard() {
         fetchWorkers(); // Fetch workers on mount
         fetchWeather();
     }, []);
+
+    useEffect(() => {
+        const fetchDivisions = async () => {
+            try {
+                const res = await axios.get(`/api/divisions?tenantId=${tenantId}`);
+                const access = Array.isArray(userSession.divisionAccess) ? userSession.divisionAccess.map(String) : [];
+                const allDivisions = (res.data || []).filter((division: any) => {
+                    return access.length > 0 ? access.includes(String(division.divisionId)) : true;
+                });
+                setDivisions(allDivisions);
+            } catch (err) {
+                console.error('Failed to fetch divisions', err);
+            }
+        };
+
+        if (tenantId) fetchDivisions();
+    }, [tenantId, userSession.divisionAccess]);
 
 
     const fetchWeather = () => {
@@ -685,6 +703,25 @@ export default function FieldOfficerDashboard() {
         yearly: 'Year-over-year factory weight performance.',
     } as const;
 
+    const groupedByDivision = groupedMuster.reduce((acc: Record<string, any[]>, muster: any) => {
+        const divisionKey = String(muster.divisionId || muster.divisionName || 'Unknown Division');
+        if (!acc[divisionKey]) acc[divisionKey] = [];
+        acc[divisionKey].push(muster);
+        return acc;
+    }, {});
+
+    const divisionSections = divisions.length > 0
+        ? divisions.map((division: any) => ({
+            key: String(division.divisionId),
+            label: division.name,
+            items: groupedByDivision[String(division.divisionId)] || []
+        }))
+        : Object.entries(groupedByDivision).map(([key, items]) => ({
+            key,
+            label: items[0]?.divisionName || 'Division',
+            items
+        }));
+
     return (
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
@@ -1023,29 +1060,46 @@ export default function FieldOfficerDashboard() {
                             </Box>
 
                             <List dense>
-                                {groupedMuster.map((m: any, index) => (
-                                    <div key={index}>
-                                        <ListItem
-                                            sx={{
-                                                bgcolor: '#f5f5f5',
-                                                borderRadius: 2,
-                                                mb: 1,
-                                                borderLeft: `4px solid ${m.taskType === 'Plucking' ? '#4caf50' : '#ffa000'}`
-                                            }}
-                                        >
-                                            <ListItemText
-                                                primary={
-                                                    <Typography variant="subtitle2" fontWeight="bold">
-                                                        {m.fieldName}
-                                                    </Typography>
-                                                }
-                                                secondary={m.taskType}
-                                            />
-                                            <Chip label={m.workerCount} size="small" sx={{ fontWeight: 'bold' }} />
-                                        </ListItem>
-                                    </div>
+                                {divisionSections.map((divisionSection: any) => (
+                                    <Box key={divisionSection.key} sx={{ mb: 2 }}>
+                                        <Box display="flex" alignItems="center" justifyContent="space-between" sx={{ px: 1, mb: 1 }}>
+                                            <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                                                {divisionSection.label}
+                                            </Typography>
+                                            <Chip label={`${divisionSection.items.reduce((sum: number, item: any) => sum + Number(item.workerCount || 0), 0)} Workers`} size="small" variant="outlined" />
+                                        </Box>
+
+                                        {divisionSection.items.length > 0 ? (
+                                            divisionSection.items.map((m: any, index: number) => (
+                                                <div key={`${divisionSection.key}-${index}`}>
+                                                    <ListItem
+                                                        sx={{
+                                                            bgcolor: '#f5f5f5',
+                                                            borderRadius: 2,
+                                                            mb: 1,
+                                                            borderLeft: `4px solid ${m.taskType === 'Plucking' ? '#4caf50' : '#ffa000'}`
+                                                        }}
+                                                    >
+                                                        <ListItemText
+                                                            primary={
+                                                                <Typography variant="subtitle2" fontWeight="bold">
+                                                                    {m.fieldName}
+                                                                </Typography>
+                                                            }
+                                                            secondary={m.taskType}
+                                                        />
+                                                        <Chip label={m.workerCount} size="small" sx={{ fontWeight: 'bold' }} />
+                                                    </ListItem>
+                                                </div>
+                                            ))
+                                        ) : (
+                                            <Typography variant="body2" color="text.secondary" sx={{ px: 1, mb: 2 }}>
+                                                No assignments for this division yet.
+                                            </Typography>
+                                        )}
+                                    </Box>
                                 ))}
-                                {groupedMuster.length === 0 && (
+                                {divisionSections.length === 0 && (
                                     <Box textAlign="center" py={4}>
                                         <Typography variant="body2" color="text.secondary">No Assignments Yet</Typography>
                                         <Button

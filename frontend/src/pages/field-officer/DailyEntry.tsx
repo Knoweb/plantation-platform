@@ -154,12 +154,16 @@ function DailyEntryTab() {
 
             const dwMap = new Map<string, string>();
             const dbWeights: any = {};
+            const backendSubmittedDivisions = new Set<string>();
             dwRes.data.forEach((dw: any) => {
                 dwMap.set(dw.workId || dw.id, dw.divisionId);
                 if (dw.bulkWeights) {
                     try {
                         dbWeights[dw.divisionId] = JSON.parse(dw.bulkWeights);
                     } catch (e) { }
+                }
+                if (dw.submittedAt) {
+                    backendSubmittedDivisions.add(String(dw.divisionId));
                 }
             });
 
@@ -178,12 +182,13 @@ function DailyEntryTab() {
                 const submittedKey = `muster_submitted_${tenantId}_${today}_${divId}`;
                 const hasDraft = localStorage.getItem(draftKey) === 'true';
                 const hasSubmitted = localStorage.getItem(submittedKey) === 'true';
+                const backendSubmitted = backendSubmittedDivisions.has(String(divId));
 
                 return {
                     ...rec,
                     workerName: wMap.get(rec.workerId)?.name || rec.workerName || rec.workerId,
                     workerType: wMap.get(rec.workerId)?.employmentType || 'PERMANENT',
-                    status: (hasDraft || hasSubmitted) ? rec.status : '',
+                    status: (hasDraft || hasSubmitted || backendSubmitted) ? rec.status : '',
                     amWeight: rec.amWeight ?? '',
                     pmWeight: rec.pmWeight ?? '',
                     overKilos: rec.overKilos ?? '',
@@ -211,6 +216,16 @@ function DailyEntryTab() {
                     }
                     return prev;
                 });
+            }
+
+            if (selectedDivision && selectedDivision !== 'ALL') {
+                const backendSubmitted = backendSubmittedDivisions.has(String(selectedDivision));
+                const localSubmitted = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
+                const status = backendSubmitted || localSubmitted;
+                setIsSubmitted(status);
+                if (status) {
+                    setIsEditMode(false);
+                }
             }
 
         } catch (e) {
@@ -316,21 +331,20 @@ function DailyEntryTab() {
     // Persistence Key Helper
     const getStorageKey = (divId: string) => `muster_submitted_${tenantId}_${today}_${divId}`;
 
-    // Check submission status on division change
+    // Check submission status on division change using backend truth first.
     useEffect(() => {
         if (!selectedDivision || !tenantId || !today) return;
-        const status = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
-        setIsSubmitted(prev => {
-            if (prev === status) return prev;
-            return status;
-        });
+        const backendStatus = dailyWorks.some((dw: any) => String(dw.divisionId) === String(selectedDivision) && Boolean(dw.submittedAt));
+        const localStatus = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
+        const status = backendStatus || localStatus;
+        setIsSubmitted(prev => (prev === status ? prev : status));
         if (status) {
             setIsEditMode(prev => {
                 if (prev === false) return prev;
                 return false;
             });
         }
-    }, [selectedDivision, tenantId, today, getStorageKey]);
+    }, [selectedDivision, tenantId, today, dailyWorks]);
 
     const handleSubmit = async () => {
         // Build a set of workerIds whose last assignment (per task order) needs a status
@@ -482,7 +496,7 @@ function DailyEntryTab() {
     if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
     // Calculate Pending Count
-    const pendingCount = divisions.filter((d: any) => localStorage.getItem(getStorageKey(d.divisionId)) !== 'true').length;
+    const pendingCount = divisions.filter((d: any) => !dailyWorks.some((dw: any) => String(dw.divisionId) === String(d.divisionId) && Boolean(dw.submittedAt))).length;
 
     return (
         <Box>
