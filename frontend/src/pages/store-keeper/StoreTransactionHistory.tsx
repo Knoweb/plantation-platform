@@ -125,7 +125,9 @@ export default function StoreTransactionHistory() {
 
     const parseTransactionDate = (dateText?: string) => {
         if (!dateText) return null;
-        const normalized = dateText.includes('T') ? dateText : dateText.replace(' ', 'T');
+        const base = dateText.includes('T') ? dateText : dateText.replace(' ', 'T');
+        // Backend often serializes LocalDateTime without zone; in production it is UTC.
+        const normalized = /Z|[+-]\d{2}:?\d{2}$/.test(base) ? base : `${base}Z`;
         const parsed = new Date(normalized);
         return Number.isNaN(parsed.getTime()) ? null : parsed;
     };
