@@ -7,6 +7,7 @@ import CheckBoxOutlineBlankIcon from '@mui/icons-material/CheckBoxOutlineBlank';
 import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import PaidIcon from '@mui/icons-material/Paid';
 import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 interface Muster {
@@ -44,6 +45,7 @@ interface Worker {
 }
 
 export default function FieldOfficerDashboard() {
+    const navigate = useNavigate();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -245,8 +247,6 @@ export default function FieldOfficerDashboard() {
     const fetchData = async () => {
         try {
             // Filter data based on User's Assigned Divisions
-            const myDivisions = userSession.divisionAccess || [];
-            const primaryDivisionId = myDivisions.length > 0 ? myDivisions[0] : '';
             const now = new Date();
             // Use local date (not UTC) to prevent off-by-one errors in IST (+05:30)
             const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
@@ -255,12 +255,10 @@ export default function FieldOfficerDashboard() {
             const chartStartDate = `${now.getFullYear() - 3}-01-01`;
 
             const [musterRes, harvestRes, invRes, fieldRes, allFieldsRes, workRes, chartWorkRes, attRes, workersRes] = await Promise.all([
-                axios.get(`/api/operations/muster?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
-                axios.get(`/api/operations/harvest?tenantId=${tenantId}${primaryDivisionId ? `&divisionId=${primaryDivisionId}` : ''}`),
+                axios.get(`/api/operations/muster?tenantId=${tenantId}`),
+                axios.get(`/api/operations/harvest?tenantId=${tenantId}`),
                 axios.get(`/api/inventory?tenantId=${tenantId}`),
-                axios.get(primaryDivisionId
-                    ? `/api/fields?divisionId=${primaryDivisionId}`
-                    : `/api/fields?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}`),
                 axios.get(`/api/fields?tenantId=${tenantId}`),
                 axios.get(`/api/operations/daily-work?tenantId=${tenantId}&startDate=${monthStart}&endDate=${today}`),
                 axios.get(`/api/operations/daily-work?tenantId=${tenantId}&startDate=${chartStartDate}&endDate=${today}`),
@@ -604,11 +602,11 @@ export default function FieldOfficerDashboard() {
 
             setWeeklyYieldData(chartDataByView[factoryWeightView]);
 
-            // Group Muster by Field & Task
+            // Group Muster by Division, Field & Task
             const grouped = musterRes.data
                 .filter((m: Muster) => m.date === today)
                 .reduce((acc: any, m: Muster) => {
-                    const key = `${m.fieldName}-${m.taskType}`;
+                    const key = `${m.divisionId || m.divisionName || 'All'}-${m.fieldName}-${m.taskType}`;
                     if (!acc[key]) acc[key] = { ...m, workerCount: 0 };
                     acc[key].workerCount += m.workerCount;
                     return acc;
@@ -1054,7 +1052,7 @@ export default function FieldOfficerDashboard() {
                                             size="small"
                                             variant="outlined"
                                             sx={{ mt: 2 }}
-                                            onClick={() => setOpenMuster(true)}
+                                            onClick={() => navigate('/dashboard/morning-muster')}
                                             startIcon={<AddIcon />}
                                         >
                                             Create Assignments
