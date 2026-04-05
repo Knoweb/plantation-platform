@@ -42,7 +42,10 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                 const [year, month] = selectedMonth.split('-');
                 const startDate = `${year}-${month}-01`;
                 const lastDay = new Date(Number(year), Number(month), 0).getDate();
-                const endDate = `${year}-${month}-${lastDay}`;
+                const today = new Date();
+                const isCurrentMonth = today.getFullYear() === Number(year) && (today.getMonth() + 1) === Number(month);
+                const endDay = isCurrentMonth ? today.getDate() : lastDay;
+                const endDate = `${year}-${month}-${String(endDay).padStart(2, '0')}`;
 
                 // Fetch Crop Config for Budget
                 const configRes = await axios.get(`/api/crop-configs?tenantId=${tenantId}&cropType=${activeCrop}`);
@@ -57,17 +60,27 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                 const fields = fieldsRes.data || [];
                 const fieldIdsForCrop = new Set(fields.filter((f: any) => f.cropType && f.cropType.toLowerCase() === activeCrop.toLowerCase()).map((f: any) => f.id));
 
-                let actualWeight = 0;
+                const dailyWeights = new Map<string, number>();
                 records.forEach((record: any) => {
                     if (!fieldIdsForCrop.has(record.fieldId)) return;
                     
                     if (record.bulkWeights) {
                         try {
                             const bw = JSON.parse(record.bulkWeights);
-                            actualWeight += Number(bw.__FACTORY__?.factoryWt || 0);
+                            const wt = Number(bw.__FACTORY__?.factoryWt || 0);
+                            if (wt > 0 && record.workDate) {
+                                const key = String(record.workDate).slice(0, 10);
+                                dailyWeights.set(key, (dailyWeights.get(key) || 0) + wt);
+                            }
                         } catch (e) {}
                     }
                 });
+
+                const actualWeight = dailyWeights.size > 0
+                    ? (isCurrentMonth
+                        ? (dailyWeights.get(Array.from(dailyWeights.keys()).sort().pop() || '') || 0)
+                        : Array.from(dailyWeights.values()).reduce((sum, value) => sum + value, 0))
+                    : 0;
 
                 // Get budget for the selected month
                 const monthNamesShort = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -134,7 +147,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                             <Paper variant="outlined" sx={{ p: 2.5, textAlign: 'center', bgcolor: '#fdfcfe', borderRadius: 3 }}>
                                 <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 'bold', textTransform: 'uppercase' }}>Achievement</Typography>
                                 <Typography variant="h4" fontWeight="800" sx={{ color: '#4f46e5', my: 0.5 }}>{performance.actual.toLocaleString()} <Typography component="span" variant="subtitle1">kg</Typography></Typography>
-                                <Typography variant="body2" color="text.secondary">Total harvested this month</Typography>
+                                <Typography variant="body2" color="text.secondary">Total harvested this month to date</Typography>
                             </Paper>
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
