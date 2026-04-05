@@ -84,7 +84,7 @@ export default function CropBook() {
     }, []);
 
     // Auto-calculate Achieved Crop up to Last Month from system data
-    // Financial year runs April-March. Sum factory weights from April 1 of this fin year up to end of last month.
+    // Calendar-year logic: sum factory weights from Jan 1 up to end of the previous month.
     useEffect(() => {
         const fetchAchievedLastMonth = async () => {
             try {
@@ -92,17 +92,15 @@ export default function CropBook() {
                 const selYear = Number(selYearStr);
                 const selMonth = Number(selMonthStr);
 
-                // Financial year starts April (month 4)
-                const finYearStart = selMonth >= 4 ? selYear : selYear - 1;
-                const startMonth = { year: finYearStart, month: 4 }; // April
+                const startMonth = { year: selYear, month: 1 }; // January
 
                 // "Last month" = month before selected month
                 const lastMonthDate = new Date(selYear, selMonth - 2, 1);
                 const lastMonthYear = lastMonthDate.getFullYear();
                 const lastMonth = lastMonthDate.getMonth() + 1;
 
-                // If selected month IS April (start of fin year), there's no previous month in this fin year
-                if (selMonth === 4 && selYear === finYearStart) {
+                // January has no previous month in the same calendar year
+                if (selMonth === 1) {
                     setAchievedLastMonthAuto(0);
                     return;
                 }
@@ -112,43 +110,71 @@ export default function CropBook() {
                 const fieldCropMap = new Map<string, string>();
                 (fieldsRes.data || []).forEach((f: any) => {
                     if (f.id && f.cropType) fieldCropMap.set(String(f.id), f.cropType.toLowerCase());
+                    if (f.name && f.cropType) fieldCropMap.set(String(f.name).toLowerCase(), f.cropType.toLowerCase());
                 });
 
-                // Collect all months from fin year start to last month
+                // Fetch month-by-month (Jan -> previous month) to avoid all-or-nothing failures.
+                let total = 0;
+                const seenWorkIds = new Set<string>();
                 const months: { year: number; month: number }[] = [];
                 let y = startMonth.year;
                 let m = startMonth.month;
                 while (y < lastMonthYear || (y === lastMonthYear && m <= lastMonth)) {
                     months.push({ year: y, month: m });
                     m++;
-                    if (m > 12) { m = 1; y++; }
+                    if (m > 12) {
+                        m = 1;
+                        y++;
+                    }
                 }
 
-                // Fetch factory weights for each month, filtered by active crop
-                let total = 0;
-                await Promise.all(months.map(async ({ year, month }) => {
-                    const mm = String(month).padStart(2, '0');
-                    const lastDay = new Date(year, month, 0).getDate();
-                    const res = await axios.get(
-                        `/api/operations/daily-work?tenantId=${userSession.tenantId}&startDate=${year}-${mm}-01&endDate=${year}-${mm}-${lastDay}`
-                    );
-                    const ops = res.data || [];
-                    ops.forEach((op: any) => {
-                        // Only count this daily-work if its field belongs to the active crop
-                        const opCropType = fieldCropMap.get(String(op.fieldId));
-                        if (!opCropType || opCropType !== activeCrop.toLowerCase()) return;
+                for (const { year, month } of months) {
+                    try {
+                        const mm = String(month).padStart(2, '0');
+                        const lastDay = new Date(year, month, 0).getDate();
+                        const res = await axios.get(
+                            `/api/operations/daily-work?tenantId=${userSession.tenantId}&startDate=${year}-${mm}-01&endDate=${year}-${mm}-${String(lastDay).padStart(2, '0')}`
+                        );
+                        const ops = res.data || [];
 
-                        // Factory weight is inside bulkWeights JSON under __FACTORY__ key
-                        if (op.bulkWeights) {
-                            try {
-                                const bw = JSON.parse(op.bulkWeights);
-                                if (bw.__FACTORY__?.factoryWt) {
-                                    total += Number(bw.__FACTORY__.factoryWt);
-                                }
-                            } catch (e) { /* ignore malformed JSON */ }
-                        }
-                    });
-                }));
+                        ops.forEach((op: any) => {
+                            // Defensive filter: only accept records that truly belong to this month.
+                            if (!op.workDate || !String(op.workDate).startsWith(`${year}-${mm}`)) return;
+
+                            // Prevent duplicate counting if API returns duplicated rows.
+                            const opKey = String(op.workId || op.id || `${op.workDate}-${op.fieldId || ''}`);
+                            if (seenWorkIds.has(opKey)) return;
+                            seenWorkIds.add(opKey);
+
+                            if (op.bulkWeights) {
+                                try {
+                                    const bw = JSON.parse(op.bulkWeights);
+
+                                    // Match by fieldId first; fallback to bulkWeights field keys.
+                                    let cropMatches = fieldCropMap.get(String(op.fieldId)) === activeCrop.toLowerCase();
+                                    if (!cropMatches) {
+                                        for (const key in bw) {
+                                            if (key === '__FACTORY__') continue;
+                                            if (fieldCropMap.get(String(key).toLowerCase()) === activeCrop.toLowerCase()) {
+                                                cropMatches = true;
+                                                break;
+                                            }
+                                        }
+                                    }
+                                    if (!cropMatches) return;
+
+                                    // Factory weight is inside bulkWeights JSON under __FACTORY__ key
+                                    if (bw.__FACTORY__?.factoryWt) {
+                                        total += Number(bw.__FACTORY__.factoryWt);
+                                    }
+                                } catch (e) { /* ignore malformed JSON */ }
+                            }
+                        });
+                    } catch (monthError) {
+                        // Continue with remaining months even if one month request fails.
+                        console.warn(`Failed to load achieved data for ${year}-${String(month).padStart(2, '0')}`, monthError);
+                    }
+                }
 
                 setAchievedLastMonthAuto(Math.round(total * 10) / 10);
             } catch (e) {
@@ -509,7 +535,6 @@ export default function CropBook() {
     // Data for the left sidebar KPI section based on the db config
     const kpiData = [
         { label: `Budgeted crop for the Year`, value: `${config.budgetYear || 0} Kg`, type: 'header', bgColor: '#e8f5e9' },
-        { label: `Achieved Crop Up to ${prevMonthName}`, value: `${achievedLastMonthAuto} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
         { label: `Total Achieved To Date`, value: `${totalAchievedToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#a5d6a7' },
         { label: 'Achievement (vs Annual Budget)', value: config.budgetYear > 0 ? `${((totalAchievedToDate / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
