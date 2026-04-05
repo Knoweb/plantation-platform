@@ -296,7 +296,7 @@ const metricRows: MetricRow[] = [
 export default function CropAchievements() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const userSession = useMemo(() => JSON.parse(sessionStorage.getItem('user') || '{}'), []);
     const tenantId = userSession.tenantId;
     const divisionAccess: string[] = useMemo(() => Array.isArray(userSession?.divisionAccess) ? userSession.divisionAccess : [], [userSession.divisionAccess]);
     const [reportDate, setReportDate] = useState(() => {
