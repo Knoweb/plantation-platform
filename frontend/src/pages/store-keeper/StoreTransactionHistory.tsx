@@ -123,6 +123,54 @@ export default function StoreTransactionHistory() {
         }
     };
 
+    const parseTransactionDate = (dateText?: string) => {
+        if (!dateText) return null;
+        const normalized = dateText.includes('T') ? dateText : dateText.replace(' ', 'T');
+        const parsed = new Date(normalized);
+        return Number.isNaN(parsed.getTime()) ? null : parsed;
+    };
+
+    const formatTransactionDateTime = (dateText?: string) => {
+        const parsed = parseTransactionDate(dateText);
+        return parsed ? parsed.toLocaleString() : '-';
+    };
+
+    const splitIssuedTo = (issuedTo?: string) => {
+        const value = String(issuedTo || '').trim();
+        if (!value) return { left: '', right: '' };
+        const parts = value.split(' - ');
+        return {
+            left: parts[0]?.trim() || '',
+            right: parts.slice(1).join(' - ').trim(),
+        };
+    };
+
+    const getRequesterSource = (issuedTo?: string) => {
+        const text = String(issuedTo || '').toLowerCase();
+        if (!text) return '-';
+        if (text.includes('system')) return 'System';
+        if (text.includes('(store keeper)')) return 'Store Keeper';
+        if (text.includes('(chief clerk)')) return 'Chief Clerk';
+
+        const { left } = splitIssuedTo(issuedTo);
+        return left || issuedTo || '-';
+    };
+
+    const getRequesterRemarks = (t: Transaction) => {
+        if (t.type === 'RESTOCK_REQUEST') {
+            const { right } = splitIssuedTo(t.issuedTo);
+            const source = getRequesterSource(t.issuedTo);
+            return right ? `Requested by ${source} - ${right}` : `Requested by ${source}`;
+        }
+
+        if (t.type === 'FO_REQUISITION') {
+            const { right } = splitIssuedTo(t.issuedTo);
+            return right || '-';
+        }
+
+        return '-';
+    };
+
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
@@ -184,11 +232,11 @@ export default function StoreTransactionHistory() {
                                 <TableRow key={t.id} hover>
                                     <TableCell>
                                         {t.approvedDate ? (
-                                            <span title={`Requested: ${new Date(t.date + (t.date.includes('Z') ? '' : 'Z')).toLocaleString()}`}>
-                                                {new Date(t.approvedDate + (t.approvedDate.includes('Z') ? '' : 'Z')).toLocaleString()}
+                                            <span title={`Requested: ${formatTransactionDateTime(t.date)}`}>
+                                                {formatTransactionDateTime(t.approvedDate)}
                                             </span>
                                         ) : (
-                                            new Date(t.date + (t.date.includes('Z') ? '' : 'Z')).toLocaleString()
+                                            formatTransactionDateTime(t.date)
                                         )}
                                     </TableCell>
                                     <TableCell>{t.itemName}</TableCell>
@@ -196,7 +244,7 @@ export default function StoreTransactionHistory() {
                                         <Chip
                                             label={
                                                 t.type === 'FO_REQUISITION' ? 'FIELD ISSUANCE' :
-                                                    t.type === 'RESTOCK_REQUEST' ? 'Auto-Refill Request' :
+                                                    t.type === 'RESTOCK_REQUEST' ? 'Restock Request' :
                                                         t.type.replace(/_/g, ' ')
                                             }
                                             color={getTypeColor(t.type) as any}
@@ -207,14 +255,14 @@ export default function StoreTransactionHistory() {
                                     <TableCell>{t.divisionName || '-'}</TableCell>
                                     <TableCell>{t.fieldName || '-'}</TableCell>
                                     <TableCell>
-                                        {t.type === 'FO_REQUISITION' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[0] :
-                                            t.type === 'RESTOCK_REQUEST' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[0] :
-                                                t.type === 'RESTOCK_REQUEST' && t.issuedTo && !t.issuedTo.includes('SYSTEM') ? 'Chief Clerk' : t.issuedTo || '-'}
+                                        {t.type === 'FO_REQUISITION'
+                                            ? (splitIssuedTo(t.issuedTo).left || '-')
+                                            : t.type === 'RESTOCK_REQUEST'
+                                                ? getRequesterSource(t.issuedTo)
+                                                : (t.issuedTo || '-')}
                                     </TableCell>
                                     <TableCell>
-                                        {t.type === 'FO_REQUISITION' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[1] :
-                                            t.type === 'RESTOCK_REQUEST' && t.issuedTo && t.issuedTo.includes(' - ') ? t.issuedTo.split(' - ')[1] :
-                                                t.type === 'RESTOCK_REQUEST' && t.issuedTo && !t.issuedTo.includes('SYSTEM') ? t.issuedTo : '-'}
+                                        {getRequesterRemarks(t)}
                                     </TableCell>
                                     <TableCell>{t.managerRemarks || '-'}</TableCell>
                                     <TableCell align="center">

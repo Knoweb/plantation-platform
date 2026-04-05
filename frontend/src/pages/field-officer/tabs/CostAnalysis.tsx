@@ -1,6 +1,7 @@
 import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress, TextField } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLocation } from 'react-router-dom';
 
 interface CostItem {
     id: string;
@@ -144,7 +145,16 @@ const fmtPerKg = (amtTotal: number, weight?: number, overrideText?: string) => {
     return (amtTotal / weight).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 };
 
+const getTodayLocalISO = () => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const day = String(now.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+};
+
 export default function CostAnalysis() {
+    const location = useLocation();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
@@ -153,9 +163,7 @@ export default function CostAnalysis() {
     const [now, setNow] = useState(new Date());
     
     // date selection
-    const [selectedDate, setSelectedDate] = useState<string>(
-        new Date().toISOString().split('T')[0]
-    );
+    const [selectedDate, setSelectedDate] = useState<string>(() => getTodayLocalISO());
 
     const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
     const [weights, setWeights] = useState({ day: 0, todate: 0, lastMonth: 0, ytd: 0 });
@@ -165,6 +173,12 @@ export default function CostAnalysis() {
         const timer = setInterval(() => setNow(new Date()), 1000);
         return () => clearInterval(timer);
     }, []);
+
+    useEffect(() => {
+        if (location.pathname.endsWith('/cost-analysis')) {
+            setSelectedDate(getTodayLocalISO());
+        }
+    }, [location.pathname, location.key]);
 
     useEffect(() => {
         axios.get(`/api/fields?tenantId=${userSession.tenantId}`)

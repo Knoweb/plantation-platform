@@ -341,9 +341,13 @@ export default function StoreKeeperDashboard() {
         try {
             let finalIssuedTo = undefined;
             if (modalType === 'RESTOCK_REQUEST') {
-                const uName = user.fullName || 'Chief Clerk';
-                // Only add (Chief Clerk) if the name doesn't already somehow include it
-                const roleSuffix = uName.includes('(Chief Clerk)') ? '' : ' (Chief Clerk)';
+                const uName = user.fullName || 'User';
+                const roleLabel = user.role === 'STORE_KEEPER'
+                    ? 'Store Keeper'
+                    : user.role === 'CHIEF_CLERK'
+                        ? 'Chief Clerk'
+                        : 'User';
+                const roleSuffix = uName.includes(`(${roleLabel})`) ? '' : ` (${roleLabel})`;
                 finalIssuedTo = issuedTo ? `${uName}${roleSuffix} - ${issuedTo}` : `${uName}${roleSuffix}`;
             } else if (modalType === 'ISSUE') {
                 finalIssuedTo = issuedTo;
@@ -368,7 +372,7 @@ export default function StoreKeeperDashboard() {
             setSelectedDivisions([]);
             setSelectedFields([]);
             fetchInventory();
-            showNotification("Transaction Successful", 'success');
+            showNotification(modalType === 'RESTOCK_REQUEST' ? "Request sent to manager" : "Transaction Successful", 'success');
         } catch (err: any) {
             showNotification("Transaction Failed: " + (err.response?.data || err.message), 'error');
         }

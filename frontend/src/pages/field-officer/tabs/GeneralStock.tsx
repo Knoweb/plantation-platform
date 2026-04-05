@@ -44,6 +44,20 @@ export default function GeneralStock() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const isManager = userSession.role === 'MANAGER' || userSession.role === 'ESTATE_ADMIN';
+
+    const getRequestSourceLabel = (issuedTo?: string) => {
+        const text = String(issuedTo || '').toLowerCase();
+        if (text.includes('(store keeper)')) return 'Store Keeper';
+        if (text.includes('(chief clerk)')) return 'Chief Clerk';
+        return 'Staff';
+    };
+
+    const getManagerNoteText = (issuedTo?: string) => {
+        if (!issuedTo) return '-';
+        const source = getRequestSourceLabel(issuedTo);
+        const notePart = issuedTo.includes(' - ') ? issuedTo.split(' - ').slice(1).join(' - ').trim() : '';
+        return notePart ? `Requested by ${source} - ${notePart}` : `Requested by ${source}`;
+    };
     const fetchInventory = useCallback(async () => {
         try {
             const res = await axios.get(`/api/inventory?tenantId=${tenantId}`);
@@ -168,7 +182,7 @@ export default function GeneralStock() {
                     <Box display="flex" alignItems="center" mb={2}>
                         <InfoIcon color="warning" sx={{ mr: 1 }} />
                         <Typography variant="h6" color="warning.dark" fontWeight="bold">
-                            Pending Restock Requests (From Chief Clerk)
+                            Pending Restock Requests (From Store Keeper / Chief Clerk)
                         </Typography>
                     </Box>
                     <Table size="small">
@@ -187,7 +201,7 @@ export default function GeneralStock() {
                                     <TableCell>{new Date(req.date + (req.date.includes('Z') ? '' : 'Z')).toLocaleString()}</TableCell>
                                     <TableCell>{req.itemName}</TableCell>
                                     <TableCell>{req.quantity || '-'}</TableCell>
-                                    <TableCell>{req.issuedTo || '-'}</TableCell>
+                                    <TableCell>{getManagerNoteText(req.issuedTo)}</TableCell>
                                     <TableCell align="center">
                                         <Button
                                             size="small"
