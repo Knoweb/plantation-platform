@@ -8,6 +8,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.UUID;
 import java.util.Map;
 import com.knoweb.operation.dto.ReviewRequest;
+import com.knoweb.operation.entity.DailyWork;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/operations/daily-work")
@@ -57,6 +59,16 @@ public class DailyWorkController {
         }
     }
 
+    @PutMapping("/{id}/audit-remarks")
+    public ResponseEntity<?> updateAuditRemarks(@PathVariable UUID id, @RequestBody Map<String, String> payload) {
+        try {
+            String remarks = payload.get("auditRemarks");
+            return ResponseEntity.ok(dailyWorkService.updateAuditRemarks(id, remarks));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
+        }
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<?> deleteWork(@PathVariable UUID id) {
         try {
@@ -92,5 +104,12 @@ public class DailyWorkController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
+    }
+
+    @GetMapping("/audited")
+    public List<DailyWork> getAuditedRecords(@RequestParam UUID tenantId) {
+        return dailyWorkService.getRecordsByTenant(tenantId).stream()
+                .filter(dw -> dw.getAuditRemarks() != null && !dw.getAuditRemarks().isEmpty())
+                .toList();
     }
 }

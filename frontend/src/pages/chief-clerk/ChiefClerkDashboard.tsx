@@ -1,22 +1,23 @@
 import React, { useState, useEffect } from 'react';
-import { Box, Typography, Grid, Card, CardContent, CircularProgress, IconButton } from '@mui/material';
+import { Box, Typography, Grid, Card, CardContent, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
 import InventoryIcon from '@mui/icons-material/Inventory';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import ChatIcon from '@mui/icons-material/Chat';
-import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
+// Custom Analytics Components
+import YieldAnalytics from '../../components/manager/YieldAnalytics';
+import CostAnalytics from '../../components/manager/CostAnalytics';
+import CropPerformanceCard from '../../components/manager/CropPerformanceCard';
 
 export default function ChiefClerkDashboard() {
     const navigate = useNavigate();
     const [loading, setLoading] = useState(true);
 
     const [inventoryPending, setInventoryPending] = useState(0);
-    const [workersActive, setWorkersActive] = useState(0);
+    const [permanentWorkers, setPermanentWorkers] = useState(0);
+    const [casualWorkers, setCasualWorkers] = useState(0);
     const [workersPending, setWorkersPending] = useState(0);
     const [contractWorkersToday, setContractWorkersToday] = useState(0);
     const [costLoggedToday, setCostLoggedToday] = useState(false);
@@ -47,7 +48,8 @@ export default function ChiefClerkDashboard() {
             // 2. Workers
             const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
             const wList = wRes.data || [];
-            setWorkersActive(wList.filter((w: any) => w.employmentType === 'PERMANENT' || w.employmentType === 'CASUAL').length);
+            setPermanentWorkers(wList.filter((w: any) => w.employmentType === 'PERMANENT').length);
+            setCasualWorkers(wList.filter((w: any) => w.employmentType === 'CASUAL').length);
             setWorkersPending(wList.filter((w: any) => w.status === 'PENDING_APPROVAL' && w.employmentType !== 'CONTRACT_MEMBER').length);
             // Count contract workers logged today (registeredDate matches today's local date)
             setContractWorkersToday(wList.filter((w: any) => w.employmentType === 'CONTRACT' && w.registeredDate === today).length);
@@ -101,6 +103,19 @@ export default function ChiefClerkDashboard() {
 
     return (
         <Box sx={{ pb: 6 }}>
+            {/* Blinking Animation Styles */}
+            <style>
+                {`
+                    @keyframes blink {
+                        0% { opacity: 1; }
+                        50% { opacity: 0.4; }
+                        100% { opacity: 1; }
+                    }
+                    .urgent-blink {
+                        animation: blink 1s infinite ease-in-out;
+                    }
+                `}
+            </style>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="h4" fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: '-0.5px' }}>
                     Chief Clerk Dashboard
@@ -114,136 +129,107 @@ export default function ChiefClerkDashboard() {
                 Welcome back. Here is your fast-action operational overview.
             </Typography>
 
-            <Grid container spacing={3}>
+            {/* TOP ROW: 5 Little Tiles - Compact Operational Overview */}
+            <Box sx={{ mb: 4, display: 'grid', gridTemplateColumns: { xs: 'repeat(2, 1fr)', sm: 'repeat(3, 1fr)', lg: 'repeat(5, 1fr)' }, gap: 2 }}>
                 {/* INVENTORY TILE */}
-                <Grid item xs={12} md={4}>
-                    <Card onClick={() => navigate('/dashboard/chief-inventory')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: inventoryPending > 0 ? '#fff5f5' : '#ffffff', border: inventoryPending > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0' }}>
-                        <CardContent sx={{ p: 3 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: inventoryPending > 0 ? '#ef4444' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <InventoryIcon fontSize="medium" />
-                                </Box>
-                                <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
-                            </Box>
-                            <Box mt={3}>
-                                <Typography variant="h3" fontWeight="900" sx={{ color: inventoryPending > 0 ? '#b91c1c' : '#1e293b' }}>
-                                    {inventoryPending}
-                                </Typography>
-                                <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                    Pending Inventory Actions
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: inventoryPending > 0 ? '#dc2626' : '#64748b', mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    {inventoryPending > 0 ? <><WarningAmberIcon fontSize="small"/> Requires approval</> : <><CheckCircleOutlineIcon fontSize="small"/> All caught up</>}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                <Card onClick={() => navigate('/dashboard/chief-inventory')} sx={{ borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'scale(1.02)', boxShadow: 4 }, bgcolor: inventoryPending > 0 ? '#fff5f5' : '#ffffff', border: inventoryPending > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0' }}>
+                    <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: inventoryPending > 0 ? '#ef4444' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <InventoryIcon fontSize="small" />
+                        </Box>
+                        <Box overflow="hidden">
+                            <Typography variant="subtitle2" fontWeight="900" noWrap sx={{ color: inventoryPending > 0 ? '#b91c1c' : '#1e293b', lineHeight: 1.1 }}>
+                                {inventoryPending} Out of stock
+                            </Typography>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                                items to review
+                            </Typography>
+                        </Box>
+                    </CardContent>
+                </Card>
 
                 {/* COST ANALYSIS TILE */}
-                <Grid item xs={12} md={4}>
-                    <Card onClick={() => navigate('/dashboard/chief-cost-analysis')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: !costLoggedToday ? '#fffbeb' : '#ffffff', border: !costLoggedToday ? '1px solid #fde68a' : '1px solid #e2e8f0' }}>
-                        <CardContent sx={{ p: 3 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: !costLoggedToday ? '#f59e0b' : '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <AttachMoneyIcon fontSize="medium" />
-                                </Box>
-                                <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
-                            </Box>
-                            <Box mt={3}>
-                                <Typography variant="h4" fontWeight="900" sx={{ color: !costLoggedToday ? '#b45309' : '#15803d', mt: 0.5 }}>
-                                    {costLoggedToday ? "Submitted" : "Pending Entry"}
-                                </Typography>
-                                <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                    Today's Cost Analysis
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: !costLoggedToday ? '#d97706' : '#64748b', mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    {!costLoggedToday ? <><WarningAmberIcon fontSize="small"/> Save daily report</> : <><CheckCircleOutlineIcon fontSize="small"/> Daily costs logged</>}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
-                </Grid>
+                <Card onClick={() => navigate('/dashboard/chief-cost-analysis')} sx={{ borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'scale(1.02)', boxShadow: 4 }, bgcolor: !costLoggedToday ? '#fff5f5' : '#ffffff', border: !costLoggedToday ? '1px solid #feb2b2' : '1px solid #e2e8f0' }}>
+                    <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: !costLoggedToday ? '#ef4444' : '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <AttachMoneyIcon fontSize="small" />
+                        </Box>
+                        <Box overflow="hidden">
+                            <Typography variant="subtitle2" fontWeight="900" noWrap className={!costLoggedToday ? "urgent-blink" : ""} sx={{ color: !costLoggedToday ? '#c53030' : '#15803d', lineHeight: 1.1 }}>
+                                {costLoggedToday ? "Cost Entered" : "Cost not entered"}
+                            </Typography>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                                Daily Entry Status
+                            </Typography>
+                        </Box>
+                    </CardContent>
+                </Card>
 
                 {/* WORKERS TILE */}
-                <Grid item xs={12} md={4}>
-                    <Card onClick={() => navigate('/dashboard/workers')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, border: contractWorkersToday === 0 ? '1px solid #fde68a' : '1px solid #e2e8f0', bgcolor: contractWorkersToday === 0 ? '#fffbeb' : '#ffffff' }}>
-                        <CardContent sx={{ p: 3 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <EngineeringIcon fontSize="medium" />
-                                </Box>
-                                <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
-                            </Box>
-                            <Box mt={3}>
-                                <Typography variant="h3" fontWeight="900" sx={{ color: '#4c1d95' }}>
-                                    {workersActive} <Typography component="span" variant="h6" fontWeight="bold" color="#8b5cf6">Active</Typography>
-                                </Typography>
-                                <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                    Worker Registry
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    {contractWorkersToday > 0
-                                        ? <><CheckCircleOutlineIcon fontSize="small" sx={{ color: '#16a34a' }}/> <span style={{ color: '#16a34a', fontWeight: 600 }}>{contractWorkersToday} contract</span> workers logged today</>
-                                        : <><WarningAmberIcon fontSize="small" sx={{ color: '#d97706' }}/> No contract workers logged today</>
-                                    }
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: workersPending > 0 ? '#ea580c' : '#64748b', mt: 0.5, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    {workersPending > 0 ? <><WarningAmberIcon fontSize="small"/> {workersPending} pending approval</> : <><CheckCircleOutlineIcon fontSize="small"/> Registry clean</>}
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                <Card onClick={() => navigate('/dashboard/workers')} sx={{ borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'scale(1.02)', boxShadow: 4 }, border: '1px solid #e2e8f0', bgcolor: '#ffffff' }}>
+                    <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <EngineeringIcon fontSize="small" />
+                        </Box>
+                        <Box overflow="hidden">
+                            <Typography variant="caption" fontWeight="900" noWrap sx={{ color: '#4c1d95', display: 'block', lineHeight: 1.1 }}>
+                                {permanentWorkers} permanent
+                            </Typography>
+                            <Typography variant="caption" fontWeight="900" color="#8b5cf6" noWrap sx={{ display: 'block', mt: 0.2 }}>
+                                {casualWorkers} casual
+                            </Typography>
+                        </Box>
+                    </CardContent>
+                </Card>
+
+                {/* CONTRACT TILE */}
+                <Card onClick={() => navigate('/dashboard/workers?tab=contract')} sx={{ borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'scale(1.02)', boxShadow: 4 }, bgcolor: contractWorkersToday === 0 ? '#fff5f5' : '#f0fdf4', border: contractWorkersToday === 0 ? '1px solid #feb2b2' : '1px solid #bbf7d0' }}>
+                    <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: contractWorkersToday === 0 ? '#ef4444' : '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <EngineeringIcon fontSize="small" />
+                        </Box>
+                        <Box overflow="hidden">
+                            <Typography variant="caption" fontWeight="900" noWrap className={contractWorkersToday === 0 ? "urgent-blink" : ""} sx={{ color: contractWorkersToday === 0 ? '#c53030' : '#166534', display: 'block', lineHeight: 1.1 }}>
+                                {contractWorkersToday > 0 ? `${contractWorkersToday} contracts logged` : "daily contract"}
+                            </Typography>
+                            <Typography variant="caption" fontWeight="900" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.2 }}>
+                                {contractWorkersToday === 0 ? "workers not logged" : "successfully saved"}
+                            </Typography>
+                        </Box>
+                    </CardContent>
+                </Card>
+
+                {/* HARVEST TILE */}
+                <Card onClick={() => navigate('/dashboard/crop-book')} sx={{ borderRadius: 3, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'scale(1.02)', boxShadow: 4 }, bgcolor: '#ffffff', border: '1px solid #e2e8f0' }}>
+                    <CardContent sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            <MenuBookIcon fontSize="small" />
+                        </Box>
+                        <Box overflow="hidden">
+                            <Typography variant="subtitle2" fontWeight="900" noWrap sx={{ color: '#166534', lineHeight: 1.1 }}>
+                                {todateYield.toLocaleString()} <Typography component="span" variant="caption" fontWeight="bold">Kg</Typography>
+                            </Typography>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                                Harvested MTD
+                            </Typography>
+                        </Box>
+                    </CardContent>
+                </Card>
+            </Box>
+
+            {/* MAIN DASHBOARD CONTENT */}
+            <Grid container spacing={4}>
+                {/* Visual Analytics - Crop Performance (Full Width) */}
+                <Grid size={{ xs: 12 }}>
+                    <CropPerformanceCard tenantId={tenantId} />
                 </Grid>
 
-                {/* CROP BOOK TILE */}
-                <Grid item xs={12} md={6}>
-                    <Card onClick={() => navigate('/dashboard/crop-book')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                        <CardContent sx={{ p: 3 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <MenuBookIcon fontSize="medium" />
-                                </Box>
-                                <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
-                            </Box>
-                            <Box mt={3}>
-                                <Typography variant="h3" fontWeight="900" sx={{ color: '#166534' }}>
-                                    {todateYield.toLocaleString()} <Typography component="span" variant="h6" fontWeight="bold">Kg</Typography>
-                                </Typography>
-                                <Typography variant="subtitle2" fontWeight="700" color="#16a34a" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                    Harvested MTD
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: '#15803d', mt: 1 }}>
-                                    Review the complete Crop Book
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                {/* Analytics Grid - Yield & Cost Charts */}
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <YieldAnalytics tenantId={tenantId} />
                 </Grid>
-
-                {/* CORRESPONDENCE TILE */}
-                <Grid item xs={12} md={6}>
-                    <Card onClick={() => navigate('/dashboard/correspondence')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, border: '1px solid #e2e8f0' }}>
-                        <CardContent sx={{ p: 3 }}>
-                            <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#0ea5e9', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                    <ChatIcon fontSize="medium" />
-                                </Box>
-                                <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
-                            </Box>
-                            <Box mt={3}>
-                                <Typography variant="h3" fontWeight="900" sx={{ color: '#0369a1' }}>
-                                    {unreadMessages}
-                                </Typography>
-                                <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                    Unread Messages
-                                </Typography>
-                                <Typography variant="body2" sx={{ color: unreadMessages > 0 ? '#0284c7' : '#64748b', mt: 1 }}>
-                                    Estate correspondence hub
-                                </Typography>
-                            </Box>
-                        </CardContent>
-                    </Card>
+                <Grid size={{ xs: 12, lg: 6 }}>
+                    <CostAnalytics tenantId={tenantId} />
                 </Grid>
             </Grid>
         </Box>

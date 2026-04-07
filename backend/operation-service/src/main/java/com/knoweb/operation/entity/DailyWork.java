@@ -52,6 +52,9 @@ public class DailyWork {
     @Column(name = "submitted_at")
     private java.time.LocalDateTime submittedAt;
 
+    @Column(name = "audit_remarks", columnDefinition = "TEXT")
+    private String auditRemarks;
+
     public DailyWork() {
     }
 
@@ -165,5 +168,13 @@ public class DailyWork {
 
     public void setSubmittedAt(java.time.LocalDateTime submittedAt) {
         this.submittedAt = submittedAt;
+    }
+
+    public String getAuditRemarks() {
+        return auditRemarks;
+    }
+
+    public void setAuditRemarks(String auditRemarks) {
+        this.auditRemarks = auditRemarks;
     }
 }

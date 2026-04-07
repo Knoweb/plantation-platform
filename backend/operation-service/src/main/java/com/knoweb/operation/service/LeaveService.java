@@ -70,11 +70,14 @@ public class LeaveService {
     }
 
     @Transactional
-    public LeaveApplication reviewApplication(UUID applicationId, String status, String managerRemarks) {
+    public LeaveApplication reviewApplication(UUID applicationId, String status, String managerRemarks, String actingPersonId) {
         LeaveApplication app = leaveApplicationRepository.findById(applicationId)
                 .orElseThrow(() -> new RuntimeException("Leave application not found: " + applicationId));
         app.setStatus(status);
         app.setManagerRemarks(managerRemarks);
+        if (actingPersonId != null) {
+            app.setActingPersonId(actingPersonId);
+        }
         app.setReviewedAt(LocalDateTime.now());
         return leaveApplicationRepository.save(app);
     }

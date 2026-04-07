@@ -155,4 +155,12 @@ public class DailyWorkService {
         return dailyWorkRepository.findTopByTenantIdAndDivisionIdAndWorkDateOrderByCreatedAtDesc(tenantId, divisionId, date)
                 .orElse(null);
     }
+
+    @Transactional
+    public DailyWork updateAuditRemarks(UUID id, String auditRemarks) {
+        DailyWork work = dailyWorkRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Work record not found"));
+        work.setAuditRemarks(auditRemarks);
+        return dailyWorkRepository.save(work);
+    }
 }

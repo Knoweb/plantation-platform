@@ -214,7 +214,9 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                             <Typography variant="subtitle2" color="text.primary" fontWeight="700" lineHeight={1.1}>
                                 {userDisplayName}
                             </Typography>
-
+                            <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize', fontWeight: 500 }}>
+                                {userRole.toLowerCase().replace(/_/g, ' ')}
+                            </Typography>
                         </Box>
                     </Box>
 

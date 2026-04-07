@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
     Box, Paper, Typography, Button, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, IconButton, Dialog,
@@ -304,6 +305,16 @@ export default function WorkerRegistry() {
             }
         };
     }, [tenantId]);
+
+    const location = useLocation();
+
+    useEffect(() => {
+        const params = new URLSearchParams(location.search);
+        const tab = params.get('tab');
+        if (tab === 'contract') {
+            setActiveTab(1);
+        }
+    }, [location]);
 
     useEffect(() => {
         if (tenantId) {

@@ -65,6 +65,9 @@ public class CropConfig {
     @Column(name = "working_day_calendar", columnDefinition = "TEXT")
     private String workingDayCalendar;
 
+    @Column(name = "assumed_green_leaf_rate")
+    private Double assumedGreenLeafRate;
+
     public UUID getId() {
         return id;
     }
@@ -193,5 +196,13 @@ public class CropConfig {
 
     public void setWorkingDayCalendar(String workingDayCalendar) {
         this.workingDayCalendar = workingDayCalendar;
+    }
+
+    public Double getAssumedGreenLeafRate() {
+        return assumedGreenLeafRate;
+    }
+
+    public void setAssumedGreenLeafRate(Double assumedGreenLeafRate) {
+        this.assumedGreenLeafRate = assumedGreenLeafRate;
     }
 }

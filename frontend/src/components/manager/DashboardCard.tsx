@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { type ReactNode } from 'react';
 import { Box, Paper, Typography, Divider } from '@mui/material';
 
 interface DashboardCardProps {
@@ -25,11 +25,11 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, filters, children,
             }}
         >
             <Box sx={{ p: 2, bgcolor: '#f8fafc', borderBottom: '1px solid #f1f5f9' }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center">
+                <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} flexWrap="wrap">
                     <Box display="flex" alignItems="center" gap={1}>
                         {icon && <Box sx={{ color: '#10b981' }}>{icon}</Box>}
                         <Box>
-                            <Typography variant="subtitle1" fontWeight="700" color="#1e293b">
+                            <Typography variant="subtitle1" fontWeight="700" color="#1e293b" sx={{ whiteSpace: 'nowrap' }}>
                                 {title}
                             </Typography>
                             {subtitle && (
@@ -40,7 +40,7 @@ const DashboardCard: React.FC<DashboardCardProps> = ({ title, filters, children,
                         </Box>
                     </Box>
                     {filters && (
-                        <Box display="flex" gap={1} alignItems="center">
+                        <Box display="flex" gap={1} alignItems="center" flexWrap="wrap" justifyContent="flex-end" sx={{ flexGrow: 1 }}>
                             {filters}
                         </Box>
                     )}

@@ -4,6 +4,7 @@ import WarningIcon from '@mui/icons-material/Warning';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info'; // For notification
 import SettingsIcon from '@mui/icons-material/Settings'; // For unconfigured status
+import DownloadIcon from '@mui/icons-material/Download';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
@@ -147,6 +148,69 @@ export default function GeneralStock() {
                 <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
                     General Stock & Inventory Level
                 </Typography>
+                {isManager && (
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<DownloadIcon />}
+                        onClick={() => {
+                            // Professional "Neat & Clean" Stock Excel Export
+                            const headerRows = `
+                                <tr>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; padding: 10px; height: 35px; text-align: left; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Item Name</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Category</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Unit</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Current Qty</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Buffer Level</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Min. Level</th>
+                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Status</th>
+                                </tr>
+                            `;
+
+                            const bodyRows = items.map((i, idx) => {
+                                const rowStyle = idx % 2 === 1 ? 'background: #f9fdf9;' : 'background: #ffffff;';
+                                const cellStyle = `border: 1px solid #eee; text-align: center; font-family: 'Segoe UI', Arial; padding: 6px; font-size: 11px; mso-number-format: "#,##0.00";`;
+                                const leftStyle = cellStyle + ' text-align: left; font-weight: bold;';
+                                const status = i.bufferLevel === 0 ? 'CONFIGURE' : i.currentQuantity < i.bufferLevel ? 'LOW STOCK' : 'GOOD';
+                                const statusColor = status === 'GOOD' ? '#2e7d32' : status === 'CONFIGURE' ? '#0288d1' : '#c62828';
+
+                                return `
+                                    <tr style="${rowStyle}">
+                                        <td style="${leftStyle}">${i.name}</td>
+                                        <td style="${cellStyle}">${i.category}</td>
+                                        <td style="${cellStyle}">${i.unit}</td>
+                                        <td style="${cellStyle}">${i.currentQuantity}</td>
+                                        <td style="${cellStyle}">${i.bufferLevel}</td>
+                                        <td style="${cellStyle}">${i.minimumLevel || 0}</td>
+                                        <td style="${cellStyle}; font-weight: bold; color: ${statusColor};">${status}</td>
+                                    </tr>
+                                `;
+                            }).join('');
+
+                            const tableHtml = `
+                                <html>
+                                    <head><meta charset="utf-8"/><style>table { border-collapse: collapse; } th, td { border: 1px solid #ddd; }</style></head>
+                                    <body>
+                                        <h3 style="font-family: 'Segoe UI', Arial; color: #1b5e20;">Estate Inventory Status Snapshot — ${new Date().toLocaleDateString()}</h3>
+                                        <table>
+                                            ${headerRows}
+                                            ${bodyRows}
+                                        </table>
+                                    </body>
+                                </html>
+                            `;
+
+                            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+                            const url = window.URL.createObjectURL(blob);
+                            const link = document.createElement('a');
+                            link.href = url;
+                            link.download = `Estate_General_Stock_Snapshot_${new Date().toISOString().split('T')[0]}.xls`;
+                            link.click();
+                        }}
+                    >
+                        Download Snapshot
+                    </Button>
+                )}
             </Box>
             <Typography variant="body1" color="text.secondary" mb={4}>
                 Overview of current stock levels. Managers can set buffer and minimum thresholds here.

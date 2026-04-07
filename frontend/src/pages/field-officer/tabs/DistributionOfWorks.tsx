@@ -2,8 +2,11 @@ import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell,
-    TableContainer, TableHead, TableRow, Select, MenuItem, FormControl, Chip
+    TableContainer, TableHead, TableRow, Select, MenuItem, FormControl, Chip,
+    IconButton, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions,
+    TextField, Button, Snackbar, Alert
 } from '@mui/material';
+import ChatIcon from '@mui/icons-material/ChatBubbleOutline';
 
 const buildSocketUrl = (path: string) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -34,8 +37,18 @@ export default function DistributionOfWorks() {
     const [tasks, setTasks] = useState<Array<{ name: string; cropTypes: string[] }>>([]);
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
     const [availableCrops, setAvailableCrops] = useState<string[]>([]);
-    const [workProgram, setWorkProgram] = useState<Record<string, number>>({});
+    const [workProgram, setWorkProgram] = useState<Record<string, { workers: number; justification?: string }>>({});
     const [realtimeEnabled, setRealtimeEnabled] = useState(false);
+
+    // Justification Dialog State
+    const [justifyConfig, setJustifyConfig] = useState<{ open: boolean; task: string; text: string; balance: number }>({
+        open: false,
+        task: '',
+        text: '',
+        balance: 0
+    });
+    const [savingJustification, setSavingJustification] = useState(false);
+    const [snack, setSnack] = useState<{ open: boolean; msg: string; sev: 'success' | 'error' }>({ open: false, msg: '', sev: 'success' });
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -85,9 +98,12 @@ export default function DistributionOfWorks() {
             const progRes = await axios.get(
                 `/api/work-program?tenantId=${tenantId}&year=${currentYear}&month=${currentMonth + 1}`
             );
-            const progMap: Record<string, number> = {};
+            const progMap: Record<string, { workers: number; justification?: string }> = {};
             (progRes.data as any[]).forEach(entry => {
-                progMap[entry.taskName] = entry.workersNeeded || 0;
+                progMap[entry.taskName] = { 
+                    workers: entry.workersNeeded || 0,
+                    justification: entry.justification || ''
+                };
             });
             setWorkProgram(progMap);
 
@@ -289,6 +305,27 @@ export default function DistributionOfWorks() {
         };
     }, [tenantId, currentYear, currentMonth, realtimeEnabled, fetchData]);
 
+    const handleSaveJustification = async () => {
+        if (!tenantId || !justifyConfig.task) return;
+        setSavingJustification(true);
+        try {
+            await axios.post('/api/work-program/justify', {
+                tenantId,
+                year: currentYear,
+                month: currentMonth + 1,
+                taskName: justifyConfig.task,
+                justification: justifyConfig.text
+            });
+            setSnack({ open: true, msg: 'Justification saved', sev: 'success' });
+            setJustifyConfig(prev => ({ ...prev, open: false }));
+            fetchData();
+        } catch (e) {
+            setSnack({ open: true, msg: 'Failed to save justification', sev: 'error' });
+        } finally {
+            setSavingJustification(false);
+        }
+    };
+
     const mapWorkType = (type: string, taskList: string[]) => {
         const lower = type.toLowerCase();
         if (lower.includes('pluck')) return taskList.find(t => t.toLowerCase().includes('pluck')) || 'Other';
@@ -430,9 +467,11 @@ export default function DistributionOfWorks() {
                         <TableBody>
                             {filteredTasks.map(task => {
                                 const item = task.name;
-                                const prog = workProgram[item] || 0;
+                                const progData = workProgram[item] || { workers: 0, justification: '' };
+                                const prog = progData.workers;
                                 const total = totalsByItem[item] || 0;
                                 const balance = prog - total;
+                                const hasJustification = !!progData.justification;
 
                                 return (
                                     <TableRow key={item} hover sx={{ '& td': { py: 0.5, px: 0.5, fontSize: '0.8rem' } }}>
@@ -457,8 +496,33 @@ export default function DistributionOfWorks() {
                                             {total}
                                         </TableCell>
                                         <TableCell align="center"
-                                            sx={{ bgcolor: '#e0f2f1', fontWeight: 'bold', color: balance < 0 ? 'error.main' : 'inherit' }}>
+                                            sx={{ 
+                                                bgcolor: '#e0f2f1', 
+                                                fontWeight: 'bold', 
+                                                color: balance < 0 ? 'error.main' : 'inherit',
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                justifyContent: 'center',
+                                                gap: 0.5
+                                            }}>
                                             {balance}
+                                            {balance < 0 && (
+                                                <Tooltip title={hasJustification ? "Update Justification" : "Send reason for over-utilization"}>
+                                                    <IconButton 
+                                                        size="small" 
+                                                        color={hasJustification ? "warning" : "primary"}
+                                                        onClick={() => setJustifyConfig({
+                                                            open: true,
+                                                            task: item,
+                                                            text: progData.justification || '',
+                                                            balance: balance
+                                                        })}
+                                                        sx={{ p: 0.5 }}
+                                                    >
+                                                        <ChatIcon fontSize="small" />
+                                                    </IconButton>
+                                                </Tooltip>
+                                            )}
                                         </TableCell>
                                     </TableRow>
                                 );
@@ -467,6 +531,53 @@ export default function DistributionOfWorks() {
                     </Table>
                 </TableContainer>
             </Box>
+
+            {/* Justification Dialog */}
+            <Dialog open={justifyConfig.open} onClose={() => !savingJustification && setJustifyConfig(p => ({ ...p, open: false }))} fullWidth maxWidth="xs">
+                <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <ChatIcon color="primary" />
+                    Provide Justification
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="subtitle2" gutterBottom color="text.secondary">
+                        Why did you use extra workers for <strong>{justifyConfig.task}</strong>?
+                    </Typography>
+                    <Box sx={{ bgcolor: '#fff3e0', p: 1, borderRadius: 1, mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <Typography variant="body2" fontWeight="bold" color="#e65100">Negative Balance:</Typography>
+                        <Chip label={`${justifyConfig.balance} workers`} size="small" color="error" sx={{ fontWeight: 'bold' }} />
+                    </Box>
+                    <TextField
+                        autoFocus
+                        multiline
+                        rows={4}
+                        fullWidth
+                        placeholder="e.g. A road got broken, required extra hands for transport..."
+                        value={justifyConfig.text}
+                        onChange={(e) => setJustifyConfig(p => ({ ...p, text: e.target.value }))}
+                        disabled={savingJustification}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setJustifyConfig(p => ({ ...p, open: false }))} color="inherit">Cancel</Button>
+                    <Button 
+                        onClick={handleSaveJustification} 
+                        variant="contained" 
+                        disabled={savingJustification || !justifyConfig.text.trim()}
+                        startIcon={savingJustification ? <CircularProgress size={16} /> : null}
+                    >
+                        {savingJustification ? 'Saving...' : 'Send to Chief Clerk'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            <Snackbar 
+                open={snack.open} 
+                autoHideDuration={4000} 
+                onClose={() => setSnack(p => ({ ...p, open: false }))}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert severity={snack.sev} variant="filled">{snack.msg}</Alert>
+            </Snackbar>
         </Box>
     );
 }

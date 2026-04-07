@@ -121,6 +121,7 @@ function App() {
           <Route path="crop-book" element={<FOCropBook />} />
           <Route path="attendance" element={<AttendanceReport />} />
           <Route path="leave-management" element={<LeaveManagement />} />
+          <Route path="manager-cost-analysis" element={<CostAnalysisManager />} />
           <Route path="division-view/:divisionId" element={<DivisionView />} />
 
           {/* Chief Clerk Tabs */}
@@ -129,6 +130,7 @@ function App() {
           <Route path="chief-cost-analysis" element={<CostAnalysisManager />} />
           <Route path="chief-distribution-works" element={<WorkProgramManager />} />
           <Route path="chief-inventory" element={<StoreKeeperDashboard />} />
+          <Route path="evening-muster-history" element={<DailyEntry defaultTab={1} />} />
         </Route>
 
         {/* Super Admin Routes */}

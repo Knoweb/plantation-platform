@@ -1,4 +1,4 @@
-import { Box, Typography, Card, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, Avatar, Autocomplete, Checkbox } from '@mui/material';
+import { Box, Typography, Card, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, Avatar, Autocomplete, Checkbox, Tooltip } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -44,6 +44,7 @@ export default function MusterReviewManager() {
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const userRole = userSession.role;
 
     const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
@@ -87,7 +88,8 @@ export default function MusterReviewManager() {
                 quantity: item.workerCount,
                 divisionName: divMap.get(item.divisionId) || 'Unknown Division',
                 status: item.status,
-                remarks: item.remarks
+                remarks: item.remarks,
+                auditRemarks: item.auditRemarks
             }));
             setAllMusterRecords(mappedAll);
 
@@ -191,7 +193,36 @@ export default function MusterReviewManager() {
                                     <TableRow key={row.id} hover>
                                         <TableCell>{row.displayId}</TableCell>
                                         <TableCell><Chip label={row.type} size="small" color="primary" variant="outlined" /></TableCell>
-                                        <TableCell>{row.divisionName}</TableCell>
+                                        <TableCell>
+                                            {row.divisionName}
+                                            {row.auditRemarks && (() => {
+                                                const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                                                const isUnread = !seenAudits.includes(row.id) && userRole !== 'CHIEF_CLERK';
+                                                return (
+                                                    <Tooltip title={isUnread ? "Unread Audit Remark" : "Has Audit Note"}>
+                                                        <Chip 
+                                                            label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                            size="small" 
+                                                            color={isUnread ? "error" : "warning"} 
+                                                            sx={{ 
+                                                                ml: 1, 
+                                                                height: 20, 
+                                                                fontSize: '0.65rem', 
+                                                                fontWeight: 'bold',
+                                                                ...(isUnread && {
+                                                                    animation: 'pulse-red 2s infinite',
+                                                                    '@keyframes pulse-red': {
+                                                                        '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                                                                        '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                                                                        '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                                                                    }
+                                                                })
+                                                            }} 
+                                                        />
+                                                    </Tooltip>
+                                                );
+                                            })()}
+                                        </TableCell>
                                         <TableCell>
                                             <Typography variant="body2">{row.date}</Typography>
                                             {/* Show Action Time if available (History), else Submission Time (Pending) */}
@@ -220,7 +251,20 @@ export default function MusterReviewManager() {
                                                 size="small"
                                                 color="success"
                                                 startIcon={<VisibilityIcon />}
-                                                onClick={() => { setSelectedItem(row); setIsEditMode(viewStatus === 'PENDING'); }}
+                                                onClick={() => { 
+                                                    setSelectedItem(row); 
+                                                    setIsEditMode(viewStatus === 'PENDING');
+                                                    
+                                                    // Mark Audit as Read
+                                                    if (row.auditRemarks) {
+                                                        const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                                                        if (!seenAudits.includes(row.id)) {
+                                                            seenAudits.push(row.id);
+                                                            localStorage.setItem('seen_audit_notes', JSON.stringify(seenAudits));
+                                                            window.dispatchEvent(new Event('muster-update'));
+                                                        }
+                                                    }
+                                                }}
                                             >
                                                 Review
                                             </Button>
@@ -319,7 +363,25 @@ export default function MusterReviewManager() {
                         </DialogTitle>
                         <DialogContent sx={{ bgcolor: '#f1f8e9', p: 3 }}>
                             {selectedItem && (
-                                <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }} mt={1} sx={{ height: '60vh' }}>
+                                <>
+                                    {/* HIGH VISIBILITY TOP ALERT FOR AUDIT NOTES */}
+                                    {selectedItem.remarks && (
+                                        <Alert 
+                                            severity="warning" 
+                                            variant="filled" 
+                                            sx={{ 
+                                                mb: 2, 
+                                                borderRadius: 2, 
+                                                fontWeight: 'bold',
+                                                boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+                                                border: '2px solid #ffb74d'
+                                            }}
+                                        >
+                                            CHIEF CLERK AUDIT NOTE: {selectedItem.remarks}
+                                        </Alert>
+                                    )}
+
+                                    <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }} mt={1} sx={{ height: '60vh' }}>
                                     {/* Left Pane: Muster Chit */}
                                     <Box flex={1} display="flex" flexDirection="column">
                                         <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Muster Chit</Typography>
@@ -581,6 +643,7 @@ export default function MusterReviewManager() {
                                         </Box>
                                     </Box>
                                 </Box>
+                                </>
                             )}
                         </DialogContent>
                         <DialogActions sx={{ p: 2, bgcolor: '#e8f5e9', display: 'flex', flexDirection: 'column', gap: 2, alignItems: 'stretch' }}>

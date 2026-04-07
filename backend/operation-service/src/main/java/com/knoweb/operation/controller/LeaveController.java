@@ -60,7 +60,8 @@ public class LeaveController {
     public ResponseEntity<LeaveApplication> reviewApplication(
             @PathVariable UUID id,
             @RequestParam String status,
-            @RequestParam(required = false) String remarks) {
-        return ResponseEntity.ok(leaveService.reviewApplication(id, status, remarks != null ? remarks : ""));
+            @RequestParam(required = false) String remarks,
+            @RequestParam(required = false) String actingPersonId) {
+        return ResponseEntity.ok(leaveService.reviewApplication(id, status, remarks != null ? remarks : "", actingPersonId));
     }
 }

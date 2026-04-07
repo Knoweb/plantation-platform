@@ -3,7 +3,7 @@ import {
     TableRow, TableCell, TableBody, IconButton, Select, MenuItem, Tooltip, Autocomplete,
     FormControl, Chip, OutlinedInput, ListItemText, Checkbox, Collapse
 } from '@mui/material';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
@@ -20,6 +20,39 @@ const CROP_COLORS: Record<string, string> = {
 };
 const getCropColor = (crop: string) => CROP_COLORS[crop?.toUpperCase()] || '#bdbdbd';
 
+const MultiCropSelect = ({
+    value, onChange, cropOptions
+}: { value: string[], onChange: (val: string[]) => void, cropOptions: string[] }) => (
+    <FormControl fullWidth size="small">
+        <Select
+            multiple
+            value={value}
+            onChange={(e) => onChange(e.target.value as string[])}
+            input={<OutlinedInput />}
+            renderValue={(selected) => (
+                <Box display="flex" flexWrap="wrap" gap={0.5}>
+                    {(selected as string[]).map(v => (
+                        <Chip
+                            key={v}
+                            label={v}
+                            size="small"
+                            sx={{ bgcolor: getCropColor(v), color: 'white', fontWeight: 'bold', fontSize: '0.7rem' }}
+                        />
+                    ))}
+                </Box>
+            )}
+        >
+            {cropOptions.map(c => (
+                <MenuItem key={c} value={c}>
+                    <Checkbox checked={value.includes(c)} size="small" />
+                    <SpaIcon fontSize="small" sx={{ color: getCropColor(c), mr: 1 }} />
+                    <ListItemText primary={c} />
+                </MenuItem>
+            ))}
+        </Select>
+    </FormControl>
+);
+
 export default function TaskTypeSettings() {
     const [taskTypes, setTaskTypes] = useState<any[]>([]);
     const [newTaskName, setNewTaskName] = useState('');
@@ -35,14 +68,14 @@ export default function TaskTypeSettings() {
 
     const unitOptions = ['Kg', 'Acres', 'SqFt', 'Taps', 'Liters', 'Days', 'Task', 'None'];
 
-    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const userSession = useMemo(() => JSON.parse(sessionStorage.getItem('user') || '{}'), []);
     const tenantId = userSession.tenantId;
 
     const fetchTaskTypes = useCallback(async () => {
         try {
             const res = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
             setTaskTypes(res.data);
-        } catch (error) {
+        } catch (_error) {
             console.error("Failed to fetch task types");
         }
     }, [tenantId]);
@@ -71,7 +104,7 @@ export default function TaskTypeSettings() {
             if (combined.length > 0) {
                 setAvailableCrops(combined);
             }
-        } catch (e) {
+        } catch (_err) {
             console.warn('Could not fetch crops from fields, falling back to config');
             const config = userSession.config || {};
             const configCrops = Object.keys(config)
@@ -137,40 +170,7 @@ export default function TaskTypeSettings() {
         }
     };
 
-    const cropOptions = [...new Set([...availableCrops, 'GENERAL'])];
-
-    const MultiCropSelect = ({
-        value, onChange
-    }: { value: string[], onChange: (val: string[]) => void }) => (
-        <FormControl fullWidth size="small">
-            <Select
-                multiple
-                value={value}
-                onChange={(e) => onChange(e.target.value as string[])}
-                input={<OutlinedInput />}
-                renderValue={(selected) => (
-                    <Box display="flex" flexWrap="wrap" gap={0.5}>
-                        {(selected as string[]).map(v => (
-                            <Chip
-                                key={v}
-                                label={v}
-                                size="small"
-                                sx={{ bgcolor: getCropColor(v), color: 'white', fontWeight: 'bold', fontSize: '0.7rem' }}
-                            />
-                        ))}
-                    </Box>
-                )}
-            >
-                {cropOptions.map(c => (
-                    <MenuItem key={c} value={c}>
-                        <Checkbox checked={value.includes(c)} size="small" />
-                        <SpaIcon fontSize="small" sx={{ color: getCropColor(c), mr: 1 }} />
-                        <ListItemText primary={c} />
-                    </MenuItem>
-                ))}
-            </Select>
-        </FormControl>
-    );
+    const cropOptions = useMemo(() => [...new Set([...availableCrops, 'GENERAL'])], [availableCrops]);
 
     return (
         <Box>
@@ -203,7 +203,7 @@ export default function TaskTypeSettings() {
                 <Paper sx={{ p: 3, borderRadius: 3, mb: 4, maxWidth: 950, border: '1px solid #a5d6a7', bgcolor: '#f1f8e9' }}>
                     <Typography variant="h6" fontWeight="bold" sx={{ mb: 2, color: '#2e7d32' }}>Create New Job Role</Typography>
                     <Grid container spacing={2} alignItems="center">
-                        <Grid item xs={12} md={4}>
+                        <Grid size={{ xs: 12, md: 4 }}>
                             <TextField
                                 fullWidth variant="outlined" size="small"
                                 label="Role/Task Name"
@@ -212,7 +212,7 @@ export default function TaskTypeSettings() {
                                 sx={{ bgcolor: 'white' }}
                             />
                         </Grid>
-                        <Grid item xs={12} md={2}>
+                        <Grid size={{ xs: 12, md: 2 }}>
                             <Autocomplete
                                 freeSolo options={unitOptions} size="small"
                                 value={newTaskUnit}
@@ -223,10 +223,10 @@ export default function TaskTypeSettings() {
                                 )}
                             />
                         </Grid>
-                        <Grid item xs={12} md={4}>
-                            <MultiCropSelect value={newTaskCrops} onChange={setNewTaskCrops} />
+                        <Grid size={{ xs: 12, md: 4 }}>
+                            <MultiCropSelect value={newTaskCrops} onChange={setNewTaskCrops} cropOptions={cropOptions} />
                         </Grid>
-                        <Grid item xs={12} md={2}>
+                        <Grid size={{ xs: 12, md: 2 }}>
                             <Button
                                 variant="contained" fullWidth size="medium"
                                 onClick={handleCreateTask} disabled={!newTaskName.trim()}
@@ -257,7 +257,7 @@ export default function TaskTypeSettings() {
                                     <TableCell sx={{ fontWeight: 500 }}>{task.name}</TableCell>
                                     <TableCell align="center">
                                         {editingId === task.id ? (
-                                            <MultiCropSelect value={editCrops} onChange={setEditCrops} />
+                                            <MultiCropSelect value={editCrops} onChange={setEditCrops} cropOptions={cropOptions} />
                                         ) : (
                                             <Box display="flex" flexWrap="wrap" gap={0.5} justifyContent="center">
                                                 {crops.map(c => (

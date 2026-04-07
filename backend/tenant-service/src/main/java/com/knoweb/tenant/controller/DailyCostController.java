@@ -185,6 +185,10 @@ public class DailyCostController {
             JsonNode categories = objectMapper.readTree(resolved.getCostData());
             CropWeights cropWeights = fetchCropWeights(tenantId, cropType, date);
             int rowIdx = 5;
+            double grandTotalDay = 0.0;
+            double grandTotalTodate = 0.0;
+            double grandTotalLastMonth = 0.0;
+            double grandTotalYtd = 0.0;
             if (categories.isArray()) {
                 for (JsonNode catNode : categories) {
                     String categoryName = catNode.path("name").asText("");
@@ -242,8 +246,36 @@ public class DailyCostController {
                     createTextCell(summaryRow, 4, resolveCostPerKgValue("", totalTodateAmount, cropWeights.todateWeight), summaryAmountStyle);
                     createAmountCell(summaryRow, 5, totalLastMonthAmount, summaryAmountStyle);
                     createAmountCell(summaryRow, 6, totalYtdAmount, summaryAmountStyle);
+
+                    grandTotalDay += totalDayAmount;
+                    grandTotalTodate += totalTodateAmount;
+                    grandTotalLastMonth += totalLastMonthAmount;
+                    grandTotalYtd += totalYtdAmount;
                 }
             }
+
+            // ADD GRAND TOTAL ROW
+            Row grandTotalRow = sheet.createRow(rowIdx++);
+            Cell grandTotalLabel = grandTotalRow.createCell(0);
+            grandTotalLabel.setCellValue("GRAND TOTAL COST (ESTATE)");
+            
+            // Re-use ribbon styles for the grand total so it pops
+            CellStyle grandStyle = workbook.createCellStyle();
+            grandStyle.cloneStyleFrom(summaryAmountStyle);
+            Font grandFont = workbook.createFont();
+            grandFont.setBold(true);
+            grandFont.setColor(IndexedColors.DARK_RED.getIndex());
+            grandStyle.setFont(grandFont);
+            grandStyle.setFillForegroundColor(IndexedColors.YELLOW.getIndex());
+            grandStyle.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+
+            grandTotalLabel.setCellStyle(grandStyle);
+            createAmountCell(grandTotalRow, 1, grandTotalDay, grandStyle);
+            createTextCell(grandTotalRow, 2, "", grandStyle);
+            createAmountCell(grandTotalRow, 3, grandTotalTodate, grandStyle);
+            createTextCell(grandTotalRow, 4, "", grandStyle);
+            createAmountCell(grandTotalRow, 5, grandTotalLastMonth, grandStyle);
+            createAmountCell(grandTotalRow, 6, grandTotalYtd, grandStyle);
 
             int filterLastRow = Math.max(4, rowIdx - 1);
             sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(4, filterLastRow, 0, 6));

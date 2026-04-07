@@ -1,5 +1,5 @@
 import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox, InputAdornment, useMediaQuery, useTheme } from '@mui/material';
-import React, { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
 import axios from 'axios';
 import {
     Check as CheckIcon,
@@ -46,8 +46,37 @@ const parseJavaDate = (dateVal: any) => {
 };
 
 // --- Main Component ---
-export default function EveningMusterPage() {
-    const [tabIndex, setTabIndex] = useState(0);
+export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: number }) {
+    const [tabIndex, setTabIndex] = useState(defaultTab);
+    const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const userRole = userSession.role;
+    const [auditAlertCount, setAuditAlertCount] = useState(0);
+
+    const fetchAuditAlerts = useCallback(async () => {
+        if (userRole === 'CHIEF_CLERK') {
+            setAuditAlertCount(0);
+            return;
+        }
+        try {
+            const auditRes = await axios.get(`/api/operations/daily-work/audited?tenantId=${userSession.tenantId}`);
+            const auditedRecords = auditRes.data || [];
+            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+            const unreadAudits = auditedRecords.filter((r: any) => !seenAudits.includes(r.workId || r.id));
+            setAuditAlertCount(unreadAudits.length);
+        } catch (_e) {
+            console.warn("Audit alerts unavailable for tab badge");
+        }
+    }, [userSession.tenantId, userRole]);
+
+    useEffect(() => {
+        void fetchAuditAlerts();
+        window.addEventListener('muster-update', fetchAuditAlerts);
+        const interval = setInterval(fetchAuditAlerts, 30000); // Check every 30s
+        return () => {
+            window.removeEventListener('muster-update', fetchAuditAlerts);
+            clearInterval(interval);
+        };
+    }, [fetchAuditAlerts]);
 
     return (
         <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh', pb: 4 }}>
@@ -69,15 +98,21 @@ export default function EveningMusterPage() {
                         '& .MuiTab-root.Mui-selected': { color: '#2e7d32' }
                     }}
                 >
-                    <Tab
-                        label="Daily Entry"
-                        icon={<EditStartIcon />}
-                        iconPosition="start"
-                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
-                    />
+                    {userRole === 'FIELD_OFFICER' && (
+                        <Tab
+                            label="Daily Entry"
+                            icon={<EditStartIcon />}
+                            iconPosition="start"
+                            sx={{ textTransform: 'none', fontWeight: 'bold' }}
+                        />
+                    )}
                     <Tab
                         label="History"
-                        icon={<HistoryIcon />}
+                        icon={
+                            <Badge badgeContent={auditAlertCount} color="error" overlap="circular" sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', minWidth: 16, height: 16 } }}>
+                                <HistoryIcon />
+                            </Badge>
+                        }
                         iconPosition="start"
                         sx={{ textTransform: 'none', fontWeight: 'bold' }}
                     />
@@ -85,8 +120,14 @@ export default function EveningMusterPage() {
             </Box>
 
             <Box sx={{ p: { xs: 1, sm: 2 } }}>
-                {tabIndex === 0 && <DailyEntryTab />}
-                {tabIndex === 1 && <HistoryTab />}
+                {userRole === 'FIELD_OFFICER' ? (
+                    <>
+                        {tabIndex === 0 && <DailyEntryTab />}
+                        {tabIndex === 1 && <HistoryTab />}
+                    </>
+                ) : (
+                    <HistoryTab />
+                )}
             </Box>
         </Box>
     );
@@ -99,13 +140,17 @@ function DailyEntryTab() {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
+    const [isSubmitted, setIsSubmitted] = useState(false);
+    // Persistence Key Helper
+    const getStorageKey = useCallback((divId: string) => `muster_submitted_${tenantId}_${today}_${divId}`, [tenantId, today]);
+
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
     const [taskTypes, setTaskTypes] = useState<any[]>([]);
     const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
-    const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+    const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' | 'warning' });
     const [norms, setNorms] = useState<any[]>([]);
     const [dailyWorks, setDailyWorks] = useState<any[]>([]);
     const [isEditMode, setIsEditMode] = useState(false);
@@ -233,7 +278,7 @@ function DailyEntryTab() {
             if (!silent) setNotification({ open: true, message: "Failed to load data.", severity: 'error' });
         }
         if (!silent) setLoading(false);
-    }, [tenantId, today, isEditModeRef]);
+    }, [tenantId, today, isEditModeRef, selectedDivision, getStorageKey]);
 
     useEffect(() => {
         isEditModeRef.current = isEditMode;
@@ -241,9 +286,9 @@ function DailyEntryTab() {
 
     useEffect(() => {
         if (tenantId) {
-            fetchInitialData();
+            void fetchInitialData();
             const interval = setInterval(() => {
-                fetchInitialData(true);
+                void fetchInitialData(true);
             }, 10000);
             return () => clearInterval(interval);
         }
@@ -326,25 +371,17 @@ function DailyEntryTab() {
             localStorage.removeItem(key); // Clear any stale saved weights
         }
     }, [tenantId, today]);
-    const [isSubmitted, setIsSubmitted] = useState(false);
 
-    // Persistence Key Helper
-    const getStorageKey = (divId: string) => `muster_submitted_${tenantId}_${today}_${divId}`;
-
-    // Check submission status on division change using backend truth first.
     useEffect(() => {
         if (!selectedDivision || !tenantId || !today) return;
-        const backendStatus = dailyWorks.some((dw: any) => String(dw.divisionId) === String(selectedDivision) && Boolean(dw.submittedAt));
-        const localStatus = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
-        const status = backendStatus || localStatus;
-        setIsSubmitted(prev => (prev === status ? prev : status));
+        const entry = dailyWorks.find((dw: any) => String(dw.divisionId) === String(selectedDivision));
+        const status = !!(entry && entry.submittedAt) || localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
+        
+        setIsSubmitted(status);
         if (status) {
-            setIsEditMode(prev => {
-                if (prev === false) return prev;
-                return false;
-            });
+            setIsEditMode(false);
         }
-    }, [selectedDivision, tenantId, today, dailyWorks]);
+    }, [selectedDivision, tenantId, today, dailyWorks, getStorageKey]);
 
     const handleSubmit = async () => {
         // Build a set of workerIds whose last assignment (per task order) needs a status
@@ -1904,12 +1941,14 @@ function HistoryTab() {
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const userRole = userSession.role;
     const [history, setHistory] = useState<any[]>([]);
     const [rawData, setRawData] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
     const [taskTypes, setTaskTypes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
     // Review Modal State
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -1918,6 +1957,9 @@ function HistoryTab() {
     const [morningPlan, setMorningPlan] = useState<any[]>([]);
     const [historicWeights, setHistoricWeights] = useState<any>({});
     const [historicDivision, setHistoricDivision] = useState<string>('');
+    const [auditNote, setAuditNote] = useState<string>('');
+    const [isSavingAudit, setIsSavingAudit] = useState(false);
+    const [selectedMusterId, setSelectedMusterId] = useState<string | null>(null);
 
     useEffect(() => {
         const fetchData = async () => {
@@ -2025,7 +2067,8 @@ function HistoryTab() {
                         types: ['Morning Muster'],
                         details: mm.details, // Store the snapshot JSON here!
                         bulkWeights: mm.bulkWeights, // Add DB-saved weights
-                        isEveningSubmitted
+                        isEveningSubmitted,
+                        auditRemarks: mm.auditRemarks
                     };
                 }).filter((r: any) => r.isEveningSubmitted);
 
@@ -2102,6 +2145,37 @@ function HistoryTab() {
         }
 
         setReviewOpen(true);
+        setSelectedMusterId(row.id);
+        setAuditNote(row.auditRemarks || '');
+
+        // Mark as read if it has an audit note
+        if (row.auditRemarks) {
+            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+            if (!seenAudits.includes(row.id)) {
+                seenAudits.push(row.id);
+                localStorage.setItem('seen_audit_notes', JSON.stringify(seenAudits));
+                // Notify sidebar to re-calculate alerts
+                window.dispatchEvent(new Event('muster-update'));
+            }
+        }
+    };
+
+    const handleSaveAudit = async () => {
+        if (!selectedMusterId) return;
+        try {
+            setIsSavingAudit(true);
+            await axios.put(`/api/operations/daily-work/${selectedMusterId}/audit-remarks`, { auditRemarks: auditNote });
+            
+            // Update local state
+            setHistory(prev => prev.map(h => h.id === selectedMusterId ? { ...h, auditRemarks: auditNote } : h));
+            
+            setNotification({ open: true, message: "Audit note posted successfully!", severity: 'success' });
+        } catch (e) {
+            console.error("Failed to save audit note", e);
+            setNotification({ open: true, message: "Failed to save audit note.", severity: 'error' });
+        } finally {
+            setIsSavingAudit(false);
+        }
     };
 
     const handleDelete = async (row: any) => {
@@ -2177,6 +2251,33 @@ function HistoryTab() {
                                     <TableCell sx={{ fontWeight: 500 }}>{row.date}</TableCell>
                                     <TableCell>
                                         <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
+                                        {row.auditRemarks && (() => {
+                                            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                                            const isUnread = !seenAudits.includes(row.id) && userRole !== 'CHIEF_CLERK';
+                                            return (
+                                                <Tooltip title={isUnread ? "Unread Audit Remark" : "Has Audit Note"}>
+                                                    <Chip 
+                                                        label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                        size="small" 
+                                                        color={isUnread ? "error" : "warning"} 
+                                                        sx={{ 
+                                                            ml: 1, 
+                                                            height: 20, 
+                                                            fontSize: '0.65rem', 
+                                                            fontWeight: 'bold',
+                                                            ...(isUnread && {
+                                                                animation: 'pulse-red 2s infinite',
+                                                                '@keyframes pulse-red': {
+                                                                    '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                                                                    '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                                                                    '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                                                                }
+                                                            })
+                                                        }} 
+                                                    />
+                                                </Tooltip>
+                                            );
+                                        })()}
                                     </TableCell>
                                     <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
                                         {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
@@ -2220,6 +2321,23 @@ function HistoryTab() {
                     Muster Review: {selectedDate}
                 </DialogTitle>
                 <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }}>
+                    {/* HIGH VISIBILITY TOP ALERT FOR AUDIT NOTES - Hidden for Chief Clerk (Author) */}
+                    {auditNote && userRole !== 'CHIEF_CLERK' && (
+                        <Alert 
+                            severity="warning" 
+                            variant="filled" 
+                            sx={{ 
+                                mb: 2, 
+                                borderRadius: 2, 
+                                fontWeight: 'bold',
+                                boxShadow: '0px 4px 10px rgba(0,0,0,0.1)',
+                                border: '2px solid #ffb74d'
+                            }}
+                        >
+                            CHIEF CLERK AUDIT NOTE: {auditNote}
+                        </Alert>
+                    )}
+
                     <Grid container spacing={3} wrap={isMobile ? "wrap" : "nowrap"} sx={{ minHeight: '60vh' }}>
                         {/* LEFT: MORNING PLAN  */}
                         <Grid size={{ xs: 12, md: 4 }} sx={{ borderRight: isMobile ? 'none' : '2px dashed #bdbdbd', borderBottom: isMobile ? '2px dashed #bdbdbd' : 'none', pb: isMobile ? 3 : 0 }}>
@@ -2315,11 +2433,63 @@ function HistoryTab() {
                             </Box>
                         </Grid>
                     </Grid>
+
+                    {/* AUDIT & COST CONTROL SECTION - ONLY FOR CHIEF CLERK (Writing) OR IF NO TOP ALERT IS SHOWN */}
+                    {userRole === 'CHIEF_CLERK' && (
+                        <Box sx={{ mt: 3, pt: 3, borderTop: '2px solid #e0e0e0' }}>
+                            <Box display="flex" alignItems="center" gap={1} mb={2}>
+                                <Avatar sx={{ bgcolor: '#ff9800', width: 32, height: 32 }}>
+                                    <HistoryIcon sx={{ fontSize: 20 }} />
+                                </Avatar>
+                                <Typography variant="h6" fontWeight="bold" color="warning.dark">
+                                    Audit & Cost Control (Investigation)
+                                </Typography>
+                            </Box>
+
+                            <Paper elevation={0} variant="outlined" sx={{ p: 2, bgcolor: '#fffde7', borderColor: '#fff176' }}>
+                                <Typography variant="subtitle2" gutterBottom fontWeight="bold">
+                                    Chief Clerk's Investigation Note:
+                                </Typography>
+                                <TextField
+                                    fullWidth
+                                    multiline
+                                    rows={3}
+                                    placeholder="Enter audit observations here (e.g., 'Excessive aththama offered for this division...')"
+                                    value={auditNote}
+                                    onChange={(e) => setAuditNote(e.target.value)}
+                                    sx={{ bgcolor: 'white', mb: 2 }}
+                                />
+                                <Box display="flex" justifyContent="flex-end">
+                                    <Button
+                                        variant="contained"
+                                        color="warning"
+                                        onClick={handleSaveAudit}
+                                        disabled={isSavingAudit}
+                                        startIcon={isSavingAudit ? <CircularProgress size={20} color="inherit" /> : <RefreshIcon />}
+                                        sx={{ fontWeight: 'bold' }}
+                                    >
+                                        {isSavingAudit ? "Posting..." : "Post Audit Note"}
+                                    </Button>
+                                </Box>
+                            </Paper>
+                        </Box>
+                    )}
                 </DialogContent>
                 <DialogActions sx={{ p: 2, bgcolor: '#fff' }}>
                     <Button onClick={() => setReviewOpen(false)} variant="contained" color="primary" size="large">Close Review</Button>
                 </DialogActions>
             </Dialog >
+
+            <Snackbar
+                open={notification.open}
+                autoHideDuration={6000}
+                onClose={() => setNotification({ ...notification, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setNotification({ ...notification, open: false })} severity={notification.severity} sx={{ width: '100%' }}>
+                    {notification.message}
+                </Alert>
+            </Snackbar>
         </Box >
     );
 }

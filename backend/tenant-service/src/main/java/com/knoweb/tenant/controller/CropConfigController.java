@@ -75,6 +75,7 @@ public class CropConfigController {
             if (newConfig.getOtHourRate() != null) configToUpdate.setOtHourRate(newConfig.getOtHourRate());
             if (newConfig.getCostItems() != null) configToUpdate.setCostItems(newConfig.getCostItems());
             if (newConfig.getWorkingDayCalendar() != null) configToUpdate.setWorkingDayCalendar(newConfig.getWorkingDayCalendar());
+            if (newConfig.getAssumedGreenLeafRate() != null) configToUpdate.setAssumedGreenLeafRate(newConfig.getAssumedGreenLeafRate());
             return ResponseEntity.ok(configRepository.save(configToUpdate));
         } else {
             return ResponseEntity.ok(configRepository.save(newConfig));

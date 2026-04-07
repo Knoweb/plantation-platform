@@ -27,6 +27,9 @@ public class WorkProgram {
     @Column(name = "workers_needed")
     private int workersNeeded;
 
+    @Column(name = "justification", columnDefinition = "TEXT")
+    private String justification;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
 
@@ -44,4 +47,7 @@ public class WorkProgram {
 
     public int getWorkersNeeded() { return workersNeeded; }
     public void setWorkersNeeded(int workersNeeded) { this.workersNeeded = workersNeeded; }
+
+    public String getJustification() { return justification; }
+    public void setJustification(String justification) { this.justification = justification; }
 }

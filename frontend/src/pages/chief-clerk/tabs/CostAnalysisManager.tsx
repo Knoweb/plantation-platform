@@ -112,6 +112,7 @@ const makeDefaults = () =>
 const ITEM_TO_CATEGORY = new Map(
     DEFAULT_CATEGORIES.flatMap((category) => category.items.map((item) => [item.name, category.name] as const)),
 );
+const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORIES.map((category) => category.name));
 const HEADER_ROW_ONE_HEIGHT = 38;
 const HEADER_ROW_TWO_HEIGHT = 44;
 const HEADER_ROW_HEIGHT = 42;
@@ -216,6 +217,7 @@ const normalizeCategories = (input: any): CostCategory[] => {
 
 export default function CostAnalysisManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
+    const isManager = userSession.role === 'MANAGER';
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
@@ -727,14 +729,11 @@ export default function CostAnalysisManager() {
         amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     return (
-        <Box sx={{ height: 'calc(100vh - 120px)', minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', maxWidth: '100%' }}>
+        <Box sx={{ maxWidth: '100%' }}>
             <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} mb={2}>
                 <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
                     <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                         Cost Analysis Manager
-                    </Typography>
-                    <Typography variant="body2" color="text.secondary">
-                        Chief Clerk can either use the web system manually or upload/download a simple Excel report.
                     </Typography>
                 </Box>
                 <Box
@@ -754,7 +753,7 @@ export default function CostAnalysisManager() {
                         }}
                         sx={{ bgcolor: '#fff', borderRadius: 1 }}
                     />
-                    {!isEditable ? (
+                    {!isEditable && !isManager && (
                         <Button
                             variant="contained"
                             startIcon={<EditIcon />}
@@ -764,7 +763,20 @@ export default function CostAnalysisManager() {
                         >
                             Edit Entry
                         </Button>
-                    ) : (
+                    )}
+                    {!isEditable && (
+                        <Tooltip title="Download Daily Snapshot">
+                            <Button
+                                variant="contained"
+                                startIcon={<DownloadIcon />}
+                                onClick={handleDownloadSnapshot}
+                                sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+                            >
+                                Download Snapshot
+                            </Button>
+                        </Tooltip>
+                    )}
+                    {isEditable && (
                         <>
                             <Button
                                 variant="contained"
@@ -775,17 +787,17 @@ export default function CostAnalysisManager() {
                             >
                                 {syncing ? 'Syncing...' : 'Sync from Muster'}
                             </Button>
-                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161' }}>
+                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161', mr: 1 }}>
                                 Cancel
                             </Button>
-                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32' }}>
+                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32', mr: 1 }}>
                                 Save
                             </Button>
                             <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
                                 onClick={handleDownloadTemplate}
-                                sx={{ borderColor: cropColor, color: cropColor }}
+                                sx={{ borderColor: cropColor, color: cropColor, mr: 1 }}
                             >
                                 Download Excel Sheet
                             </Button>
@@ -820,32 +832,8 @@ export default function CostAnalysisManager() {
             )}
             {!saved && isEditable && <Chip label="Unsaved changes" color="warning" size="small" sx={{ mb: 1 }} />}
 
-            <Box sx={{ mt: 5, position: 'relative', flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-                {!isEditable && (
-                    <Tooltip title="Download Daily Snapshot">
-                        <IconButton
-                            onClick={handleDownloadSnapshot}
-                            sx={{
-                                position: 'absolute',
-                                top: -48,
-                                right: 10,
-                                zIndex: 3,
-                                width: 40,
-                                height: 40,
-                                color: '#fff',
-                                bgcolor: '#2e7d32',
-                                borderRadius: 1,
-                                border: '1px solid #1b5e20',
-                                boxShadow: '0 4px 10px rgba(46, 125, 50, 0.22)',
-                                '&:hover': { bgcolor: '#1b5e20' },
-                            }}
-                            aria-label="Download Daily Snapshot"
-                        >
-                            <DownloadIcon />
-                        </IconButton>
-                    </Tooltip>
-                )}
-                <Paper elevation={3} sx={{ flex: 1, height: '100%', display: 'flex', flexDirection: 'column', overflow: 'hidden', borderRadius: 2, border: '1px solid #e0e0e0', minHeight: 0, maxWidth: '100%' }}>
+            <Box sx={{ mt: 1, position: 'relative' }}>
+                <Paper elevation={3} sx={{ borderRadius: 2, border: '1px solid #e0e0e0', maxWidth: '100%' }}>
                 <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5', display: 'flex', alignItems: 'center', justifyContent: 'space-between', pr: 2 }}>
                     <Tabs
                         value={activeCrop}
@@ -883,7 +871,7 @@ export default function CostAnalysisManager() {
                         <CircularProgress />
                     </Box>
                 ) : (
-                    <TableContainer sx={{ flex: 1, minHeight: 0, maxHeight: 'calc(100vh - 320px)', overflowY: 'auto', overflowX: 'hidden' }}>
+                    <TableContainer sx={{ overflowX: 'auto' }}>
                         <Table
                             size="small"
                             stickyHeader
@@ -916,15 +904,31 @@ export default function CostAnalysisManager() {
                                     backgroundColor: '#fff',
                                     backgroundImage: 'none',
                                 },
+                                // Grand Total styles for page scroll
+                                '& .grand-total-row .MuiTableCell-root': {
+                                    backgroundColor: '#eceff1',
+                                    fontWeight: '1000',
+                                    borderTop: '2px solid #b0bec5',
+                                }
                             }}
                         >
+                            <colgroup>
+                                <col style={{ width: isManager ? '40%' : '24%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
+                                <col style={{ width: '10%' }} />
+                                {!isManager && <col style={{ width: '16%' }} />}
+                            </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', width: '24%' }}>Work Item</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#1b5e20' }}>Day</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#1b5e20' }}>Todate</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', width: '20%', color: '#555' }}>History</TableCell>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center', width: '12%' }}>Actions</TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Work Item</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Day</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Todate</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>History</TableCell>
+                                    {!isManager && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>}
                                 </TableRow>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
@@ -938,7 +942,7 @@ export default function CostAnalysisManager() {
                             <TableBody>
                                 {categories.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={8} align="center" sx={{ py: 6, color: '#888' }}>
+                                        <TableCell colSpan={isManager ? 7 : 8} align="center" sx={{ py: 6, color: '#888' }}>
                                             <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
                                             <Typography>No categories yet. Click Add Category to start.</Typography>
                                         </TableCell>
@@ -950,7 +954,7 @@ export default function CostAnalysisManager() {
 
                                     rows.push(
                                         <TableRow key={`${category.id}-header`}>
-                                            <TableCell colSpan={8} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
+                                            <TableCell colSpan={7} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
                                                 <Box display="flex" alignItems="center" justifyContent="space-between">
                                                     <Box display="flex" alignItems="center" gap={1}>
                                                         <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
@@ -1002,6 +1006,7 @@ export default function CostAnalysisManager() {
                                                     )}
                                                 </Box>
                                             </TableCell>
+                                            {!isManager && <TableCell sx={{ bgcolor: `${cropColor}18` }} />}
                                         </TableRow>,
                                     );
 
@@ -1010,22 +1015,28 @@ export default function CostAnalysisManager() {
                                             <TableRow key={`${category.id}-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
                                                 <TableCell sx={{ pl: 4 }}>{item.name}</TableCell>
                                                 <TableCell align="right">
-                                                    <TextField
-                                                        size="small"
-                                                        type="number"
-                                                        disabled={!isEditable}
-                                                        value={item.dayAmount || ''}
-                                                        onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
-                                                        placeholder="0.00"
-                                                        sx={{ width: 150 }}
-                                                        InputProps={{
-                                                            startAdornment: (
-                                                                <InputAdornment position="start">
-                                                                    <Typography variant="caption">Rs.</Typography>
-                                                                </InputAdornment>
-                                                            ),
-                                                        }}
-                                                    />
+                                                    {isManager ? (
+                                                        <Typography fontWeight="500">
+                                                            {fmtAmount(item.dayAmount)}
+                                                        </Typography>
+                                                    ) : (
+                                                        <TextField
+                                                            size="small"
+                                                            type="number"
+                                                            disabled={!isEditable}
+                                                            value={item.dayAmount || ''}
+                                                            onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
+                                                            placeholder="0.00"
+                                                            sx={{ width: 150 }}
+                                                            InputProps={{
+                                                                startAdornment: (
+                                                                    <InputAdornment position="start">
+                                                                        <Typography variant="caption">Rs.</Typography>
+                                                                    </InputAdornment>
+                                                                ),
+                                                            }}
+                                                        />
+                                                    )}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ color: '#888' }}>
                                                     {fmtPerKg(item.dayAmount, weights.day, item.dayCostPerKgOverride)}
@@ -1036,45 +1047,43 @@ export default function CostAnalysisManager() {
                                                 </TableCell>
                                                 <TableCell align="right">{fmtAmount(item.lastMonthAmount)}</TableCell>
                                                 <TableCell align="right">{fmtAmount(item.ytdAmount)}</TableCell>
-                                                <TableCell align="center">
-                                                    {isEditable && (
-                                                        <>
-                                                            <Tooltip title="Rename item">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() =>
-                                                                        setItemDialog({
-                                                                            open: true,
-                                                                            catId: category.id,
-                                                                            editId: item.id,
-                                                                            name: item.name,
-                                                                        })
-                                                                    }
-                                                                    sx={{ color: '#1976d2' }}
-                                                                >
-                                                                    <EditIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                            <Tooltip title="Delete item">
-                                                                <IconButton
-                                                                    size="small"
-                                                                    onClick={() =>
-                                                                        setDeleteDialog({
-                                                                            open: true,
-                                                                            type: 'item',
-                                                                            catId: category.id,
-                                                                            itemId: item.id,
-                                                                            label: item.name,
-                                                                        })
-                                                                    }
-                                                                    sx={{ color: '#c62828' }}
-                                                                >
-                                                                    <DeleteIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </Tooltip>
-                                                        </>
-                                                    )}
-                                                </TableCell>
+                                                {!isManager && (
+                                                    <TableCell align="center">
+                                                        <Tooltip title="Rename item">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() =>
+                                                                    setItemDialog({
+                                                                        open: true,
+                                                                        catId: category.id,
+                                                                        editId: item.id,
+                                                                        name: item.name,
+                                                                    })
+                                                                }
+                                                                sx={{ color: '#1976d2' }}
+                                                            >
+                                                                <EditIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        <Tooltip title="Delete item">
+                                                            <IconButton
+                                                                size="small"
+                                                                onClick={() =>
+                                                                    setDeleteDialog({
+                                                                        open: true,
+                                                                        type: 'item',
+                                                                        catId: category.id,
+                                                                        itemId: item.id,
+                                                                        label: item.name,
+                                                                    })
+                                                                }
+                                                                sx={{ color: '#c62828' }}
+                                                            >
+                                                                <DeleteIcon sx={{ fontSize: 16 }} />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                    </TableCell>
+                                                )}
                                             </TableRow>,
                                         );
                                     });
@@ -1082,7 +1091,7 @@ export default function CostAnalysisManager() {
                                     if (category.items.length === 0) {
                                         rows.push(
                                             <TableRow key={`${category.id}-empty`}>
-                                                <TableCell colSpan={8} sx={{ pl: 6, py: 1.5, color: '#999', fontStyle: 'italic' }}>
+                                                <TableCell colSpan={isManager ? 7 : 8} sx={{ pl: 6, py: 1.5, color: '#999', fontStyle: 'italic' }}>
                                                     No items yet. Use Add Item to create one.
                                                 </TableCell>
                                             </TableRow>,
@@ -1110,12 +1119,38 @@ export default function CostAnalysisManager() {
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                 {fmtTotal(catFieldTotal(category, 'ytdAmount'))}
                                             </TableCell>
-                                            <TableCell />
+                                            {!isManager && <TableCell />}
                                         </TableRow>,
                                     );
 
                                     return rows;
                                 })}
+                                {categories.length > 0 && (
+                                    <TableRow className="grand-total-row" sx={{ bgcolor: '#eceff1', borderTop: '2px solid #b0bec5', height: 48 }}>
+                                        <TableCell sx={{ fontWeight: '1000', color: '#be123c', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                                            Grand Total Cost 
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catDayTotal(cat), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
+                                            -
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'todateAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
+                                            -
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'lastMonthAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'ytdAmount'), 0))}
+                                        </TableCell>
+                                        {!isManager && <TableCell />}
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>

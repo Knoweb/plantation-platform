@@ -94,4 +94,38 @@ public class WorkProgramController {
         realtimePublisher.broadcastUpdated(tenantId, year, month);
         return ResponseEntity.ok().build();
     }
+
+    /**
+     * POST /api/work-program/justify
+     * Update the justification for a specific work program entry.
+     * Body: { tenantId, year, month, taskName, justification }
+     */
+    @PostMapping("/justify")
+    public ResponseEntity<WorkProgram> justifyWorkProgram(@RequestBody Map<String, Object> body) {
+        String tenantId = (String) body.get("tenantId");
+        int year = ((Number) body.get("year")).intValue();
+        int month = ((Number) body.get("month")).intValue();
+        String taskName = (String) body.get("taskName");
+        String justification = (String) body.get("justification");
+
+        Optional<WorkProgram> existing = workProgramRepository.findByTenantIdAndYearAndMonthAndTaskName(
+                tenantId, year, month, taskName);
+
+        WorkProgram wp;
+        if (existing.isPresent()) {
+            wp = existing.get();
+        } else {
+            // Create a baseline entry if it doesn't exist
+            wp = new WorkProgram();
+            wp.setTenantId(tenantId);
+            wp.setYear(year);
+            wp.setMonth(month);
+            wp.setTaskName(taskName);
+            wp.setWorkersNeeded(0);
+        }
+        wp.setJustification(justification);
+        WorkProgram saved = workProgramRepository.save(wp);
+        realtimePublisher.broadcastUpdated(tenantId, year, month);
+        return ResponseEntity.ok(saved);
+    }
 }

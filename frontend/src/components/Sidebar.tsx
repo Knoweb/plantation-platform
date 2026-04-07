@@ -11,7 +11,7 @@ import {
     Badge, // Import Badge
     Tooltip, // Import Tooltip
 } from '@mui/material';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import SpaIcon from '@mui/icons-material/Spa';
@@ -45,6 +45,7 @@ const menuItems = [
     // Field Officer Specific Tabs
     { text: 'Morning Muster', icon: <PendingActionsIcon />, path: '/dashboard/morning-muster', roles: ['FIELD_OFFICER'] },
     { text: 'Evening Muster', icon: <AssignmentTurnedInIcon />, path: '/dashboard/evening-muster', roles: ['FIELD_OFFICER'] },
+    { text: 'Evening Muster History', icon: <HistoryIcon />, path: '/dashboard/evening-muster-history', roles: ['MANAGER', 'CHIEF_CLERK', 'ESTATE_ADMIN'] },
     // Workers moved to Chief Clerk / Manager
     { text: 'Worker Registry', icon: <EngineeringIcon />, path: '/dashboard/workers', roles: ['CHIEF_CLERK', 'MANAGER'] },
     { text: 'Crop Achievements', icon: <TrendingUpIcon />, path: '/dashboard/crop-achievements', roles: ['FIELD_OFFICER'] },
@@ -71,6 +72,7 @@ const menuItems = [
     { text: 'Operational Targets & Norms', icon: <SettingsIcon />, path: '/dashboard/norms', roles: ['MANAGER'] },
     { text: 'Pending Approvals', icon: <PendingActionsIcon />, path: '/dashboard/approvals', roles: ['MANAGER'] },
     { text: 'Crop Book', icon: <MenuBookIcon />, path: '/dashboard/crop-book', roles: ['MANAGER', 'CHIEF_CLERK'] },
+    { text: 'Cost Analysis', icon: <AttachMoneyIcon />, path: '/dashboard/manager-cost-analysis', roles: ['MANAGER'] },
 
 
     // Manager
@@ -132,7 +134,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     // Notify Header to refresh its display
                     window.dispatchEvent(new Event('user-session-updated'));
                 }
-            } catch (e) {
+            } catch (_e) {
                 // Silently ignore - keep using session value
             }
         };
@@ -153,8 +155,251 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
     const [unreadChatCount, setUnreadChatCount] = useState(0);
     const [workerApprovalCount, setWorkerApprovalCount] = useState(0);
     const [sidebarDivisions, setSidebarDivisions] = useState<any[]>([]);
-    // divisionId -> true means morning submitted but evening NOT yet submitted today
+    const [auditAlertCount, setAuditAlertCount] = useState(0);
+    const [recentAuditMetadata, setRecentAuditMetadata] = useState<{ division?: string; date?: string }>({});
     const [divMusterActive, setDivMusterActive] = useState<Record<string, boolean>>({});
+    const [unjustifiedWorkCount, setUnjustifiedWorkCount] = useState(0);
+
+    const fetchAlerts = useCallback(async () => {
+        try {
+            // Fetch Messages Alerts (For all roles)
+            try {
+                const myId = userSession.userId || userSession.id;
+                const msgRes = await axios.get(`/api/messages?userId=${myId}&userRole=${userRole}`, {
+                    headers: { 'X-Tenant-ID': userSession.tenantId }
+                });
+                const unread = msgRes.data.filter((m: any) => m.receiverId === myId && !m.read).length;
+                setUnreadChatCount(unread);
+            } catch (_err) {
+                console.warn("Message alerts unavailable", _err);
+            }
+            // Restock Requests (Pending) - For Manager + Muster Review
+            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                // Count Pending Restocks OR FO Requisitions
+                const foCount = transRes.data.filter((t: any) =>
+                    t.type === 'FO_REQUISITION' &&
+                    (t.status === 'PENDING' || t.status === null)
+                ).length;
+                setAlertCount(foCount);
+
+                const restockC = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    (t.status === 'PENDING' || t.status === null) &&
+                    !(t.issuedTo && t.issuedTo.includes('SYSTEM')) // Hide auto-refills from Manager sidebar count
+                ).length;
+
+                // Count items below buffer level
+                const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
+                const items = res.data;
+                const lowStockCount = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
+
+                setRestockCount(restockC + lowStockCount);
+
+                // Muster Review Count
+                const workRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
+                const pendingMusters = workRes.data.filter((item: any) =>
+                    (item.workType === 'Morning Muster' || item.workType === 'Evening Muster') &&
+                    (item.status === 'PENDING' || !item.status)
+                ).length;
+                setMusterReviewCount(pendingMusters);
+
+                // Manager Worker Approvals Count
+                const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
+                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL' && item.employmentType !== 'CONTRACT_MEMBER').length;
+                setWorkerApprovalCount(pendingWorkers);
+
+                // Leave Approval Count for Manager
+                try {
+                    const leaveRes = await axios.get(`/api/operations/leaves/tenant/${userSession.tenantId}/applications`);
+                    const pendingLeaves = (leaveRes.data || []).filter((a: any) => a.status === 'PENDING').length;
+                    setLeaveApprovalCount(pendingLeaves);
+                } catch (_e) {
+                    console.warn('Leave approval count unavailable', _e);
+                }
+            }
+
+            // Store Keeper Alerts
+            if (userRole === 'STORE_KEEPER') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const approvedCount = transRes.data.filter((t: any) =>
+                    t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
+                ).length;
+                setStorePendingCount(approvedCount);
+            }
+
+            // Chief Clerk Alerts
+            if (userRole === 'CHIEF_CLERK') {
+                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
+                const ccPending = transRes.data.filter((t: any) =>
+                    t.type === 'RESTOCK_REQUEST' &&
+                    ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
+                ).length;
+                setChiefClerkPendingCount(ccPending);
+            }
+
+            // Field Officer Alerts
+            if (userRole === 'FIELD_OFFICER') {
+                const d = new Date();
+                const year = d.getFullYear();
+                const month = String(d.getMonth() + 1).padStart(2, '0');
+                const day = String(d.getDate()).padStart(2, '0');
+                const todayFormatted = `${year}-${month}-${day}`;
+
+                // Fetch Today's Daily Work (Mappings)
+                const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&date=${todayFormatted}`);
+                const dwMap = new Map();
+                dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
+
+                // Fetch Today's Attendance to find active divisions (Mirroring DailyEntry.tsx logic)
+                const attRes = await axios.get(`/api/operations/attendance?tenantId=${userSession.tenantId}&date=${todayFormatted}`);
+                const activeDivIds = new Set();
+
+                attRes.data.forEach((rec: any) => {
+                    // Find division for this attendance record
+                    const divId = dwMap.get(rec.dailyWorkId);
+                    if (divId) activeDivIds.add(divId);
+                });
+
+                const divIds = Array.from(activeDivIds);
+
+                // Fetch Division Names map
+                const divRes = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
+                const divNameMap = new Map();
+                divRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
+
+                let pendingCount = 0;
+                const pDivs: string[] = [];
+
+                divIds.forEach((divId: any) => {
+                    const key = `muster_submitted_${userSession.tenantId}_${todayFormatted}_${divId}`;
+                    if (localStorage.getItem(key) !== 'true') {
+                        pendingCount++;
+                        pDivs.push(divNameMap.get(divId) || 'Unknown Division');
+                    }
+                });
+                setEveningPendingCount(pendingCount);
+                setPendingDivisions(pDivs);
+            }
+
+            // --- Audit Alerts (FO & Manager only) ---
+            setAuditAlertCount(0); // Reset first to avoid stale counts
+            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK' || userRole === 'FIELD_OFFICER') {
+                try {
+                    const auditRes = await axios.get(`/api/operations/daily-work/audited?tenantId=${userSession.tenantId}`);
+                    const auditedRecords = auditRes.data || [];
+                    const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                    
+                    // Count records that have audit notes but haven't been 'seen' by this user
+                    const unreadAudits = auditedRecords.filter((r: any) => !seenAudits.includes(r.workId || r.id));
+                    setAuditAlertCount(unreadAudits.length);
+
+                    if (unreadAudits.length > 0) {
+                        // Find the most recent one (assuming the API returns it or we can sort)
+                        // For now, take the first from the list
+                        const best = unreadAudits[0];
+                        setRecentAuditMetadata({ 
+                            division: best.divisionName || 'New Record', 
+                            date: best.workDate || best.date 
+                        });
+                    }
+                } catch (_e) {
+                    console.warn("Audit alerts unavailable");
+                }
+            } else {
+                setAuditAlertCount(0);
+            }
+
+            // --- Chief Clerk Work Program Alerts ---
+            if (userRole === 'CHIEF_CLERK') {
+                try {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const month = now.getMonth(); // 0-indexed for JS, but we'll use 1-indexed for API
+                    const tenantId = userSession.tenantId;
+
+                    // 1. Fetch Work Program
+                    const progRes = await axios.get(`/api/work-program?tenantId=${tenantId}&year=${year}&month=${month + 1}`);
+                    const programMap: Record<string, number> = {};
+                    const justificationMap: Record<string, string> = {};
+                    (progRes.data as any[]).forEach(entry => {
+                        programMap[entry.taskName] = Number(entry.workersNeeded || 0);
+                        justificationMap[entry.taskName] = entry.justification || '';
+                    });
+
+                    // 2. Fetch Tasks (to match names)
+                    const taskRes = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
+                    const taskNames = (taskRes.data as any[]).map(t => t.name);
+
+                    // 3. Fetch Submitted IDs from Daily Work
+                    const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
+                    const submittedIds = new Set<string>();
+                    (dwRes.data || []).forEach((work: any) => {
+                        const d = work.workDate ? new Date(work.workDate) : null;
+                        if (d && d.getFullYear() === year && d.getMonth() === month) {
+                            const isSubmitted = Boolean(work.submittedAt) || (typeof work.bulkWeights === 'string' && work.bulkWeights.trim() !== '' && work.bulkWeights !== '{}');
+                            if (isSubmitted) submittedIds.add(String(work.workId));
+                        }
+                    });
+
+                    // 4. Fetch Attendance usage
+                    const daysInM = new Date(year, month + 1, 0).getDate();
+                    const mmStr = String(month + 1).padStart(2, '0');
+                    const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&startDate=${year}-${mmStr}-01&endDate=${year}-${mmStr}-${daysInM}`);
+                    
+                    const usageMap: Record<string, number> = {};
+                    const finalAssignmentsByDay: Map<string, any>[] = Array.from({ length: daysInM + 1 }, () => new Map());
+
+                    (attRes.data || []).forEach((rec: any) => {
+                        if (rec.status !== 'PRESENT' && rec.status !== 'HALF_DAY') return;
+                        if (!rec.dailyWorkId || !submittedIds.has(String(rec.dailyWorkId))) return;
+
+                        const dayNum = parseInt(rec.workDate.split('-')[2], 10);
+                        const workerId = String(rec.workerId);
+                        const existing = finalAssignmentsByDay[dayNum].get(workerId);
+                        
+                        const getSR = (s?: string) => {
+                            const n = String(s || '').toUpperCase();
+                            if (n === 'EVENING_SESSION') return 3;
+                            if (n === 'FULL_DAY') return 2;
+                            if (n === 'MORNING_SESSION') return 1;
+                            return 0;
+                        };
+
+                        if (!existing || getSR(rec.session) >= getSR(existing.session)) {
+                            finalAssignmentsByDay[dayNum].set(workerId, rec);
+                        }
+                    });
+
+                    finalAssignmentsByDay.forEach(dayMap => {
+                        dayMap.forEach(rec => {
+                            const rawType = rec.workType || 'Other';
+                            const matched = taskNames.find(t => t.toLowerCase() === String(rawType).toLowerCase()) || rawType;
+                            usageMap[matched] = (usageMap[matched] || 0) + 1;
+                        });
+                    });
+
+                    // 5. Compare and count dismissing 'seen' alerts
+                    const dismissed = JSON.parse(localStorage.getItem(`dismissed_wp_${tenantId}_${year}_${month + 1}`) || '[]');
+                    let count = 0;
+                    Object.keys(usageMap).forEach(task => {
+                        const actual = usageMap[task];
+                        const prog = programMap[task] || 0;
+                        const justified = justificationMap[task];
+                        if (actual > prog && !justified && !dismissed.includes(task)) {
+                            count++;
+                        }
+                    });
+                    setUnjustifiedWorkCount(count);
+                } catch (e) {
+                    console.warn("WP alerts unavailable", e);
+                }
+            }
+        } catch (_err) {
+            // Silently fail if inventory service is down
+            console.warn("Sidebar alerts unavailable (Inventory Service might be down)");
+        }
+    }, [userRole, userSession.tenantId, userSession.id, userSession.userId]);
 
     useEffect(() => {
         if (userSession.tenantId) {
@@ -174,7 +419,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 };
             }
         }
-    }, [userRole, userSession.tenantId]);
+    }, [userRole, userSession.tenantId, fetchAlerts]);
 
     useEffect(() => {
         if (userSession.tenantId && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) {
@@ -189,7 +434,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         if (me && me.divisionAccess) {
                             latestAccess = me.divisionAccess;
                         }
-                    } catch (e) {
+                    } catch (_e) {
                         console.warn("Could not fetch latest user details, falling back to session");
                     }
 
@@ -235,148 +480,18 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         // Silently ignore — blink is best-effort
                     }
                     // ─────────────────────────────────────────────────────────────────
-                } catch (err) {
+                } catch (_err) {
                     console.error("Failed to load divisions for sidebar");
                 }
             };
             fetchManagerDivisions();
-
+            
             // Poll for dynamic updates
             const divInterval = setInterval(fetchManagerDivisions, 30000);
             return () => clearInterval(divInterval);
         }
-    }, [userRole, userSession.tenantId]);
+    }, [userRole, userSession.tenantId, userSession.divisionAccess, userSession.id, userSession.userId]);
 
-    const fetchAlerts = async () => {
-        try {
-            // Fetch Messages Alerts (For all roles)
-            try {
-                const myId = userSession.userId || userSession.id;
-                const msgRes = await axios.get(`/api/messages?userId=${myId}&userRole=${userRole}`, {
-                    headers: { 'X-Tenant-ID': userSession.tenantId }
-                });
-                const unread = msgRes.data.filter((m: any) => m.receiverId === myId && !m.read).length;
-                setUnreadChatCount(unread);
-            } catch (err) {
-                console.warn("Message alerts unavailable", err);
-            }
-            // Restock Requests (Pending) - For Manager + Muster Review
-            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
-                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
-                // Count Pending Restocks OR FO Requisitions
-                const foCount = transRes.data.filter((t: any) =>
-                    t.type === 'FO_REQUISITION' &&
-                    (t.status === 'PENDING' || t.status === null)
-                ).length;
-                setAlertCount(foCount);
-
-                const restockC = transRes.data.filter((t: any) =>
-                    t.type === 'RESTOCK_REQUEST' &&
-                    (t.status === 'PENDING' || t.status === null) &&
-                    !(t.issuedTo && t.issuedTo.includes('SYSTEM')) // Hide auto-refills from Manager sidebar count
-                ).length;
-
-                // Count items below buffer level
-                const res = await axios.get(`/api/inventory?tenantId=${userSession.tenantId}`);
-                const items = res.data;
-                const lowStockCount = items.filter((i: any) => i.bufferLevel === 0 || i.currentQuantity < i.bufferLevel).length;
-
-                setRestockCount(restockC + lowStockCount);
-
-                // Muster Review Count
-                const workRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&status=PENDING`);
-                const pendingMusters = workRes.data.filter((item: any) =>
-                    (item.workType === 'Morning Muster' || item.workType === 'Evening Muster') &&
-                    (item.status === 'PENDING' || !item.status)
-                ).length;
-                setMusterReviewCount(pendingMusters);
-
-                // Manager Worker Approvals Count
-                const wRes = await axios.get(`/api/workers?tenantId=${userSession.tenantId}`);
-                const pendingWorkers = wRes.data.filter((item: any) => item.status === 'PENDING_APPROVAL' && item.employmentType !== 'CONTRACT_MEMBER').length;
-                setWorkerApprovalCount(pendingWorkers);
-
-                // Leave Approval Count for Manager
-                try {
-                    const leaveRes = await axios.get(`/api/operations/leaves/tenant/${userSession.tenantId}/applications`);
-                    const pendingLeaves = (leaveRes.data || []).filter((a: any) => a.status === 'PENDING').length;
-                    setLeaveApprovalCount(pendingLeaves);
-                } catch (e) {
-                    console.warn('Leave approval count unavailable', e);
-                }
-            }
-
-            // Store Keeper Alerts
-            if (userRole === 'STORE_KEEPER') {
-                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
-                const approvedCount = transRes.data.filter((t: any) =>
-                    t.type === 'FO_REQUISITION' && t.status === 'APPROVED'
-                ).length;
-                setStorePendingCount(approvedCount);
-            }
-
-            // Chief Clerk Alerts
-            if (userRole === 'CHIEF_CLERK') {
-                const transRes = await axios.get(`/api/inventory/transactions?tenantId=${userSession.tenantId}`);
-                const ccPending = transRes.data.filter((t: any) =>
-                    t.type === 'RESTOCK_REQUEST' &&
-                    ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
-                ).length;
-                setChiefClerkPendingCount(ccPending);
-            }
-
-            // Field Officer Alerts
-            if (userRole === 'FIELD_OFFICER') {
-                const d = new Date();
-                const year = d.getFullYear();
-                const month = String(d.getMonth() + 1).padStart(2, '0');
-                const day = String(d.getDate()).padStart(2, '0');
-                const today = `${year}-${month}-${day}`;
-
-                // Fetch Today's Daily Work (Mappings)
-                const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${userSession.tenantId}&date=${today}`);
-                const dwMap = new Map();
-                dwRes.data.forEach((dw: any) => dwMap.set(dw.workId, dw.divisionId));
-
-                // Fetch Today's Attendance to find active divisions (Mirroring DailyEntry.tsx logic)
-                const attRes = await axios.get(`/api/operations/attendance?tenantId=${userSession.tenantId}&date=${today}`);
-                const activeDivIds = new Set();
-
-                attRes.data.forEach((rec: any) => {
-                    // Find division for this attendance record
-                    const divId = dwMap.get(rec.dailyWorkId);
-                    if (divId) activeDivIds.add(divId);
-                });
-
-                let divIds = Array.from(activeDivIds);
-
-                // Fetch Division Names map
-                const divRes = await axios.get(`/api/divisions?tenantId=${userSession.tenantId}`);
-                const divNameMap = new Map();
-                divRes.data.forEach((d: any) => divNameMap.set(d.divisionId, d.name));
-
-                // DO NOT Filter out Ghost Divisions - Keep them to match DailyEntry logic
-                // If DailyEntry shows it (even as unknown), Sidebar should alert it.
-                // divIds = divIds.filter((id: any) => divMap.has(id)); 
-
-                let pendingCount = 0;
-                const pDivs: string[] = [];
-
-                divIds.forEach((divId: any) => {
-                    const key = `muster_submitted_${userSession.tenantId}_${today}_${divId}`;
-                    if (localStorage.getItem(key) !== 'true') {
-                        pendingCount++;
-                        pDivs.push(divNameMap.get(divId) || 'Unknown Division');
-                    }
-                });
-                setEveningPendingCount(pendingCount);
-                setPendingDivisions(pDivs);
-            }
-        } catch (err) {
-            // Silently fail if inventory service is down
-            console.warn("Sidebar alerts unavailable (Inventory Service might be down)");
-        }
-    };
 
     // Calculate sum of alerts across the entire sidebar to pass to the global Header bell
     useEffect(() => {
@@ -392,9 +507,32 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} Unread Messages`, path: '/dashboard/correspondence' }); }
         if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} Worker Approvals`, path: '/dashboard/workers' }); }
         if (leaveApprovalCount > 0) { total += leaveApprovalCount; alertsList.push({ id: 9, label: `${leaveApprovalCount} Leave Approval${leaveApprovalCount > 1 ? 's' : ''} Pending`, path: '/dashboard/leave-management' }); }
+        if (auditAlertCount > 0) { 
+            total += auditAlertCount; 
+            const alertLabel = (auditAlertCount === 1 && recentAuditMetadata.division)
+                ? `Audit Alert: ${recentAuditMetadata.division} (${recentAuditMetadata.date})`
+                : `${auditAlertCount} Unread Audit Notes`;
+
+            // Field Officer should go to History Tab (Tab 1)
+            // Manager should go to MusterReviewManager
+            let path = '/dashboard/evening-muster-history';
+            if (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') {
+                path = '/dashboard/muster-review-manager';
+            }
+
+            alertsList.push({ id: 10, label: alertLabel, path }); 
+        }
+        if (unjustifiedWorkCount > 0) {
+            total += unjustifiedWorkCount;
+            alertsList.push({ 
+                id: 11, 
+                label: `${unjustifiedWorkCount} Over-utilization Tasks Action Required`, 
+                path: '/dashboard/chief-distribution-works' 
+            });
+        }
 
         window.dispatchEvent(new CustomEvent('global-alerts-update', { detail: { total, alertsList } }));
-    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, leaveApprovalCount, userRole]);
+    }, [alertCount, restockCount, musterReviewCount, eveningPendingCount, storePendingCount, chiefClerkPendingCount, unreadChatCount, workerApprovalCount, leaveApprovalCount, userRole, auditAlertCount, recentAuditMetadata.date, recentAuditMetadata.division, unjustifiedWorkCount]);
 
     const handleLogout = () => {
         sessionStorage.removeItem('user');
@@ -417,8 +555,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         if (item.text === 'Muster Review') return musterReviewCount;
         if (item.text === 'Correspondence') return unreadChatCount;
         if (item.text === 'Worker Registry' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return workerApprovalCount;
-        if (item.text === 'Evening Muster') return eveningPendingCount;
+        if (item.text === 'Evening Muster') return eveningPendingCount + (userRole === 'FIELD_OFFICER' ? auditAlertCount : 0);
+        if (item.text === 'Evening Muster History' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return auditAlertCount;
         if (item.text === 'Leave Management' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK')) return leaveApprovalCount;
+        if (item.text === 'Distribution of Works' && userRole === 'CHIEF_CLERK') return unjustifiedWorkCount;
         return 0;
     };
 
@@ -444,8 +584,8 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         }).map(obj => obj.item);
 
     const drawerContent = (
-        <>
-            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2 }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+            <Box sx={{ p: 3, display: 'flex', alignItems: 'center', gap: 2, flexShrink: 0 }}>
                 <Box sx={{
                     width: 50,
                     height: 50,
@@ -472,9 +612,9 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     </Typography>
                 </Box>
             </Box>
-            <Divider sx={{ mb: 2, bgcolor: 'rgba(255,255,255,0.2)' }} />
+            <Divider sx={{ mb: 1, bgcolor: 'rgba(255,255,255,0.2)', flexShrink: 0 }} />
 
-            <List sx={{ px: 2 }}>
+            <List sx={{ px: 2, flexGrow: 1, overflowY: 'auto' }}>
 
                 {/* Dashboard - Always Top */}
                 <ListItem disablePadding sx={{ mb: 1 }}>
@@ -486,6 +626,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             else if (userRole === 'FIELD_OFFICER') path = '/dashboard/field';
                             else if (userRole === 'CHIEF_CLERK') path = '/dashboard/chief';
                             navigate(path);
+                            if (mobileOpen) handleDrawerToggle();
                         }}
                         selected={location.pathname === '/dashboard' || location.pathname === '/dashboard/admin' || location.pathname === '/dashboard/manager' || location.pathname === '/dashboard/field' || location.pathname === '/dashboard/chief'}
                         sx={{
@@ -518,7 +659,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                             return (
                                 <ListItem key={div.divisionId} disablePadding sx={{ mb: 0.5 }}>
                                     <ListItemButton
-                                        onClick={() => navigate(`/dashboard/division-view/${div.divisionId}`)}
+                                        onClick={() => {
+                                            navigate(`/dashboard/division-view/${div.divisionId}`);
+                                            if (mobileOpen) handleDrawerToggle();
+                                        }}
                                         selected={location.pathname === `/dashboard/division-view/${div.divisionId}`}
                                         sx={{
                                             borderRadius: 2,
@@ -565,7 +709,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && (
                     <ListItem disablePadding sx={{ mb: 1 }}>
                         <ListItemButton
-                            onClick={() => navigate('/dashboard/muster-review-manager')}
+                            onClick={() => {
+                                navigate('/dashboard/muster-review-manager');
+                                if (mobileOpen) handleDrawerToggle();
+                            }}
                             selected={location.pathname === '/dashboard/muster-review-manager'}
                             sx={{
                                 borderRadius: 2,
@@ -597,7 +744,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 {filteredMenuItems.filter(item => item.text !== 'Dashboard').map((item) => (
                     <ListItem key={item.text} disablePadding sx={{ mb: 1 }}>
                         <ListItemButton
-                            onClick={() => navigate(item.path)}
+                            onClick={() => {
+                                navigate(item.path);
+                                if (mobileOpen) handleDrawerToggle();
+                            }}
                             selected={location.pathname === item.path}
                             sx={{
                                 borderRadius: 2,
@@ -636,6 +786,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     <Badge badgeContent={musterReviewCount} color="error">
                                         {item.icon}
                                     </Badge>
+                                ) : (item.text === 'Evening Muster History' || item.text === 'Evening Muster') && auditAlertCount > 0 ? (
+                                    <Badge badgeContent={auditAlertCount} color="error">
+                                        {item.icon}
+                                    </Badge>
                                 ) : item.text === 'Correspondence' && unreadChatCount > 0 ? (
                                     <Badge badgeContent={unreadChatCount} color="error">
                                         {item.icon}
@@ -646,6 +800,10 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     </Badge>
                                 ) : item.text === 'Leave Management' && (userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && leaveApprovalCount > 0 ? (
                                     <Badge badgeContent={leaveApprovalCount} color="error">
+                                        {item.icon}
+                                    </Badge>
+                                ) : item.text === 'Distribution of Works' && userRole === 'CHIEF_CLERK' && unjustifiedWorkCount > 0 ? (
+                                    <Badge badgeContent={unjustifiedWorkCount} color="error">
                                         {item.icon}
                                     </Badge>
                                 ) : (
@@ -685,13 +843,19 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 ))}
             </List>
 
-            <Box sx={{ mt: 'auto', p: 2 }}>
-                <ListItemButton onClick={handleLogout} sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}>
+            <Box sx={{ mt: 'auto', p: 2, flexShrink: 0, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+                <ListItemButton 
+                    onClick={() => {
+                        handleLogout();
+                        if (mobileOpen) handleDrawerToggle();
+                    }} 
+                    sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+                >
                     <ListItemIcon sx={{ color: 'white' }}><LogoutIcon /></ListItemIcon>
                     <ListItemText primary="Logout" />
                 </ListItemButton>
             </Box>
-        </>
+        </Box>
     );
 
     return (

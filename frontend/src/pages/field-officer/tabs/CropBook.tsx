@@ -1,6 +1,11 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, TextField, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, InputAdornment } from '@mui/material';
-import EditIcon from '@mui/icons-material/Edit';
-import React, { useState, useEffect } from 'react';
+import { 
+    Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
+    Tabs, Tab, TextField, Dialog, DialogTitle, DialogContent, DialogActions, Button, Grid, 
+    InputAdornment, Stack, Card, useTheme, useMediaQuery
+} from '@mui/material';
+import DownloadIcon from '@mui/icons-material/Download';
+import * as XLSX from 'xlsx';
+import React, { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import {
     countWorkingDaysUpTo,
@@ -15,6 +20,9 @@ import {
 export default function CropBook() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role;
+
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isManagerOrChief = userRole === 'MANAGER' || userRole === 'MANAGER_CLERK' || userRole === 'CHIEF_CLERK' || userRole === 'ESTATE_ADMIN';
     const isChiefClerk = userRole === 'CHIEF_CLERK';
 
@@ -338,7 +346,6 @@ export default function CropBook() {
                             const am = Number(a.amWeight || a.am || 0);
                             const pm = Number(a.pmWeight || a.pm || 0);
                             const over = Number(a.overKilos || 0);
-                            const cash = Number(a.cashKilos || 0);
                             // Yield per Acre uses only actual AM+PM plucking weight, NOT Over/Cash (those are bonuses)
                             dayData.permAndCasualWeightDay += (am + pm);
                             // Track full vs half athtama for accurate cost calculation
@@ -526,7 +533,6 @@ export default function CropBook() {
     const automatedBudgetToDate = budgetPerWorkingDay * elapsedWorkingDays;
 
     const monthNames = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
-    const prevMonthName = selMonth === 1 ? 'December' : monthNames[selMonth - 2];
     const currentMonthName = monthNames[selMonth - 1];
 
     // Total achieved to date = previous months + current month so far
@@ -573,73 +579,140 @@ export default function CropBook() {
 
     return (
         <Box sx={{ pb: { xs: 2, md: 4 }, height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', p: { xs: 1, sm: 2, md: 3 } }}>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
+            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 2 }}>
                 {/* Title */}
-                <Box sx={{ flex: '0 0 auto' }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
-                        Crop Book
-                    </Typography>
-                </Box>
+                <Typography variant={isMobile ? "h5" : "h4"} fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: -0.5 }}>
+                    Crop Book
+                </Typography>
 
-                {/* Centre: Month picker + Live Clock in one themed card */}
+                {/* Center Bar: Month + Clock */}
                 <Box sx={{
-                    display: 'flex', alignItems: 'center', gap: 2,
-                    bgcolor: '#e8f5e9', border: '2px solid #a5d6a7',
-                    borderRadius: 3, px: 3, py: 1,
-                    boxShadow: '0 2px 8px rgba(46,125,50,0.12)'
+                    display: 'flex',
+                    flexDirection: { xs: 'column', lg: 'row' },
+                    alignItems: 'center',
+                    gap: { xs: 1, sm: 2 },
+                    bgcolor: '#f1f8e9',
+                    border: '1.5px solid #a5d6a7',
+                    borderRadius: 3,
+                    px: { xs: 1.5, sm: 3 },
+                    py: 1,
+                    boxShadow: '0 2px 10px rgba(46,125,50,0.08)',
+                    width: { xs: '100%', md: 'auto' }
                 }}>
-                    {/* Month Picker */}
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold', color: '#2e7d32', whiteSpace: 'nowrap' }}>
-                            📅 Month
-                        </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                        <Typography variant="caption" sx={{ fontWeight: 900, color: '#2e7d32', textTransform: 'uppercase' }}>Month</Typography>
                         <TextField
                             type="month"
                             value={selectedMonth}
                             onChange={(e) => setSelectedMonth(e.target.value)}
                             size="small"
-                            sx={{
-                                width: 160,
-                                '& .MuiOutlinedInput-root': {
-                                    borderRadius: 2,
-                                    bgcolor: '#fff',
-                                    '& fieldset': { borderColor: '#81c784' },
-                                    '&:hover fieldset': { borderColor: '#2e7d32' },
-                                    '&.Mui-focused fieldset': { borderColor: '#1b5e20' },
-                                },
-                                '& input': { color: '#1b5e20', fontWeight: 'bold' }
-                            }}
+                            variant="standard"
+                            InputProps={{ disableUnderline: true }}
+                            sx={{ bgcolor: '#fff', px: 1, borderRadius: 1.5, '& input': { py: 0.5, fontWeight: '900', color: '#1b5e20', fontSize: '0.85rem' } }}
                         />
                     </Box>
 
-                    {/* Divider */}
-                    <Box sx={{ width: '1px', height: 40, bgcolor: '#a5d6a7' }} />
+                    {!isMobile && <Box sx={{ width: '1px', height: 32, bgcolor: '#a5d6a7' }} />}
 
-                    {/* Live Clock */}
-                    <Box sx={{ textAlign: 'center', lineHeight: 1.1 }}>
-                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 'bold', color: '#388e3c' }}>
-                            {currentTime.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })}
+                    <Box sx={{ textAlign: { xs: 'center', sm: 'right' }, minWidth: 120 }}>
+                        <Typography sx={{ fontSize: '0.65rem', fontWeight: '800', color: '#388e3c', textTransform: 'uppercase' }}>
+                            {currentTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
                         </Typography>
-                        <Typography sx={{ fontSize: '1.5rem', fontWeight: 'bold', color: '#1b5e20', fontVariantNumeric: 'tabular-nums', letterSpacing: 2, lineHeight: 1.2 }}>
+                        <Typography sx={{ fontSize: '1rem', fontWeight: '900', color: '#1b5e20', fontVariantNumeric: 'tabular-nums' }}>
                             {currentTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                         </Typography>
                     </Box>
-                </Box>
 
-                {/* Right spacer to keep centre card balanced */}
-                <Box sx={{ flex: '0 0 auto', minWidth: 120 }} />
+                    <Button
+                        variant="contained"
+                        color="success"
+                        startIcon={<DownloadIcon />}
+                        onClick={() => {
+                            // Native .XLSX Export (Zero Warning Approach)
+                            const worksheetData = [
+                                // Row 1: Category Headers
+                                ["", "Factory Weight", "", "Field Weight", "", "Checkroll Weight", "", "Yield per Acre", "", "No. Of Pluckers", "", "Over kilos", "", "Cash Kilos", "", "Plucking Average", "", "Plucking Cost", ""],
+                                // Row 2: Sub-Headers
+                                ["Day", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate"]
+                            ];
+
+                            realData.forEach(r => {
+                                worksheetData.push([
+                                    r.day,
+                                    r.factoryWeightDay || 0, r.factoryWeightTodate || 0,
+                                    r.fieldWeightDay || 0, r.fieldWeightTodate || 0,
+                                    r.checkrollWeightDay || 0, r.checkrollWeightTodate || 0,
+                                    r.yieldPerAcreDay || 0, r.yieldPerAcreTodate || 0,
+                                    r.noOfPluckersDay || 0, r.noOfPluckersTodate || 0,
+                                    r.overKilosDay || 0, r.overKilosTodate || 0,
+                                    r.cashKilosDay || 0, r.cashKilosTodate || 0,
+                                    r.pluckingAverageDay || 0, r.pluckingAverageTodate || 0,
+                                    r.pluckingCostPerKgDay || 0, r.pluckingCostPerKgTodate || 0
+                                ]);
+                            });
+
+                            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                            
+                            // Apply Merges for the Stacked Header
+                            worksheet['!merges'] = [
+                                { s: { r: 0, c: 1 }, e: { r: 0, c: 2 } },   // Factory Weight
+                                { s: { r: 0, c: 3 }, e: { r: 0, c: 4 } },   // Field Weight
+                                { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } },   // Checkroll Weight
+                                { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } },   // Yield per Acre
+                                { s: { r: 0, c: 9 }, e: { r: 0, c: 10 } },  // No. Of Pluckers
+                                { s: { r: 0, c: 11 }, e: { r: 0, c: 12 } }, // Over kilos
+                                { s: { r: 0, c: 13 }, e: { r: 0, c: 14 } }, // Cash Kilos
+                                { s: { r: 0, c: 15 }, e: { r: 0, c: 16 } }, // Plucking Average
+                                { s: { r: 0, c: 17 }, e: { r: 0, c: 18 } }  // Plucking Cost
+                            ];
+
+                            // Set Column Widths for legibility
+                            worksheet['!cols'] = [
+                                { wch: 8 }, // Day
+                                ...Array(18).fill({ wch: 15 })
+                            ];
+
+                            const workbook = XLSX.utils.book_new();
+                            XLSX.utils.book_append_sheet(workbook, worksheet, `Crop_Report`);
+                            XLSX.writeFile(workbook, `Manager_Crop_Book_${activeCrop}_${selectedMonth}.xlsx`);
+                        }}
+                        sx={{
+                            ml: { lg: 1 },
+                            bgcolor: '#2e7d32',
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            fontWeight: '900',
+                            px: 2,
+                            '&:hover': { bgcolor: '#1b5e20' }
+                        }}
+                    >
+                        Download Snapshot
+                    </Button>
+                </Box>
             </Box>
-            <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: isChiefClerk ? 'column' : 'row' }, overflow: 'auto', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+            <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: isChiefClerk ? 'column' : 'row' }, overflow: { xs: 'auto', md: 'hidden' }, border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
                 {/* Left Panel / Main Panel for Chief Clerk: Cost Analysis KPIs & Crop Tabs */}
-                <Box sx={{ width: { xs: '100%', md: isChiefClerk ? '100%' : 320 }, flex: { xs: 'none', md: isChiefClerk ? 1 : '0 0 auto' }, borderRight: isChiefClerk ? 'none' : { xs: 'none', md: '1px solid #e0e0e0' }, borderBottom: { xs: '1px solid #e0e0e0', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                <Box sx={{ width: { xs: '100%', md: isChiefClerk ? '100%' : 320 }, flex: { xs: 'none', md: isChiefClerk ? 1 : '0 0 auto' }, borderRight: isChiefClerk ? 'none' : { xs: 'none', md: '1px solid #e0e0e0' }, borderBottom: { xs: '1px solid #e0e0e0', md: 'none' }, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' } }}>
                     <Tabs
+                        variant="scrollable"
+                        scrollButtons="auto"
                         value={availableCrops.includes(activeCrop) ? activeCrop : (availableCrops[0] || 'Tea')}
                         onChange={(_, v) => setActiveCrop(v)}
                         sx={{
-                            minHeight: 36,
-                            borderBottom: '1px solid #000',
-                            '& .MuiTab-root': { minHeight: 36, py: 0.5, px: 2, fontWeight: 'bold', textTransform: 'none', color: '#000', borderRight: '1px solid #000' }
+                            minHeight: 40,
+                            borderBottom: '1px solid #e0e0e0',
+                            '& .MuiTab-root': {
+                                minHeight: 40,
+                                py: 0.5,
+                                px: 2,
+                                fontWeight: '900',
+                                textTransform: 'uppercase',
+                                color: '#666',
+                                fontSize: '0.75rem',
+                                letterSpacing: 1
+                            },
+                            '& .MuiTabs-indicator': { height: 3, borderRadius: '3px 3px 0 0' }
                         }}
                     >
                         {availableCrops.map(crop => {
@@ -666,161 +739,148 @@ export default function CropBook() {
                     {/* For Chief Clerk: two-column layout with budget on left and wages on right */}
                     {isChiefClerk ? (
                         <Box sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', lg: 'row' }, overflow: 'auto' }}>
-
                             {/* LEFT: Budget KPI tiles */}
-                            <Box sx={{
-                                flex: { xs: 'none', lg: '0 0 62%' },
-                                display: 'flex',
-                                flexDirection: 'column',
-                                bgcolor: '#f9fbe7',
-                                overflow: 'visible'
-                            }}>
-                                {/* Section Header */}
-                                <Box sx={{ px: 2, py: 1, bgcolor: '#558b2f', display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>
-                                        📊 Budget Targets
-                                    </Typography>
+                            <Box sx={{ flex: { xs: 'none', lg: '0 0 62%' }, display: 'flex', flexDirection: 'column', bgcolor: '#f9fbe7' }}>
+                                <Box sx={{ px: 2, py: 1, bgcolor: '#558b2f' }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>📊 Budget Targets</Typography>
                                 </Box>
-                                <Box sx={{
-                                    flex: 1,
-                                    display: 'grid',
-                                    gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' },
-                                    gap: 1.5,
-                                    p: 2,
-                                    alignContent: 'flex-start',
-                                    overflowY: 'visible'
-                                }}>
+                                <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' }, gap: 1.5, p: 2, alignContent: 'flex-start' }}>
                                     {kpiData.map((kpi, idx) => (
-                                        <Box key={idx} sx={{
-                                            bgcolor: kpi.bgColor,
-                                            borderRadius: 2,
-                                            boxShadow: '0px 2px 4px rgba(0,0,0,0.08)',
-                                            p: 1.5,
-                                            display: 'flex',
-                                            flexDirection: 'column',
-                                            justifyContent: 'space-between',
-                                            minHeight: 72,
-                                        }}>
-                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#444', lineHeight: 1.3, fontSize: '0.7rem' }}>
-                                                {kpi.label}
-                                            </Typography>
-                                            <Typography variant="h6" sx={{ alignSelf: 'flex-end', fontWeight: 'bold', color: '#1b5e20', mt: 0.5, fontSize: '1rem' }}>
-                                                {kpi.value}
-                                            </Typography>
+                                        <Box key={idx} sx={{ bgcolor: kpi.bgColor, borderRadius: 2, p: 1.5, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', border: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <Typography variant="caption" sx={{ fontWeight: '800', color: '#444' }}>{kpi.label}</Typography>
+                                            <Typography variant="body1" sx={{ alignSelf: 'flex-end', fontWeight: '900', color: '#1b5e20' }}>{kpi.value}</Typography>
                                         </Box>
                                     ))}
                                 </Box>
                                 {isManagerOrChief && (
                                     <Box sx={{ p: 1.5, borderTop: '2px solid #c5e1a5', display: 'flex', justifyContent: 'center', bgcolor: '#f1f8e9' }}>
-                                        <Button variant="contained" color="primary" startIcon={<EditIcon />} onClick={() => setOpenConfig(true)} sx={{ minWidth: 200 }}>
-                                            Edit Target Budgets
-                                        </Button>
+                                        <Button fullWidth variant="contained" color="success" size="small" onClick={() => setOpenConfig(true)}>Edit Targets</Button>
                                     </Box>
                                 )}
                             </Box>
-
-                            {/* DIVIDER */}
-                            <Box sx={{ width: { xs: '100%', lg: '6px' }, height: { xs: '6px', lg: 'auto' }, bgcolor: '#bdbdbd', flexShrink: 0 }} />
-
+                            <Box sx={{ width: { xs: '100%', lg: '4px' }, height: { xs: '4px', lg: 'auto' }, bgcolor: '#bdbdbd' }} />
                             {/* RIGHT: Wage Rate tiles */}
-                            <Box sx={{
-                                flex: 1,
-                                display: 'flex',
-                                flexDirection: 'column',
-                                bgcolor: '#fffde7',
-                                overflow: 'hidden'
-                            }}>
-                                {/* Section Header */}
-                                <Box sx={{ px: 2, py: 1, bgcolor: '#f57f17', display: 'flex', alignItems: 'center' }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>
-                                        💰 Wage Rates
-                                    </Typography>
+                            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fffde7' }}>
+                                <Box sx={{ px: 2, py: 1, bgcolor: '#f57f17' }}>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>💰 Wage Rates</Typography>
                                 </Box>
-                                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', gap: 2, p: 2, overflowY: 'auto', justifyContent: 'flex-start' }}>
-                                    <Box sx={{ bgcolor: '#fff9c4', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #f9a825' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#5d4037', letterSpacing: 0.5 }}>Aththama Daily Wage</Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#e65100', mt: 0.5, textAlign: 'right' }}>
-                                            රු. {config.aththamaWage || 0}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: '#fff3e0', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #ffb300' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#5d4037', letterSpacing: 0.5 }}>Over Kilo Rate (per Kg)</Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#e65100', mt: 0.5, textAlign: 'right' }}>
-                                            රු. {config.overKiloRate || 0}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: '#f1f8e9', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #aed581' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#33691e', letterSpacing: 0.5 }}>Cash Kilo Rate (per Kg)</Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#33691e', mt: 0.5, textAlign: 'right' }}>
-                                            රු. {config.cashKiloRate || 0}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{ bgcolor: '#ede7f6', borderRadius: 2, boxShadow: '0px 2px 6px rgba(0,0,0,0.1)', p: 2.5, border: '1px solid #b39ddb' }}>
-                                        <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#4527a0', letterSpacing: 0.5 }}>OT Hour Rate (per Hour)</Typography>
-                                        <Typography variant="h6" sx={{ fontWeight: 'bold', color: '#4527a0', mt: 0.5, textAlign: 'right' }}>
-                                            රු. {config.otHourRate || 0}
-                                        </Typography>
-                                    </Box>
+                                <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                                    {[
+                                        { label: 'Aththama Wage', value: `රු. ${config.aththamaWage}`, color: '#e65100', bg: '#fff9c4' },
+                                        { label: 'Over Kilo Rate', value: `රු. ${config.overKiloRate}`, color: '#e65100', bg: '#fff3e0' },
+                                        { label: 'Cash Kilo Rate', value: `රු. ${config.cashKiloRate}`, color: '#33691e', bg: '#f1f8e9' },
+                                        { label: 'OT Hour Rate', value: `රු. ${config.otHourRate}`, color: '#4527a0', bg: '#ede7f6' },
+                                    ].map((w, i) => (
+                                        <Box key={i} sx={{ bgcolor: w.bg, borderRadius: 2, p: 1.5, border: '1px solid rgba(0,0,0,0.05)' }}>
+                                            <Typography variant="caption" fontWeight="800" color="text.secondary">{w.label}</Typography>
+                                            <Typography variant="body1" fontWeight="900" textAlign="right" color={w.color}>{w.value}</Typography>
+                                        </Box>
+                                    ))}
                                 </Box>
                                 {isManagerOrChief && (
-                                    <Box sx={{ p: 1.5, borderTop: '2px solid #ffe082', display: 'flex', justifyContent: 'center', bgcolor: '#fff8e1' }}>
-                                        <Button variant="outlined" color="warning" startIcon={<EditIcon />} onClick={() => setOpenWages(true)} sx={{ minWidth: 200, color: '#e65100', borderColor: '#e65100' }}>
-                                            Edit Plucking Wages
-                                        </Button>
+                                    <Box sx={{ p: 1.5, borderTop: '2px solid #ffe082', bgcolor: '#fff8e1' }}>
+                                        <Button fullWidth variant="outlined" color="warning" size="small" onClick={() => setOpenWages(true)}>Edit Wages</Button>
                                     </Box>
                                 )}
                             </Box>
                         </Box>
                     ) : (
-                        /* Non-Chief Clerk: slim list that fills full height */
-                        <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-                            {kpiData.map((kpi, idx) => (
-                                <Box key={idx} sx={{
-                                    flex: 1,
-                                    bgcolor: kpi.bgColor,
-                                    borderBottom: '1px solid rgba(0,0,0,0.06)',
-                                    px: 2,
-                                    display: 'flex',
-                                    justifyContent: 'space-between',
-                                    alignItems: 'center',
-                                    minHeight: 0,
-                                }}>
-                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: 600, color: '#444', lineHeight: 1.3, flex: 1, pr: 1 }}>{kpi.label}</Typography>
-                                    <Typography sx={{ fontSize: '0.88rem', fontWeight: 'bold', color: '#1b5e20', whiteSpace: 'nowrap' }}>{kpi.value}</Typography>
-                                </Box>
-                            ))}
+                        /* Non-Chief Clerk: Horizontal Performance Bar on Mobile, Vertical list on Desktop */
+                        <Box sx={{
+                            width: { xs: '100%', md: 320 },
+                            display: 'flex',
+                            flexDirection: 'column',
+                            bgcolor: '#f8f9fa',
+                            height: '100%', // Ensure it takes full height
+                            overflow: 'hidden' // No internal scrolling
+                        }}>
+                            {/* KPI Rows - using flex: 1 to distribute space evenly */}
+                            <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                                {kpiData.map((kpi, idx) => (
+                                    <Box key={idx} sx={{
+                                        flex: 1, // Equally distribute vertical space
+                                        bgcolor: kpi.bgColor,
+                                        borderBottom: { xs: 'none', md: '1px solid rgba(0,0,0,0.08)' },
+                                        px: 2,
+                                        py: 1.2,
+                                        display: 'flex',
+                                        justifyContent: 'space-between',
+                                        alignItems: 'center',
+                                        transition: 'all 0.2s ease',
+                                        '&:hover': { bgcolor: 'rgba(0,0,0,0.02)' }
+                                    }}>
+                                        <Typography sx={{ fontSize: '0.75rem', fontWeight: 800, color: '#444' }}>{kpi.label}</Typography>
+                                        <Typography sx={{ fontSize: '0.9rem', fontWeight: '1000', color: '#1b5e20' }}>{kpi.value}</Typography>
+                                    </Box>
+                                ))}
+                            </Box>
+                            
+                            {/* Bottom Buttons - Fixed height */}
                             {isManagerOrChief && (
-                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5, p: 1, borderTop: '1px solid #e0e0e0' }}>
-                                    <Button size="small" variant="contained" color="primary" startIcon={<EditIcon />} onClick={() => setOpenConfig(true)} sx={{ fontSize: '0.7rem', py: 0.4 }}>Edit Budgets</Button>
-                                    <Button size="small" variant="outlined" color="primary" startIcon={<EditIcon />} onClick={() => setOpenWages(true)} sx={{ fontSize: '0.7rem', py: 0.4 }}>Edit Wages</Button>
+                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 2, bgcolor: '#ffffff', borderTop: '1px solid #e0e0e0' }}>
+                                    <Button fullWidth size="small" variant="contained" color="success" onClick={() => setOpenConfig(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>Budgets</Button>
+                                    <Button fullWidth size="small" variant="outlined" color="success" onClick={() => setOpenWages(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>Wages</Button>
                                 </Box>
                             )}
                         </Box>
                     )}
                 </Box>
 
-                {/* Right Panel: Data Grid - Hidden for Chief Clerk */}
-                {
-                    userRole !== 'CHIEF_CLERK' && (
-                        <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+                {/* Right Panel: Data Grid / Mobile Cards */}
+                {userRole !== 'CHIEF_CLERK' && (
+                    <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: { xs: 400, md: 'auto' } }}>
+                        {isMobile ? (
+                            <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 1.5, bgcolor: '#f0f2f5' }}>
+                                {realData.map((row) => (
+                                    <Card key={row.day} sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid rgba(46,125,50,0.15)' }}>
+                                        <Box sx={{ bgcolor: '#e8f5e9', px: 1.5, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                            <Typography variant="subtitle2" fontWeight="900" color="#1b5e20">DAY {row.day}</Typography>
+                                            <Stack direction="row" spacing={1}>
+                                                <Typography variant="caption" sx={{ bgcolor: '#fff', px: 1, py: 0.25, borderRadius: 1, fontWeight: '800', border: '1px solid #c8e6c9' }}>
+                                                    Fac: {row.factoryWeightDay || 0} Kg
+                                                </Typography>
+                                            </Stack>
+                                        </Box>
+                                        <Box sx={{ p: 1.5 }}>
+                                            <Grid container spacing={1}>
+                                                <Grid size={{ xs: 4 }}>
+                                                    <Typography variant="caption" color="text.secondary" display="block">Field Wt</Typography>
+                                                    <Typography variant="body2" fontWeight="700">{row.fieldWeightDay || '-'}</Typography>
+                                                </Grid>
+                                                <Grid size={{ xs: 4 }}>
+                                                    <Typography variant="caption" color="text.secondary" display="block">Plukers</Typography>
+                                                    <Typography variant="body2" fontWeight="700">{row.noOfPluckersDay || '-'}</Typography>
+                                                </Grid>
+                                                <Grid size={{ xs: 4 }}>
+                                                    <Typography variant="caption" color="text.secondary" display="block">Avg (Kg)</Typography>
+                                                    <Typography variant="body2" fontWeight="800" color="success.main">{row.pluckingAverageDay || '-'}</Typography>
+                                                </Grid>
+                                                
+                                                <Grid size={{ xs: 12 }} sx={{ mt: 0.5, pt: 0.5, borderTop: '1px dashed #ddd' }}>
+                                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
+                                                        <Typography variant="caption" sx={{ fontStyle: 'italic', color: '#666' }}>To-date Progress</Typography>
+                                                        <Typography variant="caption" fontWeight="900" color="#1b5e20">
+                                                            Fac TD: {row.factoryWeightTodate || '-'} Kg
+                                                        </Typography>
+                                                    </Stack>
+                                                </Grid>
+                                            </Grid>
+                                        </Box>
+                                    </Card>
+                                ))}
+                            </Box>
+                        ) : (
                             <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
                                 <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', padding: '4px 8px', whiteSpace: 'nowrap', textAlign: 'center' } }}>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell colSpan={1} sx={{ bgcolor: '#fafafa', position: 'sticky', top: 0, zIndex: 3 }} />
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Factory Weight</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Field Weight</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Checkroll Weight</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Yield per Acre</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>No. Of Pluckers</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Over kilos</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Cash Kilos</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Plucking Average</TableCell>
-                                            <TableCell colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>Plucking Cost per Kg</TableCell>
+                                            <TableCell sx={{ bgcolor: '#fafafa', position: 'sticky', top: 0, zIndex: 3 }} />
+                                            {['Factory Weight', 'Field Weight', 'Checkroll Weight', 'Yield per Acre', 'No. Of Pluckers', 'Over kilos', 'Cash Kilos', 'Plucking Average', 'Plucking Cost per Kg'].map(h => (
+                                                <TableCell key={h} colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>{h}</TableCell>
+                                            ))}
                                         </TableRow>
                                         <TableRow>
                                             <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, top: '29px', zIndex: 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
-
                                             {Array.from({ length: 9 }).map((_, i) => (
                                                 <React.Fragment key={i}>
                                                     <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Day</TableCell>
@@ -832,10 +892,7 @@ export default function CropBook() {
                                     <TableBody>
                                         {realData.map((row) => (
                                             <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
-                                                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>
-                                                    {row.day}
-                                                </TableCell>
-
+                                                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>{row.day}</TableCell>
                                                 <TableCell>{row.factoryWeightDay}</TableCell>
                                                 <TableCell>{row.factoryWeightTodate}</TableCell>
                                                 <TableCell>{row.fieldWeightDay}</TableCell>
@@ -859,10 +916,10 @@ export default function CropBook() {
                                     </TableBody>
                                 </Table>
                             </TableContainer>
-                        </Box>
-                    )
-                }
-            </Paper >
+                        )}
+                    </Box>
+                )}
+            </Paper>
 
             <Dialog open={openConfig} onClose={() => setOpenConfig(false)} maxWidth="sm" fullWidth>
                 <DialogTitle>Edit Budget Metrics ({activeCrop})</DialogTitle>

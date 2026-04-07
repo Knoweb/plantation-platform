@@ -284,30 +284,29 @@ export default function CostAnalysis() {
     );
 
     return (
-        <Box sx={{ pb: 4, p: { xs: 1.5, sm: 2, md: 3 } }}>
-            {/* Title Header */}
-            <Box mb={2}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+        <Box sx={{ p: { xs: 1.5, sm: 2 } }}>
+            {/* Consolidated Header */}
+            <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} mb={1}>
+                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
                     Cost Analysis
                 </Typography>
-            </Box>
-
-            {/* Header Section */}
-            <Paper elevation={0} sx={{ p: 2, mb: 2, bgcolor: '#e8f5e9', borderRadius: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, alignItems: 'center', justifyContent: 'center', border: '1px solid #81c784', gap: 2 }}>
-                <Box display="flex" alignItems="center" gap={2} width={{ xs: '100%', sm: 'auto' }} justifyContent="center">
-                    <Typography variant="body1" fontWeight="bold" color="#1b5e20" sx={{ whiteSpace: 'nowrap' }}>Analysis Date:</Typography>
+                <Box display="flex" alignItems="center" gap={1.5} sx={{ bgcolor: '#e8f5e9', p: '4px 12px', borderRadius: 2, border: '1px solid #81c784' }}>
+                    <Typography variant="body2" fontWeight="bold" color="#1b5e20" sx={{ display: { xs: 'none', md: 'block' } }}>Date:</Typography>
                     <TextField
                         type="date"
-                        variant="outlined"
                         size="small"
+                        variant="standard"
                         value={selectedDate}
                         onChange={(e) => setSelectedDate(e.target.value)}
-                        sx={{ bgcolor: 'white', borderRadius: 1, width: { xs: '100%', sm: 'auto' } }}
+                        slotProps={{ input: { disableUnderline: true } }}
+                        sx={{ 
+                            '& .MuiInputBase-input': { py: 0.5, fontSize: '0.9rem', color: '#1b5e20', fontWeight: 'bold' }
+                        }}
                     />
                 </Box>
-            </Paper>
+            </Box>
 
-            <Paper elevation={3} sx={{ overflow: 'hidden', border: '1px solid #e0e0e0', borderRadius: 2 }}>
+            <Paper elevation={3} sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
 
                 {/* Excel-style top ribbon inside the table card */}
                 <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
@@ -350,7 +349,7 @@ export default function CostAnalysis() {
                 )}
 
                 {!loading && (
-                    <TableContainer sx={{ maxHeight: 'calc(100vh - 280px)', overflowX: 'auto' }}>
+                    <TableContainer sx={{ overflowX: 'auto' }}>
                         <Table
                             size="small"
                             stickyHeader
@@ -383,6 +382,12 @@ export default function CostAnalysis() {
                                     backgroundColor: '#fafafa',
                                     backgroundImage: 'none',
                                 },
+                                // Grand Total styles for page scroll
+                                '& .grand-total-row th, & .grand-total-row td': {
+                                    backgroundColor: '#eceff1',
+                                    fontWeight: '1000',
+                                    borderTop: '2px solid #b0bec5',
+                                }
                             }}
                         >
                             <colgroup>
@@ -491,6 +496,31 @@ export default function CostAnalysis() {
                                     }
                                     return rows;
                                 })}
+                                {categories.length > 0 && (
+                                    <TableRow className="grand-total-row" sx={{ bgcolor: '#eceff1', borderTop: '2px solid #b0bec5' }}>
+                                        <TableCell sx={{ fontWeight: '1000', color: '#be123c', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                                            Grand Total Cost (Estate)
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'dayAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
+                                            -
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'todateAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
+                                            -
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'lastMonthAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'ytdAmount'), 0))}
+                                        </TableCell>
+                                    </TableRow>
+                                )}
                             </TableBody>
                         </Table>
                     </TableContainer>
