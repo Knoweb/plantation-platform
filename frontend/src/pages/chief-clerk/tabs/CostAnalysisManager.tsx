@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import {
     Alert,
     Box,
@@ -24,6 +24,8 @@ import {
     TextField,
     Tooltip,
     Typography,
+    useTheme,
+    useMediaQuery,
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -44,12 +46,14 @@ interface CostItem {
     ytdAmount?: string;
     dayCostPerKgOverride?: string;
     todateCostPerKgOverride?: string;
+    budgetAmount?: number;
 }
 
 interface CostCategory {
     id: string;
     name: string;
     items: CostItem[];
+    budgetAmount?: number;
 }
 
 const CROP_COLORS: Record<string, string> = {
@@ -115,7 +119,6 @@ const ITEM_TO_CATEGORY = new Map(
 const KNOWN_CATEGORY_NAMES = new Set(DEFAULT_CATEGORIES.map((category) => category.name));
 const HEADER_ROW_ONE_HEIGHT = 38;
 const HEADER_ROW_TWO_HEIGHT = 44;
-const HEADER_ROW_HEIGHT = 42;
 const sanitizeCostPerKgOverride = (overrideText: string | undefined, amountText: string | undefined) => {
     const trimmed = String(overrideText || '').trim();
     if (!trimmed) return '';
@@ -217,7 +220,12 @@ const normalizeCategories = (input: any): CostCategory[] => {
 
 export default function CostAnalysisManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
-    const isManager = userSession.role === 'MANAGER';
+    const userRole = userSession.role || '';
+    const isManager = userRole === 'MANAGER' || userRole === 'ESTATE_ADMIN' || userRole === 'OWNER';
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isTablet = useMediaQuery(theme.breakpoints.down('md'));
+
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
@@ -228,7 +236,7 @@ export default function CostAnalysisManager() {
     const [msg, setMsg] = useState('');
     const [baselineCategories, setBaselineCategories] = useState<CostCategory[]>([]);
     const fileInputRef = useRef<HTMLInputElement>(null);
-    const [catDialog, setCatDialog] = useState<{ open: boolean; editId?: string; name: string }>({
+    const [catDialog, setCatDialog] = useState<{ open: boolean; editId?: string; name: string; budgetAmount?: number }>({
         open: false,
         name: '',
     });
@@ -237,6 +245,7 @@ export default function CostAnalysisManager() {
         catId: string;
         editId?: string;
         name: string;
+        budgetAmount?: number;
     }>({ open: false, catId: '', name: '' });
     const [deleteDialog, setDeleteDialog] = useState<{
         open: boolean;
@@ -248,6 +257,10 @@ export default function CostAnalysisManager() {
     const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
     const [weights, setWeights] = useState({ day: 0, todate: 0 });
 
+    const [monthlyBudgets, setMonthlyBudgets] = useState<any[]>([]);
+
+    const currentYearMonth = selectedDate.substring(0, 7); // "YYYY-MM"
+
     const [rates, setRates] = useState({
         aththamaWage: '1600',
         overKiloRate: '45',
@@ -255,6 +268,60 @@ export default function CostAnalysisManager() {
         otHourRate: '250',
     });
     const [syncing, setSyncing] = useState(false);
+
+    const fetchBudgets = useCallback(async () => {
+        try {
+            const resp = await axios.get(`/api/monthly-budgets`, {
+                params: {
+                    tenantId: userSession.tenantId,
+                    cropType: activeCrop.toUpperCase(),
+                    yearMonth: currentYearMonth
+                }
+            });
+            setMonthlyBudgets(resp.data || []);
+        } catch (err) {
+            console.error('Failed to fetch budgets:', err);
+        }
+    }, [userSession.tenantId, activeCrop, currentYearMonth]);
+
+    useEffect(() => {
+        if (userSession.tenantId && activeCrop) {
+            fetchBudgets();
+        }
+    }, [userSession.tenantId, activeCrop, fetchBudgets]);
+
+    const saveBudget = async (itemName: string, amount: number) => {
+        try {
+            await axios.post(`/api/monthly-budgets`, {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop.toUpperCase(),
+                yearMonth: currentYearMonth,
+                itemName: itemName,
+                amount: amount
+            });
+            fetchBudgets();
+        } catch (err) {
+            console.error('Failed to save budget:', err);
+            setMsg('Failed to save budget.');
+        }
+    };
+
+    const mergeBudgets = (cats: CostCategory[], budgets: any[]): CostCategory[] => {
+        return cats.map(cat => {
+            const catBudget = budgets.find(b => b.itemName === cat.name);
+            return {
+                ...cat,
+                budgetAmount: catBudget ? catBudget.amount : undefined,
+                items: cat.items.map(item => {
+                    const itemBudget = budgets.find(b => b.itemName === item.name);
+                    return {
+                        ...item,
+                        budgetAmount: itemBudget ? itemBudget.amount : undefined
+                    };
+                })
+            };
+        });
+    };
 
     const cropColor = CROP_COLORS[activeCrop] || '#2e7d32';
     const canEditSelectedDate = selectedDate === getTodayLocalISO();
@@ -330,6 +397,14 @@ export default function CostAnalysisManager() {
                 });
         }
     }, [activeCrop, selectedDate, userSession.tenantId]);
+
+    // Separate effect for budget synchronization to avoid race conditions during renames
+    useEffect(() => {
+        if (categories.length > 0) {
+            setCategories(prev => mergeBudgets(prev, monthlyBudgets));
+            setBaselineCategories(prev => mergeBudgets(prev, monthlyBudgets));
+        }
+    }, [monthlyBudgets, categories.length]);
 
     useEffect(() => {
         const reqDateForFetch = new Date(`${selectedDate}T00:00:00`);
@@ -483,42 +558,57 @@ export default function CostAnalysisManager() {
 
     // saveRates is removed as users should use the Crop Book 'Edit Wages' section for official updates
 
-    const saveCategory = () => {
+    const saveCategory = async () => {
         const name = catDialog.name.trim();
         if (!name) return;
 
+        let nextCategories: CostCategory[];
         if (catDialog.editId) {
-            setCategories((prev) => prev.map((category) => (category.id === catDialog.editId ? { ...category, name } : category)));
+            nextCategories = categories.map((category) => (category.id === catDialog.editId ? { ...category, name } : category));
+            setCategories(nextCategories);
+            if (catDialog.budgetAmount !== undefined) {
+                await saveBudget(name, catDialog.budgetAmount);
+            }
         } else {
-            setCategories((prev) => [...prev, { id: generateId(), name, items: [] }]);
+            nextCategories = [...categories, { id: generateId(), name, items: [] }];
+            setCategories(nextCategories);
+            if (catDialog.budgetAmount !== undefined) {
+                await saveBudget(name, catDialog.budgetAmount);
+            }
         }
 
+        await persistStructure(nextCategories);
         markDirty();
         setCatDialog({ open: false, name: '' });
     };
 
-    const saveItem = () => {
+    const saveItem = async () => {
         const name = itemDialog.name.trim();
         if (!name) return;
 
-        setCategories((prev) =>
-            prev.map((category) => {
-                if (category.id !== itemDialog.catId) return category;
+        const nextCategories = categories.map((category) => {
+            if (category.id !== itemDialog.catId) return category;
 
-                if (itemDialog.editId) {
-                    return {
-                        ...category,
-                        items: category.items.map((item) => (item.id === itemDialog.editId ? { ...item, name } : item)),
-                    };
-                }
-
+            if (itemDialog.editId) {
                 return {
                     ...category,
-                    items: [...category.items, { id: generateId(), name }],
+                    items: category.items.map((item) => (item.id === itemDialog.editId ? { ...item, name } : item)),
                 };
-            }),
-        );
+            }
 
+            return {
+                ...category,
+                items: [...category.items, { id: generateId(), name }],
+            };
+        });
+
+        setCategories(nextCategories);
+
+        if (itemDialog.budgetAmount !== undefined) {
+            await saveBudget(name, itemDialog.budgetAmount);
+        }
+
+        await persistStructure(nextCategories);
         markDirty();
         setItemDialog({ open: false, catId: '', name: '' });
     };
@@ -541,6 +631,24 @@ export default function CostAnalysisManager() {
         setDeleteDialog(null);
     };
 
+    const persistStructure = async (updatedCategories: CostCategory[]) => {
+        try {
+            const structureOnly = updatedCategories.map((category) => ({
+                ...category,
+                items: category.items.map((item) => ({ id: item.id, name: item.name })),
+            }));
+
+            await axios.post('/api/crop-configs', {
+                tenantId: userSession.tenantId,
+                cropType: activeCrop,
+                costItems: JSON.stringify(structureOnly),
+            });
+        } catch (error) {
+            console.error('Failed to persist structure:', error);
+            setMsg('Warning: Name change updated locally but failed to save to server.');
+        }
+    };
+
     const handleSave = async () => {
         if (!canEditSelectedDate) {
             setIsEditable(false);
@@ -548,10 +656,7 @@ export default function CostAnalysisManager() {
             return;
         }
         try {
-            const structureOnly = categories.map((category) => ({
-                ...category,
-                items: category.items.map((item) => ({ id: item.id, name: item.name })),
-            }));
+            await persistStructure(categories);
 
             const manualEntryPayload = categories.map((category) => ({
                 id: category.id,
@@ -562,12 +667,6 @@ export default function CostAnalysisManager() {
                     dayAmount: item.dayAmount || '0',
                 })),
             }));
-
-            await axios.post('/api/crop-configs', {
-                tenantId: userSession.tenantId,
-                cropType: activeCrop,
-                costItems: JSON.stringify(structureOnly),
-            });
 
             const saveResponse = await axios.post('/api/daily-costs', {
                 tenantId: userSession.tenantId,
@@ -721,18 +820,31 @@ export default function CostAnalysisManager() {
 
     const fmtAmount = (amountText?: string) => {
         const parsed = parseFloat(String(amountText ?? '').trim());
-        if (!Number.isFinite(parsed)) return '-';
+        if (!Number.isFinite(parsed) || parsed === 0) return '-';
         return parsed.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     };
 
-    const fmtTotal = (amount: number) =>
-        amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const fmtTotal = (amount: number) => {
+        if (amount === 0) return '-';
+        return amount.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    };
 
     return (
-        <Box sx={{ maxWidth: '100%' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="flex-start" gap={2} mb={2}>
+        <Box sx={{ maxWidth: '100%', p: isMobile ? 1 : 0 }}>
+            <Box 
+                display="flex" 
+                flexDirection={isTablet ? 'column' : 'row'} 
+                justifyContent="space-between" 
+                alignItems={isTablet ? 'flex-start' : 'center'} 
+                gap={2} 
+                mb={2}
+            >
                 <Box sx={{ flex: '1 1 auto', minWidth: 0 }}>
-                    <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+                    <Typography 
+                        variant={isMobile ? 'h5' : 'h4'} 
+                        fontWeight="bold" 
+                        sx={{ color: '#1b5e20', lineHeight: 1.2 }}
+                    >
                         Cost Analysis Manager
                     </Typography>
                 </Box>
@@ -740,8 +852,8 @@ export default function CostAnalysisManager() {
                     display="flex"
                     gap={1}
                     alignItems="center"
-                    flexWrap="nowrap"
-                    sx={{ flex: '0 0 auto', whiteSpace: 'nowrap' }}
+                    flexWrap="wrap"
+                    sx={{ flex: '0 0 auto', width: isTablet ? '100%' : 'auto' }}
                 >
                     <TextField
                         type="date"
@@ -751,7 +863,7 @@ export default function CostAnalysisManager() {
                             setSelectedDate(e.target.value);
                             setMsg('');
                         }}
-                        sx={{ bgcolor: '#fff', borderRadius: 1 }}
+                        sx={{ bgcolor: '#fff', borderRadius: 1, flex: isMobile ? '1 1 auto' : '0 0 auto' }}
                     />
                     {!isEditable && !isManager && (
                         <Button
@@ -759,9 +871,9 @@ export default function CostAnalysisManager() {
                             startIcon={<EditIcon />}
                             onClick={() => setIsEditable(true)}
                             disabled={!canEditSelectedDate}
-                            sx={{ bgcolor: '#e65100' }}
+                            sx={{ bgcolor: '#e65100', flex: isMobile ? '1 1 45%' : '0 0 auto' }}
                         >
-                            Edit Entry
+                            {isMobile ? 'Edit' : 'Edit Entry'}
                         </Button>
                     )}
                     {!isEditable && (
@@ -770,52 +882,52 @@ export default function CostAnalysisManager() {
                                 variant="contained"
                                 startIcon={<DownloadIcon />}
                                 onClick={handleDownloadSnapshot}
-                                sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' } }}
+                                sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, flex: isMobile ? '1 1 45%' : '0 0 auto' }}
                             >
-                                Download Snapshot
+                                {isMobile ? 'Snapshot' : 'Download Snapshot'}
                             </Button>
                         </Tooltip>
                     )}
                     {isEditable && (
-                        <>
+                        <Box display="flex" gap={1} flexWrap="wrap" width="100%">
                             <Button
                                 variant="contained"
                                 startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : <AutorenewIcon />}
                                 onClick={syncFromMuster}
                                 disabled={syncing}
-                                sx={{ bgcolor: '#0277bd', mr: 1 }}
+                                sx={{ bgcolor: '#0277bd', flex: isMobile ? '1 1 100%' : '0 0 auto' }}
                             >
-                                {syncing ? 'Syncing...' : 'Sync from Muster'}
+                                {syncing ? 'Syncing...' : (isMobile ? 'Sync' : 'Sync from Muster')}
                             </Button>
-                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161', mr: 1 }}>
+                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161', flex: isMobile ? '1 1 30%' : '0 0 auto' }}>
                                 Cancel
                             </Button>
-                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32', mr: 1 }}>
+                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32', flex: isMobile ? '1 1 60%' : '0 0 auto' }}>
                                 Save
                             </Button>
                             <Button
                                 variant="outlined"
                                 startIcon={<DownloadIcon />}
                                 onClick={handleDownloadTemplate}
-                                sx={{ borderColor: cropColor, color: cropColor, mr: 1 }}
+                                sx={{ borderColor: cropColor, color: cropColor, flex: isMobile ? '1 1 45%' : '0 0 auto' }}
                             >
-                                Download Excel Sheet
+                                {isMobile ? 'Template' : 'Excel Template'}
                             </Button>
-                        </>
-                    )}
-                    {isEditable && canEditSelectedDate && (
-                        <>
-                            <Divider orientation="vertical" flexItem />
-                            <Button
-                                variant="outlined"
-                                startIcon={<UploadIcon />}
-                                onClick={() => fileInputRef.current?.click()}
-                                sx={{ borderColor: '#f57c00', color: '#f57c00' }}
-                            >
-                                Upload Excel
-                            </Button>
-                            <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
-                        </>
+                            {canEditSelectedDate && (
+                                <Box sx={{ flex: isMobile ? '1 1 45%' : '0 0 auto', display: 'flex' }}>
+                                    <Button
+                                        fullWidth
+                                        variant="outlined"
+                                        startIcon={<UploadIcon />}
+                                        onClick={() => fileInputRef.current?.click()}
+                                        sx={{ borderColor: '#f57c00', color: '#f57c00' }}
+                                    >
+                                        Upload
+                                    </Button>
+                                    <input ref={fileInputRef} type="file" accept=".xlsx,.xls" hidden onChange={handleUpload} />
+                                </Box>
+                            )}
+                        </Box>
                     )}
                 </Box>
             </Box>
@@ -877,8 +989,13 @@ export default function CostAnalysisManager() {
                             stickyHeader
                             sx={{
                                 width: '100%',
-                                tableLayout: 'fixed',
-                                '& .MuiTableCell-root': { borderRight: '1px solid #f0f0f0', padding: '4px 10px' },
+                                minWidth: isMobile ? 800 : 'unset',
+                                tableLayout: isMobile ? 'auto' : 'fixed',
+                                '& .MuiTableCell-root': { 
+                                    borderRight: '1px solid #f0f0f0', 
+                                    padding: isMobile ? '4px 6px' : '4px 10px',
+                                    fontSize: isMobile ? '0.75rem' : '0.875rem'
+                                },
                                 '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
                                     position: 'sticky',
                                     top: 0,
@@ -913,20 +1030,23 @@ export default function CostAnalysisManager() {
                             }}
                         >
                             <colgroup>
-                                <col style={{ width: isManager ? '40%' : '24%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
-                                <col style={{ width: '10%' }} />
-                                {!isManager && <col style={{ width: '16%' }} />}
+                                <col style={{ width: isMobile ? '120px' : (isManager ? '20%' : '14%') }} />
+                                <col style={{ width: isMobile ? '90px' : (isManager ? '10%' : '12%') }} />
+                                <col style={{ width: isMobile ? '70px' : '8%' }} />
+                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '70px' : '8%' }} />
+                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '80px' : '9%' }} />
+                                <col style={{ width: isMobile ? '80px' : '9%' }} />
+                                {!isManager && <col style={{ width: isMobile ? '60px' : '8%' }} />}
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Work Item</TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>Work Item</TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Day</TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Todate</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>This month</TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>History</TableCell>
                                     {!isManager && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>}
                                 </TableRow>
@@ -935,6 +1055,8 @@ export default function CostAnalysisManager() {
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>Budget</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>Balance</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Last Month</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>YTD</TableCell>
                                 </TableRow>
@@ -954,11 +1076,11 @@ export default function CostAnalysisManager() {
 
                                     rows.push(
                                         <TableRow key={`${category.id}-header`}>
-                                            <TableCell colSpan={7} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
+                                            <TableCell colSpan={isManager ? 9 : 10} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
                                                 <Box display="flex" alignItems="center" justifyContent="space-between">
                                                     <Box display="flex" alignItems="center" gap={1}>
                                                         <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
-                                                        <Typography fontWeight="bold" sx={{ color: cropColor }}>
+                                                        <Typography fontWeight="bold" sx={{ color: cropColor, whiteSpace: 'normal', wordBreak: 'break-word' }}>
                                                             {category.name}
                                                         </Typography>
                                                         <Chip
@@ -977,10 +1099,15 @@ export default function CostAnalysisManager() {
                                                             >
                                                                 Add Item
                                                             </Button>
-                                                            <Tooltip title="Rename category">
+                                                            <Tooltip title="Edit item details">
                                                                 <IconButton
                                                                     size="small"
-                                                                    onClick={() => setCatDialog({ open: true, editId: category.id, name: category.name })}
+                                                                    onClick={() => setCatDialog({ 
+                                                                        open: true, 
+                                                                        editId: category.id, 
+                                                                        name: category.name,
+                                                                        budgetAmount: category.budgetAmount || 0
+                                                                    })}
                                                                     sx={{ color: '#1976d2' }}
                                                                 >
                                                                     <EditIcon sx={{ fontSize: 16 }} />
@@ -1006,36 +1133,45 @@ export default function CostAnalysisManager() {
                                                     )}
                                                 </Box>
                                             </TableCell>
-                                            {!isManager && <TableCell sx={{ bgcolor: `${cropColor}18` }} />}
                                         </TableRow>,
                                     );
 
                                     category.items.forEach((item) => {
                                         rows.push(
                                             <TableRow key={`${category.id}-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
-                                                <TableCell sx={{ pl: 4 }}>{item.name}</TableCell>
+                                                <TableCell sx={{ pl: 4, whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.name}</TableCell>
                                                 <TableCell align="right">
                                                     {isManager ? (
                                                         <Typography fontWeight="500">
                                                             {fmtAmount(item.dayAmount)}
                                                         </Typography>
                                                     ) : (
-                                                        <TextField
-                                                            size="small"
-                                                            type="number"
-                                                            disabled={!isEditable}
-                                                            value={item.dayAmount || ''}
-                                                            onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
-                                                            placeholder="0.00"
-                                                            sx={{ width: 150 }}
-                                                            InputProps={{
-                                                                startAdornment: (
-                                                                    <InputAdornment position="start">
-                                                                        <Typography variant="caption">Rs.</Typography>
-                                                                    </InputAdornment>
-                                                                ),
-                                                            }}
-                                                        />
+                                                        <Box display="flex" alignItems="center" justifyContent="flex-end" gap={0.5}>
+                                                            <Typography variant="caption" sx={{ color: '#888' }}>Rs.</Typography>
+                                                            <TextField
+                                                                size="small"
+                                                                type="number"
+                                                                disabled={!isEditable}
+                                                                value={item.dayAmount || ''}
+                                                                onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
+                                                                placeholder="0.00"
+                                                                sx={{ 
+                                                                    width: '100%',
+                                                                    '& .MuiOutlinedInput-root': {
+                                                                        '& fieldset': { borderColor: '#ddd' },
+                                                                        '&:hover fieldset': { borderColor: '#999' },
+                                                                        '&.Mui-focused fieldset': { borderColor: cropColor },
+                                                                        '& input': {
+                                                                            textAlign: 'right',
+                                                                            // Hide arrows/spinners
+                                                                            '-moz-appearance': 'textfield',
+                                                                            '&::-webkit-outer-spin-button': { '-webkit-appearance': 'none', margin: 0 },
+                                                                            '&::-webkit-inner-spin-button': { '-webkit-appearance': 'none', margin: 0 },
+                                                                        }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        </Box>
                                                     )}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ color: '#888' }}>
@@ -1045,11 +1181,21 @@ export default function CostAnalysisManager() {
                                                 <TableCell align="right" sx={{ color: '#888' }}>
                                                     {fmtPerKg(item.todateAmount, weights.todate, item.todateCostPerKgOverride)}
                                                 </TableCell>
+                                                <TableCell align="right" sx={{ bgcolor: '#e3f2fd11', fontWeight: 500 }}>
+                                                    {item.budgetAmount ? fmtAmount(String(item.budgetAmount)) : '-'}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ 
+                                                    bgcolor: '#e3f2fd11', 
+                                                    fontWeight: 'bold',
+                                                    color: (item.budgetAmount || 0) - parseFloat(item.todateAmount || '0') < 0 ? '#d32f2f' : '#2e7d32'
+                                                }}>
+                                                    {item.budgetAmount ? fmtAmount(String(item.budgetAmount - parseFloat(item.todateAmount || '0'))) : '-'}
+                                                </TableCell>
                                                 <TableCell align="right">{fmtAmount(item.lastMonthAmount)}</TableCell>
                                                 <TableCell align="right">{fmtAmount(item.ytdAmount)}</TableCell>
                                                 {!isManager && (
                                                     <TableCell align="center">
-                                                        <Tooltip title="Rename item">
+                                                        <Tooltip title="Edit item details">
                                                             <IconButton
                                                                 size="small"
                                                                 onClick={() =>
@@ -1058,6 +1204,7 @@ export default function CostAnalysisManager() {
                                                                         catId: category.id,
                                                                         editId: item.id,
                                                                         name: item.name,
+                                                                        budgetAmount: item.budgetAmount || 0
                                                                     })
                                                                 }
                                                                 sx={{ color: '#1976d2' }}
@@ -1100,7 +1247,7 @@ export default function CostAnalysisManager() {
 
                                     rows.push(
                                         <TableRow key={`${category.id}-sum`} sx={{ bgcolor: '#eeeeee' }}>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>Total Cost for {category.name}</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>Total Cost for {category.name}</TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 'bold' }}>
                                                 {fmtTotal(catDayTotal(category))}
                                             </TableCell>
@@ -1113,13 +1260,42 @@ export default function CostAnalysisManager() {
                                             <TableCell align="right" sx={{ color: '#888' }}>
                                                 {fmtPerKg(String(catFieldTotal(category, 'todateAmount')), weights.todate)}
                                             </TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd44' }}>
+                                                {category.budgetAmount ? fmtTotal(category.budgetAmount) : fmtTotal(category.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0))}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ 
+                                                fontWeight: 'bold', 
+                                                bgcolor: '#e3f2fd44',
+                                                color: (category.budgetAmount || category.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - catFieldTotal(category, 'todateAmount') >= 0 ? '#2e7d32' : '#d32f2f'
+                                            }}>
+                                                {(category.budgetAmount || category.items.some(i => i.budgetAmount)) || catFieldTotal(category, 'todateAmount') > 0
+                                                    ? fmtTotal((category.budgetAmount || category.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - catFieldTotal(category, 'todateAmount'))
+                                                    : '-'}
+                                            </TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                 {fmtTotal(catFieldTotal(category, 'lastMonthAmount'))}
                                             </TableCell>
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                 {fmtTotal(catFieldTotal(category, 'ytdAmount'))}
                                             </TableCell>
-                                            {!isManager && <TableCell />}
+                                            {!isManager && (
+                                                <TableCell align="center">
+                                                    <Tooltip title="Edit category details">
+                                                        <IconButton
+                                                            size="small"
+                                                            onClick={() => setCatDialog({ 
+                                                                open: true, 
+                                                                editId: category.id, 
+                                                                name: category.name,
+                                                                budgetAmount: category.budgetAmount || 0
+                                                            })}
+                                                            sx={{ color: '#1976d2' }}
+                                                        >
+                                                            <EditIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                </TableCell>
+                                            )}
                                         </TableRow>,
                                     );
 
@@ -1142,6 +1318,12 @@ export default function CostAnalysisManager() {
                                         <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
                                             -
                                         </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#1b5e20', bgcolor: '#f1f8e9' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + (cat.budgetAmount || cat.items.reduce((itAcc, it) => itAcc + (it.budgetAmount || 0), 0)), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#1b5e20', bgcolor: '#f1f8e9' }}>
+                                            {fmtTotal(categories.reduce((acc, cat) => acc + (cat.budgetAmount || cat.items.reduce((itAcc, it) => itAcc + (it.budgetAmount || 0), 0)), 0) - categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'todateAmount'), 0))}
+                                        </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
                                             {fmtTotal(categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'lastMonthAmount'), 0))}
                                         </TableCell>
@@ -1160,43 +1342,71 @@ export default function CostAnalysisManager() {
 
 
             <Dialog open={catDialog.open} onClose={() => setCatDialog({ open: false, name: '' })} maxWidth="xs" fullWidth>
-                <DialogTitle>{catDialog.editId ? 'Rename Category' : 'Add Category'}</DialogTitle>
+                <DialogTitle>{catDialog.editId ? 'Edit Category' : 'Add Category'}</DialogTitle>
                 <DialogContent dividers>
-                    <TextField
-                        fullWidth
-                        autoFocus
-                        label="Category Name"
-                        value={catDialog.name}
-                        onChange={(e) => setCatDialog((prev) => ({ ...prev, name: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && saveCategory()}
-                        sx={{ mt: 1 }}
-                    />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                        <TextField
+                            fullWidth
+                            autoFocus
+                            label="Category Name"
+                            value={catDialog.name}
+                            onChange={(e) => setCatDialog((prev) => ({ ...prev, name: e.target.value }))}
+                        />
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label="Monthly Budget (Rs.)"
+                            value={catDialog.budgetAmount || ''}
+                            onChange={(e) => setCatDialog((prev) => ({ ...prev, budgetAmount: parseFloat(e.target.value) || 0 }))}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Typography variant="caption">Rs.</Typography>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setCatDialog({ open: false, name: '' })}>Cancel</Button>
                     <Button variant="contained" onClick={saveCategory} sx={{ bgcolor: '#2e7d32' }}>
-                        Save
+                        Save Changes
                     </Button>
                 </DialogActions>
             </Dialog>
 
             <Dialog open={itemDialog.open} onClose={() => setItemDialog({ open: false, catId: '', name: '' })} maxWidth="xs" fullWidth>
-                <DialogTitle>{itemDialog.editId ? 'Rename Item' : 'Add Item'}</DialogTitle>
+                <DialogTitle>{itemDialog.editId ? 'Edit Item' : 'Add Item'}</DialogTitle>
                 <DialogContent dividers>
-                    <TextField
-                        fullWidth
-                        autoFocus
-                        label="Work Item Name"
-                        value={itemDialog.name}
-                        onChange={(e) => setItemDialog((prev) => ({ ...prev, name: e.target.value }))}
-                        onKeyDown={(e) => e.key === 'Enter' && saveItem()}
-                        sx={{ mt: 1 }}
-                    />
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2, pt: 1 }}>
+                        <TextField
+                            fullWidth
+                            autoFocus
+                            label="Work Item Name"
+                            value={itemDialog.name}
+                            onChange={(e) => setItemDialog((prev) => ({ ...prev, name: e.target.value }))}
+                        />
+                        <TextField
+                            fullWidth
+                            type="number"
+                            label="Monthly Budget (Rs.)"
+                            value={itemDialog.budgetAmount || ''}
+                            onChange={(e) => setItemDialog((prev) => ({ ...prev, budgetAmount: parseFloat(e.target.value) || 0 }))}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        <Typography variant="caption">Rs.</Typography>
+                                    </InputAdornment>
+                                ),
+                            }}
+                        />
+                    </Box>
                 </DialogContent>
                 <DialogActions>
                     <Button onClick={() => setItemDialog({ open: false, catId: '', name: '' })}>Cancel</Button>
                     <Button variant="contained" onClick={saveItem} sx={{ bgcolor: '#2e7d32' }}>
-                        Save
+                        Save Changes
                     </Button>
                 </DialogActions>
             </Dialog>
@@ -1223,6 +1433,7 @@ export default function CostAnalysisManager() {
                     </Button>
                 </DialogActions>
             </Dialog>
+
         </Box>
     );
 }

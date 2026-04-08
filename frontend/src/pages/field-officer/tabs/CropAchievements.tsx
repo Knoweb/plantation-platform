@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import {
     Box,
+    Button,
     CircularProgress,
     Paper,
     Stack,
@@ -13,7 +14,8 @@ import {
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
-import FilterAltIcon from '@mui/icons-material/FilterAlt';
+
+import DownloadIcon from '@mui/icons-material/Download';
 import {
     countWorkingDaysUpTo,
     getWorkingDaysCountForMonth,
@@ -313,6 +315,127 @@ export default function CropAchievements() {
         const d = new Date();
         return d.toLocaleTimeString('en-US');
     }, []);
+
+    const downloadSnapshot = async () => {
+        // xlsx-js-style: browser-native styled Excel (no Node.js deps)
+        const XLSXStyle = (await import('xlsx-js-style')).default;
+
+        const estateName = userSession.estateName || '';
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(estateName);
+        const estateLabel = estateName && !isUUID ? estateName : '';
+
+        const now = new Date();
+        const generatedAt = now.toLocaleString('en-GB', {
+            day: '2-digit', month: 'short', year: 'numeric',
+            hour: '2-digit', minute: '2-digit',
+        });
+
+        // ── Palette ───────────────────────────────────────────────
+        const G_DARK  = 'FF1B5E20';  // dark forest green — title bg
+        const G_MID   = 'FF2E7D32';  // plantation green — header bg
+        const G_LIGHT = 'FFE8F5E9';  // pale mint — odd rows
+        const G_EMPH  = 'FF388E3C';  // emphasis rows (Balance, RLO)
+        const WHITE   = 'FFFFFFFF';
+        const TXT     = 'FF1A2E18';  // very dark green text
+
+        const border = {
+            top:    { style: 'thin', color: { rgb: '2E7D32' } },
+            bottom: { style: 'thin', color: { rgb: '2E7D32' } },
+            left:   { style: 'thin', color: { rgb: '2E7D32' } },
+            right:  { style: 'thin', color: { rgb: '2E7D32' } },
+        } as const;
+
+        const mkCell = (
+            v: string,
+            { bg = WHITE, fc = TXT, bold = false, sz = 10, italic = false,
+              hz = 'left' as 'left' | 'center' | 'right' } = {}
+        ) => ({
+            v,
+            t: 's' as const,
+            s: {
+                font:      { name: 'Calibri', sz, bold, italic, color: { rgb: fc.replace('FF', '') } },
+                fill:      { fgColor: { rgb: bg.replace('FF', '') } },
+                alignment: { horizontal: hz, vertical: 'center', wrapText: false },
+                border,
+            },
+        });
+
+        // ── Build rows ────────────────────────────────────────────
+        const rows: ReturnType<typeof mkCell>[][] = [];
+
+        // Title row
+        rows.push([
+            mkCell(`CROP ACHIEVEMENTS REPORT — ${selectedCrop}`, { bg: G_DARK, fc: WHITE, bold: true, sz: 14, hz: 'center' }),
+            mkCell('', { bg: G_DARK }),
+            mkCell('', { bg: G_DARK }),
+        ]);
+
+        // Estate row (optional)
+        if (estateLabel) {
+            rows.push([
+                mkCell(estateLabel, { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'center' }),
+                mkCell('', { bg: G_MID }),
+                mkCell('', { bg: G_MID }),
+            ]);
+        }
+
+        // Meta row
+        const metaBg = 'FFEFF8EC';
+        const metaFc = 'FF1B5E20';
+        rows.push([
+            mkCell(`Report Date: ${formattedReportDate}`, { bg: metaBg, fc: metaFc, italic: true, sz: 9 }),
+            mkCell(`Generated: ${generatedAt}`,           { bg: metaBg, fc: metaFc, italic: true, sz: 9 }),
+            mkCell('',                                    { bg: metaBg }),
+        ]);
+
+        // Spacer
+        rows.push([mkCell(''), mkCell(''), mkCell('')]);
+
+        // Column headers
+        rows.push([
+            mkCell('Metric',  { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'left' }),
+            mkCell('Today',   { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
+            mkCell('To Date', { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
+        ]);
+
+        // Data rows
+        const emphasisLabels = new Set(['Balance', 'RLO']);
+        gridRows.forEach((row, idx) => {
+            const isEmph = emphasisLabels.has(row.label);
+            const rowBg  = isEmph ? G_EMPH : idx % 2 === 0 ? G_LIGHT : WHITE;
+            const rowFc  = isEmph ? WHITE : TXT;
+            rows.push([
+                mkCell(row.label,  { bg: rowBg, fc: rowFc, bold: isEmph, hz: 'left' }),
+                mkCell(row.today,  { bg: rowBg, fc: rowFc, bold: isEmph, hz: 'right' }),
+                mkCell(row.toDate, { bg: rowBg, fc: rowFc, bold: isEmph, hz: 'right' }),
+            ]);
+        });
+
+        // ── Build worksheet ───────────────────────────────────────
+        const ws = XLSXStyle.utils.aoa_to_sheet(rows);
+        ws['!cols'] = [{ wch: 28 }, { wch: 18 }, { wch: 18 }];
+
+        // Merge title row A:C
+        const merges: { s: { r: number; c: number }; e: { r: number; c: number } }[] = [
+            { s: { r: 0, c: 0 }, e: { r: 0, c: 2 } },
+        ];
+        if (estateLabel) merges.push({ s: { r: 1, c: 0 }, e: { r: 1, c: 2 } });
+        ws['!merges'] = merges;
+
+        // Row heights (points)
+        ws['!rows'] = rows.map((_, i) => {
+            if (i === 0) return { hpt: 28 };
+            if (estateLabel && i === 1) return { hpt: 20 };
+            if (i === (estateLabel ? 2 : 1)) return { hpt: 15 };
+            if (i === (estateLabel ? 4 : 3)) return { hpt: 22 };
+            return { hpt: 18 };
+        });
+
+        const wb = XLSXStyle.utils.book_new();
+        XLSXStyle.utils.book_append_sheet(wb, ws, 'Crop Achievements');
+        XLSXStyle.writeFile(wb, `Crop_Achievements_${selectedCrop}_${reportDate}.xlsx`);
+    };
+
 
     const formattedReportDate = useMemo(() => {
         const d = new Date(reportDate);
@@ -811,160 +934,116 @@ export default function CropAchievements() {
     }
 
     return (
-        <Box p={{ xs: 1.5, md: 3 }}>
-            <Box mb={isMobile ? 1.5 : 2}>
-                <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" sx={{ color: '#1b5e20' }}>
+        <Box p={{ xs: 1, md: 3 }}>
+            {/* ── Page Header: Title + Download button ── */}
+            <Box display="flex" alignItems="center" justifyContent="space-between" mb={{ xs: 1, md: 2 }} px={{ xs: 0.5, md: 0 }}>
+                <Typography variant={isMobile ? 'h6' : 'h4'} fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.2rem', md: '2.125rem' } }}>
                     Crop Achievements
                 </Typography>
+                <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<DownloadIcon sx={{ fontSize: { xs: 16, md: 20 } }} />}
+                    onClick={downloadSnapshot}
+                    sx={{
+                        bgcolor: '#2e7d32',
+                        '&:hover': { bgcolor: '#1b5e20' },
+                        fontWeight: 'bold',
+                        borderRadius: 1.5,
+                        whiteSpace: 'nowrap',
+                        fontSize: isMobile ? '0.65rem' : '0.82rem',
+                        textTransform: 'none',
+                        boxShadow: '0 2px 4px rgba(46,125,50,0.15)',
+                        px: isMobile ? 1 : 2.5,
+                        height: isMobile ? 28 : 36,
+                    }}
+                >
+                    {isMobile ? 'Snapshot' : 'Download Snapshot'}
+                </Button>
             </Box>
 
             <Paper
                 elevation={0}
                 sx={{
-                    p: { xs: 1, sm: 2, md: 3.5 },
-                    borderRadius: 0,
-                    border: '2px solid #2f2f2f',
+                    borderRadius: 2,
+                    border: '1px solid #c8e6c9',
                     background: '#ffffff',
-                    overflow: 'hidden'
+                    overflow: 'hidden',
+                    boxShadow: '0 2px 12px rgba(46,125,50,0.06)',
                 }}
             >
-                <Box mb={2.5}>
-                    <Stack
-                        direction={{ xs: 'column', sm: 'row' }}
-                        spacing={1.5}
-                        alignItems={{ xs: 'flex-start', sm: 'center' }}
-                        justifyContent="space-between"
-                        sx={{
-                            px: 1.25,
-                            py: 1,
-                            borderRadius: 2,
-                            border: '1px solid rgba(53,91,43,0.35)',
-                            bgcolor: '#f7fbf3',
-                        }}
-                    >
-                        <Box sx={{ width: isMobile ? '100%' : 'auto' }}>
-                            <Stack direction="row" spacing={1} alignItems="center" justifyContent="space-between">
-                                <Box>
-                                    <Typography sx={{ fontWeight: 800, color: '#1e2f18', lineHeight: 1, fontSize: isMobile ? '0.8rem' : '1rem' }}>
-                                        {formattedReportDate} {isMobile && `| ${reportTime.split(':').slice(0, 2).join(':')}`}
-                                    </Typography>
-                                    {!isMobile && (
-                                        <Typography sx={{ color: '#476a34', fontVariantNumeric: 'tabular-nums', fontSize: '0.9rem' }}>
-                                            {reportTime}
-                                        </Typography>
-                                    )}
-                                </Box>
-                                
-                                {isMobile && (
-                                    <ToggleButtonGroup
-                                        size="small"
-                                        exclusive
-                                        value={selectedCrop}
-                                        onChange={(_, value) => {
-                                            if (value) setSelectedCrop(value);
-                                        }}
-                                        disabled={activeCrops.length <= 1}
-                                        sx={{
-                                            bgcolor: '#ffffff',
-                                            borderRadius: 2,
-                                            height: 28,
-                                            '& .MuiToggleButton-root': {
-                                                textTransform: 'none',
-                                                fontWeight: 800,
-                                                px: 1.5,
-                                                borderColor: 'rgba(53,91,43,0.35)',
-                                                color: '#355b2b',
-                                                fontSize: '0.75rem',
-                                                minWidth: 'auto'
-                                            },
-                                            '& .MuiToggleButton-root.Mui-selected': {
-                                                bgcolor: '#2e7d32',
-                                                color: '#fff',
-                                            },
-                                        }}
-                                    >
-                                        {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
-                                            <ToggleButton key={crop} value={crop}>
-                                                {crop}
-                                            </ToggleButton>
-                                        ))}
-                                    </ToggleButtonGroup>
-                                )}
-                            </Stack>
-                        </Box>
-                        <Stack 
-                           direction={isMobile ? "row" : "row"} 
-                           spacing={1} 
-                           alignItems="center" 
-                           justifyContent={isMobile ? "space-between" : "flex-end"}
-                           sx={{ width: isMobile ? '100%' : 'auto' }}
-                        >
-                            {!isMobile && (
-                                <>
-                                    <Stack direction="row" spacing={1} alignItems="center">
-                                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            <Typography sx={{ fontWeight: 800, color: '#355b2b', fontSize: '0.88rem' }}>
-                                                Crop
-                                            </Typography>
-                                        </Box>
-                                        <ToggleButtonGroup
-                                            size="small"
-                                            exclusive
-                                            value={selectedCrop}
-                                            onChange={(_, value) => {
-                                                if (value) setSelectedCrop(value);
-                                            }}
-                                            disabled={activeCrops.length <= 1}
-                                            sx={{
-                                                bgcolor: '#ffffff',
-                                                borderRadius: 2,
-                                                '& .MuiToggleButton-root': {
-                                                    textTransform: 'none',
-                                                    fontWeight: 800,
-                                                    px: 1.25,
-                                                    py: 0.35,
-                                                    borderColor: 'rgba(53,91,43,0.35)',
-                                                    color: '#355b2b',
-                                                    minWidth: 72,
-                                                    fontSize: '0.8rem'
-                                                },
-                                                '& .MuiToggleButton-root.Mui-selected': {
-                                                    bgcolor: '#2e7d32',
-                                                    color: '#fff',
-                                                },
-                                            }}
-                                        >
-                                            {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
-                                                <ToggleButton key={crop} value={crop}>
-                                                    {crop}
-                                                </ToggleButton>
-                                            ))}
-                                        </ToggleButtonGroup>
-                                    </Stack>
-                                </>
-                            )}
+                {/* ── Card Toolbar: Date/Time stamp + Crop toggle + Date picker ── */}
+                <Box
+                    display="flex"
+                    alignItems="center"
+                    justifyContent="space-between"
+                    flexWrap="wrap"
+                    gap={0.5}
+                    px={{ xs: 1, sm: 2.5 }}
+                    py={{ xs: 0.8, sm: 1.25 }}
+                    sx={{ bgcolor: '#f1f8e9', borderBottom: '1px solid #c8e6c9' }}
+                >
+                    {/* Left: Date/time stamp */}
+                    <Box>
+                        <Typography sx={{ fontWeight: 800, color: '#1e2f18', fontSize: isMobile ? '0.75rem' : '0.95rem', lineHeight: 1.1 }}>
+                            {formattedReportDate}
+                        </Typography>
+                        <Typography sx={{ color: '#476a34', fontSize: '0.65rem', fontVariantNumeric: 'tabular-nums' }}>
+                            {reportTime}
+                        </Typography>
+                    </Box>
 
-                            <Stack direction="row" spacing={1} alignItems="center" sx={{ width: isMobile ? '100%' : 'auto' }}>
-                                {isMobile && <FilterAltIcon sx={{ color: '#2e7d32', fontSize: '1rem' }} />}
-                                <TextField
-                                    type="date"
-                                    size="small"
-                                    value={reportDate}
-                                    onChange={(e) => setReportDate(e.target.value)}
-                                    sx={{
-                                        bgcolor: '#fff',
-                                        maxWidth: isMobile ? '100%' : 190,
-                                        width: isMobile ? '100%' : 'auto',
-                                        '& .MuiOutlinedInput-root': { 
-                                            borderRadius: 2,
-                                            height: isMobile ? 32 : 40,
-                                            '& fieldset': { borderColor: 'rgba(53,91,43,0.35)' }
-                                        },
-                                        '& input': { py: 0.5, fontSize: isMobile ? '0.8rem' : '0.9rem' }
-                                    }}
-                                />
-                            </Stack>
-                        </Stack>
+                    {/* Right: Crop toggle + Date picker */}
+                    <Stack direction="row" spacing={0.5} alignItems="center" flexWrap="wrap">
+                        {/* Crop Toggle */}
+                        <ToggleButtonGroup
+                            size="small"
+                            exclusive
+                            value={selectedCrop}
+                            onChange={(_, value) => { if (value) setSelectedCrop(value); }}
+                            disabled={activeCrops.length <= 1}
+                            sx={{
+                                bgcolor: '#ffffff',
+                                borderRadius: 1.5,
+                                '& .MuiToggleButton-root': {
+                                    textTransform: 'none',
+                                    fontWeight: 800,
+                                    px: isMobile ? 0.8 : 1.5,
+                                    py: 0.3,
+                                    borderColor: 'rgba(53,91,43,0.3)',
+                                    color: '#355b2b',
+                                    fontSize: isMobile ? '0.65rem' : '0.8rem',
+                                    minWidth: isMobile ? 36 : 64,
+                                    height: isMobile ? 26 : 32,
+                                },
+                                '& .MuiToggleButton-root.Mui-selected': {
+                                    bgcolor: '#2e7d32',
+                                    color: '#fff',
+                                },
+                            }}
+                        >
+                            {(activeCrops.length > 0 ? activeCrops : (['TEA'] as CropKey[])).map((crop) => (
+                                <ToggleButton key={crop} value={crop}>{crop}</ToggleButton>
+                            ))}
+                        </ToggleButtonGroup>
+
+                        {/* Date picker */}
+                        <TextField
+                            type="date"
+                            size="small"
+                            value={reportDate}
+                            onChange={(e) => setReportDate(e.target.value)}
+                            sx={{
+                                bgcolor: '#fff',
+                                width: isMobile ? 120 : 170,
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 1.5,
+                                    height: isMobile ? 26 : 36,
+                                    '& fieldset': { borderColor: 'rgba(53,91,43,0.3)' },
+                                },
+                                '& input': { py: 0.5, px: 1, fontSize: isMobile ? '0.65rem' : '0.875rem' },
+                            }}
+                        />
                     </Stack>
                 </Box>
 
@@ -981,8 +1060,8 @@ export default function CropAchievements() {
                         disableColumnMenu
                         disableRowSelectionOnClick
                         autoHeight
-                        columnHeaderHeight={isMobile ? 38 : 44}
-                        getRowHeight={() => isMobile ? 42 : 36}
+                        columnHeaderHeight={isMobile ? 32 : 44}
+                        getRowHeight={() => isMobile ? 34 : 36}
                         sx={{
                             border: 0,
                             '& .MuiDataGrid-columnHeaders, & .MuiDataGrid-columnHeader': {
@@ -992,16 +1071,18 @@ export default function CropAchievements() {
                             },
                             '& .MuiDataGrid-columnHeaderTitle': {
                                 fontWeight: 900,
-                                letterSpacing: 0.2,
+                                letterSpacing: 0.1,
+                                fontSize: isMobile ? '0.75rem' : 'inherit',
                             },
                             '& .MuiDataGrid-cell': {
-                                borderBottom: '1px solid rgba(53,91,43,0.45)',
-                                py: isMobile ? 0.75 : 0.25,
-                                fontSize: isMobile ? '0.85rem' : '0.92rem',
+                                borderBottom: '1px solid rgba(53,91,43,0.35)',
+                                py: isMobile ? 0.2 : 0.25,
+                                fontSize: isMobile ? '0.78rem' : '0.92rem',
                                 color: '#20361b',
                             },
                             '& .row-dark .MuiDataGrid-cell': {
                                 background: '#6ea14a',
+                                color: '#fff',
                                 fontWeight: 800,
                             },
                             '& .row-dark:hover .MuiDataGrid-cell': {

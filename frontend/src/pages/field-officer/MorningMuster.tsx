@@ -10,7 +10,6 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import SmartToyIcon from '@mui/icons-material/SmartToy';
 import CloseIcon from '@mui/icons-material/Close';
-import DeleteIcon from '@mui/icons-material/Delete';
 
 interface Muster {
     id: number;
@@ -85,7 +84,6 @@ export default function MorningMuster() {
     const handleCloseSnackbar = () => setSnackbar({ ...snackbar, open: false });
 
     const [availableTasks, setAvailableTasks] = useState<string[]>([]);
-    const [weather, setWeather] = useState<{ advisory: string, rainEveningChance: number, rainAfternoonChance: number } | null>(null);
 
     const fetchData = async () => {
         try {
@@ -165,74 +163,7 @@ export default function MorningMuster() {
         }
     };
 
-    const fetchWeather = () => {
-        const buildAdvisory = (hourlyPrecip: number[]) => {
-            const afternoon = hourlyPrecip.slice(12, 16);
-            const evening = hourlyPrecip.slice(16, 21);
-            const maxAfternoon = Math.max(...afternoon);
-            const maxEvening = Math.max(...evening);
-            
-            let advisory = '';
-            if (maxEvening >= 70) advisory = `Heavy rain likely this evening (${maxEvening}%). Complete all outdoor plucking/fertilizer tasks before noon.`;
-            else if (maxEvening >= 40) advisory = `Moderate rain (${maxEvening}%) tonight. Safe to work outdoors until mid-afternoon. Avoid late fertilizer application.`;
-            else if (maxAfternoon >= 60) advisory = `Rain showers (${maxAfternoon}%) likely post-noon. Complete vulnerable field tasks early morning.`;
-            else if (maxAfternoon >= 30) advisory = `Slight chance of afternoon showers (${maxAfternoon}%). Generally good conditions for field operations.`;
-            else advisory = `Clear day expected. Excellent conditions for all plucking and fertilizer activities.`;
-            
-            return { advisory, rainEveningChance: maxEvening, rainAfternoonChance: maxAfternoon };
-        };
 
-        const getWeatherData = async (lat: number, lon: number) => {
-            try {
-                const res = await axios.get(
-                    `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=precipitation_probability&timezone=auto&forecast_days=1`
-                );
-                const hourlyPrecip = res.data.hourly.precipitation_probability as number[];
-                const result = buildAdvisory(hourlyPrecip);
-                setWeather(result);
-            } catch (err) {
-                console.error("Failed to fetch weather in muster", err);
-            }
-        };
-
-        const fetchByIp = async () => {
-            try {
-                const cachedLat = sessionStorage.getItem('user_lat');
-                const cachedLon = sessionStorage.getItem('user_lon');
-                if (cachedLat && cachedLon) {
-                    await getWeatherData(parseFloat(cachedLat), parseFloat(cachedLon));
-                    return;
-                }
-
-                const geoRes = await axios.get('https://ipapi.co/json/');
-                const { latitude, longitude } = geoRes.data;
-                sessionStorage.setItem('user_lat', latitude.toString());
-                sessionStorage.setItem('user_lon', longitude.toString());
-                await getWeatherData(latitude, longitude);
-            } catch (err: any) {
-                if (err.response?.status === 429) {
-                    console.warn("Muster Weather: Geolocation API rate limited. Using default.");
-                } else {
-                    console.error("Could not determine location via IP", err);
-                }
-            }
-        };
-
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    const { latitude, longitude } = pos.coords;
-                    sessionStorage.setItem('user_lat', latitude.toString());
-                    sessionStorage.setItem('user_lon', longitude.toString());
-                    getWeatherData(latitude, longitude);
-                },
-                () => fetchByIp(),
-                { timeout: 5000 }
-            );
-        } else {
-            fetchByIp();
-        }
-    };
 
     useEffect(() => {
         let isMounted = true;
@@ -246,7 +177,6 @@ export default function MorningMuster() {
         };
 
         refreshData();
-        fetchWeather();
 
         const intervalId = setInterval(refreshData, 5000);
         return () => {
@@ -510,61 +440,110 @@ export default function MorningMuster() {
 
     return (
         <Box>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }}
-                justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }}
-                gap={2} mb={3}>
+            <Box 
+                display="flex" 
+                flexDirection={{ xs: 'column', sm: 'row' }}
+                justifyContent="space-between" 
+                alignItems={{ xs: 'stretch', sm: 'center' }}
+                gap={{ xs: 2, sm: 3 }} 
+                mb={4}
+            >
                 <Box>
                     <Box display="flex" alignItems="center" gap={1}>
-                        <Typography variant="h5" fontWeight="bold" color="primary.dark">
+                        <Typography 
+                            variant="h5" 
+                            fontWeight="900" 
+                            color="#1b5e20"
+                            sx={{ fontSize: { xs: '1.25rem', md: '1.5rem' }, letterSpacing: '-0.01em' }}
+                        >
                             {isReadOnly ? "Muster Review" : "Morning Muster"}
                         </Typography>
-                        {isReadOnly && <Chip label="Read-Only Mode" color="info" size="small" />}
+                        {isReadOnly && <Chip label="Review Only" color="info" size="small" sx={{ fontWeight: 'bold' }} />}
                     </Box>
-                    <Typography variant="subtitle2" color="text.secondary">
+                    <Typography variant="body2" sx={{ color: 'text.secondary', mt: 0.5 }}>
                         {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
                     </Typography>
                 </Box>
 
-                {/* Division Selector */}
-                <FormControl sx={{ minWidth: { xs: '100%', sm: 200 } }} size="small">
-                    <InputLabel>Division</InputLabel>
-                    <Select
-                        value={selectedDivisionId}
-                        label="Division"
-                        onChange={(e) => setSelectedDivisionId(e.target.value)}
-                    >
-                        {divisions.map((div) => (
-                            <MenuItem key={div.divisionId} value={div.divisionId}>
-                                {div.name}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                <Box 
+                    display="flex" 
+                    flexDirection={{ xs: 'column', lg: 'row' }} 
+                    gap={2} 
+                    alignItems={{ xs: 'stretch', lg: 'center' }}
+                    flex={1}
+                    justifyContent="flex-end"
+                >
+                    {/* Division Selector */}
+                    <FormControl sx={{ minWidth: { xs: '100%', sm: 220 } }} size="small">
+                        <InputLabel>Division</InputLabel>
+                        <Select
+                            value={selectedDivisionId}
+                            label="Division"
+                            onChange={(e) => setSelectedDivisionId(e.target.value)}
+                            sx={{ borderRadius: 2, bgcolor: '#ffffff' }}
+                        >
+                            {divisions.map((div) => (
+                                <MenuItem key={div.divisionId} value={div.divisionId}>
+                                    {div.name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
 
-                <Box display="flex" gap={1} flexWrap="wrap">
-                    <Button variant="contained" startIcon={<AddIcon />} size="small" onClick={() => {
-                        setEditingMusterId(null);
-                        setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
-                        setOpenMuster(true);
-                    }} disabled={!selectedDivisionId || isReadOnly}>
-                        Assign Workers
-                    </Button>
-                    <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<DoneAllIcon />}
-                        onClick={handleFinalize}
-                        disabled={filteredMusters.length === 0 || isReadOnly}
-                        sx={{
-                            fontWeight: 'bold',
-                            boxShadow: 3,
-                            background: filteredMusters.length === 0 ? undefined : 'linear-gradient(45deg, #d32f2f 30%, #ef5350 90%)',
-                            color: 'white'
-                        }}
+                    <Box 
+                        display="grid" 
+                        gridTemplateColumns={{ xs: '1fr 1fr', sm: 'repeat(3, auto)' }} 
+                        gap={1}
+                        width={{ xs: '100%', sm: 'auto' }}
                     >
-                        Submit Muster
-                    </Button>
-                    <Button variant="outlined" size="small" color="error" onClick={handleClearAll} disabled={filteredMusters.length === 0 || isReadOnly}>Clear All</Button>
+                        <Button 
+                            variant="contained" 
+                            startIcon={<AddIcon />} 
+                            size="medium"
+                            sx={{ 
+                                gridColumn: { xs: 'span 2', sm: 'span 1' },
+                                borderRadius: 2,
+                                fontWeight: 'bold',
+                                textTransform: 'none',
+                                px: 3
+                            }}
+                            onClick={() => {
+                                setEditingMusterId(null);
+                                setNewMuster({ fieldName: '', taskType: 'Plucking', workerIds: [] });
+                                setOpenMuster(true);
+                            }} 
+                            disabled={!selectedDivisionId || isReadOnly}
+                        >
+                            Assign Workers
+                        </Button>
+                        <Button
+                            variant="contained"
+                            size="medium"
+                            startIcon={<DoneAllIcon />}
+                            onClick={handleFinalize}
+                            disabled={filteredMusters.length === 0 || isReadOnly}
+                            sx={{
+                                fontWeight: 'bold',
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                background: filteredMusters.length === 0 ? undefined : 'linear-gradient(45deg, #2e7d32 30%, #43a047 90%)',
+                                color: 'white',
+                                boxShadow: filteredMusters.length === 0 ? 'none' : '0 4px 12px rgba(46, 125, 50, 0.2)'
+                            }}
+                        >
+                            Submit
+                        </Button>
+                        <Button 
+                            variant="outlined" 
+                            size="medium" 
+                            color="error" 
+                            onClick={handleClearAll} 
+                            disabled={filteredMusters.length === 0 || isReadOnly}
+                            sx={{ borderRadius: 2, textTransform: 'none', fontWeight: '600' }}
+                        >
+                            Clear All
+                        </Button>
+                    </Box>
                 </Box>
             </Box>
 

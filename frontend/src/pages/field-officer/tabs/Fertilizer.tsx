@@ -21,7 +21,6 @@ import {
     useTheme,
     useMediaQuery,
     Grid,
-    Divider as MuiDivider,
     Card,
 } from '@mui/material';
 import { Assignment as AssignmentIcon, TableChart as TableChartIcon, Add as AddIcon, Close as CloseIcon, Check as CheckIcon, Edit as EditIcon } from '@mui/icons-material';
@@ -86,9 +85,10 @@ type ProgrammeRow = {
     bushCount: number;
     spa: number;
     crop12m: number;
+    madeTea12m: number;
     fert12m: number;
     nitrogen12m: number;
-    ratioPercent: number | null;
+    ratio: number | null;
     targetRatioPercent: number;
     requirementN: number | null;
     prev1: number;
@@ -141,6 +141,8 @@ export default function Fertilizer() {
     const [pendingDeletes, setPendingDeletes] = useState<string[]>([]);
     const [editingRowId, setEditingRowId] = useState<string | null>(null);
     const [editValues, setEditValues] = useState<{ fertilizerId: string; qtyKg: string }>({ fertilizerId: '', qtyKg: '0' });
+    const [editingMasterId, setEditingMasterId] = useState<string | null>(null);
+    const [editMasterValues, setEditMasterValues] = useState<{ name: string; nitrogenPercent: string | number }>({ name: '', nitrogenPercent: 0 });
     
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -151,7 +153,7 @@ export default function Fertilizer() {
     });
     const planYear = useMemo(() => ymToYearMonth(planMonth).year, [planMonth]);
     const [entryYear, setEntryYear] = useState<number>(planYear);
-    const [selectedFieldId, setSelectedFieldId] = useState<string>('ALL');
+    const [selectedFieldId, setSelectedFieldId] = useState<string>('');
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -212,6 +214,10 @@ export default function Fertilizer() {
             setMasters(masterRes.data || []);
             setApps(appsRes.data || []);
             setTargets(targetRes.data || []);
+
+            if (!selectedFieldId && fieldData.length > 0) {
+                setSelectedFieldId(String(fieldData[0].fieldId));
+            }
         } catch (e) {
             console.error('Failed to load fertilizer module data', e);
         } finally {
@@ -343,6 +349,11 @@ export default function Fertilizer() {
         await loadAll();
     };
 
+    const updateMaster = async (id: string, name: string, nitrogenPercent: number) => {
+        await axios.put(`/api/fertilizer-master/${id}`, { name, nitrogenPercent });
+        await loadAll();
+    };
+
     const historyMonths = useMemo(() => {
         // Prev month 1/2/3 are months before planMonth.
         return [1, 2, 3].map((n) => {
@@ -401,7 +412,8 @@ export default function Fertilizer() {
             const nitrogen12m = nitrogen12mByFieldId.get(String(f.fieldId)) || 0;
             const existingTarget = targetMap.get(String(f.fieldId));
             const crop12m = existingTarget?.crop12m ?? 0;
-            const ratioPercent = crop12m > 0 && nitrogen12m > 0 ? (nitrogen12m / crop12m) * 100 : null;
+            const madeTea12m = crop12m * 0.215;
+            const ratio = nitrogen12m > 0 ? (madeTea12m / nitrogen12m) : null;
             const targetRatioPercent = existingTarget?.targetRatioPercent ?? 12;
             const requirementN = crop12m > 0 ? (crop12m / 12) * (targetRatioPercent / 100) : null;
 
@@ -418,9 +430,10 @@ export default function Fertilizer() {
                 bushCount,
                 spa,
                 crop12m,
+                madeTea12m,
                 fert12m,
                 nitrogen12m,
-                ratioPercent,
+                ratio,
                 targetRatioPercent,
                 requirementN,
                 prev1,
@@ -504,35 +517,49 @@ export default function Fertilizer() {
 
     return (
         <Box sx={{ p: { xs: 1, sm: 1.5, md: 2 }, height: isMobile ? 'auto' : 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={isMobile ? 'stretch' : 'center'} gap={1.5}>
-                <Typography variant={isMobile ? "h6" : "h5"} fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: -0.5 }}>
-                    Fertilizer Programme
-                </Typography>
-                <Stack direction={isMobile ? "column" : "row"} spacing={1} alignItems="center" sx={{ width: { xs: '100%', sm: 'auto' } }}>
-                    <TextField
-                        type="month"
-                        size="small"
-                        label="Plan Month"
-                        value={planMonth}
-                        onChange={(e) => setPlanMonth(e.target.value)}
-                        sx={{ minWidth: { xs: '100%', sm: 170 } }}
-                        InputLabelProps={{ shrink: true }}
-                    />
-                    <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 200 } }}>
-                        <InputLabel>Division</InputLabel>
-                        <Select
-                            value={selectedDivision}
-                            label="Division"
-                            onChange={(e) => setSelectedDivision(e.target.value)}
-                        >
-                            {divisions.map((div: any) => (
-                                <MenuItem key={div.divisionId} value={div.divisionId}>
-                                    {div.name}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                    </FormControl>
-                </Stack>
+            <Box sx={{ 
+                bgcolor: '#ffffff', 
+                p: { xs: 1.5, sm: 2 }, 
+                borderRadius: 2, 
+                border: '1px solid #e0e0e0',
+                boxShadow: '0 2px 8px rgba(0,0,0,0.04)'
+            }}>
+                <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5}>
+                    <Typography variant={isMobile ? "h6" : "h5"} fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: -0.5, lineHeight: 1 }}>
+                        Fertilizer Programme
+                    </Typography>
+                    
+                    <Stack 
+                        direction={{ xs: 'row', sm: 'row' }} 
+                        spacing={1} 
+                        alignItems="center" 
+                        sx={{ width: { xs: '100%', sm: 'auto' } }}
+                    >
+                        <TextField
+                            type="month"
+                            size="small"
+                            label="Plan Month"
+                            value={planMonth}
+                            onChange={(e) => setPlanMonth(e.target.value)}
+                            sx={{ flex: 1, minWidth: { xs: 0, sm: 170 } }}
+                            InputLabelProps={{ shrink: true }}
+                        />
+                        <FormControl size="small" sx={{ flex: 1, minWidth: { xs: 0, sm: 200 } }}>
+                            <InputLabel>Division</InputLabel>
+                            <Select
+                                value={selectedDivision}
+                                label="Division"
+                                onChange={(e) => setSelectedDivision(e.target.value)}
+                            >
+                                {divisions.map((div: any) => (
+                                    <MenuItem key={div.divisionId} value={div.divisionId}>
+                                        {div.name}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                        </FormControl>
+                    </Stack>
+                </Box>
             </Box>
 
             <Paper
@@ -556,88 +583,89 @@ export default function Fertilizer() {
                         borderBottom: '1px solid rgba(15, 23, 42, 0.08)',
                     }}
                 >
-                    <Stack
-                        direction={{ xs: 'column', md: 'row' }}
-                        spacing={1.5}
-                        alignItems={isMobile ? "stretch" : "center"}
-                        justifyContent="space-between"
-                    >
+                    <Box sx={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                         <Tabs
                             value={tab}
                             onChange={(_, v) => setTab(v)}
+                            variant="fullWidth"
                             TabIndicatorProps={{ style: { display: 'none' } }}
-                            sx={{ minHeight: 48 }}
+                            sx={{ 
+                                minHeight: 44,
+                                bgcolor: '#f1f5f9',
+                                borderRadius: 2.5,
+                                p: 0.5,
+                                '& .MuiTabs-flexContainer': { gap: 0.5 }
+                            }}
                         >
                             <Tab
                                 value="ENTRY"
-                                label="Entry"
-                                icon={<AssignmentIcon />}
+                                label="Daily Entry"
+                                icon={<AssignmentIcon sx={{ fontSize: '1.2rem !important' }} />}
                                 iconPosition="start"
                                 sx={{
                                     textTransform: 'none',
                                     fontWeight: 900,
-                                    fontSize: isMobile ? '0.85rem' : '1.05rem',
-                                    minHeight: isMobile ? 40 : 48,
-                                    mr: isMobile ? 0 : 3,
-                                    px: isMobile ? 1.5 : 3,
-                                    color: 'text.secondary',
-                                    border: '1px solid #e0e0e0',
-                                    borderRadius: '8px',
-                                    position: 'relative',
-                                    overflow: 'hidden',
-                                    zIndex: 1,
-                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem',
+                                    minHeight: 40,
+                                    color: '#64748b',
+                                    borderRadius: 2,
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     '&.Mui-selected': {
-                                        color: '#1b5e20',
-                                        bgcolor: '#f1f8e9',
-                                        borderColor: '#4caf50',
+                                        color: '#fff',
+                                        bgcolor: '#2e7d32',
+                                        boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)',
                                     },
+                                    '&:not(.Mui-selected):hover': {
+                                        bgcolor: '#e2e8f0'
+                                    }
                                 }}
                             />
                             <Tab
                                 value="PROGRAMME"
                                 label="Fertilizer Programme"
-                                icon={<TableChartIcon />}
+                                icon={<TableChartIcon sx={{ fontSize: '1.2rem !important' }} />}
                                 iconPosition="start"
                                 sx={{
                                     textTransform: 'none',
                                     fontWeight: 900,
-                                    fontSize: isMobile ? '0.85rem' : '1.05rem',
-                                    minHeight: isMobile ? 40 : 48,
-                                    ml: isMobile ? 0 : 1,
-                                    px: isMobile ? 1.5 : 3,
-                                    color: 'text.secondary',
-                                    border: '1px solid #e0e0e0',
-                                    borderRadius: '8px',
-                                    position: 'relative',
-                                    overflow: 'hidden',
-                                    zIndex: 1,
-                                    transition: 'all 0.3s ease',
+                                    fontSize: '0.9rem',
+                                    minHeight: 40,
+                                    color: '#64748b',
+                                    borderRadius: 2,
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
                                     '&.Mui-selected': {
-                                        color: '#1b5e20',
-                                        bgcolor: '#f1f8e9',
-                                        borderColor: '#4caf50',
+                                        color: '#fff',
+                                        bgcolor: '#2e7d32',
+                                        boxShadow: '0 4px 12px rgba(46, 125, 50, 0.25)',
                                     },
+                                    '&:not(.Mui-selected):hover': {
+                                        bgcolor: '#e2e8f0'
+                                    }
                                 }}
                             />
                         </Tabs>
 
-                        <FormControl size="small" sx={{ minWidth: isMobile ? '100%' : 180, mt: isMobile ? 1 : 0 }}>
-                            <InputLabel>Crop</InputLabel>
+                        <FormControl size="small" fullWidth sx={{ maxWidth: isMobile ? '100%' : 220, alignSelf: isMobile ? 'stretch' : 'flex-end' }}>
+                            <InputLabel sx={{ fontWeight: 700 }}>Select Crop Type</InputLabel>
                             <Select
                                 value={activeCrop}
-                                label="Crop"
+                                label="Select Crop Type"
                                 onChange={(e) => setActiveCrop(e.target.value as CropKey)}
+                                sx={{ 
+                                    bgcolor: '#fff', 
+                                    borderRadius: 2,
+                                    '& .MuiSelect-select': { fontWeight: 800, py: 1 }
+                                }}
                             >
                                 {availableCrops.map((c) => (
-                                    <MenuItem key={c} value={c}>
+                                    <MenuItem key={c} value={c} sx={{ fontWeight: 700 }}>
                                         {c.charAt(0) + c.slice(1).toLowerCase()}
                                     </MenuItem>
                                 ))}
-                                <MenuItem value="ALL">General</MenuItem>
+                                <MenuItem value="ALL" sx={{ fontWeight: 700 }}>General / All</MenuItem>
                             </Select>
                         </FormControl>
-                    </Stack>
+                    </Box>
                 </Box>
 
                 {loading ? (
@@ -692,7 +720,6 @@ export default function Fertilizer() {
                                             label="Field"
                                             onChange={(e) => setSelectedFieldId(String(e.target.value))}
                                         >
-                                            <MenuItem value="ALL">All Fields</MenuItem>
                                             {fields.map((f) => (<MenuItem key={f.fieldId} value={String(f.fieldId)}>{f.name}</MenuItem>))}
                                         </Select>
                                     </FormControl>
@@ -784,10 +811,18 @@ export default function Fertilizer() {
                                         ))}
                                     </Box>
                                 ) : (
-                                    <Table size="small" stickyHeader sx={{ minWidth: 800 }}>
+                                    <Table 
+                                        size="small" 
+                                        stickyHeader 
+                                        sx={{ 
+                                            minWidth: 800,
+                                            border: '1px solid #e0e0e0',
+                                            '& .MuiTableCell-root': { border: '1px solid #e0e0e0' }
+                                        }}
+                                    >
                                         <TableHead>
                                             <TableRow>
-                                                {['Field','Month','Fertilizer','Qty','N (kg)','Total Qty','Total N'].map((h, i) => (
+                                                {['Field','Month','Fertilizer','Qty','N (kg)','Total Fer. Qty','Total N'].map((h, i) => (
                                                     <TableCell key={h} sx={{ fontWeight: 800, bgcolor: '#e8f5e9', fontSize: '0.82rem', textAlign: i >= 3 ? 'right' : 'left' }}>{h}</TableCell>
                                                 ))}
                                                 {!isReadOnly && entryMode && <TableCell sx={{ bgcolor: '#e8f5e9', width: 72 }} />}
@@ -832,7 +867,23 @@ export default function Fertilizer() {
                                                                     ) : masters.find(m => String(m.id) === row.fertilizerId)?.name || '-'}
                                                                 </TableCell>
                                                                 <TableCell align="right">
-                                                                    {isEditing ? <TextField size="small" type="number" value={editValues.qtyKg} onChange={(e) => setEditValues({...editValues, qtyKg: e.target.value})} /> : row.qtyKg}
+                                                                    {isEditing ? (
+                                                                        <TextField 
+                                                                            size="small" 
+                                                                            type="number" 
+                                                                            value={editValues.qtyKg} 
+                                                                            onChange={(e) => setEditValues({...editValues, qtyKg: e.target.value})} 
+                                                                            sx={{ 
+                                                                                width: `${(String(editValues.qtyKg).length || 1) + 1.5}ch`,
+                                                                                minWidth: '50px',
+                                                                                '& .MuiInputBase-input': { 
+                                                                                    px: 0.5, 
+                                                                                    textAlign: 'center',
+                                                                                    '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                                }
+                                                                            }}
+                                                                        />
+                                                                    ) : row.qtyKg}
                                                                 </TableCell>
                                                                 <TableCell align="right">{nKg}</TableCell>
                                                                 {!monthRowRendered && (
@@ -876,7 +927,13 @@ export default function Fertilizer() {
                                 <Typography sx={{ fontWeight: 900, color: '#fff', fontSize: '0.95rem' }}>Fertilizer Master</Typography>
                             </Box>
                             <Box sx={{ overflowY: 'auto', flex: 1 }}>
-                                <Table size="small">
+                                <Table 
+                                    size="small"
+                                    sx={{ 
+                                        border: '1px solid #e0e0e0',
+                                        '& .MuiTableCell-root': { border: '1px solid #e0e0e0' }
+                                    }}
+                                >
                                     <TableHead>
                                         <TableRow>
                                             <TableCell sx={{ fontWeight: 800, bgcolor: '#e8f5e9' }}>Fertilizer</TableCell>
@@ -885,24 +942,78 @@ export default function Fertilizer() {
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
-                                        {masters.map((m) => (
-                                            <TableRow key={String(m.id)}>
-                                                <TableCell>{m.name}</TableCell>
-                                                <TableCell>{m.nitrogenPercent}%</TableCell>
-                                                {!isReadOnly && (
+                                        {masters.map((m) => {
+                                            const isEditing = editingMasterId === String(m.id);
+                                            return (
+                                                <TableRow key={String(m.id)}>
                                                     <TableCell>
-                                                        <IconButton size="small" color="error" onClick={() => deleteMaster(String(m.id))}><CloseIcon fontSize="small" /></IconButton>
+                                                        {isEditing ? (
+                                                            <TextField 
+                                                                size="small" 
+                                                                fullWidth 
+                                                                value={editMasterValues.name} 
+                                                                onChange={(e) => setEditMasterValues({ ...editMasterValues, name: e.target.value })} 
+                                                            />
+                                                        ) : m.name}
                                                     </TableCell>
-                                                )}
-                                            </TableRow>
-                                        ))}
+                                                    <TableCell>
+                                                        {isEditing ? (
+                                                            <TextField 
+                                                                size="small" 
+                                                                type="number" 
+                                                                value={editMasterValues.nitrogenPercent} 
+                                                                onChange={(e) => setEditMasterValues({ ...editMasterValues, nitrogenPercent: e.target.value })} 
+                                                                sx={{ 
+                                                                    width: `${(String(editMasterValues.nitrogenPercent).length || 1) + 1.5}ch`,
+                                                                    minWidth: '40px',
+                                                                    '& .MuiInputBase-input': { 
+                                                                        px: 0.5, 
+                                                                        textAlign: 'center',
+                                                                        '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                    }
+                                                                }}
+                                                            />
+                                                        ) : `${m.nitrogenPercent}%`}
+                                                    </TableCell>
+                                                    {!isReadOnly && (
+                                                        <TableCell>
+                                                            {isEditing ? (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <IconButton size="small" color="success" onClick={() => { updateMaster(String(m.id), editMasterValues.name, Number(editMasterValues.nitrogenPercent) || 0); setEditingMasterId(null); }}><CheckIcon fontSize="small" /></IconButton>
+                                                                    <IconButton size="small" onClick={() => setEditingMasterId(null)}><CloseIcon fontSize="small" /></IconButton>
+                                                                </Stack>
+                                                            ) : (
+                                                                <Stack direction="row" spacing={0.5}>
+                                                                    <IconButton size="small" color="primary" onClick={() => { setEditingMasterId(String(m.id)); setEditMasterValues({ name: m.name, nitrogenPercent: m.nitrogenPercent }); }}><EditIcon fontSize="small" /></IconButton>
+                                                                    <IconButton size="small" color="error" onClick={() => deleteMaster(String(m.id))}><CloseIcon fontSize="small" /></IconButton>
+                                                                </Stack>
+                                                            )}
+                                                        </TableCell>
+                                                    )}
+                                                </TableRow>
+                                            );
+                                        })}
                                         {newMasterRow && (
                                             <TableRow sx={{ bgcolor: '#f1f8e9' }}>
                                                 <TableCell sx={{ py: 0.5 }}>
                                                     <TextField fullWidth size="small" value={newMasterRow.name} onChange={(e) => setNewMasterRow({...newMasterRow, name: e.target.value})} />
                                                 </TableCell>
                                                 <TableCell sx={{ py: 0.5 }}>
-                                                    <TextField size="small" value={newMasterRow.nitrogenPercent} onChange={(e) => setNewMasterRow({...newMasterRow, nitrogenPercent: e.target.value})} />
+                                                    <TextField 
+                                                        size="small" 
+                                                        type="number"
+                                                        value={newMasterRow.nitrogenPercent} 
+                                                        onChange={(e) => setNewMasterRow({...newMasterRow, nitrogenPercent: e.target.value})} 
+                                                        sx={{ 
+                                                            width: `${(String(newMasterRow.nitrogenPercent).length || 1) + 1.5}ch`,
+                                                            minWidth: '40px',
+                                                            '& .MuiInputBase-input': { 
+                                                                px: 0.5, 
+                                                                textAlign: 'center',
+                                                                '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                            }
+                                                        }}
+                                                    />
                                                 </TableCell>
                                                 <TableCell sx={{ py: 0.5 }}>
                                                     <Stack direction="row" spacing={0.5}>
@@ -923,10 +1034,12 @@ export default function Fertilizer() {
                         </Paper>
                     </Box>
                 ) : (
-                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: 1.5 }}>
-                        <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25} flexWrap="wrap" gap={1}>
-                            <Typography sx={{ fontWeight: 900, color: '#1b5e20' }}>Fertilizer Programme</Typography>
-                        </Stack>
+                    <Box sx={{ flex: 1, minHeight: 0, display: 'flex', flexDirection: 'column', p: isMobile ? 0 : 1.5 }}>
+                        {!isMobile && (
+                            <Stack direction="row" justifyContent="space-between" alignItems="center" mb={1.25} flexWrap="wrap" gap={1}>
+                                <Typography sx={{ fontWeight: 900, color: '#1b5e20' }}>Fertilizer Programme</Typography>
+                            </Stack>
+                        )}
 
                          {isMobile ? (
                             <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 2, overflowY: 'auto' }}>
@@ -934,56 +1047,186 @@ export default function Fertilizer() {
                                     <Typography align="center" sx={{ py: 4, color: 'text.secondary' }}>No data available.</Typography>
                                 ) : (
                                     programmeRows.map((row) => (
-                                        <Card key={row.id} sx={{ border: '1px solid rgba(46,125,50,0.2)', borderRadius: 2, overflow: 'hidden' }}>
-                                            <Box sx={{ bgcolor: '#e8f5e9', p: 1.5, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                <Typography variant="subtitle1" fontWeight="900" color="#1b5e20">{row.fieldNo}</Typography>
-                                                <Typography variant="body2" fontWeight="700" sx={{ bgcolor: '#fff', px: 1, py: 0.25, borderRadius: 1, border: '1px solid rgba(46,125,50,0.2)' }}>
-                                                    {row.extentAc} ac
-                                                </Typography>
+                                         <Card key={row.id} sx={{ 
+                                            border: '1px solid #e2e8f0', 
+                                            borderRadius: 3, 
+                                            overflow: 'hidden', 
+                                            mb: 2.5,
+                                            boxShadow: '0 4px 12px rgba(0,0,0,0.05)',
+                                            bgcolor: '#fff'
+                                        }}>
+                                            {/* Header Section */}
+                                            <Box sx={{ 
+                                                bgcolor: '#2e7d32', 
+                                                p: 1.5, 
+                                                display: 'flex', 
+                                                justifyContent: 'space-between', 
+                                                alignItems: 'center',
+                                                color: '#fff'
+                                            }}>
+                                                <Box>
+                                                    <Typography variant="subtitle2" sx={{ opacity: 0.8, fontSize: '0.65rem', fontWeight: 800, textTransform: 'uppercase', letterSpacing: 1 }}>Field Identity</Typography>
+                                                    <Typography variant="h6" fontWeight="900" sx={{ lineHeight: 1.1 }}>{row.fieldNo}</Typography>
+                                                </Box>
+                                                <Box sx={{ bgcolor: 'rgba(255,255,255,0.2)', px: 1.5, py: 0.5, borderRadius: 2, textAlign: 'right', border: '1px solid rgba(255,255,255,0.3)' }}>
+                                                    <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, lineHeight: 1 }}>{row.extentAc.toFixed(1)}</Typography>
+                                                    <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, opacity: 0.9 }}>ACRES</Typography>
+                                                </Box>
                                             </Box>
+
                                             <Box sx={{ p: 2 }}>
-                                                <Grid container spacing={2}>
+                                                {/* Section 1: Core Metrics */}
+                                                <Grid container spacing={2} sx={{ mb: 2 }}>
                                                     <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">Bush Count</Typography>
-                                                        <Typography variant="body2" fontWeight="800">{row.bushCount.toLocaleString()}</Typography>
+                                                        <Box sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #f1f5f9' }}>
+                                                            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', mb: 0.5 }}>Bush Count</Typography>
+                                                            {editingBushCountId === row.id ? (
+                                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                                    <TextField 
+                                                                        size="small" 
+                                                                        type="number" 
+                                                                        sx={{ 
+                                                                            bgcolor: '#fff', 
+                                                                            width: `${(String(editBushCountValue).length || 1) + 1.5}ch`,
+                                                                            minWidth: '50px',
+                                                                            '& .MuiInputBase-input': { 
+                                                                                px: 0.5, 
+                                                                                textAlign: 'center',
+                                                                                '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                            }
+                                                                        }} 
+                                                                        value={editBushCountValue} 
+                                                                        onChange={(e) => setEditBushCountValue(e.target.value)} 
+                                                                    />
+                                                                    <IconButton size="small" color="success" onClick={() => saveSingleBushCount(row)}><CheckIcon fontSize="small" /></IconButton>
+                                                                    <IconButton size="small" onClick={() => setEditingBushCountId(null)}><CloseIcon fontSize="small" /></IconButton>
+                                                                </Stack>
+                                                            ) : (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                                                                    <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: '#334155' }}>{row.bushCount.toLocaleString()}</Typography>
+                                                                    {!isReadOnly && <IconButton size="small" sx={{ p: 0.5 }} onClick={() => { setEditingBushCountId(row.id); setEditBushCountValue(row.bushCount); }}><EditIcon sx={{ fontSize: '0.9rem' }} /></IconButton>}
+                                                                </Box>
+                                                            )}
+                                                        </Box>
                                                     </Grid>
                                                     <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">SPA</Typography>
-                                                        <Typography variant="body2" fontWeight="800">{row.spa}</Typography>
-                                                    </Grid>
-                                                    <Grid item xs={12}><MuiDivider sx={{ my: 0.5 }} /></Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">12M Crop</Typography>
-                                                        <Typography variant="body2" fontWeight="800" color="primary">{row.crop12m.toLocaleString()} kg</Typography>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">12M Nitrogen</Typography>
-                                                        <Typography variant="body2" fontWeight="800">{row.nitrogen12m.toFixed(1)} kg</Typography>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">Target Ratio</Typography>
-                                                        <Typography variant="body2" fontWeight="800" sx={{ color: '#2e7d32' }}>{row.targetRatioPercent}%</Typography>
-                                                    </Grid>
-                                                    <Grid item xs={6}>
-                                                        <Typography variant="caption" color="text.secondary">Required (N)</Typography>
-                                                        <Typography variant="body2" fontWeight="900" sx={{ color: '#d32f2f' }}>{row.requirementN ? `${row.requirementN.toFixed(1)} kg` : '-'}</Typography>
+                                                        <Box sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px solid #f1f5f9' }}>
+                                                            <Typography sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase', mb: 0.5 }}>SPA (Bush/Ac)</Typography>
+                                                            <Typography sx={{ fontSize: '0.95rem', fontWeight: 900, color: '#334155' }}>{row.spa}</Typography>
+                                                        </Box>
                                                     </Grid>
                                                 </Grid>
-                                                <Box sx={{ mt: 2, p: 1, bgcolor: '#f1f8e9', borderRadius: 1 }}>
-                                                    <Typography variant="caption" fontWeight="800" color="#355b2b" sx={{ display: 'block', mb: 1 }}>FERTILIZER HISTORY (Last 3 Months)</Typography>
-                                                    <Stack direction="row" justifyContent="space-between">
-                                                        <Box textAlign="center">
-                                                            <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{historyMonths[2].label}</Typography>
-                                                            <Typography variant="body2" fontWeight="700">{row.prev3.toFixed(0)}</Typography>
-                                                        </Box>
-                                                        <Box textAlign="center">
-                                                            <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{historyMonths[1].label}</Typography>
-                                                            <Typography variant="body2" fontWeight="700">{row.prev2.toFixed(0)}</Typography>
-                                                        </Box>
-                                                        <Box textAlign="center">
-                                                            <Typography variant="caption" sx={{ fontSize: '0.65rem' }}>{historyMonths[0].label}</Typography>
-                                                            <Typography variant="body2" fontWeight="700">{row.prev1.toFixed(0)}</Typography>
-                                                        </Box>
+
+                                                {/* Section 2: 12 Month Analysis */}
+                                                <Box sx={{ mb: 2, border: '1px solid #edf2f7', borderRadius: 2, overflow: 'hidden' }}>
+                                                    <Box sx={{ bgcolor: '#f1f5f9', px: 1.5, py: 0.75, borderBottom: '1px solid #edf2f7' }}>
+                                                        <Typography sx={{ fontSize: '0.65rem', fontWeight: 900, color: '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>12-Month Performance</Typography>
+                                                    </Box>
+                                                    <Grid container sx={{ p: 1.5 }} spacing={2}>
+                                                        <Grid xs={6}>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.6rem', display: 'block' }}>Total Crop</Typography>
+                                                            {editingCropId === row.id ? (
+                                                                <Stack direction="row" spacing={0.5} alignItems="center">
+                                                                    <TextField 
+                                                                        size="small" 
+                                                                        type="number" 
+                                                                        sx={{ 
+                                                                            bgcolor: '#fff', 
+                                                                            width: `${(String(editCropValue).length || 1) + 1.5}ch`,
+                                                                            minWidth: '50px',
+                                                                            '& .MuiInputBase-input': { 
+                                                                                px: 0.5, 
+                                                                                textAlign: 'center',
+                                                                                '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                            }
+                                                                        }} 
+                                                                        value={editCropValue} 
+                                                                        onChange={(e) => setEditCropValue(e.target.value)} 
+                                                                    />
+                                                                    <IconButton size="small" color="success" onClick={() => saveSingleCrop(row)}><CheckIcon fontSize="small" /></IconButton>
+                                                                    <IconButton size="small" onClick={() => setEditingCropId(null)}><CloseIcon fontSize="small" /></IconButton>
+                                                                </Stack>
+                                                            ) : (
+                                                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                    <Typography sx={{ fontWeight: 900, color: '#2e7d32', fontSize: '0.9rem' }}>{row.crop12m.toLocaleString()} <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 600 }}>kg</Box></Typography>
+                                                                    {!isReadOnly && <IconButton size="small" sx={{ p: 0.5, ml: 0.5 }} onClick={() => { setEditingCropId(row.id); setEditCropValue(row.crop12m); }}><EditIcon sx={{ fontSize: '0.9rem' }} /></IconButton>}
+                                                                </Box>
+                                                            )}
+                                                        </Grid>
+                                                        <Grid xs={6}>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.6rem', display: 'block' }}>Made Tea</Typography>
+                                                            <Typography sx={{ fontWeight: 900, color: '#2e7d32', fontSize: '0.9rem' }}>{row.madeTea12m.toLocaleString()} <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 600 }}>kg</Box></Typography>
+                                                        </Grid>
+                                                        <Grid xs={6}>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.6rem', display: 'block' }}>Total Fert</Typography>
+                                                            <Typography sx={{ fontWeight: 900, color: '#334155', fontSize: '0.9rem' }}>{row.fert12m.toLocaleString()} <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 600 }}>kg</Box></Typography>
+                                                        </Grid>
+                                                        <Grid xs={6}>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.6rem', display: 'block' }}>Nitrogen (N)</Typography>
+                                                            <Typography sx={{ fontWeight: 900, color: '#334155', fontSize: '0.9rem' }}>{row.nitrogen12m.toFixed(1)} <Box component="span" sx={{ fontSize: '0.65rem', fontWeight: 600 }}>kg</Box></Typography>
+                                                        </Grid>
+                                                        <Grid xs={12}>
+                                                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 700, fontSize: '0.6rem', display: 'block' }}>Efficiency Ratio (Made Tea / N)</Typography>
+                                                            <Typography sx={{ fontWeight: 900, color: '#334155', fontSize: '0.9rem' }}>{row.ratio == null ? '-' : row.ratio.toFixed(2)}</Typography>
+                                                        </Grid>
+                                                    </Grid>
+                                                </Box>
+
+                                                {/* Section 3: Target & Requirement */}
+                                                <Box sx={{ bgcolor: '#fff9f9', p: 1.5, borderRadius: 2, border: '1.5px dashed #feb2b2', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <Typography sx={{ fontSize: '0.6rem', color: '#c53030', fontWeight: 900, textTransform: 'uppercase' }}>Target Ratio</Typography>
+                                                        {editingTargetId === row.id ? (
+                                                            <Stack direction="row" spacing={0.5} alignItems="center">
+                                                                <TextField 
+                                                                    size="small" 
+                                                                    type="number" 
+                                                                    sx={{ 
+                                                                        bgcolor: '#fff', 
+                                                                        width: `${(String(editTargetValue).length || 1) + 1.5}ch`,
+                                                                        minWidth: '40px',
+                                                                        '& .MuiInputBase-input': { 
+                                                                            px: 0.5, 
+                                                                            textAlign: 'center',
+                                                                            '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                        }
+                                                                    }} 
+                                                                    value={editTargetValue} 
+                                                                    onChange={(e) => setEditTargetValue(e.target.value)} 
+                                                                />
+                                                                <IconButton size="small" color="success" onClick={() => saveSingleTarget(row)}><CheckIcon fontSize="small" /></IconButton>
+                                                                <IconButton size="small" onClick={() => setEditingTargetId(null)}><CloseIcon fontSize="small" /></IconButton>
+                                                            </Stack>
+                                                        ) : (
+                                                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                                                <Typography sx={{ fontSize: '1.1rem', fontWeight: 900, color: '#c53030' }}>{row.targetRatioPercent}%</Typography>
+                                                                {!isReadOnly && <IconButton size="small" sx={{ p: 0.5, ml: 0.5 }} onClick={() => { setEditingTargetId(row.id); setEditTargetValue(row.targetRatioPercent); }}><EditIcon sx={{ fontSize: '0.9rem', color: '#c53030' }} /></IconButton>}
+                                                            </Box>
+                                                        )}
+                                                    </Box>
+                                                    <Box sx={{ textAlign: 'right' }}>
+                                                        <Typography sx={{ fontSize: '0.6rem', color: '#c53030', fontWeight: 900, textTransform: 'uppercase' }}>Required (N)</Typography>
+                                                        <Typography sx={{ fontSize: '1.2rem', fontWeight: 950, color: '#c53030' }}>
+                                                            {row.requirementN ? row.requirementN.toFixed(1) : '-'}
+                                                            <Box component="span" sx={{ fontSize: '0.7rem', ml: 0.5 }}>kg</Box>
+                                                        </Typography>
+                                                    </Box>
+                                                </Box>
+
+                                                {/* Section 4: History */}
+                                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid #f1f5f9' }}>
+                                                    <Typography variant="caption" sx={{ fontWeight: 900, color: '#64748b', textTransform: 'uppercase', fontSize: '0.6rem', display: 'block', mb: 1.5 }}>Fertilizer History (Last 3m)</Typography>
+                                                    <Stack direction="row" spacing={1}>
+                                                        {[
+                                                            { label: historyMonths[2].label, val: row.prev3 },
+                                                            { label: historyMonths[1].label, val: row.prev2 },
+                                                            { label: historyMonths[0].label, val: row.prev1 }
+                                                        ].map((h, i) => (
+                                                            <Box key={i} sx={{ flex: 1, p: 1, textAlign: 'center', bgcolor: '#f8fafc', borderRadius: 1.5, border: '1px solid #f1f5f9' }}>
+                                                                <Typography sx={{ fontSize: '0.55rem', fontWeight: 800, color: 'text.secondary' }}>{h.label}</Typography>
+                                                                <Typography sx={{ fontSize: '0.85rem', fontWeight: 900, color: '#1e293b' }}>{h.val.toFixed(0)}</Typography>
+                                                            </Box>
+                                                        ))}
                                                     </Stack>
                                                 </Box>
                                             </Box>
@@ -993,23 +1236,31 @@ export default function Fertilizer() {
                             </Box>
                         ) : (
                             <Box sx={{ overflowX: 'auto' }}>
-                                <Table size="small" sx={{ minWidth: 1000 }}>
+                                <Table 
+                                    size="small" 
+                                    sx={{ 
+                                        minWidth: 1000,
+                                        border: '1px solid #e0e0e0',
+                                        '& .MuiTableCell-root': { border: '1px solid #e0e0e0' }
+                                    }}
+                                >
                                     <TableHead>
                                         <TableRow sx={{ bgcolor: '#e8f5e9' }}>
                                             <TableCell rowSpan={2}>Field No</TableCell>
                                             <TableCell rowSpan={2} align="right">Extent (ac)</TableCell>
                                             <TableCell rowSpan={2} align="right">Bush Count</TableCell>
                                             <TableCell rowSpan={2} align="right">SPA</TableCell>
-                                            <TableCell colSpan={4} align="center">Previous 12 Months</TableCell>
+                                            <TableCell colSpan={5} align="center">Previous 12 Months</TableCell>
                                             <TableCell rowSpan={2} align="right">Target Ratio %</TableCell>
                                             <TableCell rowSpan={2} align="right">Requirement {fullMonthLabel(ymToYearMonth(planMonth).month)} (kg)</TableCell>
                                             <TableCell colSpan={3} align="center">Fertalizer History (kg)</TableCell>
                                         </TableRow>
                                         <TableRow sx={{ bgcolor: '#e8f5e9' }}>
                                             <TableCell align="right">Crop (kg)</TableCell>
+                                            <TableCell align="right">Made Tea (kg)</TableCell>
                                             <TableCell align="right">Fert. (kg)</TableCell>
                                             <TableCell align="right">Nitrogen (kg)</TableCell>
-                                            <TableCell align="right">Ratio %</TableCell>
+                                            <TableCell align="right">Ratio (MT/N)</TableCell>
                                             <TableCell align="right">{historyMonths[2].label}</TableCell>
                                             <TableCell align="right">{historyMonths[1].label}</TableCell>
                                             <TableCell align="right">{historyMonths[0].label}</TableCell>
@@ -1023,7 +1274,21 @@ export default function Fertilizer() {
                                                 <TableCell align="right">
                                                     {editingBushCountId === row.id ? (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
-                                                            <TextField size="small" type="number" value={editBushCountValue} onChange={(e) => setEditBushCountValue(e.target.value)} />
+                                                            <TextField 
+                                                                size="small" 
+                                                                type="number" 
+                                                                value={editBushCountValue} 
+                                                                onChange={(e) => setEditBushCountValue(e.target.value)} 
+                                                                sx={{ 
+                                                                    width: `${(String(editBushCountValue).length || 1) + 1.5}ch`,
+                                                                    minWidth: '50px',
+                                                                    '& .MuiInputBase-input': { 
+                                                                        px: 0.5, 
+                                                                        textAlign: 'center',
+                                                                        '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                    }
+                                                                }}
+                                                            />
                                                             <IconButton size="small" color="success" onClick={() => saveSingleBushCount(row)}><CheckIcon fontSize="small" /></IconButton>
                                                             <IconButton size="small" onClick={() => setEditingBushCountId(null)}><CloseIcon fontSize="small" /></IconButton>
                                                         </Stack>
@@ -1038,7 +1303,21 @@ export default function Fertilizer() {
                                                 <TableCell align="right">
                                                     {editingCropId === row.id ? (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
-                                                            <TextField size="small" type="number" value={editCropValue} onChange={(e) => setEditCropValue(e.target.value)} />
+                                                            <TextField 
+                                                                size="small" 
+                                                                type="number" 
+                                                                value={editCropValue} 
+                                                                onChange={(e) => setEditCropValue(e.target.value)} 
+                                                                sx={{ 
+                                                                    width: `${(String(editCropValue).length || 1) + 1.5}ch`,
+                                                                    minWidth: '50px',
+                                                                    '& .MuiInputBase-input': { 
+                                                                        px: 0.5, 
+                                                                        textAlign: 'center',
+                                                                        '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                    }
+                                                                }}
+                                                            />
                                                             <IconButton size="small" color="success" onClick={() => saveSingleCrop(row)}><CheckIcon fontSize="small" /></IconButton>
                                                             <IconButton size="small" onClick={() => setEditingCropId(null)}><CloseIcon fontSize="small" /></IconButton>
                                                         </Stack>
@@ -1049,13 +1328,28 @@ export default function Fertilizer() {
                                                         </Stack>
                                                     )}
                                                 </TableCell>
+                                                <TableCell align="right">{row.madeTea12m.toLocaleString()}</TableCell>
                                                 <TableCell align="right">{row.fert12m.toFixed(0)}</TableCell>
                                                 <TableCell align="right">{row.nitrogen12m.toFixed(1)}</TableCell>
-                                                <TableCell align="right">{row.ratioPercent == null ? '-' : `${row.ratioPercent.toFixed(2)}%`}</TableCell>
+                                                <TableCell align="right" sx={{ fontWeight: row.ratio && row.ratio > 0 ? 800 : 400 }}>{row.ratio == null ? '-' : row.ratio.toFixed(2)}</TableCell>
                                                 <TableCell align="right">
                                                     {editingTargetId === row.id ? (
                                                         <Stack direction="row" alignItems="center" spacing={0.5} justifyContent="flex-end">
-                                                            <TextField size="small" type="number" value={editTargetValue} onChange={(e) => setEditTargetValue(e.target.value)} />
+                                                            <TextField 
+                                                                size="small" 
+                                                                type="number" 
+                                                                value={editTargetValue} 
+                                                                onChange={(e) => setEditTargetValue(e.target.value)} 
+                                                                sx={{ 
+                                                                    width: `${(String(editTargetValue).length || 1) + 1.5}ch`,
+                                                                    minWidth: '40px',
+                                                                    '& .MuiInputBase-input': { 
+                                                                        px: 0.5, 
+                                                                        textAlign: 'center',
+                                                                        '&::-webkit-outer-spin-button, &::-webkit-inner-spin-button': { display: 'none' }
+                                                                    }
+                                                                }}
+                                                            />
                                                             <IconButton size="small" color="success" onClick={() => saveSingleTarget(row)}><CheckIcon fontSize="small" /></IconButton>
                                                             <IconButton size="small" onClick={() => setEditingTargetId(null)}><CloseIcon fontSize="small" /></IconButton>
                                                         </Stack>

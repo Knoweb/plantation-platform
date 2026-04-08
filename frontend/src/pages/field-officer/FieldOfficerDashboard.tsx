@@ -157,8 +157,23 @@ export default function FieldOfficerDashboard() {
             return { advisory, color, rainEveningChance: maxEvening, rainMorningChance: maxMorning };
         };
 
+        const WEATHER_CACHE_KEY = 'weather_cache';
+        const WEATHER_CACHE_TTL_MS = 60 * 60 * 1000; // 1 hour
+
         const getWeatherData = async (lat: number, lon: number, locName: string) => {
             try {
+                // --- Check cache first ---
+                try {
+                    const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+                    if (cached) {
+                        const { data, timestamp } = JSON.parse(cached);
+                        if (Date.now() - timestamp < WEATHER_CACHE_TTL_MS) {
+                            setWeather(data);
+                            return; // Fresh cache hit — skip the API call
+                        }
+                    }
+                } catch (_) { /* ignore corrupt cache */ }
+
                 const [weatherRes, geoRes] = await Promise.all([
                     axios.get(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,weather_code&hourly=precipitation_probability,weather_code&timezone=auto&forecast_days=1`),
                     locName === 'Local' 
@@ -169,39 +184,56 @@ export default function FieldOfficerDashboard() {
                 const current = weatherRes.data.current;
                 const hourlyTimes = weatherRes.data.hourly.time as string[];
                 const hourlyPrecip = weatherRes.data.hourly.precipitation_probability as number[];
-                const hourlyCode = weatherRes.data.hourly.weather_code as number[];
                 const currentHour = new Date().getHours();
 
                 // Extract extremely precise name from reverse geo if available
                 let finalLoc = locName;
                 if (geoRes?.data?.address) {
                     const addr = geoRes.data.address;
-                    // Order of granularity: most local to least local
                     finalLoc = addr.neighbourhood || addr.hamlet || addr.village || addr.suburb || addr.town || addr.city || locName;
                 }
 
-            const w = weatherCodes[current.weather_code] || { cond: 'Cloudy', icon: 'U+2601' };
-            const icon = String.fromCodePoint(parseInt(w.icon.replace('U+', ''), 16));
-            const hum = current.relative_humidity_2m;
-            const { advisory, color, rainEveningChance, rainMorningChance } = buildAdvisory(hourlyTimes, hourlyPrecip);
+                const w = weatherCodes[current.weather_code] || { cond: 'Cloudy', icon: 'U+2601' };
+                const icon = String.fromCodePoint(parseInt(w.icon.replace('U+', ''), 16));
+                const hum = current.relative_humidity_2m;
+                const { advisory, color, rainEveningChance, rainMorningChance } = buildAdvisory(hourlyTimes, hourlyPrecip);
 
-            const statusAdvisory = hum > 85 && rainMorningChance < 30
-                ? `High humidity (${hum}%) detected. Ideal plucking window but monitor afternoon sky. ${advisory}`
-                : advisory;
+                const statusAdvisory = hum > 85 && rainMorningChance < 30
+                    ? `High humidity (${hum}%) detected. Ideal plucking window but monitor afternoon sky. ${advisory}`
+                    : advisory;
 
-            setWeather({
-                temp: Math.round(current.temperature_2m),
-                humidity: hum,
-                condition: w.cond,
-                icon,
-                currentLoc: finalLoc,
-                advisory: statusAdvisory,
-                advisoryColor: color,
-                rainMorningChance,
-                rainEveningChance
-            });
-            } catch (err) {
-                console.error("Failed to fetch weather", err);
+                const weatherData = {
+                    temp: Math.round(current.temperature_2m),
+                    humidity: hum,
+                    condition: w.cond,
+                    icon,
+                    currentLoc: finalLoc,
+                    advisory: statusAdvisory,
+                    advisoryColor: color,
+                    rainMorningChance,
+                    rainEveningChance
+                };
+
+                // --- Save to cache ---
+                try {
+                    localStorage.setItem(WEATHER_CACHE_KEY, JSON.stringify({ data: weatherData, timestamp: Date.now() }));
+                } catch (_) { /* ignore storage errors */ }
+
+                setWeather(weatherData);
+            } catch (err: any) {
+                if (err?.response?.status === 429) {
+                    console.warn("Weather API rate limited (429). Using cached data if available.");
+                    // Try to use stale cache as fallback
+                    try {
+                        const cached = localStorage.getItem(WEATHER_CACHE_KEY);
+                        if (cached) {
+                            const { data } = JSON.parse(cached);
+                            setWeather(data);
+                        }
+                    } catch (_) { /* no fallback available */ }
+                } else {
+                    console.error("Failed to fetch weather", err);
+                }
             }
         };
 

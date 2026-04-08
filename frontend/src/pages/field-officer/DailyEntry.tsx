@@ -79,23 +79,59 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
     }, [fetchAuditAlerts]);
 
     return (
-        <Box sx={{ width: '100%', bgcolor: '#f0f2f5', minHeight: '100vh', pb: 4 }}>
-            <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: 'white', px: { xs: 1, sm: 3 }, pt: 2 }}>
-                <Typography variant="h5" fontWeight="bold" color="#2e7d32">
-                    Field Officer Portal
-                </Typography>
-                <Typography variant="subtitle2" color="text.secondary" sx={{ mb: 1 }}>
-                    {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
-                </Typography>
+        <Box sx={{ bgcolor: '#f4f7f5', minHeight: '100vh', pb: 10 }}>
+            <Box sx={{ 
+                bgcolor: 'white', 
+                px: { xs: 2.5, sm: 4 }, 
+                pt: { xs: 2.5, sm: 3 }, 
+                pb: 0,
+                borderBottom: '1px solid #eef2f6',
+                boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
+            }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
+                    <Box>
+                        <Typography variant="h5" fontWeight="900" color="#1b5e20" sx={{ letterSpacing: '-0.03em', mb: 0.5 }}>
+                            Field Officer Portal
+                        </Typography>
+                        <Box display="flex" alignItems="center" gap={1.2}>
+                            <Box sx={{ 
+                                width: 8, 
+                                height: 8, 
+                                borderRadius: '50%', 
+                                bgcolor: '#4caf50', 
+                                animation: 'pulse-green 2s infinite',
+                                '@keyframes pulse-green': {
+                                    '0%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0.4)' },
+                                    '70%': { boxShadow: '0 0 0 8px rgba(76, 175, 80, 0)' },
+                                    '100%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0)' }
+                                }
+                            }} />
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
+                                Operational Dashboard • {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Box textAlign="right" sx={{ display: { xs: 'none', sm: 'block' } }}>
+                        <Typography variant="h6" fontWeight="900" color="#2e7d32" sx={{ lineHeight: 1 }}>
+                            {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
+                        </Typography>
+                    </Box>
+                </Box>
                 <Tabs
                     value={tabIndex}
                     onChange={(_, v) => setTabIndex(v)}
                     variant="scrollable"
                     scrollButtons="auto"
                     sx={{
-                        minHeight: 48,
-                        '& .MuiTabs-indicator': { backgroundColor: '#2e7d32' },
-                        '& .MuiTab-root.Mui-selected': { color: '#2e7d32' }
+                        '& .MuiTabs-indicator': { height: 4, borderRadius: '4px 4px 0 0', bgcolor: '#1b5e20' },
+                        '& .MuiTab-root': { 
+                            textTransform: 'none', 
+                            fontWeight: '900', 
+                            fontSize: '0.95rem',
+                            color: '#546e7a',
+                            minHeight: 48,
+                            '&.Mui-selected': { color: '#1b5e20' }
+                        }
                     }}
                 >
                     {userRole === 'FIELD_OFFICER' && (
@@ -103,7 +139,6 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
                             label="Daily Entry"
                             icon={<EditStartIcon />}
                             iconPosition="start"
-                            sx={{ textTransform: 'none', fontWeight: 'bold' }}
                         />
                     )}
                     <Tab
@@ -114,7 +149,6 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
                             </Badge>
                         }
                         iconPosition="start"
-                        sx={{ textTransform: 'none', fontWeight: 'bold' }}
                     />
                 </Tabs>
             </Box>
@@ -1146,6 +1180,7 @@ function DailyEntryTab() {
 
 function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, fields, taskTypes, isFinalized = false, workerLastTaskMap = {}, onRemove }: { task: string, items: any[], onUpdate: any, isSubmitted: boolean, hideOutput?: boolean, fields: any[], taskTypes: any[], isFinalized?: boolean, workerLastTaskMap?: Record<string, string>, onRemove?: (id: string) => void }) {
     const [statusConfirm, setStatusConfirm] = useState<{ itemId: string, newStatus: string, workerName: string, label: string } | null>(null);
+    const isMobile = useMediaQuery('(max-width:600px)');
 
     // Task Configuration Logic
     const getTaskConfig = (taskName: string) => {
@@ -1208,30 +1243,102 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
 
     // Common Input Style
     const inputStyle = {
-        width: 60,
-        padding: '2px',
-        height: 32,
-        border: '1px solid #b0bec5',
-        borderRadius: 4,
+        width: 68,
+        padding: '4px',
+        height: 36,
+        border: '2px solid #e0e6ed',
+        borderRadius: 8,
         textAlign: 'center' as const,
-        fontSize: '0.95rem',
-        fontWeight: 'bold',
+        fontSize: '1rem',
+        fontWeight: '900',
         outline: 'none',
         transition: 'all 0.2s',
+        color: '#2e7d32',
+        backgroundColor: '#f8fafc',
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
     return (
         <>
             <Paper elevation={0} variant="outlined" sx={{ mb: 2, borderRadius: 2, overflow: 'hidden', borderColor: '#e0e0e0' }}>
-            {/* Scrollable wrapper for mobile – keeps fixed-width columns accessible */}
+            {/* Task Header */}
+            <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2}>
+                <Typography variant="subtitle1" fontWeight="bold" color="#2e7d32" sx={{ fontSize: '1rem' }}>{task}</Typography>
+                <Chip label={taskConfig.label} size="small" variant="outlined" sx={{ fontWeight: 'bold', bgcolor: 'white' }} />
+            </Box>
+
+            {/* === READ-ONLY REVIEW LAYOUT — Mobile only: full names visible as cards === */}
+            {(isMobile && isFinalized) ? (
+                <Box p={1} display="flex" flexDirection="column" gap={0.75}>
+                    {items.map((item: any) => {
+                        const isPieceRate = item.workerType?.includes('CONTRACT');
+                        const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+                        const typeColor = item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333';
+                        const typeBg = item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5';
+                        const typeBorder = item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8';
+                        return (
+                            <Box key={item.id} sx={{ bgcolor: '#fff', border: '1px solid #eef2f0', borderRadius: 2, overflow: 'hidden' }}>
+                                {/* Worker Name Row */}
+                                <Box display="flex" alignItems="center" gap={1} px={1.5} py={1} bgcolor="#f9fbf9" borderBottom="1px solid #eef2f0">
+                                    <Avatar sx={{ bgcolor: typeColor, width: 30, height: 30, flexShrink: 0 }}>
+                                        <PersonIcon sx={{ fontSize: 17, color: 'white' }} />
+                                    </Avatar>
+                                    <Typography variant="body2" fontWeight="900" color="#1a1a1a" sx={{ fontSize: '0.9rem', flex: 1 }}>
+                                        {item.workerName}
+                                    </Typography>
+                                    <Chip
+                                        label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
+                                        size="small"
+                                        sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: typeBg, color: typeColor, border: '1px solid', borderColor: typeBorder, flexShrink: 0 }}
+                                    />
+                                    {/* Status badge */}
+                                    {item.status === 'ABSENT' && <Chip label="ABSENT" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a', flexShrink: 0 }} />}
+                                    {item.status === 'HALF_DAY' && <Chip label="½ DAY" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#fff8e1', color: '#e65100', border: '1px solid #ffe082', flexShrink: 0 }} />}
+                                </Box>
+
+                                {/* Stats Row */}
+                                {showInputs && item.status !== 'ABSENT' && (
+                                    <Box display="flex" alignItems="center" gap={1} px={1.5} py={0.75} flexWrap="wrap">
+                                        <Box textAlign="center">
+                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>AM</Typography>
+                                            <Typography variant="body2" fontWeight="900" color="#333" sx={{ fontSize: '0.85rem' }}>{item.amWeight ?? '—'}</Typography>
+                                        </Box>
+                                        <Typography color="text.disabled" sx={{ fontSize: '0.7rem' }}>+</Typography>
+                                        <Box textAlign="center">
+                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>PM</Typography>
+                                            <Typography variant="body2" fontWeight="900" color="#333" sx={{ fontSize: '0.85rem' }}>{item.pmWeight ?? '—'}</Typography>
+                                        </Box>
+                                        <Box sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                            <Typography variant="caption" color="#2e7d32" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>TOTAL</Typography>
+                                            <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: '0.95rem' }}>{total.toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}</Typography>
+                                        </Box>
+                                        {Number(item.overKilos) > 0 && (
+                                            <Box sx={{ bgcolor: '#fffde7', border: '1px solid #ffe082', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <Typography variant="caption" color="#e65100" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>OVER</Typography>
+                                                <Typography variant="body2" fontWeight="900" color="#e65100" sx={{ fontSize: '0.9rem' }}>{item.overKilos}</Typography>
+                                            </Box>
+                                        )}
+                                        {isPieceRate && Number(item.cashKilos) > 0 && (
+                                            <Box sx={{ bgcolor: '#f3e5f5', border: '1px solid #ce93d8', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+                                                <Typography variant="caption" color="#7b1fa2" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>CASH</Typography>
+                                                <Typography variant="body2" fontWeight="900" color="#7b1fa2" sx={{ fontSize: '0.9rem' }}>{item.cashKilos}</Typography>
+                                            </Box>
+                                        )}
+                                        {item.session && item.session !== 'FULL_DAY' && (
+                                            <Chip label={item.session === 'MORNING_SESSION' ? 'Morning' : 'Evening'} size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#fff3e0', color: '#e65100', border: '1px solid #ffcc80' }} />
+                                        )}
+                                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', ml: 'auto' }}>{item.fieldName}</Typography>
+                                    </Box>
+                                )}
+                            </Box>
+                        );
+                    })}
+                    {items.length === 0 && <Typography variant="caption" color="text.secondary" sx={{ p: 1, fontStyle: 'italic' }}>No workers recorded.</Typography>}
+                </Box>
+            ) : (
+            /* === EDITABLE TABLE LAYOUT — unchanged, scrollable for data entry === */
             <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
                 <Box sx={{ minWidth: 850 }}>
-                    {/* Header */}
-                    <Box bgcolor="#f9fbf9" borderBottom="1px solid #eaefe9" p={1.5} display="flex" alignItems="center" gap={2}>
-                        <Typography variant="subtitle1" fontWeight="bold" color="#2e7d32" sx={{ minWidth: 150, fontSize: '1rem' }}>{task}</Typography>
-                        <Chip label={taskConfig.label} size="small" variant="outlined" sx={{ fontWeight: 'bold', bgcolor: 'white' }} />
-                    </Box>
 
                 {/* Column Headers */}
                 {showInputs && (
@@ -1354,18 +1461,18 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                 {/* Total Badge */}
                                                 <Box width={60} display="flex" justifyContent="center">
                                                     <Box
-                                                        bgcolor="#2e7d32"
-                                                        color="white"
-                                                        borderRadius={1}
+                                                        bgcolor="#e8f5e9"
+                                                        color="#2e7d32"
+                                                        borderRadius={2}
                                                         width={55}
-                                                        height={30}
+                                                        height={34}
                                                         display="flex"
                                                         alignItems="center"
                                                         justifyContent="center"
-                                                        border="1px solid #1b5e20"
-                                                        sx={{ boxShadow: 1 }}
+                                                        border="2px solid #a5d6a7"
+                                                        sx={{ boxShadow: '0 2px 4px rgba(46, 125, 50, 0.1)' }}
                                                     >
-                                                        <Typography variant="body2" fontWeight="bold" fontSize="0.9rem">
+                                                        <Typography variant="body2" fontWeight="900" fontSize="0.95rem">
                                                             {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}
                                                         </Typography>
                                                     </Box>
@@ -1596,6 +1703,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                 </Box>
                 </Box>
                 </Box>
+            )} {/* end ternary: isFinalized ? card : table */}
             </Paper>
 
             <Dialog open={!!statusConfirm} onClose={() => setStatusConfirm(null)} PaperProps={{ sx: { borderRadius: 3 } }}>
@@ -2212,106 +2320,252 @@ function HistoryTab() {
 
     return (
         <Box sx={{ maxWidth: 1000, mx: 'auto', mt: { xs: 1, sm: 4 }, px: { xs: 1, sm: 0 } }}>
-            <Paper elevation={3} sx={{ p: { xs: 2, sm: 4 }, borderRadius: 3 }}>
-                <Box display="flex" alignItems="center" justifyContent="space-between" mb={3}>
-                    <Box display="flex" alignItems="center" gap={2}>
-                        <HistoryIcon color="primary" sx={{ fontSize: 30 }} />
-                        <Typography variant="h5" fontWeight="bold" color="text.primary">
-                            Muster History
-                        </Typography>
+            <Paper elevation={0} sx={{ 
+                p: { xs: 2.5, sm: 4 }, 
+                borderRadius: 4, 
+                bgcolor: 'white',
+                boxShadow: '0 4px 24px rgba(0,0,0,0.06)',
+                border: '1px solid #eef2f6'
+            }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between" mb={4} gap={1}>
+                    <Box display="flex" alignItems="center" gap={{ xs: 1.5, sm: 2.5 }}>
+                        <Box sx={{ 
+                            bgcolor: 'rgba(46, 125, 50, 0.08)', 
+                            p: { xs: 0.8, sm: 1.2 }, 
+                            borderRadius: 2.5, 
+                            display: 'flex',
+                            boxShadow: '0 2px 8px rgba(46, 125, 50, 0.1)'
+                        }}>
+                            <HistoryIcon sx={{ fontSize: { xs: 24, sm: 30 }, color: '#2e7d32' }} />
+                        </Box>
+                        <Box>
+                            <Typography variant={isMobile ? "h6" : "h5"} fontWeight="900" color="#2e7d32" sx={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
+                                Muster History
+                            </Typography>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', display: { xs: 'none', sm: 'block' } }}>
+                                Review and track past operational records
+                            </Typography>
+                        </Box>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={1}>
+                        <Chip 
+                            label={`${history.length} Records`} 
+                            size="small" 
+                            sx={{ 
+                                fontWeight: '900', 
+                                border: '2px solid #e8f5e9', 
+                                bgcolor: 'white', 
+                                color: '#2e7d32',
+                                height: 28,
+                                px: 1
+                            }} 
+                        />
                         <IconButton
                             onClick={() => window.dispatchEvent(new Event('muster-update'))}
                             size="small"
-                            color="primary"
                             sx={{
-                                bgcolor: '#e3f2fd',
-                                '&:hover': { bgcolor: '#bbdefb' },
-                                ml: 1
+                                bgcolor: '#f5f7f9',
+                                color: '#2e7d32',
+                                '&:hover': { bgcolor: '#eef2f6' },
+                                border: '1px solid #e0e6ed'
                             }}
                         >
                             <RefreshIcon fontSize="small" />
                         </IconButton>
                     </Box>
-                    <Chip label={`${history.length} Records`} color="primary" variant="outlined" size="small" />
                 </Box>
 
-                <TableContainer sx={{ border: '1px solid #e0e0e0', borderRadius: 2 }}>
-                    <Table>
-                        <TableHead>
-                            <TableRow sx={{ bgcolor: '#f5f5f5' }}>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-                                <TableCell sx={{ fontWeight: 'bold' }}>Division</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Submitted At</TableCell>
-                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Action</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {history.map((row: any) => (
-                                <TableRow key={`${row.date}-${row.divisionId}`} hover>
-                                    <TableCell sx={{ fontWeight: 500 }}>{row.date}</TableCell>
-                                    <TableCell>
-                                        <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e3f2fd', color: '#1565c0', fontWeight: 'bold' }} />
-                                        {row.auditRemarks && (() => {
-                                            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
-                                            const isUnread = !seenAudits.includes(row.id) && userRole !== 'CHIEF_CLERK';
-                                            return (
-                                                <Tooltip title={isUnread ? "Unread Audit Remark" : "Has Audit Note"}>
-                                                    <Chip 
-                                                        label={isUnread ? "NEW REMARK" : "Audited"} 
-                                                        size="small" 
-                                                        color={isUnread ? "error" : "warning"} 
-                                                        sx={{ 
-                                                            ml: 1, 
-                                                            height: 20, 
-                                                            fontSize: '0.65rem', 
-                                                            fontWeight: 'bold',
-                                                            ...(isUnread && {
-                                                                animation: 'pulse-red 2s infinite',
-                                                                '@keyframes pulse-red': {
-                                                                    '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
-                                                                    '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
-                                                                    '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
-                                                                }
-                                                            })
-                                                        }} 
-                                                    />
-                                                </Tooltip>
-                                            );
-                                        })()}
-                                    </TableCell>
-                                    <TableCell align="center" sx={{ color: 'text.secondary', fontSize: '0.85rem' }}>
-                                        {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                    </TableCell>
-                                    <TableCell align="center">
+                {isMobile ? (
+                    <Box display="flex" flexDirection="column" gap={2}>
+                        {history.map((row: any) => {
+                            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                            const isUnread = row.auditRemarks && !seenAudits.includes(row.id) && userRole !== 'CHIEF_CLERK';
+                            
+                            return (
+                                <Paper 
+                                    key={`${row.date}-${row.divisionId}`} 
+                                    elevation={0} 
+                                    sx={{ 
+                                        p: 2, 
+                                        borderRadius: 3, 
+                                        border: '1px solid #f0f4f8',
+                                        bgcolor: '#ffffff',
+                                        transition: 'all 0.2s',
+                                        '&:active': { transform: 'scale(0.98)', bgcolor: '#f9fbfc' }
+                                    }}
+                                >
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={2}>
+                                        <Box>
+                                            <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#2e7d32', fontSize: '1rem' }}>
+                                                {new Date(row.date).toLocaleDateString('en-US', { weekday: 'short', day: '2-digit', month: 'short' })}
+                                            </Typography>
+                                            <Box display="flex" alignItems="center" mt={0.5} gap={1}>
+                                                <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold' }}>
+                                                    {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                                </Typography>
+                                            </Box>
+                                        </Box>
+                                        <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.8}>
+                                            <Chip 
+                                                label={row.divisionName} 
+                                                size="small" 
+                                                sx={{ 
+                                                    fontWeight: 'bold', 
+                                                    bgcolor: '#e8f5e9', 
+                                                    color: '#2e7d32', 
+                                                    fontSize: '0.7rem' 
+                                                }} 
+                                            />
+                                            {row.auditRemarks && (
+                                                <Chip 
+                                                    label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                    size="small" 
+                                                    color={isUnread ? "error" : "warning"}
+                                                    sx={{ 
+                                                        height: 18, 
+                                                        fontSize: '0.6rem', 
+                                                        fontWeight: '900',
+                                                        ...(isUnread && {
+                                                            animation: 'pulse-tiny 2s infinite',
+                                                            '@keyframes pulse-tiny': {
+                                                                '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                                                                '70%': { boxShadow: '0 0 0 4px rgba(211, 47, 47, 0)' },
+                                                                '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                                                            }
+                                                        })
+                                                    }} 
+                                                />
+                                            )}
+                                        </Box>
+                                    </Box>
+                                    
+                                    <Box display="flex" gap={1.5} mt={2}>
                                         <Button
-                                            variant="outlined"
+                                            fullWidth
+                                            variant="contained"
                                             size="small"
-                                            color="primary"
-                                            startIcon={<VisibilityIcon />}
+                                            startIcon={<VisibilityIcon sx={{ fontSize: 18 }} />}
                                             onClick={() => handleReview(row)}
-                                            sx={{ textTransform: 'none', borderRadius: 2, mr: 1 }}
+                                            sx={{ 
+                                                borderRadius: 2.5, 
+                                                textTransform: 'none', 
+                                                fontWeight: 'bold',
+                                                bgcolor: '#2e7d32',
+                                                '&:hover': { bgcolor: '#1b5e20' }
+                                            }}
                                         >
-                                            View
+                                            View Details
                                         </Button>
-                                        <Tooltip title="Delete Report">
-                                            <IconButton
-                                                size="small"
-                                                color="error"
-                                                onClick={() => handleDelete(row)}
-                                                sx={{ bgcolor: '#ffebee', '&:hover': { bgcolor: '#ffcdd2' } }}
-                                            >
-                                                <DeleteIcon fontSize="small" />
-                                            </IconButton>
-                                        </Tooltip>
-                                    </TableCell>
+                                        <IconButton
+                                            size="small"
+                                            color="error"
+                                            onClick={() => handleDelete(row)}
+                                            sx={{ 
+                                                bgcolor: '#fff5f5', 
+                                                border: '1px solid #ffebee',
+                                                borderRadius: 2.5,
+                                                px: 2
+                                            }}
+                                        >
+                                            <DeleteIcon fontSize="small" />
+                                        </IconButton>
+                                    </Box>
+                                </Paper>
+                            );
+                        })}
+                        {history.length === 0 && (
+                            <Box sx={{ py: 8, textAlign: 'center', opacity: 0.6 }}>No records found.</Box>
+                        )}
+                    </Box>
+                ) : (
+                    <TableContainer sx={{ border: '1px solid #f0f4f8', borderRadius: 3, overflow: 'hidden' }}>
+                        <Table>
+                            <TableHead>
+                                <TableRow sx={{ bgcolor: '#f9fbfc' }}>
+                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Date</TableCell>
+                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Division</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Submitted At</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Action</TableCell>
                                 </TableRow>
-                            ))}
-                            {history.length === 0 && (
-                                <TableRow><TableCell colSpan={4} align="center" sx={{ py: 6, color: 'text.secondary', fontStyle: 'italic' }}>No muster records found.</TableCell></TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                            </TableHead>
+                            <TableBody>
+                                {history.map((row: any) => (
+                                    <TableRow key={`${row.date}-${row.divisionId}`} hover sx={{ '&:hover': { bgcolor: '#fbfcfe' } }}>
+                                        <TableCell sx={{ fontWeight: 'bold', color: '#333' }}>
+                                            {new Date(row.date).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Box display="flex" alignItems="center" gap={1}>
+                                                <Chip label={row.divisionName} size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }} />
+                                                {row.auditRemarks && (() => {
+                                                    const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                                                    const isUnread = !seenAudits.includes(row.id) && userRole !== 'CHIEF_CLERK';
+                                                    return (
+                                                        <Tooltip title={isUnread ? "Unread Audit Remark" : "Has Audit Note"}>
+                                                            <Chip 
+                                                                label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                                size="small" 
+                                                                color={isUnread ? "error" : "warning"} 
+                                                                sx={{ 
+                                                                    height: 20, 
+                                                                    fontSize: '0.65rem', 
+                                                                    fontWeight: 'bold',
+                                                                    ...(isUnread && {
+                                                                        animation: 'pulse-red 2s infinite',
+                                                                        '@keyframes pulse-red': {
+                                                                            '0%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0.4)' },
+                                                                            '70%': { boxShadow: '0 0 0 6px rgba(211, 47, 47, 0)' },
+                                                                            '100%': { boxShadow: '0 0 0 0 rgba(211, 47, 47, 0)' }
+                                                                        }
+                                                                    })
+                                                                }} 
+                                                            />
+                                                        </Tooltip>
+                                                    );
+                                                })()}
+                                            </Box>
+                                        </TableCell>
+                                        <TableCell align="center" sx={{ color: 'text.secondary', fontWeight: '500' }}>
+                                            {row.submittedAt ? new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '-'}
+                                        </TableCell>
+                                        <TableCell align="center">
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<VisibilityIcon />}
+                                                onClick={() => handleReview(row)}
+                                                sx={{ 
+                                                    textTransform: 'none', 
+                                                    borderRadius: 2, 
+                                                    mr: 1, 
+                                                    fontWeight: 'bold',
+                                                    borderColor: '#2e7d32',
+                                                    color: '#2e7d32',
+                                                    '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46, 125, 50, 0.04)' }
+                                                }}
+                                            >
+                                                View
+                                            </Button>
+                                            <Tooltip title="Delete Report">
+                                                <IconButton
+                                                    size="small"
+                                                    color="error"
+                                                    onClick={() => handleDelete(row)}
+                                                    sx={{ bgcolor: '#fff5f5', border: '1px solid #ffebee', '&:hover': { bgcolor: '#ffcdd2' } }}
+                                                >
+                                                    <DeleteIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                                {history.length === 0 && (
+                                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 6, color: 'text.secondary', fontStyle: 'italic' }}>No muster records found.</TableCell></TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
+                )}
             </Paper >
 
             {/* FULL REVIEW MODAL */}

@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import {
-    Box, Typography, Card, CardContent, Grid, CircularProgress,
-    Chip, Divider
+    Box, Typography, Card, CardContent, Grid, CircularProgress
 } from '@mui/material';
 import SpaIcon from '@mui/icons-material/Spa';
 import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
@@ -17,9 +16,14 @@ const swayAnimation = keyframes`
 `;
 
 const floatUp = keyframes`
-  0% { transform: translateY(0px) scale(0.5) rotate(0deg); opacity: 0; }
+  0% { transform: translateY(0px) rotate(0deg); opacity: 0; }
   30% { opacity: 0.8; }
-  100% { transform: translateY(-30px) scale(1) rotate(20deg); opacity: 0; }
+  100% { transform: translateY(-30px) rotate(20deg); opacity: 0; }
+`;
+
+const slideInUp = keyframes`
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
 `;
 
 const capitalize = (s: string) => {
@@ -80,38 +84,70 @@ export default function CropAge() {
     );
 
     return (
-        <Box sx={{ p: { xs: 1.5, sm: 2, md: 3 } }}>
-            <Box mb={3}>
-                <Typography variant="h4" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.75rem', sm: '2.125rem' } }}>
+        <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
+            <Box mb={{ xs: 1, sm: 3 }} px={{ xs: 0.5, sm: 0 }}>
+                <Typography variant="h4" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
                     Field Log
                 </Typography>
-                <Typography variant="body1" color="text.secondary" sx={{ fontSize: { xs: '0.9rem', sm: '1rem' } }}>
+                <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, mt: 0.5 }}>
                     Detailed field tracking and lifecycle management by division.
                 </Typography>
             </Box>
 
-            {divisions.map(division => {
+            {divisions.map((division, idx) => {
                 const divisionFields = fieldsData.filter(f => f.divisionId === division.divisionId);
 
                 return (
-                    <Box key={division.divisionId} mb={5}>
-                        {/* Division Header — read-only, no add button */}
-                        <Box display="flex" alignItems="center" gap={1} mb={2} flexWrap="wrap">
-                            <ForestIcon color="action" />
-                            <Typography variant="h5" fontWeight="500" sx={{ fontSize: { xs: '1.25rem', sm: '1.5rem' } }}>
-                                {division.name}
+                    <Box 
+                        key={division.divisionId} 
+                        mb={{ xs: 3, sm: 6 }}
+                        sx={{ 
+                            animation: `${slideInUp} 0.6s ease-out forwards`,
+                            animationDelay: `${idx * 0.15}s`,
+                            opacity: 0,
+                            bgcolor: '#fcfdfe',
+                            borderRadius: 4,
+                            border: '1px solid #e0e6ed',
+                            p: { xs: 1.5, sm: 3 },
+                            boxShadow: '0 4px 20px rgba(0,0,0,0.02)',
+                            position: 'relative'
+                        }}
+                    >
+                        {/* Division Header — Diagrammatic Label */}
+                        <Box 
+                            sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center', 
+                                gap: 1.5, 
+                                mb: 2, 
+                                position: 'absolute',
+                                top: -12,
+                                left: 24,
+                                bgcolor: 'white',
+                                px: 2,
+                                py: 0.5,
+                                borderRadius: 10,
+                                border: '1px solid #e0e6ed',
+                                boxShadow: '0 2px 8px rgba(0,0,0,0.05)',
+                                zIndex: 10
+                            }}
+                        >
+                            <ForestIcon sx={{ color: '#2e7d32', fontSize: { xs: '1.2rem', sm: '1.5rem' } }} />
+                            <Typography variant="h6" fontWeight="800" sx={{ fontSize: { xs: '0.85rem', sm: '1.1rem' }, color: '#2c3e50', letterSpacing: 1 }}>
+                                {division.name.toUpperCase()}
                             </Typography>
-                            <Chip label={`${divisionFields.length} Field${divisionFields.length !== 1 ? 's' : ''}`} size="small" sx={{ ml: { xs: 0, sm: 1 } }} />
+                            <Box sx={{ bgcolor: '#4caf50', color: 'white', px: 1, py: 0.2, borderRadius: 10, fontSize: '0.7rem', fontWeight: 900 }}>
+                                {divisionFields.length}
+                            </Box>
                         </Box>
-                        <Divider sx={{ mb: 2 }} />
 
                         {divisionFields.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary" fontStyle="italic">
-                                No fields in this division.
+                            <Typography variant="body2" color="text.secondary" fontStyle="italic" sx={{ mt: 2 }}>
+                                No fields assigned to this division.
                             </Typography>
                         ) : (
-                            <Grid container spacing={3}>
-                                {divisionFields.map((field: any) => {
+                            <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
+                                {divisionFields.map((field) => {
                                     const age = calculateAge(field.plantedDate);
                                     const ageInYears = age.years + (age.months / 12);
                                     const scale = 0.5 + Math.min(ageInYears, 30) / 30;
@@ -120,59 +156,70 @@ export default function CropAge() {
 
                                     return (
                                         <Grid size={{ xs: 12, sm: 6, md: 4, lg: 3 }} key={field.fieldId}>
-                                            <Card sx={{
+                                             <Card sx={{
                                                 position: 'relative',
-                                                transition: 'transform 0.2s, box-shadow 0.2s',
-                                                '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }
+                                                transition: 'all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275)',
+                                                border: '1px solid #edf2f7',
+                                                borderRadius: 3,
+                                                overflow: 'hidden',
+                                                bgcolor: 'white',
+                                                '&:hover': { 
+                                                    transform: 'translateY(-6px)', 
+                                                    boxShadow: '0 12px 30px rgba(0,0,0,0.08)',
+                                                    borderColor: color,
+                                                    '& .tree-icon': {
+                                                        filter: `drop-shadow(0px 8px 12px ${color}44)`,
+                                                        animation: `${swayAnimation} 1s infinite ease-in-out`
+                                                    }
+                                                }
                                             }}>
-                                                <CardContent>
-                                                    <Box>
-                                                        <Typography variant="h6" fontWeight="bold">{field.name}</Typography>
-                                                        <Box display="flex" gap={1} mt={0.5}>
-                                                            <Chip label={cropType} size="small" sx={{ bgcolor: color, color: 'white', fontWeight: 'bold' }} />
-                                                            <Chip label={`${field.acreage} Ac`} size="small" variant="outlined" />
-                                                        </Box>
-                                                    </Box>
-
-                                                    <Box display="flex" justifyContent="center" my={2} height={80} position="relative">
-                                                        <SpaIcon sx={{
-                                                            fontSize: 50 * scale,
-                                                            color,
-                                                            filter: 'drop-shadow(0px 3px 3px rgba(0,0,0,0.2))',
-                                                            animation: `${swayAnimation} 3s infinite ease-in-out`,
-                                                            zIndex: 1
-                                                        }} />
-                                                        <LocalFloristIcon sx={{
-                                                            position: 'absolute', top: '50%', right: '35%',
-                                                            fontSize: 16, color, opacity: 0,
-                                                            animation: `${floatUp} 4s infinite ease-in-out`,
-                                                            animationDelay: '0s'
-                                                        }} />
-                                                        <LocalFloristIcon sx={{
-                                                            position: 'absolute', top: '60%', left: '35%',
-                                                            fontSize: 12, color, opacity: 0,
-                                                            animation: `${floatUp} 4s infinite ease-in-out`,
-                                                            animationDelay: '2s'
-                                                        }} />
-                                                    </Box>
-
-                                                    <Box bgcolor="#f5f5f5" p={1.5} borderRadius={2}>
-                                                        <Box display="flex" justifyContent="space-between" mb={0.5}>
-                                                            <Typography variant="caption" fontWeight="bold" color="text.secondary">AGE</Typography>
-                                                            <Typography variant="body2" fontWeight="bold" color={color} sx={{
-                                                                animation: 'pulse 3s infinite ease-in-out',
-                                                                '@keyframes pulse': {
-                                                                    '0%': { opacity: 1 },
-                                                                    '50%': { opacity: 0.5 },
-                                                                    '100%': { opacity: 1 }
-                                                                }
-                                                            }}>
-                                                                {field.plantedDate ? `${age.years}y ${age.months}m ${age.days}d` : 'Not Set'}
+                                                <CardContent sx={{ p: { xs: 2, sm: 2.5 }, '&:last-child': { pb: 2 } }}>
+                                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1}>
+                                                        <Box>
+                                                            <Typography variant="subtitle1" fontWeight="800" sx={{ fontSize: '1rem', color: '#2d3748', lineHeight: 1.2 }}>
+                                                                {field.name}
+                                                            </Typography>
+                                                            <Typography variant="caption" sx={{ fontWeight: 900, color: color, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.8 }}>
+                                                                {cropType} Plantation
                                                             </Typography>
                                                         </Box>
-                                                        <Typography variant="caption" color="text.secondary" display="block" mt={0.5} textAlign="right">
-                                                            Planted: {field.plantedDate || 'N/A'}
-                                                        </Typography>
+                                                        <Box sx={{ textAlign: 'right' }}>
+                                                            <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#1a202c', lineHeight: 1 }}>
+                                                                {field.acreage}
+                                                                <Box component="span" sx={{ fontSize: '0.65rem', color: 'text.secondary', ml: 0.2, verticalAlign: 'middle' }}>ACRES</Box>
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+
+                                                    <Box display="flex" justifyContent="center" alignItems="center" height={70} mb={2} position="relative" sx={{ bgcolor: '#f1f5f9', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                                        <SpaIcon 
+                                                                className="tree-icon"
+                                                                sx={{
+                                                                    fontSize: { xs: 35 * scale, sm: 45 * scale },
+                                                                    color,
+                                                                    filter: 'drop-shadow(0px 2px 4px rgba(0,0,0,0.1))',
+                                                                    animation: `${swayAnimation} 3.5s infinite ease-in-out`,
+                                                                    zIndex: 1
+                                                                }} 
+                                                            />
+                                                            <LocalFloristIcon sx={{
+                                                                position: 'absolute', top: '20%', right: '35%',
+                                                                fontSize: 10, color, opacity: 0,
+                                                                animation: `${floatUp} 4s infinite ease-in-out`
+                                                            }} />
+                                                    </Box>
+
+                                                    <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 1.5, border: '1px solid #edf2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                                        <Box>
+                                                            <Typography sx={{ fontSize: '0.5rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase' }}>Field Age</Typography>
+                                                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#2d3748' }}>
+                                                                {field.plantedDate ? `${age.years}y ${age.months}m` : 'N/A'}
+                                                            </Typography>
+                                                        </Box>
+                                                        <Box sx={{ textAlign: 'right' }}>
+                                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, display: 'inline-block', mr: 0.5, animation: 'pulse 2s infinite' }} />
+                                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700 }}>Active</Typography>
+                                                        </Box>
                                                     </Box>
                                                 </CardContent>
                                             </Card>
@@ -186,8 +233,8 @@ export default function CropAge() {
             })}
 
             {divisions.length === 0 && (
-                <Typography color="text.secondary" fontStyle="italic">
-                    No divisions found for this estate.
+                <Typography color="text.secondary" fontStyle="italic" sx={{ textAlign: 'center', py: 10 }}>
+                    No infrastructure data detected. Please register divisions.
                 </Typography>
             )}
         </Box>

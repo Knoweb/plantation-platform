@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress, TextField } from '@mui/material';
+import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Tabs, Tab, CircularProgress, TextField, useMediaQuery, useTheme } from '@mui/material';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
@@ -12,11 +12,13 @@ interface CostItem {
     ytdAmount?: string;
     dayCostPerKgOverride?: string;
     todateCostPerKgOverride?: string;
+    budgetAmount?: number;
 }
 
 interface CostCategory {
     id: string;
     name: string;
+    budgetAmount?: number;
     items: CostItem[];
 }
 
@@ -74,6 +76,7 @@ const normalizeCategories = (input: any): CostCategory[] => {
             ytdAmount: ytdFromSource,
             dayCostPerKgOverride: sanitizeCostPerKgOverride(source?.dayCostPerKgOverride, source?.dayAmount),
             todateCostPerKgOverride: sanitizeCostPerKgOverride(source?.todateCostPerKgOverride, source?.todateAmount),
+            budgetAmount: source?.budgetAmount,
         };
 
         if (!Number.isNaN(sourceNameNumber) && sourceNameNumber > 0 && (Math.abs(ytdNumber - sourceNameNumber) < 0.001 || todateNumber === 0)) {
@@ -109,6 +112,7 @@ const normalizeCategories = (input: any): CostCategory[] => {
                 name: itemName,
                 dayCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.dayCostPerKgOverride, rawItem?.dayAmount),
                 todateCostPerKgOverride: sanitizeCostPerKgOverride(rawItem?.todateCostPerKgOverride, rawItem?.todateAmount),
+                budgetAmount: rawItem?.budgetAmount,
             });
         }
     }
@@ -121,6 +125,23 @@ const normalizeCategories = (input: any): CostCategory[] => {
     }));
 };
 
+const mergeBudgetsData = (cats: CostCategory[], budgets: any[]): CostCategory[] => {
+    return cats.map(cat => {
+        const catBudget = budgets.find(b => b.itemName === cat.name);
+        return {
+            ...cat,
+            budgetAmount: catBudget ? catBudget.amount : undefined,
+            items: cat.items.map(item => {
+                const itemBudget = budgets.find(b => b.itemName === item.name);
+                return {
+                    ...item,
+                    budgetAmount: itemBudget ? itemBudget.amount : undefined
+                };
+            })
+        };
+    });
+};
+
 const CROP_COLORS: Record<string, { tab: string; total: string }> = {
     Tea: { tab: '#2e7d32', total: '#e8f5e9' },
     Rubber: { tab: '#0277bd', total: '#e1f5fe' },
@@ -130,6 +151,7 @@ const DEFAULT_COLOR = { tab: '#757575', total: '#f5f5f5' };
 
 const fmt = (val?: string) => {
     const n = parseFloat(val || '0');
+    if (n === 0) return '-';
     return Number.isFinite(n) ? n.toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '-';
 };
 
@@ -160,6 +182,8 @@ export default function CostAnalysis() {
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
     const [loading, setLoading] = useState(false);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const [now, setNow] = useState(new Date());
     
     // date selection
@@ -167,6 +191,7 @@ export default function CostAnalysis() {
 
     const [fieldCropMap, setFieldCropMap] = useState<Map<string, string>>(new Map());
     const [weights, setWeights] = useState({ day: 0, todate: 0, lastMonth: 0, ytd: 0 });
+    const [monthlyBudgets, setMonthlyBudgets] = useState<any[]>([]);
 
     // Live clock
     useEffect(() => {
@@ -187,10 +212,12 @@ export default function CostAnalysis() {
                 if (crops.length > 0) { setAvailableCrops(crops); setActiveCrop(crops[0]); }
                 
                 const fMap = new Map<string, string>();
-                r.data.forEach((f: any) => {
-                    if (f.name && f.cropType) fMap.set(f.name.toLowerCase(), f.cropType.toUpperCase());
-                    if (f.id && f.cropType) fMap.set(String(f.id), f.cropType.toUpperCase());
-                });
+                if (Array.isArray(r.data)) {
+                    r.data.forEach((f: any) => {
+                        if (f.name && f.cropType) fMap.set(f.name.toLowerCase(), f.cropType.toUpperCase());
+                        if (f.id && f.cropType) fMap.set(String(f.id), f.cropType.toUpperCase());
+                    });
+                }
                 setFieldCropMap(fMap);
             }).catch(() => { });
     }, [userSession.tenantId]);
@@ -270,7 +297,22 @@ export default function CostAnalysis() {
                 setWeights({ day: dWeight, todate: tWeight, lastMonth: lmWeight, ytd: ytdWeight });
             }).catch(() => {});
 
+        // Fetch Monthly Budgets - Use same params as Chief Clerk
+        const currentYearMonth = selectedDate.substring(0, 7);
+        axios.get(`/api/monthly-budgets`, {
+            params: { 
+                tenantId: userSession.tenantId, 
+                cropType: activeCrop.toUpperCase(), 
+                yearMonth: currentYearMonth 
+            }
+        })
+        .then(r => setMonthlyBudgets(Array.isArray(r.data) ? r.data : []))
+        .catch(() => setMonthlyBudgets([]));
+
     }, [activeCrop, selectedDate, userSession.tenantId, fieldCropMap]);
+
+    // Apply budgets to categories
+    const categoriesWithBudgets = mergeBudgetsData(categories, monthlyBudgets);
 
     const colors = CROP_COLORS[activeCrop] || DEFAULT_COLOR;
 
@@ -354,13 +396,13 @@ export default function CostAnalysis() {
                             size="small"
                             stickyHeader
                             sx={{
-                                minWidth: 800,
-                                '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: '5px 12px' },
-                                tableLayout: { xs: 'auto', md: 'fixed' },
+                                minWidth: isMobile ? 1200 : 1000,
+                                '& .MuiTableCell-root': { borderRight: '1px solid #e8e8e8', padding: isMobile ? '4px 8px' : '5px 12px', fontSize: isMobile ? '0.75rem' : '0.85rem' },
+                                tableLayout: 'fixed',
                                 '& .MuiTableHead-root .MuiTableRow-root:first-of-type .MuiTableCell-root': {
                                     position: 'sticky',
                                     top: 0,
-                                    zIndex: 4,
+                                    zIndex: 10,
                                     height: `${HEADER_ROW_ONE_HEIGHT}px`,
                                     backgroundColor: '#fafafa',
                                     backgroundImage: 'none',
@@ -391,17 +433,19 @@ export default function CostAnalysis() {
                             }}
                         >
                             <colgroup>
-                                <col style={{ width: '28%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '12%' }} />
-                                <col style={{ width: '12%' }} />
+                                <col style={{ width: isMobile ? '160px' : '20%' }} />
+                                <col style={{ width: isMobile ? '90px' : '8%' }} />
+                                <col style={{ width: isMobile ? '80px' : '6%' }} />
+                                <col style={{ width: isMobile ? '90px' : '9%' }} />
+                                <col style={{ width: isMobile ? '80px' : '6%' }} />
+                                <col style={{ width: isMobile ? '90px' : '9%' }} />
+                                <col style={{ width: isMobile ? '90px' : '9%' }} />
+                                <col style={{ width: isMobile ? '90px' : '9%' }} />
+                                <col style={{ width: isMobile ? '90px' : '9%' }} />
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', width: '28%' }}>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: 11, position: 'sticky', left: 0 }}>
                                         Work Item
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
@@ -410,8 +454,14 @@ export default function CostAnalysis() {
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
                                         Todate
                                     </TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                        This month
+                                    </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
                                         History
+                                    </TableCell>
+                                    <TableCell rowSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+                                        Actions
                                     </TableCell>
                                 </TableRow>
                                 <TableRow>
@@ -419,15 +469,17 @@ export default function CostAnalysis() {
                                     {headerCell('Cost/Kg')}
                                     {headerCell('Amount (Rs.)')}
                                     {headerCell('Cost/Kg')}
+                                    {headerCell('Budget')}
+                                    {headerCell('Balance')}
                                     {headerCell('Last Mth')}
                                     {headerCell('YTD')}
                                 </TableRow>
                             </TableHead>
 
                             <TableBody>
-                                {categories.length === 0 && (
+                                {categoriesWithBudgets.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={7} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                        <TableCell colSpan={10} align="center" sx={{ py: 6, color: '#aaa' }}>
                                             <Typography variant="body2">
                                                 No published cost analysis is available yet for <strong>{activeCrop}</strong> on this date.<br />
                                                 The Chief Clerk must save or upload the report before it becomes visible here.
@@ -436,10 +488,20 @@ export default function CostAnalysis() {
                                     </TableRow>
                                 )}
 
-                                {categories.flatMap(cat => {
+                                {categoriesWithBudgets.flatMap(cat => {
                                     const rows = cat.items.map((item, idx) => (
                                         <TableRow key={`${cat.id}-item-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
-                                            <TableCell sx={{ pl: idx === 0 ? 2 : 4, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell sx={{ 
+                                                pl: idx === 0 ? 2 : 4, 
+                                                ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }),
+                                                position: 'sticky',
+                                                left: 0,
+                                                bgcolor: '#fff',
+                                                zIndex: 2,
+                                                whiteSpace: 'normal',
+                                                wordBreak: 'break-word',
+                                                boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                            }}>
                                                 {item.name}
                                             </TableCell>
                                             <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
@@ -454,11 +516,27 @@ export default function CostAnalysis() {
                                             <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmtPerKg(parseFloat(item.todateAmount || '0'), weights.todate, item.todateCostPerKgOverride)}
                                             </TableCell>
+                                            <TableCell align="right" sx={{ bgcolor: '#e3f2fd11', fontWeight: 500, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                {item.budgetAmount ? fmt(String(item.budgetAmount)) : '-'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ 
+                                                bgcolor: '#e3f2fd11', 
+                                                fontWeight: 600, 
+                                                color: (item.budgetAmount || 0) - (parseFloat(item.todateAmount || '0')) >= 0 ? '#2e7d32' : '#d32f2f',
+                                                ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) 
+                                            }}>
+                                                {item.budgetAmount && (item.budgetAmount > 0 || (parseFloat(item.todateAmount || '0')) > 0)
+                                                    ? fmt(String(item.budgetAmount - parseFloat(item.todateAmount || '0'))) 
+                                                    : '-'}
+                                            </TableCell>
                                             <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.lastMonthAmount)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.ytdAmount)}
+                                            </TableCell>
+                                            <TableCell align="center" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                -
                                             </TableCell>
                                         </TableRow>
                                     ));
@@ -470,7 +548,16 @@ export default function CostAnalysis() {
                                         
                                         rows.push(
                                             <TableRow key={`${cat.id}-total`} sx={{ bgcolor: colors.total }}>
-                                                <TableCell sx={{ fontWeight: 'bold', color: '#333', fontSize: '0.82rem' }}>
+                                                <TableCell sx={{ 
+                                                    fontWeight: 'bold', 
+                                                    color: '#333', 
+                                                    fontSize: '0.82rem',
+                                                    position: 'sticky',
+                                                    left: 0,
+                                                    bgcolor: colors.total,
+                                                    zIndex: 2,
+                                                    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                                }}>
                                                     Total Cost for {cat.name}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
@@ -485,39 +572,72 @@ export default function CostAnalysis() {
                                                 <TableCell align="right" sx={{ color: '#888' }}>
                                                     {fmtPerKg(totalTodateAmount, weights.todate)}
                                                 </TableCell>
+                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e3f2fd11' }}>
+                                                    {cat.budgetAmount || cat.items.some(i => i.budgetAmount) 
+                                                        ? fmtTotal(cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0))
+                                                        : '-'}
+                                                </TableCell>
+                                                <TableCell align="right" sx={{ 
+                                                    fontWeight: 'bold', 
+                                                    bgcolor: '#e3f2fd11',
+                                                    color: (cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - totalTodateAmount >= 0 ? '#2e7d32' : '#d32f2f' 
+                                                }}>
+                                                    {(cat.budgetAmount || cat.items.some(i => i.budgetAmount)) || totalTodateAmount > 0
+                                                        ? fmtTotal((cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - totalTodateAmount)
+                                                        : '-'}
+                                                </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                     {fmtTotal(catTotal(cat.items, 'lastMonthAmount'))}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                     {fmtTotal(catTotal(cat.items, 'ytdAmount'))}
                                                 </TableCell>
+                                                <TableCell align="center">
+                                                    -
+                                                </TableCell>
                                             </TableRow>
                                         );
                                     }
                                     return rows;
                                 })}
-                                {categories.length > 0 && (
+                                {categoriesWithBudgets.length > 0 && (
                                     <TableRow className="grand-total-row" sx={{ bgcolor: '#eceff1', borderTop: '2px solid #b0bec5' }}>
-                                        <TableCell sx={{ fontWeight: '1000', color: '#be123c', textTransform: 'uppercase', fontSize: '0.85rem' }}>
+                                        <TableCell sx={{ 
+                                            fontWeight: '1000', 
+                                            color: '#be123c', 
+                                            textTransform: 'uppercase', 
+                                            fontSize: '0.85rem',
+                                            position: 'sticky',
+                                            left: 0,
+                                            bgcolor: '#eceff1',
+                                            zIndex: 2,
+                                            boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                        }}>
                                             Grand Total Cost (Estate)
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
-                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'dayAmount'), 0))}
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + catTotal(cat.items, 'dayAmount'), 0))}
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
                                             -
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
-                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'todateAmount'), 0))}
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + catTotal(cat.items, 'todateAmount'), 0))}
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: 'bold', color: '#be123c' }}>
                                             -
                                         </TableCell>
-                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
-                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'lastMonthAmount'), 0))}
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#1b5e20', bgcolor: '#f1f8e9' }}>
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + (cat.budgetAmount || cat.items.reduce((itAcc, it) => itAcc + (it.budgetAmount || 0), 0)), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#1b5e20', bgcolor: '#f1f8e9' }}>
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + (cat.budgetAmount || cat.items.reduce((itAcc, it) => itAcc + (it.budgetAmount || 0), 0)), 0) - categoriesWithBudgets.reduce((acc, cat) => acc + catTotal(cat.items, 'todateAmount'), 0))}
                                         </TableCell>
                                         <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
-                                            {fmtTotal(categories.reduce((acc, cat) => acc + catTotal(cat.items, 'ytdAmount'), 0))}
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + catTotal(cat.items, 'lastMonthAmount'), 0))}
+                                        </TableCell>
+                                        <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
+                                            {fmtTotal(categoriesWithBudgets.reduce((acc, cat) => acc + catTotal(cat.items, 'ytdAmount'), 0))}
                                         </TableCell>
                                     </TableRow>
                                 )}
