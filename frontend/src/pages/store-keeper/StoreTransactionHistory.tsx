@@ -1,7 +1,12 @@
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, TextField, InputAdornment, Chip } from '@mui/material';
-import { useState, useEffect, useCallback } from 'react';
+import { 
+    Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, 
+    Paper, TextField, InputAdornment, Chip, useTheme, useMediaQuery, Card, CardContent, 
+    Stack, Divider, Grid 
+} from '@mui/material';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import SearchIcon from '@mui/icons-material/Search';
+import HistoryIcon from '@mui/icons-material/History';
 
 interface Transaction {
     id: number;
@@ -9,9 +14,9 @@ interface Transaction {
     type: string;
     quantity: number;
     date: string;
-    approvedDate?: string; // Add approvedDate
+    approvedDate?: string;
     issuedTo?: string;
-    managerRemarks?: string; // We map this to "Approver Remarks" in UI
+    managerRemarks?: string;
     status?: string;
     divisionName?: string;
     fieldName?: string;
@@ -23,8 +28,10 @@ const buildSocketUrl = (path: string) => {
 };
 
 export default function StoreTransactionHistory() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    
     const [transactions, setTransactions] = useState<Transaction[]>([]);
-    const [filtered, setFiltered] = useState<Transaction[]>([]);
     const [search, setSearch] = useState('');
     const [startDate, setStartDate] = useState('');
     const [endDate, setEndDate] = useState('');
@@ -36,22 +43,23 @@ export default function StoreTransactionHistory() {
         try {
             const res = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
             setTransactions(res.data);
-            setFiltered(res.data);
         } catch (err) {
-            console.error("Failed to fetch transactions");
+            console.error("Failed to fetch transactions", err);
         }
     }, [tenantId]);
 
     useEffect(() => {
-        fetchTransactions();
+        const loadTransactions = async () => {
+            await fetchTransactions();
+        };
+        void loadTransactions();
     }, [fetchTransactions]);
 
-    // WebSocket for Real-time Transaction History Updates
     useEffect(() => {
         if (!tenantId) return;
 
         let socket: WebSocket | null = null;
-        let reconnectTimer: any = null;
+        let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
 
         const connect = () => {
             socket = new WebSocket(buildSocketUrl('/ws/inventory'));
@@ -81,12 +89,11 @@ export default function StoreTransactionHistory() {
             }
             if (reconnectTimer) clearTimeout(reconnectTimer);
         };
-    }, [tenantId]);
+    }, [tenantId, fetchTransactions]);
 
-    useEffect(() => {
+    const filtered = useMemo(() => {
         let res = transactions;
 
-        // Search Filter
         if (search) {
             const s = search.toLowerCase();
             res = res.filter(t =>
@@ -97,23 +104,21 @@ export default function StoreTransactionHistory() {
             );
         }
 
-        // Date Filter
         if (startDate) {
             res = res.filter(t => new Date(t.date) >= new Date(startDate));
         }
         if (endDate) {
             const end = new Date(endDate);
-            end.setHours(23, 59, 59); // End of day
+            end.setHours(23, 59, 59);
             res = res.filter(t => new Date(t.date) <= end);
         }
 
-        // Filter out PENDING requests (Only show history of completed actions)
         res = res.filter(t => !(t.type === 'RESTOCK_REQUEST' && t.status === 'PENDING'));
 
-        setFiltered(res);
+        return [...res];
     }, [search, startDate, endDate, transactions]);
 
-    const getTypeColor = (type: string) => {
+    const getTypeColor = (type: string): "warning" | "success" | "info" | "default" => {
         switch (type) {
             case 'ISSUE':
             case 'FO_REQUISITION': return 'warning';
@@ -126,7 +131,6 @@ export default function StoreTransactionHistory() {
     const parseTransactionDate = (dateText?: string) => {
         if (!dateText) return null;
         const base = dateText.includes('T') ? dateText : dateText.replace(' ', 'T');
-        // Backend often serializes LocalDateTime without zone; in production it is UTC.
         const normalized = /Z|[+-]\d{2}:?\d{2}$/.test(base) ? base : `${base}Z`;
         const parsed = new Date(normalized);
         return Number.isNaN(parsed.getTime()) ? null : parsed;
@@ -174,116 +178,209 @@ export default function StoreTransactionHistory() {
     };
 
     return (
-        <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Recent Transactions
-            </Typography>
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                View recent stock movements and requests.
-            </Typography>
-
-            {/* Filters */}
-            <Box display="flex" gap={2} mb={3} flexWrap="wrap">
-                <TextField
-                    placeholder="Search Item, Division, Field..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    InputProps={{
-                        startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
-                    }}
-                    sx={{ width: 300, bgcolor: 'white' }}
-                />
-                <TextField
-                    label="Start Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    sx={{ bgcolor: 'white' }}
-                />
-                <TextField
-                    label="End Date"
-                    type="date"
-                    InputLabelProps={{ shrink: true }}
-                    value={endDate}
-                    onChange={(e) => setEndDate(e.target.value)}
-                    sx={{ bgcolor: 'white' }}
-                />
+        <Box sx={{ p: { xs: 1, sm: 2 } }}>
+            <Box sx={{ mb: 4 }}>
+                <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" color="primary" sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
+                    <HistoryIcon fontSize="large" />
+                    Recent Transactions
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                    View and filter recent stock movements, issuances, and restock requests.
+                </Typography>
             </Box>
 
-            {/* Table */}
-            <TableContainer component={Paper} elevation={2}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
-                        <TableRow>
-                            <TableCell><strong>Date</strong></TableCell>
-                            <TableCell><strong>Item</strong></TableCell>
-                            <TableCell><strong>Type</strong></TableCell>
-                            <TableCell align="right"><strong>Quantity</strong></TableCell>
-                            <TableCell><strong>Division</strong></TableCell>
-                            <TableCell><strong>Field</strong></TableCell>
-                            <TableCell><strong>Requested By</strong></TableCell>
-                            <TableCell><strong>Requester Remarks</strong></TableCell>
-                            <TableCell><strong>Manager Remarks</strong></TableCell>
-                            <TableCell align="center"><strong>Status</strong></TableCell>
-                        </TableRow>
-                    </TableHead>
-                    <TableBody>
-                        {filtered.length > 0 ? (
-                            filtered.map((t) => (
-                                <TableRow key={t.id} hover>
-                                    <TableCell>
-                                        {t.approvedDate ? (
-                                            <span title={`Requested: ${formatTransactionDateTime(t.date)}`}>
-                                                {formatTransactionDateTime(t.approvedDate)}
-                                            </span>
-                                        ) : (
-                                            formatTransactionDateTime(t.date)
-                                        )}
-                                    </TableCell>
-                                    <TableCell>{t.itemName}</TableCell>
-                                    <TableCell>
+            {/* Advanced Filter Bar */}
+            <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2, border: '1px solid #e0e0e0', bgcolor: '#fcfcfc' }}>
+                <Grid container spacing={2} alignItems="center">
+                    <Grid size={{ xs: 12, lg: 6 }}>
+                        <TextField
+                            fullWidth
+                            placeholder="Search by Item, Division, Field..."
+                            value={search}
+                            onChange={(e) => setSearch(e.target.value)}
+                            InputProps={{
+                                startAdornment: <InputAdornment position="start"><SearchIcon color="action" /></InputAdornment>,
+                            }}
+                            size="small"
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                        <TextField
+                            label="Start Date"
+                            type="date"
+                            fullWidth
+                            size="small"
+                            InputLabelProps={{ shrink: true }}
+                            value={startDate}
+                            onChange={(e) => setStartDate(e.target.value)}
+                        />
+                    </Grid>
+                    <Grid size={{ xs: 12, sm: 6, lg: 3 }}>
+                        <TextField
+                            label="End Date"
+                            type="date"
+                            fullWidth
+                            size="small"
+                            InputLabelProps={{ shrink: true }}
+                            value={endDate}
+                            onChange={(e) => setEndDate(e.target.value)}
+                        />
+                    </Grid>
+                </Grid>
+            </Paper>
+
+            {isMobile ? (
+                /* Mobile Card View */
+                <Stack spacing={2}>
+                    {filtered.length > 0 ? (
+                        filtered.map((t) => (
+                            <Card key={t.id} elevation={1} sx={{ borderRadius: 2, border: '1px solid #f0f0f0' }}>
+                                <CardContent sx={{ p: 2 }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start" mb={1.5}>
+                                        <Box>
+                                            <Typography variant="subtitle1" fontWeight="bold">
+                                                {t.itemName}
+                                            </Typography>
+                                            <Typography variant="caption" color="text.secondary">
+                                                {formatTransactionDateTime(t.approvedDate || t.date)}
+                                            </Typography>
+                                        </Box>
                                         <Chip
                                             label={
                                                 t.type === 'FO_REQUISITION' ? 'FIELD ISSUANCE' :
-                                                    t.type === 'RESTOCK_REQUEST' ? 'Restock Request' :
+                                                    t.type === 'RESTOCK_REQUEST' ? 'RESTOCK' :
                                                         t.type.replace(/_/g, ' ')
                                             }
-                                            color={getTypeColor(t.type) as any}
+                                            color={getTypeColor(t.type)}
                                             size="small"
+                                            sx={{ fontWeight: 'bold' }}
                                         />
-                                    </TableCell>
-                                    <TableCell align="right">{t.quantity}</TableCell>
-                                    <TableCell>{t.divisionName || '-'}</TableCell>
-                                    <TableCell>{t.fieldName || '-'}</TableCell>
-                                    <TableCell>
-                                        {t.type === 'FO_REQUISITION'
-                                            ? (splitIssuedTo(t.issuedTo).left || '-')
-                                            : t.type === 'RESTOCK_REQUEST'
-                                                ? getRequesterSource(t.issuedTo)
-                                                : (t.issuedTo || '-')}
-                                    </TableCell>
-                                    <TableCell>
-                                        {getRequesterRemarks(t)}
-                                    </TableCell>
-                                    <TableCell>{t.managerRemarks || '-'}</TableCell>
-                                    <TableCell align="center">
-                                        {t.status ? (
-                                            <Chip label={t.status} color={t.status === 'APPROVED' ? 'success' : t.status === 'DECLINED' ? 'error' : 'warning'} size="small" variant="outlined" />
-                                        ) : (
-                                            t.type === 'RESTOCK_REQUEST' ? <Chip label="PENDING" color="warning" size="small" variant="outlined" /> : <Chip label="COMPLETED" size="small" variant="outlined" />
-                                        )}
-                                    </TableCell>
-                                </TableRow>
-                            ))
-                        ) : (
+                                    </Box>
+                                    
+                                    <Divider sx={{ my: 1.5, borderStyle: 'dashed' }} />
+                                    
+                                    <Grid container spacing={1}>
+                                        <Grid size={6}>
+                                            <Typography variant="caption" color="text.secondary" display="block">Quantity</Typography>
+                                            <Typography variant="body2" fontWeight="medium">{t.quantity}</Typography>
+                                        </Grid>
+                                        <Grid size={6}>
+                                            <Typography variant="caption" color="text.secondary" display="block">Division/Field</Typography>
+                                            <Typography variant="body2">{t.divisionName || '-'}{t.fieldName ? ` / ${t.fieldName}` : ''}</Typography>
+                                        </Grid>
+                                        <Grid size={6}>
+                                            <Typography variant="caption" color="text.secondary" display="block">Requested By</Typography>
+                                            <Typography variant="body2" noWrap>
+                                                {t.type === 'FO_REQUISITION'
+                                                    ? (splitIssuedTo(t.issuedTo).left || '-')
+                                                    : t.type === 'RESTOCK_REQUEST'
+                                                        ? getRequesterSource(t.issuedTo)
+                                                        : (t.issuedTo || '-')}
+                                            </Typography>
+                                        </Grid>
+                                        <Grid size={6}>
+                                            <Typography variant="caption" color="text.secondary" display="block">Status</Typography>
+                                            <Chip 
+                                                label={t.status || (t.type === 'RESTOCK_REQUEST' ? 'PENDING' : 'COMPLETED')} 
+                                                color={t.status === 'APPROVED' ? 'success' : t.status === 'DECLINED' ? 'error' : (t.status === 'PENDING' || t.type === 'RESTOCK_REQUEST' ? 'warning' : 'default')} 
+                                                size="small" 
+                                                variant="outlined"
+                                                sx={{ height: 20, fontSize: '0.65rem' }}
+                                            />
+                                        </Grid>
+                                    </Grid>
+                                    
+                                    {(t.managerRemarks || getRequesterRemarks(t) !== '-') && (
+                                        <Box mt={1.5} sx={{ pt: 1, borderTop: '1px solid #eee' }}>
+                                            {getRequesterRemarks(t) !== '-' && (
+                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                    <strong>Requester:</strong> {getRequesterRemarks(t)}
+                                                </Typography>
+                                            )}
+                                            {t.managerRemarks && (
+                                                <Typography variant="caption" color="text.secondary" display="block">
+                                                    <strong>Manager:</strong> {t.managerRemarks}
+                                                </Typography>
+                                            )}
+                                        </Box>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        ))
+                    ) : (
+                        <Box textAlign="center" py={4} color="text.secondary">No transactions found.</Box>
+                    )}
+                </Stack>
+            ) : (
+                /* Desktop Table View */
+                <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 2, border: '1px solid #e0e0e0' }}>
+                    <Table>
+                        <TableHead sx={{ bgcolor: '#f8fafc' }}>
                             <TableRow>
-                                <TableCell colSpan={5} align="center">No transactions found.</TableCell>
+                                <TableCell><strong>Date</strong></TableCell>
+                                <TableCell><strong>Item</strong></TableCell>
+                                <TableCell><strong>Type</strong></TableCell>
+                                <TableCell align="right"><strong>Quantity</strong></TableCell>
+                                <TableCell><strong>Division</strong></TableCell>
+                                <TableCell><strong>Field</strong></TableCell>
+                                <TableCell><strong>Requested By</strong></TableCell>
+                                <TableCell><strong>Requester Remarks</strong></TableCell>
+                                <TableCell><strong>Manager Remarks</strong></TableCell>
+                                <TableCell align="center"><strong>Status</strong></TableCell>
                             </TableRow>
-                        )}
-                    </TableBody>
-                </Table>
-            </TableContainer>
+                        </TableHead>
+                        <TableBody>
+                            {filtered.length > 0 ? (
+                                filtered.map((t) => (
+                                    <TableRow key={t.id} hover>
+                                        <TableCell sx={{ whiteSpace: 'nowrap' }}>
+                                            {formatTransactionDateTime(t.approvedDate || t.date)}
+                                        </TableCell>
+                                        <TableCell sx={{ fontWeight: 'medium' }}>{t.itemName}</TableCell>
+                                        <TableCell>
+                                            <Chip
+                                                label={
+                                                    t.type === 'FO_REQUISITION' ? 'FIELD ISSUANCE' :
+                                                        t.type === 'RESTOCK_REQUEST' ? 'Restock Request' :
+                                                            t.type.replace(/_/g, ' ')
+                                                }
+                                                color={getTypeColor(t.type)}
+                                                size="small"
+                                            />
+                                        </TableCell>
+                                        <TableCell align="right">{t.quantity}</TableCell>
+                                        <TableCell>{t.divisionName || '-'}</TableCell>
+                                        <TableCell>{t.fieldName || '-'}</TableCell>
+                                        <TableCell>
+                                            {t.type === 'FO_REQUISITION'
+                                                ? (splitIssuedTo(t.issuedTo).left || '-')
+                                                : t.type === 'RESTOCK_REQUEST'
+                                                    ? getRequesterSource(t.issuedTo)
+                                                    : (t.issuedTo || '-')}
+                                        </TableCell>
+                                        <TableCell>
+                                            {getRequesterRemarks(t)}
+                                        </TableCell>
+                                        <TableCell>{t.managerRemarks || '-'}</TableCell>
+                                        <TableCell align="center">
+                                            {t.status ? (
+                                                <Chip label={t.status} color={t.status === 'APPROVED' ? 'success' : t.status === 'DECLINED' ? 'error' : 'warning'} size="small" variant="outlined" />
+                                            ) : (
+                                                t.type === 'RESTOCK_REQUEST' ? <Chip label="PENDING" color="warning" size="small" variant="outlined" /> : <Chip label="COMPLETED" size="small" variant="outlined" />
+                                            )}
+                                        </TableCell>
+                                    </TableRow>
+                                ))
+                            ) : (
+                                <TableRow>
+                                    <TableCell colSpan={10} align="center" sx={{ py: 4 }}>No transactions found.</TableCell>
+                                </TableRow>
+                            )}
+                        </TableBody>
+                    </Table>
+                </TableContainer>
+            )}
         </Box>
     );
 }
+

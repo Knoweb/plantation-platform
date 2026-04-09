@@ -5,7 +5,8 @@ import {
     TableContainer, TableHead, TableRow, IconButton, Dialog,
     DialogTitle, DialogContent, DialogActions, TextField,
     FormControl, InputLabel, Select, MenuItem, Chip,
-    Tabs, Tab, Snackbar, Alert, Checkbox, FormControlLabel, FormGroup
+    Tabs, Tab, Snackbar, Alert, Checkbox, FormControlLabel, FormGroup,
+    useTheme, useMediaQuery
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import EditIcon from '@mui/icons-material/Edit';
@@ -210,6 +211,9 @@ export default function WorkerRegistry() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const userRole = userSession.role;
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
 
     const [workers, setWorkers] = useState<Worker[]>([]);
     const [, setLoading] = useState(true);
@@ -589,48 +593,51 @@ export default function WorkerRegistry() {
     };
 
     return (
-        <Box sx={{ p: 4 }}>
-            <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 4 }}>
-                <Typography variant="h4" sx={{ fontWeight: 'bold', color: '#1a5e20' }}>
+        <Box sx={{ p: { xs: 2, sm: 4 } }}>
+            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', mb: isMobile ? 3 : 4, gap: 2 }}>
+                <Typography variant={isSmall ? "h4" : "h3"} sx={{ fontWeight: 'bold', color: '#1a5e20' }}>
                     Worker Registry
                 </Typography>
-                <Box display="flex" gap={2}>
+                <Box display="flex" flexDirection={isSmall ? 'column' : 'row'} gap={2} alignItems={isSmall ? 'stretch' : 'center'}>
                     {activeTab === 1 && (
                         <TextField
                             label="Filter by Date"
                             type="date"
                             size="small"
+                            fullWidth={isSmall}
                             InputLabelProps={{ shrink: true }}
                             value={filterDate}
                             onChange={(e) => setFilterDate(e.target.value)}
                         />
                     )}
                     {userRole === 'CHIEF_CLERK' && (
-                        <>
+                        <Box display="flex" gap={1} flexDirection={isSmall ? 'column' : 'row'}>
                             {activeTab === 1 && (
                                 <Button
+                                    fullWidth={isSmall}
                                     variant="outlined"
                                     startIcon={<Diversity3Icon />}
                                     onClick={() => setOpenAddTeamDialog(true)}
-                                    sx={{ color: '#1a5e20', borderColor: '#1a5e20', '&:hover': { backgroundColor: '#e8f5e9', borderColor: '#144a19' } }}
+                                    sx={{ color: '#1a5e20', borderColor: '#1a5e20', '&:hover': { backgroundColor: '#e8f5e9', borderColor: '#144a19' }, whiteSpace: 'nowrap' }}
                                 >
                                     Add Contractor
                                 </Button>
                             )}
                             <Button
+                                fullWidth={isSmall}
                                 variant="contained"
                                 startIcon={activeTab === 1 ? <GroupsIcon /> : <AddIcon />}
                                 onClick={() => activeTab === 1 ? setOpenDailyDialog(true) : handleAddNew()}
-                                sx={{ backgroundColor: '#1a5e20', '&:hover': { backgroundColor: '#144a19' } }}
+                                sx={{ backgroundColor: '#1a5e20', '&:hover': { backgroundColor: '#144a19' }, whiteSpace: 'nowrap' }}
                             >
-                                {activeTab === 1 ? "Log Daily Attendance" : "Add workers"}
+                                {activeTab === 1 ? "Log Daily Attendance" : "Add Worker"}
                             </Button>
-                        </>
+                        </Box>
                     )}
                 </Box>
             </Box>
 
-            <Paper sx={{ mb: 3, borderRadius: 2, overflow: 'hidden' }}>
+            <Paper sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, val) => setActiveTab(val)}
@@ -639,36 +646,47 @@ export default function WorkerRegistry() {
                     variant="fullWidth"
                     sx={{
                         '& .MuiTab-root': {
-                            py: 2,
-                            fontSize: '1rem',
+                            py: isSmall ? 1.5 : 2,
+                            px: isSmall ? 1 : 2,
+                            fontSize: isSmall ? '0.75rem' : '0.9rem',
                             fontWeight: 'bold',
                             textTransform: 'none',
+                            lineHeight: 1.2,
+                            minHeight: isSmall ? 60 : 72
                         },
                         '& .Mui-selected': {
-                            backgroundColor: '#e8f5e9', // Light green background for selected
+                            backgroundColor: '#e8f5e9',
                             color: '#1b5e20',
                         }
                     }}
                 >
-                    <Tab icon={<GroupsIcon />} iconPosition="start" label="Estate Workers (Permanent / Casual)" />
-                    <Tab icon={<Diversity3Icon />} iconPosition="start" label="Day Contract Workers" />
+                    <Tab 
+                        icon={<GroupsIcon sx={{ display: isSmall ? 'none' : 'block' }} />} 
+                        iconPosition="start" 
+                        label={isSmall ? "Estate Workers" : "Estate Workers (Permanent / Casual)"} 
+                    />
+                    <Tab 
+                        icon={<Diversity3Icon sx={{ display: isSmall ? 'none' : 'block' }} />} 
+                        iconPosition="start" 
+                        label="Day Contract Workers" 
+                    />
                 </Tabs>
             </Paper>
 
             <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3 }}>
                 <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableHead sx={{ bgcolor: '#f8fafc' }}>
                         <TableRow>
-                            <TableCell><strong>Reg No</strong></TableCell>
-                            <TableCell><strong>Name</strong></TableCell>
-                            {activeTab === 0 && <TableCell><strong>Emp. Type</strong></TableCell>}
+                            <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Reg No</strong></TableCell>
+                            <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Name</strong></TableCell>
+                            {activeTab === 0 && <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Emp. Type</strong></TableCell>}
                             {activeTab === 1 && <>
-                                <TableCell><strong>Contractor Name</strong></TableCell>
-                                <TableCell><strong>Registered Date</strong></TableCell>
+                                <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Contractor</strong></TableCell>
+                                <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}><strong>Date</strong></TableCell>
                             </>}
-                            {activeTab === 0 && <TableCell><strong>Gender</strong></TableCell>}
-                            <TableCell><strong>Status</strong></TableCell>
-                            <TableCell align="right"><strong>Actions</strong></TableCell>
+                            {activeTab === 0 && <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}><strong>Gender</strong></TableCell>}
+                            <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Status</strong></TableCell>
+                            <TableCell align="right" sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Actions</strong></TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -712,74 +730,78 @@ export default function WorkerRegistry() {
                                 return 0;
                             })
                             .map((worker) => (
-                                <TableRow key={worker.id}>
-                                    <TableCell>{worker.registrationNumber}</TableCell>
-                                    <TableCell>
+                                <TableRow key={worker.id} sx={{ '&:nth-of-type(even)': { bgcolor: '#fdfdfd' } }}>
+                                    <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem', fontWeight: 600 }}>{worker.registrationNumber}</TableCell>
+                                    <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <PersonIcon color={worker.gender === 'MALE' ? 'primary' : 'secondary'} />
-                                            {worker.name}
+                                            <PersonIcon sx={{ fontSize: isSmall ? 16 : 20 }} color={worker.gender === 'MALE' ? 'primary' : 'secondary'} />
+                                            <Typography variant="body2" sx={{ fontWeight: 500, fontSize: 'inherit', color: 'text.primary' }}>{worker.name}</Typography>
                                         </Box>
                                     </TableCell>
                                     {activeTab === 0 && (
-                                        <TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}>
                                             <Chip
                                                 label={worker.employmentType || 'PERMANENT'}
                                                 size="small"
                                                 color={
                                                     worker.employmentType === 'PERMANENT' ? 'success' : (worker.employmentType === 'CASUAL' ? 'info' : 'secondary')
                                                 }
-                                                sx={{ mr: 1 }}
+                                                sx={{ mr: 1, fontSize: '0.7rem' }}
                                             />
                                             {worker.employmentType === 'PERMANENT' && worker.joinedDate && (
                                                 (new Date().getTime() - new Date(worker.joinedDate).getTime()) / (1000 * 60 * 60 * 24 * 365) >= 5
                                             ) && (
                                                     <Chip
-                                                        label="Gratuity Eligible"
+                                                        label="Gratuity"
                                                         size="small"
                                                         color="success"
                                                         variant="outlined"
-                                                        icon={<SpaIcon />}
+                                                        icon={<SpaIcon sx={{ fontSize: '0.8rem !important' }} />}
+                                                        sx={{ fontSize: '0.7rem' }}
                                                     />
                                                 )}
                                         </TableCell>
                                     )}
                                     {activeTab === 1 && <>
-                                        <TableCell>{worker.contractorName || 'N/A'}</TableCell>
-                                        <TableCell>{worker.registeredDate || 'N/A'}</TableCell>
+                                        <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}>{worker.contractorName || 'N/A'}</TableCell>
+                                        <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{worker.registeredDate || 'N/A'}</TableCell>
                                     </>}
-                                    {activeTab === 0 && <TableCell>{worker.gender}</TableCell>}
-                                    <TableCell>
+                                    {activeTab === 0 && <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}>{worker.gender}</TableCell>}
+                                    <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2 }}>
                                         <Chip
                                             label={worker.status === 'PENDING_APPROVAL' ? 'PENDING' : worker.status}
                                             color={worker.status === 'ACTIVE' ? 'success' : worker.status === 'PENDING_APPROVAL' ? 'warning' : 'default'}
                                             size="small"
+                                            sx={{ fontSize: isSmall ? '0.65rem' : '0.75rem', height: isSmall ? 20 : 24 }}
                                         />
                                     </TableCell>
-                                    <TableCell align="right">
+                                    <TableCell align="right" sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, whiteSpace: 'nowrap' }}>
                                         {userRole === 'MANAGER' && worker.status === 'PENDING_APPROVAL' && (
-                                            <>
+                                            <Box display="flex" gap={0.5} justifyContent="flex-end" mb={isSmall ? 1 : 0}>
                                                 <Button
                                                     variant="contained"
                                                     color="success"
                                                     size="small"
-                                                    style={{ marginRight: 8 }}
                                                     onClick={() => handleApprove(worker)}
+                                                    sx={{ minWidth: 0, px: 1, fontSize: '0.7rem' }}
                                                 >
-                                                    Approve
+                                                    {isSmall ? 'App' : 'Approve'}
                                                 </Button>
                                                 <Button
                                                     variant="contained"
                                                     color="error"
                                                     size="small"
-                                                    style={{ marginRight: 8 }}
                                                     onClick={() => handleReject(worker)}
+                                                    sx={{ minWidth: 0, px: 1, fontSize: '0.7rem' }}
                                                 >
-                                                    Reject
+                                                    {isSmall ? 'Rej' : 'Reject'}
                                                 </Button>
-                                            </>
+                                            </Box>
                                         )}
-                                        <IconButton size="small" onClick={() => handleEdit(worker)}><EditIcon /></IconButton>
-                                        <IconButton size="small" color="error" onClick={() => worker.id && handleDelete(worker.id)}><DeleteIcon /></IconButton>
+                                        <Box display="flex" justifyContent="flex-end">
+                                            <IconButton size="small" onClick={() => handleEdit(worker)} sx={{ p: isSmall ? 0.5 : 1 }}><EditIcon sx={{ fontSize: isSmall ? 18 : 20 }} /></IconButton>
+                                            <IconButton size="small" color="error" onClick={() => worker.id && handleDelete(worker.id)} sx={{ p: isSmall ? 0.5 : 1 }}><DeleteIcon sx={{ fontSize: isSmall ? 18 : 20 }} /></IconButton>
+                                        </Box>
                                     </TableCell>
                                 </TableRow>
                             ))}

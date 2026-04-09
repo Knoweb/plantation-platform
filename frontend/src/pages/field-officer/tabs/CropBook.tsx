@@ -623,71 +623,73 @@ export default function CropBook() {
                         </Typography>
                     </Box>
 
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<DownloadIcon />}
-                        onClick={() => {
-                            // Native .XLSX Export (Zero Warning Approach)
-                            const worksheetData = [
-                                // Row 1: Category Headers
-                                ["", "Factory Weight", "", "Field Weight", "", "Checkroll Weight", "", "Yield per Acre", "", "No. Of Pluckers", "", "Over kilos", "", "Cash Kilos", "", "Plucking Average", "", "Plucking Cost", ""],
-                                // Row 2: Sub-Headers
-                                ["Day", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate"]
-                            ];
+                    {!isChiefClerk && (
+                        <Button
+                            variant="contained"
+                            color="success"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => {
+                                // Native .XLSX Export (Zero Warning Approach)
+                                const worksheetData = [
+                                    // Row 1: Category Headers
+                                    ["", "Factory Weight", "", "Field Weight", "", "Checkroll Weight", "", "Yield per Acre", "", "No. Of Pluckers", "", "Over kilos", "", "Cash Kilos", "", "Plucking Average", "", "Plucking Cost", ""],
+                                    // Row 2: Sub-Headers
+                                    ["Day", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate", "Day", "Todate"]
+                                ];
 
-                            realData.forEach(r => {
-                                worksheetData.push([
-                                    r.day,
-                                    r.factoryWeightDay || 0, r.factoryWeightTodate || 0,
-                                    r.fieldWeightDay || 0, r.fieldWeightTodate || 0,
-                                    r.checkrollWeightDay || 0, r.checkrollWeightTodate || 0,
-                                    r.yieldPerAcreDay || 0, r.yieldPerAcreTodate || 0,
-                                    r.noOfPluckersDay || 0, r.noOfPluckersTodate || 0,
-                                    r.overKilosDay || 0, r.overKilosTodate || 0,
-                                    r.cashKilosDay || 0, r.cashKilosTodate || 0,
-                                    r.pluckingAverageDay || 0, r.pluckingAverageTodate || 0,
-                                    r.pluckingCostPerKgDay || 0, r.pluckingCostPerKgTodate || 0
-                                ]);
-                            });
+                                realData.forEach(r => {
+                                    worksheetData.push([
+                                        r.day,
+                                        r.factoryWeightDay || 0, r.factoryWeightTodate || 0,
+                                        r.fieldWeightDay || 0, r.fieldWeightTodate || 0,
+                                        r.checkrollWeightDay || 0, r.checkrollWeightTodate || 0,
+                                        r.yieldPerAcreDay || 0, r.yieldPerAcreTodate || 0,
+                                        r.noOfPluckersDay || 0, r.noOfPluckersTodate || 0,
+                                        r.overKilosDay || 0, r.overKilosTodate || 0,
+                                        r.cashKilosDay || 0, r.cashKilosTodate || 0,
+                                        r.pluckingAverageDay || 0, r.pluckingAverageTodate || 0,
+                                        r.pluckingCostPerKgDay || 0, r.pluckingCostPerKgTodate || 0
+                                    ]);
+                                });
 
-                            const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
-                            
-                            // Apply Merges for the Stacked Header
-                            worksheet['!merges'] = [
-                                { s: { r: 0, c: 1 }, e: { r: 0, c: 2 } },   // Factory Weight
-                                { s: { r: 0, c: 3 }, e: { r: 0, c: 4 } },   // Field Weight
-                                { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } },   // Checkroll Weight
-                                { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } },   // Yield per Acre
-                                { s: { r: 0, c: 9 }, e: { r: 0, c: 10 } },  // No. Of Pluckers
-                                { s: { r: 0, c: 11 }, e: { r: 0, c: 12 } }, // Over kilos
-                                { s: { r: 0, c: 13 }, e: { r: 0, c: 14 } }, // Cash Kilos
-                                { s: { r: 0, c: 15 }, e: { r: 0, c: 16 } }, // Plucking Average
-                                { s: { r: 0, c: 17 }, e: { r: 0, c: 18 } }  // Plucking Cost
-                            ];
+                                const worksheet = XLSX.utils.aoa_to_sheet(worksheetData);
+                                
+                                // Apply Merges for the Stacked Header
+                                worksheet['!merges'] = [
+                                    { s: { r: 0, c: 1 }, e: { r: 0, c: 2 } },   // Factory Weight
+                                    { s: { r: 0, c: 3 }, e: { r: 0, c: 4 } },   // Field Weight
+                                    { s: { r: 0, c: 5 }, e: { r: 0, c: 6 } },   // Checkroll Weight
+                                    { s: { r: 0, c: 7 }, e: { r: 0, c: 8 } },   // Yield per Acre
+                                    { s: { r: 0, c: 9 }, e: { r: 0, c: 10 } },  // No. Of Pluckers
+                                    { s: { r: 0, c: 11 }, e: { r: 0, c: 12 } }, // Over kilos
+                                    { s: { r: 0, c: 13 }, e: { r: 0, c: 14 } }, // Cash Kilos
+                                    { s: { r: 0, c: 15 }, e: { r: 0, c: 16 } }, // Plucking Average
+                                    { s: { r: 0, c: 17 }, e: { r: 0, c: 18 } }  // Plucking Cost
+                                ];
 
-                            // Set Column Widths for legibility
-                            worksheet['!cols'] = [
-                                { wch: 8 }, // Day
-                                ...Array(18).fill({ wch: 15 })
-                            ];
+                                // Set Column Widths for legibility
+                                worksheet['!cols'] = [
+                                    { wch: 8 }, // Day
+                                    ...Array(18).fill({ wch: 15 })
+                                ];
 
-                            const workbook = XLSX.utils.book_new();
-                            XLSX.utils.book_append_sheet(workbook, worksheet, `Crop_Report`);
-                            XLSX.writeFile(workbook, `Manager_Crop_Book_${activeCrop}_${selectedMonth}.xlsx`);
-                        }}
-                        sx={{
-                            ml: { lg: 1 },
-                            bgcolor: '#2e7d32',
-                            borderRadius: 2,
-                            textTransform: 'none',
-                            fontWeight: '900',
-                            px: 2,
-                            '&:hover': { bgcolor: '#1b5e20' }
-                        }}
-                    >
-                        Download Snapshot
-                    </Button>
+                                const workbook = XLSX.utils.book_new();
+                                XLSX.utils.book_append_sheet(workbook, worksheet, `Crop_Report`);
+                                XLSX.writeFile(workbook, `Manager_Crop_Book_${activeCrop}_${selectedMonth}.xlsx`);
+                            }}
+                            sx={{
+                                ml: { lg: 1 },
+                                bgcolor: '#2e7d32',
+                                borderRadius: 2,
+                                textTransform: 'none',
+                                fontWeight: '900',
+                                px: 2,
+                                '&:hover': { bgcolor: '#1b5e20' }
+                            }}
+                        >
+                            Download Snapshot
+                        </Button>
+                    )}
                 </Box>
             </Box>
             <Paper elevation={3} sx={{ flex: 1, display: 'flex', flexDirection: { xs: 'column', md: isChiefClerk ? 'column' : 'row' }, overflow: { xs: 'auto', md: 'hidden' }, border: '1px solid #e0e0e0', borderRadius: 2 }}>

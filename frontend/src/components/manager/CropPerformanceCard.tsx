@@ -79,7 +79,11 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
 
                 const dailyWeights = new Map<string, number>();
                 records.forEach((record: any) => {
+                    // Filter by crop type
                     if (!fieldIdsForCrop.has(record.fieldId)) return;
+                    
+                    // Filter by date (Crucial: backend currently returns all records)
+                    if (!record.workDate || record.workDate < startDate || record.workDate > endDate) return;
                     
                     if (record.bulkWeights) {
                         try {
@@ -100,6 +104,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                 records.forEach((record: any) => {
                     if (!fieldIdsForCrop.has(record.fieldId)) return;
                     if (!record.bulkWeights) return;
+                    if (!record.workDate || record.workDate < startDate || record.workDate > endDate) return;
                     try {
                         const bw = JSON.parse(record.bulkWeights);
                         const wt = Number(bw.__FACTORY__?.factoryWt || 0);

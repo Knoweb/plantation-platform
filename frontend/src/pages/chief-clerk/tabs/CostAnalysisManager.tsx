@@ -854,7 +854,7 @@ export default function CostAnalysisManager() {
                     gap={1}
                     alignItems="center"
                     flexWrap="wrap"
-                    sx={{ flex: '0 0 auto', width: isTablet ? '100%' : 'auto' }}
+                    sx={{ flex: '1 1 auto', width: isTablet ? '100%' : 'auto', justifyContent: isMobile ? 'space-between' : 'flex-end' }}
                 >
                     <TextField
                         type="date"
@@ -864,64 +864,75 @@ export default function CostAnalysisManager() {
                             setSelectedDate(e.target.value);
                             setMsg('');
                         }}
-                        sx={{ bgcolor: '#fff', borderRadius: 1, flex: isMobile ? '1 1 auto' : '0 0 auto' }}
+                        sx={{ bgcolor: '#fff', borderRadius: 1, flex: isMobile ? '1 1 55%' : '0 0 auto' }}
                     />
                     {!isEditable && isChiefClerk && (
                         <Button
                             variant="contained"
-                            startIcon={<EditIcon />}
+                            startIcon={<EditIcon sx={{ fontSize: isMobile ? 18 : 20 }} />}
                             onClick={() => setIsEditable(true)}
                             disabled={!canEditSelectedDate}
-                            sx={{ bgcolor: '#e65100', flex: isMobile ? '1 1 45%' : '0 0 auto' }}
+                            sx={{ 
+                                bgcolor: '#e65100', 
+                                flex: isMobile ? '1 1 40%' : '0 0 auto',
+                                fontSize: isMobile ? '0.8rem' : '0.875rem',
+                                px: isMobile ? 1 : 2
+                            }}
                         >
                             {isMobile ? 'Edit' : 'Edit Entry'}
                         </Button>
                     )}
                     {!isEditable && (
-                        <Tooltip title="Download Daily Snapshot">
-                            <Button
-                                variant="contained"
-                                startIcon={<DownloadIcon />}
-                                onClick={handleDownloadSnapshot}
-                                sx={{ bgcolor: '#2e7d32', '&:hover': { bgcolor: '#1b5e20' }, flex: isMobile ? '1 1 45%' : '0 0 auto' }}
-                            >
-                                {isMobile ? 'Snapshot' : 'Download Snapshot'}
-                            </Button>
-                        </Tooltip>
+                        <Button
+                            fullWidth={isMobile}
+                            variant="contained"
+                            startIcon={<DownloadIcon sx={{ fontSize: isMobile ? 18 : 20 }} />}
+                            onClick={handleDownloadSnapshot}
+                            sx={{ 
+                                bgcolor: '#2e7d32', 
+                                '&:hover': { bgcolor: '#1b5e20' }, 
+                                flex: isMobile ? '1 1 100%' : '0 0 auto',
+                                fontSize: isMobile ? '0.8rem' : '0.875rem'
+                            }}
+                        >
+                            {isMobile ? 'Download Snapshot' : 'Download Snapshot'}
+                        </Button>
                     )}
                     {isEditable && (
                         <Box display="flex" gap={1} flexWrap="wrap" width="100%">
                             <Button
                                 variant="contained"
-                                startIcon={syncing ? <CircularProgress size={16} color="inherit" /> : <AutorenewIcon />}
+                                startIcon={syncing ? <CircularProgress size={14} color="inherit" /> : <AutorenewIcon sx={{ fontSize: 18 }} />}
                                 onClick={syncFromMuster}
                                 disabled={syncing}
-                                sx={{ bgcolor: '#0277bd', flex: isMobile ? '1 1 100%' : '0 0 auto' }}
+                                sx={{ bgcolor: '#0277bd', flex: isMobile ? '1 1 100%' : '0 0 auto', fontSize: isMobile ? '0.75rem' : '0.8125rem' }}
                             >
-                                {syncing ? 'Syncing...' : (isMobile ? 'Sync' : 'Sync from Muster')}
+                                {syncing ? 'Syncing...' : (isMobile ? 'Sync Attendance' : 'Sync from Muster')}
                             </Button>
-                            <Button variant="outlined" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161', flex: isMobile ? '1 1 30%' : '0 0 auto' }}>
+                            <Button variant="outlined" size="small" onClick={handleCancelEdit} sx={{ borderColor: '#9e9e9e', color: '#616161', flex: isMobile ? '1 1 30%' : '0 0 auto' }}>
                                 Cancel
                             </Button>
-                            <Button variant="contained" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32', flex: isMobile ? '1 1 60%' : '0 0 auto' }}>
+                            <Button variant="contained" size="small" startIcon={<SaveIcon />} onClick={handleSave} sx={{ bgcolor: '#2e7d32', flex: isMobile ? '1 1 60%' : '0 0 auto' }}>
                                 Save
                             </Button>
                             <Button
                                 variant="outlined"
-                                startIcon={<DownloadIcon />}
+                                size="small"
+                                startIcon={<DownloadIcon sx={{ fontSize: 16 }} />}
                                 onClick={handleDownloadTemplate}
-                                sx={{ borderColor: cropColor, color: cropColor, flex: isMobile ? '1 1 45%' : '0 0 auto' }}
+                                sx={{ borderColor: cropColor, color: cropColor, flex: isMobile ? '1 1 45%' : '0 0 auto', fontSize: isMobile ? '0.7rem' : '0.75rem' }}
                             >
-                                {isMobile ? 'Template' : 'Excel Template'}
+                                {isMobile ? 'Get Template' : 'Excel Template'}
                             </Button>
                             {canEditSelectedDate && (
                                 <Box sx={{ flex: isMobile ? '1 1 45%' : '0 0 auto', display: 'flex' }}>
                                     <Button
                                         fullWidth
                                         variant="outlined"
-                                        startIcon={<UploadIcon />}
+                                        size="small"
+                                        startIcon={<UploadIcon sx={{ fontSize: 16 }} />}
                                         onClick={() => fileInputRef.current?.click()}
-                                        sx={{ borderColor: '#f57c00', color: '#f57c00' }}
+                                        sx={{ borderColor: '#f57c00', color: '#f57c00', fontSize: isMobile ? '0.7rem' : '0.75rem' }}
                                     >
                                         Upload
                                     </Button>
@@ -944,6 +955,44 @@ export default function CostAnalysisManager() {
                 </Alert>
             )}
             {!saved && isEditable && <Chip label="Unsaved changes" color="warning" size="small" sx={{ mb: 1 }} />}
+
+            {/* Mobile Quick Legend */}
+            {isMobile && (
+                <Box 
+                    sx={{ 
+                        mb: 1.5, 
+                        p: 1.5, 
+                        bgcolor: '#f1f8e9', 
+                        borderRadius: 2, 
+                        border: '1px solid #c8e6c9',
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: 2,
+                        justifyContent: 'center'
+                    }}
+                >
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1b5e20' }} />
+                        <Typography sx={{ fontSize: '0.7rem', color: '#333', fontWeight: 600 }}>Day:</Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: '#666' }}>Today's Cost</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#1b5e20' }} />
+                        <Typography sx={{ fontSize: '0.7rem', color: '#333', fontWeight: 600 }}>Todate:</Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: '#666' }}>Monthly Acc.</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#0277bd' }} />
+                        <Typography sx={{ fontSize: '0.7rem', color: '#333', fontWeight: 600 }}>Budget:</Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: '#666' }}>Allocated</Typography>
+                    </Box>
+                    <Box display="flex" alignItems="center" gap={0.5}>
+                        <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: '#2e7d32' }} />
+                        <Typography sx={{ fontSize: '0.7rem', color: '#333', fontWeight: 600 }}>Balance:</Typography>
+                        <Typography sx={{ fontSize: '0.7rem', color: '#666' }}>Remaining</Typography>
+                    </Box>
+                </Box>
+            )}
 
             <Box sx={{ mt: 1, position: 'relative' }}>
                 <Paper elevation={3} sx={{ borderRadius: 2, border: '1px solid #e0e0e0', maxWidth: '100%' }}>
@@ -1031,16 +1080,16 @@ export default function CostAnalysisManager() {
                             }}
                         >
                             <colgroup>
-                                <col style={{ width: isMobile ? '120px' : (isManager ? '20%' : '14%') }} />
-                                <col style={{ width: isMobile ? '90px' : (isManager ? '10%' : '12%') }} />
-                                <col style={{ width: isMobile ? '70px' : '8%' }} />
-                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
-                                <col style={{ width: isMobile ? '70px' : '8%' }} />
-                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
-                                <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
-                                <col style={{ width: isMobile ? '80px' : '9%' }} />
-                                <col style={{ width: isMobile ? '80px' : '9%' }} />
-                                {isChiefClerk && <col style={{ width: isMobile ? '60px' : '8%' }} />}
+                                <col style={{ width: isMobile ? '100px' : (isManager ? '20%' : '14%') }} />
+                                <col style={{ width: isMobile ? '70px' : (isManager ? '10%' : '12%') }} />
+                                <col style={{ width: isMobile ? '60px' : '8%' }} />
+                                <col style={{ width: isMobile ? '80px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '60px' : '8%' }} />
+                                <col style={{ width: isMobile ? '80px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '80px' : (isManager ? '12%' : '11%') }} />
+                                <col style={{ width: isMobile ? '70px' : '9%' }} />
+                                <col style={{ width: isMobile ? '70px' : '9%' }} />
+                                {isChiefClerk && <col style={{ width: isMobile ? '50px' : '8%' }} />}
                             </colgroup>
                             <TableHead>
                                 <TableRow>
@@ -1147,24 +1196,28 @@ export default function CostAnalysisManager() {
                                                             {fmtAmount(item.dayAmount)}
                                                         </Typography>
                                                     ) : (
-                                                        <Box display="flex" alignItems="center" justifyContent="flex-end" gap={0.5}>
-                                                            <Typography variant="caption" sx={{ color: '#888' }}>Rs.</Typography>
+                                                        <Box display="flex" alignItems="center" justifyContent="flex-end">
                                                             <TextField
                                                                 size="small"
                                                                 type="number"
                                                                 disabled={!isEditable}
                                                                 value={item.dayAmount || ''}
                                                                 onChange={(e) => updateDayAmount(category.id, item.id, e.target.value)}
-                                                                placeholder="0.00"
+                                                                placeholder="0"
+                                                                InputProps={{
+                                                                    startAdornment: isMobile ? null : <InputAdornment position="start"><Typography variant="caption" sx={{ fontSize: '0.65rem' }}>Rs.</Typography></InputAdornment>,
+                                                                }}
                                                                 sx={{ 
                                                                     width: '100%',
                                                                     '& .MuiOutlinedInput-root': {
+                                                                        paddingLeft: isMobile ? '4px' : '8px',
                                                                         '& fieldset': { borderColor: '#ddd' },
                                                                         '&:hover fieldset': { borderColor: '#999' },
                                                                         '&.Mui-focused fieldset': { borderColor: cropColor },
+                                                                        fontSize: isMobile ? '0.75rem' : '0.875rem',
                                                                         '& input': {
+                                                                            padding: isMobile ? '4px 2px' : '8px 4px',
                                                                             textAlign: 'right',
-                                                                            // Hide arrows/spinners
                                                                             '-moz-appearance': 'textfield',
                                                                             '&::-webkit-outer-spin-button': { '-webkit-appearance': 'none', margin: 0 },
                                                                             '&::-webkit-inner-spin-button': { '-webkit-appearance': 'none', margin: 0 },

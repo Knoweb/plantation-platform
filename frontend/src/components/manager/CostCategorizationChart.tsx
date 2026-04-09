@@ -10,27 +10,52 @@ import {
     Select,
     MenuItem,
     FormControl,
-    Stack
+    Stack,
+    useMediaQuery,
+    useTheme
 } from '@mui/material';
 import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
     Tooltip, 
     ResponsiveContainer, 
     Cell,
-    LabelList
+    Legend,
+    PieChart,
+    Pie,
+    Sector
 } from 'recharts';
 import axios from 'axios';
 import BarChartIcon from '@mui/icons-material/BarChart';
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { format, endOfMonth, isAfter } from 'date-fns';
+import { format, endOfMonth } from 'date-fns';
 import DashboardCard from './DashboardCard';
 
 interface CostCategorizationChartProps {
     tenantId: string;
+}
+
+interface WorkItem {
+    id: string;
+    name: string;
+    dayAmount: string;
+    todateAmount: string;
+    lastMonthAmount: string;
+    ytdAmount: string;
+    [key: string]: string; // For selectedFilter access
+}
+
+interface Category {
+    id: string;
+    name: string;
+    items: WorkItem[];
+    [key: string]: any;
+}
+
+interface ChartDataPoint {
+    name: string;
+    amount: number;
+    raw?: Category;
+    fullItem?: WorkItem;
 }
 
 const FILTERS = [
@@ -53,11 +78,15 @@ const CATEGORY_COLORS: Record<string, string> = {
 const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
 
 const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenantId }) => {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const isSmallMobile = useMediaQuery('(max-width:400px)');
+
     const [loading, setLoading] = useState(true);
     const [selectedFilter, setSelectedFilter] = useState('todateAmount');
     const [chartData, setChartData] = useState<any[]>([]);
-    const [activeCrop, setActiveCrop] = useState('Tea');
-    const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
+    const [activeCrop, setActiveCrop] = useState('TEA');
+    const [availableCrops, setAvailableCrops] = useState<string[]>(['TEA']);
     const [drillDownCategory, setDrillDownCategory] = useState<string | null>(null);
     const [fullData, setFullData] = useState<any[]>([]);
     
@@ -74,8 +103,13 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
         const fetchCrops = async () => {
             try {
                 const res = await axios.get(`/api/fields?tenantId=${tenantId}`);
-                const crops = Array.from(new Set((res.data || []).map((f: any) => f.cropType).filter(Boolean))) as string[];
-                if (crops.length > 0) setAvailableCrops(crops);
+                const crops = Array.from(new Set((res.data || []).map((f: any) => String(f.cropType).toUpperCase()).filter(Boolean))) as string[];
+                if (crops.length > 0) {
+                    setAvailableCrops(crops);
+                    if (!crops.includes(activeCrop)) {
+                        setActiveCrop(crops[0]);
+                    }
+                }
             } catch (e) { console.error("Crop fetch failed", e); }
         };
         fetchCrops();
@@ -123,30 +157,107 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
         }
 
         if (drillDownCategory) {
-            const categoryObj = fullData.find(cat => cat.category === drillDownCategory);
+            const categoryObj = (fullData as Category[]).find(cat => (cat.name || (cat as any).category) === drillDownCategory);
             if (categoryObj && categoryObj.items) {
-                const data = categoryObj.items.map((item: any) => ({
-                    name: item.itemName,
+                const data: ChartDataPoint[] = categoryObj.items.map((item: WorkItem) => ({
+                    name: item.name,
                     amount: Number(item[selectedFilter] || 0),
                     fullItem: item
-                })).sort((a: any, b: any) => b.amount - a.amount);
+                })).sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
                 setChartData(data);
             }
         } else {
-            const data = fullData.map((cat: any) => ({
-                name: cat.category,
-                amount: Number(cat[selectedFilter] || 0),
-                raw: cat
-            })).sort((a: any, b: any) => b.amount - a.amount);
+            const data: ChartDataPoint[] = (fullData as Category[]).map((cat: Category) => {
+                const total = (cat.items || []).reduce((sum: number, item: WorkItem) => {
+                    return sum + Number(item[selectedFilter] || 0);
+                }, 0);
+                
+                return {
+                    name: cat.name || (cat as any).category,
+                    amount: total,
+                    raw: cat
+                };
+            }).sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
             setChartData(data);
         }
     }, [fullData, selectedFilter, drillDownCategory]);
 
-    const handleBarClick = (data: any) => {
-        if (!drillDownCategory) {
-            setDrillDownCategory(data.name);
+
+    const renderActiveShape = (props: any) => {
+        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value, percent } = props;
+
+        if (isMobile) {
+            // Simplified centered display for mobile
+            return (
+                <g>
+                    <text x={cx} y={cy} dy={-8} textAnchor="middle" fill="#64748b" style={{ fontSize: '10px', fontWeight: 'bold' }}>
+                        {payload.name.length > 15 ? payload.name.substring(0, 12) + '...' : payload.name}
+                    </text>
+                    <text x={cx} y={cy} dy={12} textAnchor="middle" fill="#1e293b" style={{ fontSize: '12px', fontWeight: '900' }}>
+                        Rs. {value.toLocaleString()}
+                    </text>
+                    <text x={cx} y={cy} dy={28} textAnchor="middle" fill="#10b981" style={{ fontSize: '9px', fontWeight: 'bold' }}>
+                        {(percent * 100).toFixed(0)}%
+                    </text>
+                    <Sector
+                        cx={cx}
+                        cy={cy}
+                        innerRadius={innerRadius}
+                        outerRadius={outerRadius + 4}
+                        startAngle={startAngle}
+                        endAngle={endAngle}
+                        fill={fill}
+                    />
+                </g>
+            );
         }
+
+        const RADIAN = Math.PI / 180;
+        const midAngle = (startAngle + endAngle) / 2;
+        const sin = Math.sin(-RADIAN * midAngle);
+        const cos = Math.cos(-RADIAN * midAngle);
+        const sx = cx + (outerRadius + 10) * cos;
+        const sy = cy + (outerRadius + 10) * sin;
+        const mx = cx + (outerRadius + 30) * cos;
+        const my = cy + (outerRadius + 30) * sin;
+        const ex = sx + (cos >= 0 ? 1 : -1) * 22;
+        const ey = sy;
+        const textAnchor = cos >= 0 ? 'start' : 'end';
+
+        return (
+            <g>
+                <text x={cx} y={cy} dy={8} textAnchor="middle" fill="#1e293b" style={{ fontSize: '14px', fontWeight: '900' }}>
+                    {drillDownCategory ? 'DETAIL' : 'TOTAL'}
+                </text>
+                <Sector
+                    cx={cx}
+                    cy={cy}
+                    innerRadius={innerRadius}
+                    outerRadius={outerRadius}
+                    startAngle={startAngle}
+                    endAngle={endAngle}
+                    fill={fill}
+                />
+                <Sector
+                    cx={cx}
+                    cy={cy}
+                    startAngle={startAngle}
+                    endAngle={endAngle}
+                    innerRadius={outerRadius + 6}
+                    outerRadius={outerRadius + 10}
+                    fill={fill}
+                />
+                <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
+                <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
+                <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#1e293b" style={{ fontSize: '11px', fontWeight: '800' }}>{payload.name}</text>
+                <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#10b981" style={{ fontSize: '10px', fontWeight: '900' }}>
+                    {`Rs. ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`}
+                </text>
+            </g>
+        );
     };
+
+    const [activeIndex, setActiveIndex] = useState(0);
 
     const CustomTooltip = ({ active, payload }: any) => {
         if (active && payload && payload.length) {
@@ -171,6 +282,34 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
             );
         }
         return null;
+    };
+
+    const CustomLegend = () => {
+        return (
+            <Box sx={{ 
+                display: 'flex', 
+                flexWrap: 'wrap', 
+                justifyContent: 'center', 
+                gap: 2, 
+                mt: 3,
+                px: 2,
+                pb: 2
+            }}>
+                {chartData.map((entry, index) => (
+                    <Box key={`legend-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
+                        <Box sx={{ 
+                            width: 8, 
+                            height: 8, 
+                            borderRadius: '50%', 
+                            bgcolor: drillDownCategory ? CATEGORY_COLORS[drillDownCategory] || '#10b981' : CATEGORY_COLORS[entry.name] || '#10b981'
+                        }} />
+                        <Typography sx={{ color: '#64748b', fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.01em' }}>
+                            {entry.name}
+                        </Typography>
+                    </Box>
+                ))}
+            </Box>
+        );
     };
 
     return (
@@ -256,30 +395,36 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                     <CircularProgress sx={{ color: '#10b981' }} size={40} thickness={4} />
                 </Box>
             ) : chartData.length > 0 ? (
-                <Box sx={{ width: '100%', height: 360, mt: 2 }}>
-                    <ResponsiveContainer width="100%" height="100%">
-                        <BarChart 
-                            data={chartData} 
-                            layout="vertical" 
-                            margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
-                            onClick={(data) => data?.activePayload && handleBarClick(data.activePayload[0].payload)}
-                        >
-                            <XAxis type="number" hide />
-                            <YAxis 
-                                type="category" 
-                                dataKey="name" 
-                                axisLine={false} 
-                                tickLine={false} 
-                                width={120}
-                                tick={{ fill: '#475569', fontSize: 11, fontWeight: '700' }}
-                            />
-                            <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
-                            <Bar 
-                                dataKey="amount" 
-                                radius={[0, 8, 8, 0]} 
-                                barSize={24}
-                                animationDuration={1000}
-                                style={{ cursor: drillDownCategory ? 'default' : 'pointer' }}
+                <Box sx={{ 
+                    display: 'block', 
+                    width: '100%', 
+                    height: 360, 
+                    minHeight: 360,
+                    position: 'relative',
+                    mt: 2
+                }}>
+                    <ResponsiveContainer width="100%" height="100%" debounce={200}>
+                        <PieChart>
+                            <Pie
+                                activeIndex={activeIndex}
+                                activeShape={renderActiveShape}
+                                data={chartData}
+                                cx="50%"
+                                cy="50%"
+                                innerRadius={isSmallMobile ? 45 : isMobile ? 60 : 70}
+                                outerRadius={isSmallMobile ? 65 : isMobile ? 85 : 100}
+                                fill="#8884d8"
+                                dataKey="amount"
+                                onMouseEnter={(_: any, index: number) => !isMobile && setActiveIndex(index)}
+                                onClick={(data: any, index: number) => {
+                                    if (isMobile) {
+                                        setActiveIndex(index);
+                                    }
+                                    if (!drillDownCategory && data.name) {
+                                        setDrillDownCategory(data.name);
+                                    }
+                                }}
+                                paddingAngle={5}
                             >
                                 {chartData.map((entry, index) => (
                                     <Cell 
@@ -288,14 +433,10 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                                         fillOpacity={0.9}
                                     />
                                 ))}
-                                <LabelList 
-                                    dataKey="amount" 
-                                    position="right" 
-                                    formatter={(v: number) => `Rs. ${v.toLocaleString()}`} 
-                                    style={{ fill: '#475569', fontSize: 11, fontWeight: '900' }} 
-                                />
-                            </Bar>
-                        </BarChart>
+                            </Pie>
+                            <Tooltip content={<CustomTooltip />} />
+                            <Legend content={CustomLegend} verticalAlign="bottom" />
+                        </PieChart>
                     </ResponsiveContainer>
                 </Box>
             ) : (

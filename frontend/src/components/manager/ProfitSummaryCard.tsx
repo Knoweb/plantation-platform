@@ -71,38 +71,20 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
             });
 
             if (validWorkRecords.length > 0) {
-                // Find latest todate amount
-                const sorted = [...validWorkRecords].sort((a, b) => b.workDate.localeCompare(a.workDate));
-                let foundTodate = false;
-                for (const op of sorted) {
-                    if (fieldMap.get(String(op.fieldId)) !== 'tea') continue;
+                // Sum factoryWt for the month (matching Crop Book monthly logic)
+                let sum = 0;
+                validWorkRecords.forEach((op: any) => {
+                    if (fieldMap.get(String(op.fieldId)) !== 'tea') return;
                     if (op.bulkWeights) {
                         try {
                             const bw = JSON.parse(op.bulkWeights);
-                            if (bw.__FACTORY__?.todateAmount) {
-                                factoryYield = Number(bw.__FACTORY__.todateAmount);
-                                foundTodate = true;
-                                break;
+                            if (bw.__FACTORY__?.factoryWt) {
+                                sum += Number(bw.__FACTORY__.factoryWt);
                             }
                         } catch (e) { }
                     }
-                }
-                // Fallback to sum of factoryWt for the month
-                if (!foundTodate) {
-                    let sum = 0;
-                    validWorkRecords.forEach((op: any) => {
-                        if (fieldMap.get(String(op.fieldId)) !== 'tea') return;
-                        if (op.bulkWeights) {
-                            try {
-                                const bw = JSON.parse(op.bulkWeights);
-                                if (bw.__FACTORY__?.factoryWt) {
-                                    sum += Number(bw.__FACTORY__.factoryWt);
-                                }
-                            } catch (e) { }
-                        }
-                    });
-                    factoryYield = sum;
-                }
+                });
+                factoryYield = sum;
             }
 
             // C. RATES AND CALCULATIONS

@@ -1,4 +1,4 @@
-import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer } from '@mui/material';
+import { Box, Grid, Typography, Card, CardContent, Button, Table, TableHead, TableRow, TableCell, TableBody, Chip, LinearProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Select, MenuItem, InputLabel, FormControl, Alert, Snackbar, Checkbox, FormControlLabel, TableContainer, useTheme, useMediaQuery } from '@mui/material';
 import { useState, useEffect, useRef } from 'react';
 import { InputAdornment } from '@mui/material';
 import axios from 'axios';
@@ -22,6 +22,9 @@ const buildSocketUrl = (path: string) => {
 };
 
 export default function StoreKeeperDashboard() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
@@ -54,6 +57,7 @@ export default function StoreKeeperDashboard() {
     // --- Division / Field Selection ---
     const [divisions, setDivisions] = useState<any[]>([]);
     const [fields, setFields] = useState<any[]>([]);
+    const [officers, setOfficers] = useState<any[]>([]);
     const [selectedDivisions, setSelectedDivisions] = useState<string[]>([]);
     const [selectedFields, setSelectedFields] = useState<string[]>([]);
     // ----------------------------------
@@ -415,10 +419,10 @@ export default function StoreKeeperDashboard() {
     const lowStockItems = items.filter(i => i.currentQuantity < i.bufferLevel);
 
     return (
-        <Box>
+        <Box sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 3 }, height: '100%', overflowY: 'auto', position: 'relative' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                <Typography variant="h4" fontWeight="bold" color="primary">
-                    {currentTab === 0 ? "Dashboard & Messages" : currentTab === 1 ? "Inventory Records" : "Pending Approvals"}
+                <Typography variant="h5" fontWeight="800" color="primary" sx={{ fontSize: { xs: '1.25rem', md: '2rem' } }}>
+                    {currentTab === 0 ? "Overview" : currentTab === 1 ? "Inventory" : "Approvals"}
                 </Typography>
 
                 {currentTab === 1 && user.role === 'CHIEF_CLERK' && (
@@ -434,110 +438,112 @@ export default function StoreKeeperDashboard() {
                     </Box>
                 )}
             </Box>
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                {currentTab === 0 ? "View your critical stock alerts and internal messages." :
-                    currentTab === 1 ? "Manage plantation materials, add new items, or issue stock manually." :
-                        "Review and dispatch approved Field Officer requests."}
+            <Typography variant="body2" color="text.secondary" mb={3} sx={{ fontSize: { xs: '0.85rem', md: '1rem' } }}>
+                {currentTab === 0 ? "Stock alerts and internal notifications." :
+                    currentTab === 1 ? "Manage materials and issue stock." :
+                        "Review and dispatch officer requests."}
             </Typography>
 
             {/* Stop Pilferage / Low Stock Alerts -> DASHBOARD TAB */}
             {currentTab === 0 && (
                 <Box>
-                    <Grid container spacing={3} mb={5}>
+                    <Grid container spacing={2} mb={4}>
                         {/* PENDING DISPATCHES TILE */}
-                        <Grid item xs={12} md={3}>
-                            <Card onClick={() => navigate('/dashboard/store/approvals')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: approvedOrders.length > 0 ? '#fff5f5' : '#ffffff', border: approvedOrders.length > 0 ? '1px solid #fecaca' : '1px solid #e2e8f0' }}>
-                                <CardContent sx={{ p: 3 }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                        <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: approvedOrders.length > 0 ? '#ef4444' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <LocalShippingIcon fontSize="medium" />
+                        <Grid size={{ xs: 6, md: 3 }}>
+                            <Card onClick={() => navigate('/dashboard/store/approvals')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 20px rgba(0,0,0,0.1)' }, bgcolor: approvedOrders.length > 0 ? '#fffafa' : '#ffffff', border: approvedOrders.length > 0 ? '1.5px solid #ffcdd2' : '1px solid #edf2f7' }}>
+                                <CardContent sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        <Box sx={{ width: { xs: 36, sm: 48 }, height: { xs: 36, sm: 48 }, borderRadius: 2.5, bgcolor: approvedOrders.length > 0 ? '#e53935' : '#1976d2', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                                            <LocalShippingIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
                                         </Box>
-                                        <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
+                                        <IconButton size="small" sx={{ display: { xs: 'none', sm: 'flex' } }}><ArrowForwardIosIcon sx={{ fontSize: 12, color: '#94a3b8' }} /></IconButton>
                                     </Box>
-                                    <Box mt={3}>
-                                        <Typography variant="h3" fontWeight="900" sx={{ color: approvedOrders.length > 0 ? '#b91c1c' : '#1e293b' }}>
+                                    <Box mt={{ xs: 2, sm: 3 }}>
+                                        <Typography variant="h4" fontWeight="800" sx={{ color: approvedOrders.length > 0 ? '#c62828' : '#2d3748', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                             {approvedOrders.length}
                                         </Typography>
-                                        <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                            Pending Dispatches
+                                        <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                                            Pending Orders
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: approvedOrders.length > 0 ? '#dc2626' : '#64748b', mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            {approvedOrders.length > 0 ? <><WarningAmberIcon fontSize="small"/> Requires issue</> : <><CheckCircleOutlineIcon fontSize="small"/> All caught up</>}
-                                        </Typography>
+                                        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5, color: approvedOrders.length > 0 ? '#d32f2f' : '#718096' }}>
+                                            {approvedOrders.length > 0 ? <WarningAmberIcon sx={{ fontSize: 14 }}/> : <CheckCircleOutlineIcon sx={{ fontSize: 14 }}/>}
+                                            <Typography variant="caption" fontWeight="600">{approvedOrders.length > 0 ? 'Action Reqd' : 'No Action'}</Typography>
+                                        </Box>
                                     </Box>
                                 </CardContent>
                             </Card>
                         </Grid>
-
+ 
                         {/* CRITICAL STOCK TILE */}
-                        <Grid item xs={12} md={3}>
-                            <Card onClick={() => navigate('/dashboard/store/inventory')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: lowStockItems.length > 0 ? '#fffbeb' : '#ffffff', border: lowStockItems.length > 0 ? '1px solid #fde68a' : '1px solid #e2e8f0' }}>
-                                <CardContent sx={{ p: 3 }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                        <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: lowStockItems.length > 0 ? '#f59e0b' : '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <WarningIcon fontSize="medium" />
+                        <Grid size={{ xs: 6, md: 3 }}>
+                            <Card onClick={() => navigate('/dashboard/store/inventory')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 20px rgba(0,0,0,0.1)' }, bgcolor: lowStockItems.length > 0 ? '#fffdf5' : '#ffffff', border: lowStockItems.length > 0 ? '1.5px solid #ffe082' : '1px solid #edf2f7' }}>
+                                <CardContent sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        <Box sx={{ width: { xs: 36, sm: 48 }, height: { xs: 36, sm: 48 }, borderRadius: 2.5, bgcolor: lowStockItems.length > 0 ? '#f57c00' : '#388e3c', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                                            <WarningIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
                                         </Box>
-                                        <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
+                                        <IconButton size="small" sx={{ display: { xs: 'none', sm: 'flex' } }}><ArrowForwardIosIcon sx={{ fontSize: 12, color: '#94a3b8' }} /></IconButton>
                                     </Box>
-                                    <Box mt={3}>
-                                        <Typography variant="h3" fontWeight="900" sx={{ color: lowStockItems.length > 0 ? '#b45309' : '#15803d' }}>
+                                    <Box mt={{ xs: 2, sm: 3 }}>
+                                        <Typography variant="h4" fontWeight="800" sx={{ color: lowStockItems.length > 0 ? '#e65100' : '#2e7d32', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                             {lowStockItems.length}
                                         </Typography>
-                                        <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                            Critical Stock Alerts
+                                        <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                                            Critical Alerts
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: lowStockItems.length > 0 ? '#d97706' : '#64748b', mt: 1, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                            {lowStockItems.length > 0 ? <><WarningAmberIcon fontSize="small"/> Below buffer level</> : <><CheckCircleOutlineIcon fontSize="small"/> Stock healthy</>}
-                                        </Typography>
+                                        <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5, color: lowStockItems.length > 0 ? '#f57c00' : '#718096' }}>
+                                            {lowStockItems.length > 0 ? <WarningAmberIcon sx={{ fontSize: 14 }}/> : <CheckCircleOutlineIcon sx={{ fontSize: 14 }}/>}
+                                            <Typography variant="caption" fontWeight="600">{lowStockItems.length > 0 ? 'Restock Reqd' : 'Stock Safe'}</Typography>
+                                        </Box>
                                     </Box>
                                 </CardContent>
                             </Card>
                         </Grid>
-
+ 
                         {/* TOTAL INVENTORY VALUE TILE */}
-                        <Grid item xs={12} md={3}>
-                            <Card onClick={() => navigate('/dashboard/store/inventory')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, bgcolor: '#f0fdf4', border: '1px solid #bbf7d0' }}>
-                                <CardContent sx={{ p: 3 }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                        <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <AttachMoneyIcon fontSize="medium" />
+                        <Grid size={{ xs: 6, md: 3 }}>
+                            <Card onClick={() => navigate('/dashboard/store/inventory')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 20px rgba(0,0,0,0.1)' }, bgcolor: '#f1f8e9', border: '1.5px solid #c5e1a5' }}>
+                                <CardContent sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        <Box sx={{ width: { xs: 36, sm: 48 }, height: { xs: 36, sm: 48 }, borderRadius: 2.5, bgcolor: '#2e7d32', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                                            <AttachMoneyIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
                                         </Box>
-                                        <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
+                                        <IconButton size="small" sx={{ display: { xs: 'none', sm: 'flex' } }}><ArrowForwardIosIcon sx={{ fontSize: 12, color: '#94a3b8' }} /></IconButton>
                                     </Box>
-                                    <Box mt={3}>
-                                        <Typography variant="h4" fontWeight="900" sx={{ color: '#166534' }}>
-                                            {items.reduce((s, i) => s + (i.currentQuantity * (i.pricePerUnit || 0)), 0).toLocaleString('en-LK', { style: 'currency', currency: 'LKR', maximumFractionDigits: 0 })}
+                                    <Box mt={{ xs: 2, sm: 3 }}>
+                                        <Typography variant="h4" fontWeight="800" sx={{ color: '#1b5e20', fontSize: { xs: '1.2rem', sm: '2.125rem' } }}>
+                                            {items.reduce((s, i) => s + (i.currentQuantity * (i.pricePerUnit || 0)), 0).toLocaleString('en-LK', { maximumFractionDigits: 0 })}
                                         </Typography>
-                                        <Typography variant="subtitle2" fontWeight="700" color="#16a34a" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                            Total Stock Value
+                                        <Typography variant="caption" fontWeight="700" color="#2e7d32" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                                            Stock Value (LKR)
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: '#15803d', mt: 1 }}>
-                                            Across {items.length} materials
+                                        <Typography variant="caption" sx={{ color: '#388e3c', mt: 1, fontWeight: 600 }}>
+                                            Across {items.length} items
                                         </Typography>
                                     </Box>
                                 </CardContent>
                             </Card>
                         </Grid>
-
+ 
                         {/* UNREAD MESSAGES TILE */}
-                        <Grid item xs={12} md={3}>
-                            <Card onClick={() => navigate('/dashboard/correspondence')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: '0.2s', '&:hover': { transform: 'translateY(-4px)', boxShadow: 6 }, border: '1px solid #e2e8f0' }}>
-                                <CardContent sx={{ p: 3 }}>
-                                    <Box display="flex" justifyContent="space-between" alignItems="flex-start">
-                                        <Box sx={{ width: 48, height: 48, borderRadius: 2, bgcolor: '#0ea5e9', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <ChatIcon fontSize="medium" />
+                        <Grid size={{ xs: 6, md: 3 }}>
+                            <Card onClick={() => navigate('/dashboard/correspondence')} sx={{ height: '100%', borderRadius: 4, cursor: 'pointer', transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)', '&:hover': { transform: 'translateY(-4px)', boxShadow: '0 12px 20px rgba(0,0,0,0.1)' }, border: '1px solid #edf2f7', bgcolor: '#f0f9ff' }}>
+                                <CardContent sx={{ p: { xs: 2, sm: 3 }, display: 'flex', flexDirection: 'column', height: '100%' }}>
+                                    <Box display="flex" justifyContent="space-between" alignItems="center">
+                                        <Box sx={{ width: { xs: 36, sm: 48 }, height: { xs: 36, sm: 48 }, borderRadius: 2.5, bgcolor: '#0284c7', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '0 4px 10px rgba(0,0,0,0.1)' }}>
+                                            <ChatIcon sx={{ fontSize: { xs: 20, sm: 24 } }} />
                                         </Box>
-                                        <IconButton size="small"><ArrowForwardIosIcon sx={{ fontSize: 14, color: '#94a3b8' }} /></IconButton>
+                                        <IconButton size="small" sx={{ display: { xs: 'none', sm: 'flex' } }}><ArrowForwardIosIcon sx={{ fontSize: 12, color: '#94a3b8' }} /></IconButton>
                                     </Box>
-                                    <Box mt={3}>
-                                        <Typography variant="h3" fontWeight="900" sx={{ color: '#0369a1' }}>
+                                    <Box mt={{ xs: 2, sm: 3 }}>
+                                        <Typography variant="h4" fontWeight="800" sx={{ color: '#0369a1', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                                             {unreadMessages}
                                         </Typography>
-                                        <Typography variant="subtitle2" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5 }}>
-                                            Unread Messages
+                                        <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
+                                            Messages
                                         </Typography>
-                                        <Typography variant="body2" sx={{ color: unreadMessages > 0 ? '#0284c7' : '#64748b', mt: 1 }}>
-                                            Check correspondence
+                                        <Typography variant="caption" sx={{ color: unreadMessages > 0 ? '#0284c7' : '#718096', mt: 1, fontWeight: 600 }}>
+                                            {unreadMessages > 0 ? 'Review chats' : 'No new mail'}
                                         </Typography>
                                     </Box>
                                 </CardContent>
@@ -546,37 +552,44 @@ export default function StoreKeeperDashboard() {
                     </Grid>
 
                     {lowStockItems.length > 0 ? (
-                        <Card sx={{ mb: 4, borderLeft: '6px solid #d32f2f', bgcolor: '#ffebee' }}>
-                            <CardContent>
-                                <Box display="flex" alignItems="center" mb={1}>
-                                    <WarningIcon color="error" sx={{ mr: 1, fontSize: 30 }} />
-                                    <Typography variant="h6" color="error" fontWeight="bold">
-                                        CRITICAL STOCK DETAILS
+                        <Card sx={{ mb: 4, borderRadius: 4, borderLeft: '6px solid #d32f2f', boxShadow: '0 4px 12px rgba(211, 47, 47, 0.15)', bgcolor: '#fff5f5' }}>
+                            <CardContent sx={{ p: { xs: 2.5, sm: 3 } }}>
+                                <Box display="flex" alignItems="center" mb={2}>
+                                    <WarningIcon color="error" sx={{ mr: 1, fontSize: 24 }} />
+                                    <Typography variant="subtitle1" color="error" fontWeight="800">
+                                        ACTION REQUIRED: LOW STOCK
                                     </Typography>
                                 </Box>
-                                <Grid container spacing={2}>
+                                <Box display="flex" flexDirection="column" gap={1.5}>
                                     {lowStockItems.map(item => (
-                                        <Grid key={item.id} item xs={12} md={4}>
-                                            <Box bgcolor="white" p={2} borderRadius={1} border="1px solid #ffcdd2">
-                                                <Typography variant="subtitle1" fontWeight="bold">{item.name}</Typography>
-                                                <Typography variant="body2" color="error">
-                                                    Current: {item.currentQuantity} {item.unit} (Buffer: {item.bufferLevel} {item.unit})
+                                        <Box key={item.id} sx={{ bgcolor: 'white', p: 2, borderRadius: 3, border: '1px solid #fee2e2', boxShadow: '0 2px 4px rgba(0,0,0,0.02)' }}>
+                                            <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
+                                                <Typography variant="subtitle2" fontWeight="700" sx={{ color: '#1e293b' }}>{item.name}</Typography>
+                                                <Typography variant="caption" fontWeight="800" sx={{ color: '#ef4444' }}>
+                                                    {item.currentQuantity} / {item.bufferLevel} {item.unit}
                                                 </Typography>
-                                                <LinearProgress
-                                                    variant="determinate"
-                                                    value={(item.currentQuantity / item.bufferLevel) * 100}
-                                                    color="error"
-                                                    sx={{ mt: 1 }}
-                                                />
                                             </Box>
-                                        </Grid>
+                                            <LinearProgress
+                                                variant="determinate"
+                                                value={Math.min((item.currentQuantity / item.bufferLevel) * 100, 100)}
+                                                sx={{ 
+                                                    height: 8, 
+                                                    borderRadius: 4, 
+                                                    bgcolor: '#fee2e2',
+                                                    '& .MuiLinearProgress-bar': { bgcolor: '#ef4444', borderRadius: 4 }
+                                                }}
+                                            />
+                                            <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontWeight: 500 }}>
+                                                {item.currentQuantity <= item.minimumLevel ? '⚠️ Below Critical Minimum' : '⚠️ Below Buffer Level'}
+                                            </Typography>
+                                        </Box>
                                     ))}
-                                </Grid>
+                                </Box>
                             </CardContent>
                         </Card>
                     ) : (
-                        <Alert severity="success" sx={{ mb: 4 }}>
-                            No critical stock details to review. All inventory is well-stocked!
+                        <Alert severity="success" sx={{ mb: 4, borderRadius: 3, fontWeight: 600 }}>
+                            Inventory healthy. No critical restock alerts.
                         </Alert>
                     )}
                 </Box>
@@ -761,26 +774,27 @@ export default function StoreKeeperDashboard() {
 
                     <Card>
                         <CardContent>
-                            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2}>
+                            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" mb={2}>
                                 <Box display="flex" alignItems="center">
                                     <InventoryIcon color="action" sx={{ mr: 1 }} />
                                     <Typography variant="h6">Current Inventory</Typography>
                                 </Box>
                                 <TextField
-                                    placeholder="Search Items..."
+                                    placeholder="Search..."
                                     size="small"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}
                                     InputProps={{
                                         startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment>,
                                     }}
-                                    sx={{ width: 300, bgcolor: 'white' }}
+                                    sx={{ width: { xs: '100%', sm: 300 }, mt: { xs: 1, sm: 0 }, bgcolor: 'white' }}
                                 />
                             </Box>
 
                             {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
 
-                            <Table>
+                            <TableContainer>
+                                <Table sx={{ minWidth: 650 }}>
                                 <TableHead>
                                     <TableRow>
                                         <TableCell>Item Name</TableCell>
@@ -847,15 +861,7 @@ export default function StoreKeeperDashboard() {
                                                     variant="outlined"
                                                     color="primary"
                                                     size="small"
-                                                    onClick={() => {
-                                                        setSelectedItem(item.id);
-                                                        setModalType('RESTOCK_REQUEST');
-                                                        setQty('');
-                                                        setIssuedTo('');
-                                                        setSelectedDivisions([]);
-                                                        setSelectedFields([]);
-                                                        setOpenModal(true);
-                                                    }}
+                                                    onClick={() => handleRestockRequest(item)}
                                                 >
                                                     Request Refill
                                                 </Button>
@@ -869,6 +875,7 @@ export default function StoreKeeperDashboard() {
                                     )}
                                 </TableBody>
                             </Table>
+                            </TableContainer>
                         </CardContent>
                     </Card>
                 </>
@@ -1013,9 +1020,15 @@ export default function StoreKeeperDashboard() {
             </Dialog>
 
             {/* Create / Edit Item Modal */}
-            <Dialog open={newItemOpen} onClose={() => setNewItemOpen(false)}>
-                <DialogTitle>{isEditing ? "Edit Item Details" : "Add New Inventory Item"}</DialogTitle>
-                <DialogContent sx={{ minWidth: 400, pt: 2 }}>
+            <Dialog 
+                open={newItemOpen} 
+                onClose={() => setNewItemOpen(false)}
+                fullWidth
+                maxWidth="sm"
+                fullScreen={isMobile}
+            >
+                <DialogTitle sx={{ fontWeight: 'bold' }}>{isEditing ? "Edit Item Details" : "Add New Inventory Item"}</DialogTitle>
+                <DialogContent sx={{ minWidth: { xs: 'auto', sm: 400 }, pt: 2 }}>
                     <TextField
                         fullWidth
                         label="Item Name"
@@ -1174,6 +1187,6 @@ export default function StoreKeeperDashboard() {
                     {notification.message}
                 </Alert>
             </Snackbar>
-        </Box >
+        </Box>
     );
 }

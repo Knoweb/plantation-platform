@@ -3,11 +3,13 @@ import axios from 'axios';
 import {
     Box, Typography, CircularProgress, Paper, Table, TableBody, TableCell,
     TableContainer, TableHead, TableRow, TextField, Select, MenuItem,
-    FormControl, Button, Snackbar, Alert, Chip, Tooltip, Tabs, Tab, Badge
+    FormControl, Button, Snackbar, Alert, Chip, Tooltip, Tabs, Tab, Badge,
+    useTheme, useMediaQuery, IconButton
 } from '@mui/material';
 import ChatIcon from '@mui/icons-material/ChatBubbleOutline';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
+import { Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
 
 const buildSocketUrl = (path: string) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -23,6 +25,10 @@ const getSessionRank = (session?: string) => {
 };
 
 export default function WorkProgramManager() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+    const isSmall = useMediaQuery(theme.breakpoints.down('sm'));
+    
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -48,6 +54,7 @@ export default function WorkProgramManager() {
     // Crop tabs — built from task cropTypes
     const [availableCrops, setAvailableCrops] = useState<string[]>([]);
     const [activeFilter, setActiveFilter] = useState<string | null>(null);
+    const [viewingJustification, setViewingJustification] = useState<{ task: string; text: string } | null>(null);
 
     // Alert Dismissal State
     const [dismissedTasks, setDismissedTasks] = useState<string[]>([]);
@@ -350,25 +357,33 @@ export default function WorkProgramManager() {
     return (
         <Box display="flex" height="calc(100vh - 80px)" flexDirection="column">
             {/* Header */}
-            <Box display="flex" alignItems="center" justifyContent="space-between" mb={2} gap={2}>
+            <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} alignItems={isMobile ? 'flex-start' : 'center'} justifyContent="space-between" mb={2} gap={2}>
                 <Box sx={{ minWidth: 0 }}>
-                    <Typography variant="h4" fontWeight="bold" color="#1b5e20">Distribution of Works</Typography>
+                    <Typography variant={isSmall ? "h5" : "h4"} fontWeight="bold" color="#1b5e20">Distribution of Works</Typography>
                 </Box>
 
                 {/* Centre: Month/Year Selector */}
-                <Box display="flex" alignItems="center" gap={2}
-                    sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 3, px: 3, py: 1 }}>
-                    <FormControl size="small" variant="standard" sx={{ minWidth: 80 }}>
+                <Box display="flex" alignItems="center" gap={isSmall ? 1 : 2}
+                    sx={{ 
+                        bgcolor: '#e8f5e9', 
+                        border: '2px solid #a5d6a7', 
+                        borderRadius: 3, 
+                        px: { xs: 2, sm: 3 }, 
+                        py: 0.5,
+                        width: isSmall ? '100%' : 'auto',
+                        justifyContent: isSmall ? 'space-between' : 'center'
+                    }}>
+                    <FormControl size="small" variant="standard" sx={{ minWidth: isSmall ? 60 : 80 }}>
                         <Select value={year} onChange={e => setYear(Number(e.target.value))}
-                            disableUnderline sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1b5e20' }}>
+                            disableUnderline sx={{ fontWeight: 'bold', fontSize: isSmall ? '0.9rem' : '1.1rem', color: '#1b5e20' }}>
                             {Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i).map(y => (
                                 <MenuItem key={y} value={y}>{y}</MenuItem>
                             ))}
                         </Select>
                     </FormControl>
-                    <FormControl size="small" variant="standard" sx={{ minWidth: 130 }}>
+                    <FormControl size="small" variant="standard" sx={{ minWidth: isSmall ? 100 : 130 }}>
                         <Select value={month} onChange={e => setMonth(Number(e.target.value))}
-                            disableUnderline sx={{ fontWeight: 'bold', fontSize: '1.1rem', color: '#1b5e20' }}>
+                            disableUnderline sx={{ fontWeight: 'bold', fontSize: isSmall ? '0.9rem' : '1.1rem', color: '#1b5e20' }}>
                             {monthNames.map((m, i) => (
                                 <MenuItem key={m} value={i}>{m}</MenuItem>
                             ))}
@@ -376,9 +391,10 @@ export default function WorkProgramManager() {
                     </FormControl>
                 </Box>
 
-                <Box display="flex" alignItems="center" gap={1.5} sx={{ minWidth: 280, justifyContent: 'flex-end' }}>
+                <Box display="flex" alignItems="center" gap={1.5} sx={{ width: isMobile ? '100%' : 'auto', justifyContent: isMobile ? 'flex-start' : 'flex-end' }}>
                     {!isEditable ? (
                         <Button
+                            fullWidth={isSmall}
                             variant="contained"
                             startIcon={<EditIcon />}
                             onClick={handleEdit}
@@ -389,6 +405,7 @@ export default function WorkProgramManager() {
                     ) : (
                         <>
                             <Button
+                                fullWidth={isSmall}
                                 variant="outlined"
                                 onClick={handleCancel}
                                 disabled={saving}
@@ -397,6 +414,7 @@ export default function WorkProgramManager() {
                                 Cancel
                             </Button>
                             <Button
+                                fullWidth={isSmall}
                                 variant="contained"
                                 startIcon={<SaveIcon />}
                                 onClick={handleSave}
@@ -439,7 +457,7 @@ export default function WorkProgramManager() {
                     </Paper>
 
                     {/* Dynamic Crop Filter Tabs */}
-                    <Box display="flex" mb={0} sx={{ borderBottom: '1px solid #ccc' }}>
+                    <Box display="flex" mb={0} sx={{ borderBottom: '1px solid #ccc', overflowX: 'auto', whiteSpace: 'nowrap', '&::-webkit-scrollbar': { display: 'none' }, msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
                         {tabList.map(crop => {
                             const { bg, text } = getTabColor(crop);
                             const isActive = activeFilter === crop;
@@ -475,13 +493,13 @@ export default function WorkProgramManager() {
                         <Table stickyHeader size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: 200, fontSize: '0.85rem' }}>
+                                    <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: isSmall ? 80 : 150, fontSize: isSmall ? '0.7rem' : '0.8rem', py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>
                                         Work Item
                                     </TableCell>
-                                    <TableCell align="center" sx={{ bgcolor: '#e8f5e9', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: 160, fontSize: '0.85rem', color: '#1b5e20' }}>
-                                        Workers Needed (Work Program)
+                                    <TableCell align="center" sx={{ bgcolor: '#e8f5e9', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: isSmall ? 50 : 110, fontSize: isSmall ? '0.7rem' : '0.8rem', color: '#1b5e20', py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1, whiteSpace: 'normal', lineHeight: 1 }}>
+                                        {isSmall ? 'Needed' : 'Workers Needed'}
                                     </TableCell>
-                                    <TableCell align="center" sx={{ bgcolor: '#eee', fontWeight: 'bold', fontSize: '0.85rem', color: '#666' }}>
+                                    <TableCell align="center" sx={{ bgcolor: '#eee', fontWeight: 'bold', minWidth: isSmall ? 50 : 100, fontSize: isSmall ? '0.7rem' : '0.8rem', color: '#666', py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>
                                         Category
                                     </TableCell>
                                 </TableRow>
@@ -562,11 +580,11 @@ export default function WorkProgramManager() {
                     <Table stickyHeader size="small">
                         <TableHead>
                             <TableRow>
-                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: 200 }}>Work Item</TableCell>
-                                <TableCell align="center" sx={{ bgcolor: '#e3f2fd', fontWeight: 'bold', color: '#1565c0' }}>Work Program</TableCell>
-                                <TableCell align="center" sx={{ bgcolor: '#fff3e0', fontWeight: 'bold', color: '#e65100' }}>Actual Workers</TableCell>
-                                <TableCell align="center" sx={{ bgcolor: '#e8f5e9', fontWeight: 'bold', color: '#2e7d32' }}>Balance</TableCell>
-                                <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', color: '#666' }}>Justification</TableCell>
+                                <TableCell sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', minWidth: isSmall ? 85 : 150, fontSize: isSmall ? '0.7rem' : '0.8rem', py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>Work Item</TableCell>
+                                <TableCell align="center" sx={{ bgcolor: '#e3f2fd', fontWeight: 'bold', color: '#1565c0', minWidth: isSmall ? 50 : 100, fontSize: isSmall ? '0.7rem' : '0.8rem', whiteSpace: 'normal', lineHeight: 1, py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>Work Program</TableCell>
+                                <TableCell align="center" sx={{ bgcolor: '#fff3e0', fontWeight: 'bold', color: '#e65100', minWidth: isSmall ? 50 : 100, fontSize: isSmall ? '0.7rem' : '0.8rem', whiteSpace: 'normal', lineHeight: 1, py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>Actual Workers</TableCell>
+                                <TableCell align="center" sx={{ bgcolor: '#e8f5e9', fontWeight: 'bold', color: '#2e7d32', minWidth: isSmall ? 40 : 80, fontSize: isSmall ? '0.7rem' : '0.8rem', py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>{isSmall ? 'Bal' : 'Balance'}</TableCell>
+                                <TableCell align="center" sx={{ bgcolor: '#f5f5f5', fontWeight: 'bold', color: '#666', minWidth: isSmall ? 60 : 110, fontSize: isSmall ? '0.7rem' : '0.8rem', whiteSpace: 'normal', lineHeight: 1, py: isSmall ? 0.5 : 1, px: isSmall ? 0.5 : 1 }}>Justification</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -580,36 +598,42 @@ export default function WorkProgramManager() {
                                 if (prog === 0 && actual === 0) return null;
 
                                 return (
-                                    <TableRow key={task.name} hover>
-                                        <TableCell sx={{ fontWeight: 500 }}>{task.name}</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{prog}</TableCell>
-                                        <TableCell align="center" sx={{ fontWeight: 'bold' }}>{actual}</TableCell>
-                                        <TableCell align="center"
-                                            sx={{ 
-                                                bgcolor: balance < 0 ? '#ffebee' : '#f1f8e9', 
-                                                fontWeight: 'bold', 
-                                                color: balance < 0 ? 'error.main' : 'success.main' 
-                                            }}>
-                                            {balance}
-                                        </TableCell>
-                                        <TableCell align="center">
-                                            {justification ? (
-                                                <Tooltip title={justification} arrow placement="left">
-                                                    <Chip 
-                                                        label="View Reason" 
-                                                        size="small" 
-                                                        color="warning" 
-                                                        variant="outlined"
-                                                        icon={<ChatIcon fontSize="small" />}
-                                                    />
-                                                </Tooltip>
-                                            ) : (
-                                                balance < 0 ? (
-                                                    <Chip label="Missing Reason" size="small" color="error" variant="filled" />
-                                                ) : '-'
-                                            )}
-                                        </TableCell>
-                                    </TableRow>
+                                <TableRow key={task.name} hover sx={{ '& td': { py: isSmall ? 0.5 : 0.8, px: isSmall ? 0.5 : 1, fontSize: isSmall ? '0.75rem' : '0.85rem' } }}>
+                                    <TableCell sx={{ fontWeight: 600 }}>{task.name}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{prog}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{actual}</TableCell>
+                                    <TableCell align="center"
+                                        sx={{ 
+                                            bgcolor: balance < 0 ? '#ffebee' : '#f1f8e9', 
+                                            fontWeight: 'bold', 
+                                            color: balance < 0 ? 'error.main' : 'success.main',
+                                            px: '0 !important' 
+                                        }}>
+                                        {balance}
+                                    </TableCell>
+                                    <TableCell align="center" sx={{ px: '4px !important' }}>
+                                        {justification ? (
+                                            <Tooltip title="Click to view full justification" arrow placement="left">
+                                                <IconButton 
+                                                    size="small" 
+                                                    color="warning" 
+                                                    sx={{ 
+                                                        border: '1px solid currentColor', 
+                                                        borderRadius: 1.5,
+                                                        p: 0.2
+                                                    }}
+                                                    onClick={() => setViewingJustification({ task: task.name, text: justification })}
+                                                >
+                                                    <ChatIcon sx={{ fontSize: isSmall ? 16 : 18 }} />
+                                                </IconButton>
+                                            </Tooltip>
+                                        ) : (
+                                            balance < 0 ? (
+                                                <Typography variant="caption" sx={{ color: 'error.main', fontWeight: 'bold', fontSize: '0.65rem' }}>MISSING</Typography>
+                                            ) : '-'
+                                        )}
+                                    </TableCell>
+                                </TableRow>
                                 );
                             })}
                         </TableBody>
@@ -625,6 +649,33 @@ export default function WorkProgramManager() {
                     {snack.msg}
                 </Alert>
             </Snackbar>
+
+            {/* Justification Viewer Dialog */}
+            <Dialog 
+                open={Boolean(viewingJustification)} 
+                onClose={() => setViewingJustification(null)}
+                fullWidth
+                maxWidth="xs"
+                PaperProps={{ sx: { borderRadius: 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 'bold', color: '#e65100', pb: 1 }}>
+                    Justification: {viewingJustification?.task}
+                </DialogTitle>
+                <DialogContent>
+                    <Typography sx={{ py: 1, whiteSpace: 'pre-wrap', color: 'text.primary', fontStyle: 'italic' }}>
+                        "{viewingJustification?.text}"
+                    </Typography>
+                </DialogContent>
+                <DialogActions sx={{ p: 2 }}>
+                    <Button 
+                        onClick={() => setViewingJustification(null)} 
+                        variant="contained" 
+                        sx={{ bgcolor: '#e65100', '&:hover': { bgcolor: '#bf360c' }, borderRadius: 2 }}
+                    >
+                        Close
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </Box>
     );
 }
