@@ -291,7 +291,7 @@ export default function MusterReviewManager() {
                                                         sx={{ 
                                                             fontSize: isMobile ? '0.7rem' : 'inherit',
                                                             whiteSpace: 'nowrap',
-                                                            minWidth: isSmall ? '80px' : 'auto'
+                                                            minWidth: isMobile ? '80px' : 'auto'
                                                         }}
                                                     >
                                                         Edit
