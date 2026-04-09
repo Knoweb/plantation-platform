@@ -181,7 +181,6 @@ export default function MusterReviewManager() {
                     >
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                             <TableRow>
-                                <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Division</TableCell>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
@@ -196,7 +195,6 @@ export default function MusterReviewManager() {
                             ) : (
                                 pendingItems.map((row) => (
                                     <TableRow key={row.id} hover>
-                                        <TableCell>{row.displayId}</TableCell>
                                         <TableCell><Chip label={row.type} size="small" color="primary" variant="outlined" /></TableCell>
                                         <TableCell>
                                             {row.divisionName}

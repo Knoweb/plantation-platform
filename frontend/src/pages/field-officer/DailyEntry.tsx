@@ -83,74 +83,138 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
             <Box sx={{ 
                 bgcolor: 'white', 
                 px: { xs: 2.5, sm: 4 }, 
-                pt: { xs: 2.5, sm: 3 }, 
-                pb: 0,
+                pt: { xs: 2.5, sm: 2 }, 
+                pb: { xs: 2, sm: 2 },
                 borderBottom: '1px solid #eef2f6',
-                boxShadow: '0 2px 12px rgba(0,0,0,0.03)'
+                boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
             }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={1.5}>
-                    <Box>
-                        <Typography variant="h5" fontWeight="900" color="#1b5e20" sx={{ letterSpacing: '-0.03em', mb: 0.5 }}>
-                            Field Officer Portal
-                        </Typography>
+                <Box 
+                    display="flex" 
+                    flexDirection={{ xs: 'column', sm: 'row' }} 
+                    justifyContent="space-between" 
+                    alignItems="center" 
+                    gap={{ xs: 2.5, sm: 3 }}
+                >
+                    {/* Left Group: Branding & Context */}
+                    <Box sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
                         <Box display="flex" alignItems="center" gap={1.2}>
+                            <Typography variant="h6" fontWeight="900" color="#1b5e20" sx={{ letterSpacing: '-0.02em', fontSize: { xs: '1.1rem', sm: '1.2rem' }, lineHeight: 1.2 }}>
+                                Field Officer Portal
+                            </Typography>
                             <Box sx={{ 
-                                width: 8, 
-                                height: 8, 
+                                width: 7, 
+                                height: 7, 
                                 borderRadius: '50%', 
                                 bgcolor: '#4caf50', 
+                                boxShadow: '0 0 0 2px rgba(76, 175, 80, 0.2)',
                                 animation: 'pulse-green 2s infinite',
                                 '@keyframes pulse-green': {
                                     '0%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0.4)' },
-                                    '70%': { boxShadow: '0 0 0 8px rgba(76, 175, 80, 0)' },
+                                    '70%': { boxShadow: '0 0 0 6px rgba(76, 175, 80, 0)' },
                                     '100%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0)' }
                                 }
                             }} />
-                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.65rem' }}>
-                                Operational Dashboard • {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
-                            </Typography>
                         </Box>
-                    </Box>
-                    <Box textAlign="right" sx={{ display: { xs: 'none', sm: 'block' } }}>
-                        <Typography variant="h6" fontWeight="900" color="#2e7d32" sx={{ lineHeight: 1 }}>
-                            {new Date().toLocaleDateString('en-US', { weekday: 'long' })}
+                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.6rem', mt: 0.2, display: 'block' }}>
+                            Operational Dashboard
                         </Typography>
                     </Box>
+
+                    {/* Right Group: Navigation & Utilities */}
+                    <Box sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        gap: { xs: 1.5, sm: 2 }, 
+                        width: { xs: '100%', sm: 'auto' }, 
+                        justifyContent: { xs: 'center', sm: 'flex-end' } 
+                    }}>
+                        {/* Compact Segmented Control */}
+                        <Box sx={{ 
+                            display: 'inline-flex', 
+                            bgcolor: '#f1f5f9', 
+                            p: 0.4, 
+                            borderRadius: 2.5,
+                            border: '1px solid #e2e8f0',
+                            gap: 0.4
+                        }}>
+                            {userRole === 'FIELD_OFFICER' && (
+                                <Box 
+                                    onClick={() => setTabIndex(0)}
+                                    sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: 0.8, 
+                                        px: { xs: 2.8, sm: 2 }, 
+                                        py: { xs: 1, sm: 0.7 }, 
+                                        borderRadius: 2.2,
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                        bgcolor: tabIndex === 0 ? '#1b5e20' : 'transparent',
+                                        color: tabIndex === 0 ? 'white' : '#64748b',
+                                        boxShadow: tabIndex === 0 ? '0 4px 10px rgba(27, 94, 32, 0.2)' : 'none',
+                                        animation: (tabIndex === 0) ? { xs: 'pulse-active 2.5s infinite ease-in-out', sm: 'none' } : 'none',
+                                        '@keyframes pulse-active': {
+                                            '0%': { transform: 'scale(1)' },
+                                            '50%': { transform: 'scale(0.98)', opacity: 0.9 },
+                                            '100%': { transform: 'scale(1)' }
+                                        },
+                                        '&:hover': { bgcolor: tabIndex === 0 ? '#1b5e20' : '#f8fafc' }
+                                    }}
+                                >
+                                    <EditStartIcon sx={{ fontSize: '1rem' }} />
+                                    <Typography sx={{ fontSize: '0.8rem', fontWeight: tabIndex === 0 ? '900' : '700' }}>Entry</Typography>
+                                </Box>
+                            )}
+                            <Box 
+                                onClick={() => setTabIndex(1)}
+                                sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    gap: 0.8, 
+                                    px: { xs: 2.8, sm: 2 }, 
+                                    py: { xs: 1, sm: 0.7 }, 
+                                    borderRadius: 2.2,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.2s cubic-bezier(0.4, 0, 0.2, 1)',
+                                    bgcolor: tabIndex === 1 ? '#1b5e20' : 'transparent',
+                                    color: tabIndex === 1 ? 'white' : '#64748b',
+                                    boxShadow: tabIndex === 1 ? '0 4px 10px rgba(27, 94, 32, 0.2)' : 'none',
+                                    animation: (tabIndex === 1) ? { xs: 'pulse-active 2.5s infinite ease-in-out', sm: 'none' } : 'none',
+                                    '&:hover': { bgcolor: tabIndex === 1 ? '#1b5e20' : '#f8fafc' }
+                                }}
+                            >
+                                <Badge badgeContent={auditAlertCount} color="error" sx={{ '& .MuiBadge-badge': { fontSize: '0.6rem', minWidth: 14, height: 14 } }}>
+                                    <HistoryIcon sx={{ fontSize: '1rem' }} />
+                                </Badge>
+                                <Typography sx={{ fontSize: '0.75rem', fontWeight: tabIndex === 1 ? '900' : '700' }}>History</Typography>
+                            </Box>
+                        </Box>
+
+                        {/* Date Pill */}
+                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                            <Box sx={{ 
+                                bgcolor: '#f1f8e9', 
+                                px: { xs: 1.5, sm: 1.8 }, 
+                                py: 0.7, 
+                                borderRadius: '20px', 
+                                border: '1px solid #c8e6c9',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: { xs: 1, sm: 1.2 },
+                                whiteSpace: 'nowrap',
+                                boxShadow: '0 2px 6px rgba(46, 125, 50, 0.05)'
+                            }}>
+                                <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' }, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                    {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                                </Typography>
+                                <Box sx={{ width: '1.5px', height: 12, bgcolor: '#c8e6c9', borderRadius: 1 }} />
+                                <Typography variant="body2" fontWeight="700" color="#558b2f" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
+                                    {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Box>
                 </Box>
-                <Tabs
-                    value={tabIndex}
-                    onChange={(_, v) => setTabIndex(v)}
-                    variant="scrollable"
-                    scrollButtons="auto"
-                    sx={{
-                        '& .MuiTabs-indicator': { height: 4, borderRadius: '4px 4px 0 0', bgcolor: '#1b5e20' },
-                        '& .MuiTab-root': { 
-                            textTransform: 'none', 
-                            fontWeight: '900', 
-                            fontSize: '0.95rem',
-                            color: '#546e7a',
-                            minHeight: 48,
-                            '&.Mui-selected': { color: '#1b5e20' }
-                        }
-                    }}
-                >
-                    {userRole === 'FIELD_OFFICER' && (
-                        <Tab
-                            label="Daily Entry"
-                            icon={<EditStartIcon />}
-                            iconPosition="start"
-                        />
-                    )}
-                    <Tab
-                        label="History"
-                        icon={
-                            <Badge badgeContent={auditAlertCount} color="error" overlap="circular" sx={{ '& .MuiBadge-badge': { fontSize: '0.65rem', minWidth: 16, height: 16 } }}>
-                                <HistoryIcon />
-                            </Badge>
-                        }
-                        iconPosition="start"
-                    />
-                </Tabs>
             </Box>
 
             <Box sx={{ p: { xs: 1, sm: 2 } }}>
@@ -169,6 +233,8 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
 
 // --- Tab 1: Daily Entry (Today) ---
 function DailyEntryTab() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const now = new Date();
@@ -571,77 +637,152 @@ function DailyEntryTab() {
 
     return (
         <Box>
-            <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={2} mb={3}>
-                <Box display="flex" alignItems="center">
-                    {isSubmitted && <Chip label="Read-Only Mode" color="info" />}
-                </Box>
-                <Box display="flex" gap={2} width={{ xs: '100%', sm: 'auto' }}>
-                    <Badge
-                        badgeContent={pendingCount}
-                        color="error"
-                        invisible={pendingCount === 0}
-                        sx={{
-                            flex: 1,
-                            '& .MuiBadge-badge': {
-                                animation: 'blink 1.5s infinite',
-                                right: 10,
-                                top: 5,
-                                '@keyframes blink': {
-                                    '0%': { opacity: 1 },
-                                    '50%': { opacity: 0.5 },
-                                    '100%': { opacity: 1 }
+        <Box sx={{ mb: isMobile ? 2 : 3 }}>
+            {!isMobile ? (
+                /* Desktop Toolbar: Restored to original exactly */
+                <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} mb={3}>
+                    <Box display="flex" alignItems="center">
+                        {isSubmitted && <Chip label="Read-Only Mode" color="info" sx={{ fontWeight: 'bold' }} />}
+                    </Box>
+                    <Box display="flex" gap={2} alignItems="center">
+                        <Badge
+                            badgeContent={pendingCount}
+                            color="error"
+                            invisible={pendingCount === 0}
+                            sx={{
+                                '& .MuiBadge-badge': {
+                                    animation: 'blink 1.5s infinite',
+                                    right: 10,
+                                    top: 5
                                 }
-                            }
-                        }}
-                    >
-                        <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white', width: '100%' }}>
-                            <InputLabel>Select Division</InputLabel>
-                            <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
-                                {divisions.map((d: any) => {
-                                    const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
-                                    return (
-                                        <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                                            {d.name}
-                                            {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem' }} />}
-                                        </MenuItem>
-                                    );
-                                })}
-                            </Select>
-                        </FormControl>
-                    </Badge>
+                            }}
+                        >
+                            <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white' }}>
+                                <InputLabel>Select Division</InputLabel>
+                                <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
+                                    {divisions.map((d: any) => {
+                                        const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
+                                        return (
+                                            <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                {d.name}
+                                                {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem', ml: 1 }} />}
+                                            </MenuItem>
+                                        );
+                                    })}
+                                </Select>
+                            </FormControl>
+                        </Badge>
+                        {attendanceData.length > 0 && selectedDivision && (
+                            <Box display="flex" gap={1}>
+                                {isSubmitted ? (
+                                    <>
+                                        <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
+                                        {!isEditingWeightsAfterSubmission ? (
+                                            <Button variant="outlined" color="primary" onClick={() => setIsEditingWeightsAfterSubmission(true)} sx={{ fontWeight: 'bold' }}>Edit Weights</Button>
+                                        ) : (
+                                            <>
+                                                <Button variant="outlined" color="inherit" onClick={() => setIsEditingWeightsAfterSubmission(false)} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
+                                                <Button variant="contained" color="success" onClick={() => setConfirmWeightsOpen(true)} sx={{ fontWeight: 'bold' }}>Save Weights</Button>
+                                            </>
+                                        )}
+                                    </>
+                                ) : !isEditMode ? (
+                                    <>
+                                        <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
+                                        <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)} sx={{ fontWeight: 'bold' }}>Edit Entry</Button>
+                                        <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold', borderWidth: 2, '&:hover': { borderWidth: 2 } }}>Submit Muster</Button>
+                                    </>
+                                ) : (
+                                    <>
+                                        <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
+                                        <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold' }}>Assign Evening Worker</Button>
+                                        <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
+                                        <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ fontWeight: 'bold' }}>Save</Button>
+                                    </>
+                                )}
+                            </Box>
+                        )}
+                        <Button variant="contained" color="inherit" onClick={() => fetchInitialData()} sx={{ minWidth: 'auto' }}><RefreshIcon /></Button>
+                    </Box>
+                </Box>
+            ) : (
+                /* Mobile Toolbar: New optimized grid layout */
+                <Box display="flex" flexDirection="column" gap={1.5}>
+                    {isSubmitted && (
+                        <Box display="flex" justifyContent="center">
+                            <Chip label="Read-Only Mode" color="info" sx={{ fontWeight: 'bold' }} />
+                        </Box>
+                    )}
+                    <Box display="flex" gap={1}>
+                        <Badge
+                            badgeContent={pendingCount}
+                            color="error"
+                            invisible={pendingCount === 0}
+                            sx={{
+                                flex: 1,
+                                '& .MuiBadge-badge': {
+                                    animation: 'blink 1.5s infinite',
+                                    right: 10,
+                                    top: 5
+                                }
+                            }}
+                        >
+                            <FormControl size="small" sx={{ bgcolor: 'white', width: '100%' }}>
+                                <InputLabel>Select Division</InputLabel>
+                                <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
+                                    {divisions.map((d: any) => {
+                                        const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
+                                        return (
+                                            <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                                {d.name}
+                                                {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem', ml: 1 }} />}
+                                            </MenuItem>
+                                        );
+                                    })}
+                                </Select>
+                            </FormControl>
+                        </Badge>
+                        <IconButton 
+                            onClick={() => fetchInitialData()}
+                            sx={{ border: '1px solid #e0e0e0', borderRadius: 1, bgcolor: '#f5f5f5' }}
+                        >
+                            <RefreshIcon />
+                        </IconButton>
+                    </Box>
+
                     {attendanceData.length > 0 && selectedDivision && (
-                        <Box display="flex" gap={1} flexWrap="wrap">
+                        <Box display="grid" gridTemplateColumns="1fr 1fr" gap={1}>
                             {isSubmitted ? (
                                 <>
-                                    <Button variant="contained" disabled sx={{ bgcolor: '#e0e0e0', fontWeight: 'bold' }}>Finalized</Button>
-                                    {!isEditingWeightsAfterSubmission ? (
-                                        <Button variant="outlined" color="primary" onClick={() => setIsEditingWeightsAfterSubmission(true)} sx={{ fontWeight: 'bold' }}>Edit Field & Factory Weights</Button>
-                                    ) : (
+                                    <Button variant="contained" disabled sx={{ gridColumn: 'span 2', bgcolor: '#e0e0e0' }}>Finalized</Button>
+                                    {isEditingWeightsAfterSubmission ? (
                                         <>
-                                            <Button variant="outlined" color="inherit" onClick={() => setIsEditingWeightsAfterSubmission(false)} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
-                                            <Button variant="contained" color="success" onClick={() => setConfirmWeightsOpen(true)} sx={{ fontWeight: 'bold' }}>Save Weights</Button>
+                                            <Button variant="outlined" color="inherit" onClick={() => setIsEditingWeightsAfterSubmission(false)}>Cancel</Button>
+                                            <Button variant="contained" color="success" onClick={() => setConfirmWeightsOpen(true)}>Save</Button>
                                         </>
+                                    ) : (
+                                        <Button variant="outlined" color="primary" fullWidth onClick={() => setIsEditingWeightsAfterSubmission(true)} sx={{ gridColumn: 'span 2' }}>Edit Weights</Button>
                                     )}
                                 </>
                             ) : !isEditMode ? (
                                 <>
-                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
-                                    <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)} sx={{ fontWeight: 'bold' }}>Edit Entry</Button>
-                                    <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold', borderWidth: 2, '&:hover': { borderWidth: 2 } }}>Submit Muster</Button>
+                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ gridColumn: 'span 2' }}>View Targets</Button>
+                                    <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)}>Edit Entry</Button>
+                                    <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold' }}>Submit</Button>
                                 </>
                             ) : (
                                 <>
-                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
-                                    <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold' }}>Assign Evening Worker</Button>
-                                    <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
-                                    <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ fontWeight: 'bold' }}>Save</Button>
+                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ gridColumn: 'span 2' }}>Targets</Button>
+                                    <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ gridColumn: 'span 2' }}>Add Worker</Button>
+                                    <Button variant="outlined" color="inherit" onClick={handleCancelEdit}>Cancel</Button>
+                                    <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)}>Save</Button>
                                 </>
                             )}
                         </Box>
                     )}
-                    <Button variant="contained" color="inherit" onClick={() => fetchInitialData()}><RefreshIcon /></Button>
                 </Box>
-            </Box>
+            )}
+        </Box>
 
 
 
@@ -1246,15 +1387,15 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
         width: 68,
         padding: '4px',
         height: 36,
-        border: '2px solid #e0e6ed',
-        borderRadius: 8,
+        border: '1px solid #ced4da',
+        borderRadius: 4,
         textAlign: 'center' as const,
-        fontSize: '1rem',
-        fontWeight: '900',
+        fontSize: '0.9rem',
+        fontWeight: 'bold',
         outline: 'none',
         transition: 'all 0.2s',
-        color: '#2e7d32',
-        backgroundColor: '#f8fafc',
+        color: '#495057',
+        backgroundColor: '#fff',
         pointerEvents: isSubmitted ? 'none' as const : 'auto' as const,
     };
 
@@ -1283,7 +1424,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     <Avatar sx={{ bgcolor: typeColor, width: 30, height: 30, flexShrink: 0 }}>
                                         <PersonIcon sx={{ fontSize: 17, color: 'white' }} />
                                     </Avatar>
-                                    <Typography variant="body2" fontWeight="900" color="#1a1a1a" sx={{ fontSize: '0.9rem', flex: 1 }}>
+                                    <Typography variant="body2" fontWeight="bold" color="#1a1a1a" sx={{ fontSize: '0.9rem', flex: 1 }}>
                                         {item.workerName}
                                     </Typography>
                                     <Chip
@@ -1301,27 +1442,27 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     <Box display="flex" alignItems="center" gap={1} px={1.5} py={0.75} flexWrap="wrap">
                                         <Box textAlign="center">
                                             <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>AM</Typography>
-                                            <Typography variant="body2" fontWeight="900" color="#333" sx={{ fontSize: '0.85rem' }}>{item.amWeight ?? '—'}</Typography>
+                                            <Typography variant="body2" fontWeight="bold" color="#333" sx={{ fontSize: '0.85rem' }}>{item.amWeight ?? '—'}</Typography>
                                         </Box>
                                         <Typography color="text.disabled" sx={{ fontSize: '0.7rem' }}>+</Typography>
                                         <Box textAlign="center">
                                             <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>PM</Typography>
-                                            <Typography variant="body2" fontWeight="900" color="#333" sx={{ fontSize: '0.85rem' }}>{item.pmWeight ?? '—'}</Typography>
+                                            <Typography variant="body2" fontWeight="bold" color="#333" sx={{ fontSize: '0.85rem' }}>{item.pmWeight ?? '—'}</Typography>
                                         </Box>
                                         <Box sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                             <Typography variant="caption" color="#2e7d32" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>TOTAL</Typography>
-                                            <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: '0.95rem' }}>{total.toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}</Typography>
+                                            <Typography variant="body2" fontWeight="bold" color="#2e7d32" sx={{ fontSize: '0.95rem' }}>{total.toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}</Typography>
                                         </Box>
                                         {Number(item.overKilos) > 0 && (
                                             <Box sx={{ bgcolor: '#fffde7', border: '1px solid #ffe082', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                 <Typography variant="caption" color="#e65100" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>OVER</Typography>
-                                                <Typography variant="body2" fontWeight="900" color="#e65100" sx={{ fontSize: '0.9rem' }}>{item.overKilos}</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="#e65100" sx={{ fontSize: '0.9rem' }}>{item.overKilos}</Typography>
                                             </Box>
                                         )}
                                         {isPieceRate && Number(item.cashKilos) > 0 && (
                                             <Box sx={{ bgcolor: '#f3e5f5', border: '1px solid #ce93d8', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
                                                 <Typography variant="caption" color="#7b1fa2" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>CASH</Typography>
-                                                <Typography variant="body2" fontWeight="900" color="#7b1fa2" sx={{ fontSize: '0.9rem' }}>{item.cashKilos}</Typography>
+                                                <Typography variant="body2" fontWeight="bold" color="#7b1fa2" sx={{ fontSize: '0.9rem' }}>{item.cashKilos}</Typography>
                                             </Box>
                                         )}
                                         {item.session && item.session !== 'FULL_DAY' && (
@@ -1472,7 +1613,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         border="2px solid #a5d6a7"
                                                         sx={{ boxShadow: '0 2px 4px rgba(46, 125, 50, 0.1)' }}
                                                     >
-                                                        <Typography variant="body2" fontWeight="900" fontSize="0.95rem">
+                                                        <Typography variant="body2" fontWeight="600" fontSize="0.95rem">
                                                             {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}
                                                         </Typography>
                                                     </Box>
