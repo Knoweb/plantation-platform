@@ -1,4 +1,4 @@
-import { Box, Typography, Card, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, Avatar, Autocomplete, Checkbox, Tooltip } from '@mui/material';
+import { Box, Typography, Card, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, Avatar, Autocomplete, Checkbox, Tooltip, useTheme, useMediaQuery, TableContainer, Paper } from '@mui/material';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -19,38 +19,16 @@ export default function MusterReviewManager() {
     const [viewStatus, setViewStatus] = useState<'PENDING' | 'HISTORY'>('PENDING');
     const [workerMap, setWorkerMap] = useState<Map<string, any>>(new Map());
 
-    // Review Item State
-    const [selectedItem, setSelectedItem] = useState<any>(null);
-    const [isEditMode, setIsEditMode] = useState<boolean>(false);
-    const [localDetails, setLocalDetails] = useState<any[]>([]);
-    const [remarks, setRemarks] = useState('');
-    const [editingIdx, setEditingIdx] = useState<number | null>(null);
-
-    useEffect(() => {
-        if (selectedItem) {
-            try {
-                setLocalDetails(JSON.parse(selectedItem.detailsRaw));
-            } catch (e) {
-                setLocalDetails([]);
-            }
-            setRemarks(selectedItem.remarks || '');
-            setEditingIdx(null);
-        } else {
-            setLocalDetails([]);
-            setRemarks('');
-            setEditingIdx(null);
-        }
-    }, [selectedItem]);
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const userRole = userSession.role;
 
-    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+    const todayStr = new Date().toLocaleDateString('en-CA');
 
-    useEffect(() => {
-        if (tenantId) fetchPending();
-    }, [tenantId, viewStatus]);
+    const [notification, setNotification] = useState<{ open: boolean, message: string, severity: 'success' | 'error' | 'warning' | 'info' } | null>(null);
 
     const fetchPending = async () => {
         setLoading(true);
@@ -71,12 +49,6 @@ export default function MusterReviewManager() {
             });
             setWorkerMap(wMap);
 
-            // Filter ONLY 'Morning Muster' (and potentially 'Evening Muster' if backend supports status)
-            // Filter Logic:
-            // If PENDING view, backend returns PENDING (if endpoint supports it or we filter here).
-            // If HISTORY view, backend returns ALL (if status!=PENDING param).
-            // So we need to filter "non-Pending" for History view.
-
             const mappedAll = workRes.data.map((item: any) => ({
                 id: item.workId,
                 displayId: item.workId.substring(0, 8),
@@ -95,15 +67,12 @@ export default function MusterReviewManager() {
 
             const musters = mappedAll
                 .filter((item: any) => {
-                    // Filter Morning/Evening Muster
                     const isMuster = item.type === 'Morning Muster' || item.type === 'Evening Muster';
                     if (!isMuster) return false;
 
-                    // Filter based on View Status
                     if (viewStatus === 'PENDING') {
-                        return item.status === 'PENDING' || !item.status; // Default to pending if null
+                        return item.status === 'PENDING' || !item.status;
                     } else {
-                        // History: Show Approved or Rejected
                         return item.status === 'APPROVED' || item.status === 'REJECTED';
                     }
                 })
@@ -111,11 +80,11 @@ export default function MusterReviewManager() {
                     if (viewStatus === 'HISTORY') {
                         const timeA = new Date(a.actionAt || a.date).getTime();
                         const timeB = new Date(b.actionAt || b.date).getTime();
-                        return timeB - timeA; // Newest first
+                        return timeB - timeA;
                     } else {
                         const timeA = new Date(a.createdAt || a.date).getTime();
                         const timeB = new Date(b.createdAt || b.date).getTime();
-                        return timeB - timeA; // Newest first
+                        return timeB - timeA;
                     }
                 });
 
@@ -143,6 +112,13 @@ export default function MusterReviewManager() {
         }
     };
 
+    // Review Item State
+    const [selectedItem, setSelectedItem] = useState<any>(null);
+    const [isEditMode, setIsEditMode] = useState<boolean>(false);
+    const [localDetails, setLocalDetails] = useState<any[]>([]);
+    const [remarks, setRemarks] = useState('');
+    const [editingIdx, setEditingIdx] = useState<number | null>(null);
+
     const handleReject = async () => {
         if (!selectedItem || (isEditMode && !window.confirm("Reject this muster?")) || (!isEditMode && !window.confirm("Delete this record permanently?"))) return;
         try {
@@ -152,7 +128,7 @@ export default function MusterReviewManager() {
                 });
                 setNotification({ open: true, message: "Muster Rejected", severity: 'warning' });
             } else {
-                await axios.delete(`/api/operations/daily-work/${selectedItem.id}`);
+                await axios.delete(`/api/operations/daily-work/${selectedItem?.id}`);
                 setNotification({ open: true, message: "Record Deleted", severity: 'success' });
             }
             setSelectedItem(null);
@@ -161,6 +137,26 @@ export default function MusterReviewManager() {
             setNotification({ open: true, message: "Failed to Process", severity: 'error' });
         }
     };
+
+    useEffect(() => {
+        if (tenantId) fetchPending();
+    }, [tenantId, viewStatus]);
+
+    useEffect(() => {
+        if (selectedItem) {
+            try {
+                setLocalDetails(JSON.parse(selectedItem.detailsRaw));
+            } catch (e) {
+                setLocalDetails([]);
+            }
+            setRemarks(selectedItem.remarks || '');
+            setEditingIdx(null);
+        } else {
+            setLocalDetails([]);
+            setRemarks('');
+            setEditingIdx(null);
+        }
+    }, [selectedItem]);
 
     return (
         <Box>
@@ -171,18 +167,27 @@ export default function MusterReviewManager() {
                 <Button variant={viewStatus === 'HISTORY' ? "contained" : "outlined"} onClick={() => setViewStatus('HISTORY')}>History</Button>
             </Box>
 
-            {loading ? <CircularProgress /> : (
-                <Card>
-                    <Table>
+            {loading ? <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box> : (
+                <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 2, overflowX: 'auto', bgcolor: 'white' }}>
+                    <Table 
+                        size={isMobile ? "small" : "medium"} 
+                        sx={{ 
+                            minWidth: isMobile ? 700 : 'unset',
+                            '& .MuiTableCell-root': {
+                                px: isMobile ? 1 : 2,
+                                fontSize: isMobile ? '0.8rem' : '0.875rem'
+                            }
+                        }}
+                    >
                         <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                             <TableRow>
-                                <TableCell>ID</TableCell>
-                                <TableCell>Type</TableCell>
-                                <TableCell>Division</TableCell>
-                                <TableCell>Date & Time</TableCell>
-                                <TableCell align="center">Status</TableCell>
-                                <TableCell align="right">Workers</TableCell>
-                                <TableCell align="center">Action</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>ID</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Type</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Division</TableCell>
+                                <TableCell sx={{ fontWeight: 'bold' }}>Date & Time</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Status</TableCell>
+                                <TableCell align="right" sx={{ fontWeight: 'bold' }}>Workers</TableCell>
+                                <TableCell align="center" sx={{ fontWeight: 'bold' }}>Action</TableCell>
                             </TableRow>
                         </TableHead>
                         <TableBody>
@@ -268,7 +273,7 @@ export default function MusterReviewManager() {
                                             >
                                                 Review
                                             </Button>
-                                            {viewStatus === 'HISTORY' && (
+                                            {viewStatus === 'HISTORY' && row.date >= todayStr && (
                                                 <Button
                                                     variant="outlined"
                                                     size="small"
@@ -286,14 +291,16 @@ export default function MusterReviewManager() {
                             )}
                         </TableBody>
                     </Table>
-                </Card>
+                </TableContainer>
             )}
 
             {/* Review Dialog */}
             {(() => {
+                if (!selectedItem) return null;
+
                 const getFilteredWorkersForEdit = () => {
                     if (!selectedItem) return [];
-                    const musterDate = selectedItem.date;
+                    const musterDate = selectedItem?.date;
                     return Array.from(workerMap.values()).filter(w => {
                         if (w.status !== 'ACTIVE') return false;
 
@@ -668,7 +675,7 @@ export default function MusterReviewManager() {
                                         </>
                                     ) : (
                                         <>
-                                            {viewStatus === 'HISTORY' && <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Delete Record (Reset)</Button>}
+                                            {viewStatus === 'HISTORY' && selectedItem?.date >= todayStr && <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Delete Record (Reset)</Button>}
                                         </>
                                     )}
                                 </Box>

@@ -567,6 +567,7 @@ export default function LeaveManagement() {
                                 <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Acting Arrangement</Typography>
                                 <Autocomplete
                                     freeSolo
+                                    disabled={viewDialog.application?.status !== 'PENDING'}
                                     options={staffMembers.filter(s => s.id !== viewDialog.application?.userId)}
                                     getOptionLabel={(option) => typeof option === 'string' ? option : option.name}
                                     value={staffMembers.find(s => s.id === editedActingPerson) || editedActingPerson}
@@ -594,6 +595,7 @@ export default function LeaveManagement() {
                                 <TextField
                                     fullWidth label="Manager Remarks"
                                     multiline rows={2}
+                                    disabled={viewDialog.application?.status !== 'PENDING'}
                                     value={managerRemarks}
                                     onChange={(e) => setManagerRemarks(e.target.value)}
                                 />
@@ -602,21 +604,33 @@ export default function LeaveManagement() {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ p: 3, borderTop: 1, borderColor: 'divider' }}>
-                    <Button 
-                        variant="outlined" 
-                        color="error" 
-                        onClick={() => handleRejectConfirm()}
-                    >
-                        Reject Application
-                    </Button>
-                    <Box flexGrow={1} />
-                    <Button 
-                        variant="contained" 
-                        color="success" 
-                        onClick={() => handleApprove(viewDialog.application.id)}
-                    >
-                        Approve Leave
-                    </Button>
+                    {viewDialog.application?.status === 'PENDING' ? (
+                        <>
+                            <Button 
+                                variant="outlined" 
+                                color="error" 
+                                onClick={() => handleRejectConfirm()}
+                            >
+                                Reject Application
+                            </Button>
+                            <Box flexGrow={1} />
+                            <Button 
+                                variant="contained" 
+                                color="success" 
+                                onClick={() => handleApprove(viewDialog.application.id)}
+                            >
+                                Approve Leave
+                            </Button>
+                        </>
+                    ) : (
+                        <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+                            <Chip 
+                                label={`Request ${viewDialog.application?.status === 'APPROVED' ? 'Approved' : 'Rejected'}`} 
+                                color={viewDialog.application?.status === 'APPROVED' ? 'success' : 'error'}
+                                sx={{ fontWeight: 'bold', px: 2 }}
+                            />
+                        </Box>
+                    )}
                 </DialogActions>
             </Dialog>
 

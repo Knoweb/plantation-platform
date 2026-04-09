@@ -219,6 +219,7 @@ const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
 
     return (
         <DashboardCard 
+            variant="slate"
             title="Cost Analytics" 
             icon={<MonetizationOnIcon sx={{ color: '#ef4444' }} />}
             filters={

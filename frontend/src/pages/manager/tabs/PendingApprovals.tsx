@@ -1,11 +1,13 @@
-import { Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, ToggleButton, ToggleButtonGroup, Grid } from '@mui/material';
+import { useTheme, useMediaQuery, Box, Typography, Card, CardContent, Table, TableHead, TableRow, TableCell, TableBody, Button, CircularProgress, Dialog, DialogTitle, DialogContent, TextField, DialogActions, Snackbar, Alert, IconButton, Chip, ToggleButton, ToggleButtonGroup, Grid } from '@mui/material';
 import PendingActionsIcon from '@mui/icons-material/PendingActions';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export default function PendingApprovals() {
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     // Data State
     const [pendingItems, setPendingItems] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -43,16 +45,7 @@ export default function PendingApprovals() {
         setNotification({ ...notification, open: false });
     };
 
-    useEffect(() => {
-        if (tenantId) {
-            fetchPending();
-        } else {
-            setLoading(false);
-            // Optionally redirect or show message
-        }
-    }, [tenantId, viewStatus]);
-
-    const fetchPending = async () => {
+    const fetchPending = useCallback(async () => {
         setLoading(true);
         let workItems: any[] = [];
         let invItems: any[] = [];
@@ -114,13 +107,21 @@ export default function PendingApprovals() {
                     actualType: t.type,
                     managerRemarks: t.managerRemarks
                 }));
-        } catch (e) {
-            console.warn("Inventory service unavailable", e);
+        } catch {
+            console.warn("Inventory service unavailable");
         }
 
         setPendingItems([...workItems, ...invItems]);
         setLoading(false);
-    };
+    }, [tenantId, viewStatus]);
+
+    useEffect(() => {
+        if (tenantId) {
+            fetchPending();
+        } else {
+            setLoading(false);
+        }
+    }, [tenantId, fetchPending]);
 
     const handleDelete = async (item: any) => {
         if (!window.confirm("Are you sure you want to PERMANENTLY DELETE this record?")) return;
@@ -200,8 +201,7 @@ export default function PendingApprovals() {
 
     return (
         <Box>
-            <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">Pending Approvals</Typography>
-            <Typography variant="body1" color="text.secondary" mb={4}>Review and approve stock requests, musters, and other pending actions.</Typography>
+            <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom color="primary">Pending Approvals</Typography>
 
             <Card>
                 <CardContent>
@@ -243,8 +243,8 @@ export default function PendingApprovals() {
                                 },
                             }}
                         >
-                            <ToggleButton value="PENDING">Pending Orders</ToggleButton>
-                            <ToggleButton value="APPROVED">Review History</ToggleButton>
+                            <ToggleButton value="PENDING" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>Pending Orders</ToggleButton>
+                            <ToggleButton value="APPROVED" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>Review History</ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
 
@@ -259,79 +259,82 @@ export default function PendingApprovals() {
                         />
                     </Box>
 
-                    <Table>
-                        <TableHead>
-                            <TableRow>
-                                <TableCell>Type</TableCell>
-                                <TableCell>Requested By</TableCell>
-                                <TableCell>Division</TableCell>
-                                <TableCell>Date</TableCell>
-                                <TableCell>Time</TableCell>
-                                <TableCell>Status</TableCell>
-                                <TableCell>Details</TableCell>
-                                <TableCell>Quantity</TableCell>
-                                <TableCell align="right">Action</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {pendingItems
-                                .filter(item => {
-                                    if (!searchTerm) return true;
-                                    const lower = searchTerm.toLowerCase();
-                                    return (
-                                        item.displayId.toLowerCase().includes(lower) ||
-                                        (item.divisionName && item.divisionName.toLowerCase().includes(lower)) ||
-                                        (item.details && item.details.toLowerCase().includes(lower)) ||
-                                        (item.date && item.date.includes(lower))
-                                    );
-                                })
-                                .map(item => (
-                                    <TableRow key={item.id}>
-                                        <TableCell>{item.type}</TableCell>
-                                        <TableCell>
-                                            <span style={{ fontWeight: 600 }}>{item.source === 'INVENTORY' && item.issuedTo ? item.issuedTo.split(' - ')[0] : 'System/Manager'}</span>
-                                        </TableCell>
-                                        <TableCell>
-                                            <Chip label={item.divisionName || '-'} size="small" variant="outlined" />
-                                        </TableCell>
-                                        <TableCell>{item.date}</TableCell>
-                                        <TableCell>{item.time}</TableCell>
-                                        <TableCell>
-                                            <Chip label={item.status} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} />
-                                        </TableCell>
-                                        <TableCell><Typography variant="body2">{item.details}</Typography></TableCell>
-                                        <TableCell sx={{ fontWeight: 'bold', minWidth: '100px' }}>
-                                            {item.quantity} {item.source === 'INVENTORY'
-                                                ? inventoryItems.find((i: any) => i.id === item.itemId)?.unit || ''
-                                                : 'Workers'}
-                                        </TableCell>
-                                        <TableCell align="right">
-                                            <Box display="flex" gap={1} justifyContent="flex-end">
-                                                {viewStatus === 'PENDING' && (
-                                                    <IconButton size="small" color="error" onClick={() => handleDelete(item)} title="Delete Record">
-                                                        <DeleteIcon />
-                                                    </IconButton>
-                                                )}
-                                                <Button
-                                                    size="small"
-                                                    variant="contained"
-                                                    color={viewStatus === 'APPROVED' ? 'inherit' : 'primary'}
-                                                    startIcon={<VisibilityIcon />}
-                                                    onClick={() => handleApprove(item)}
-                                                >
-                                                    View
-                                                </Button>
-                                            </Box>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            {pendingItems.length === 0 && (
+                    <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                        <Table sx={{ minWidth: 800 }}>
+                            <TableHead>
                                 <TableRow>
-                                    <TableCell colSpan={9} align="center">No pending approvals found.</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Type</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Requested By</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Division</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Date</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Time</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Status</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Details</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Quantity</TableCell>
+                                    <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem', fontWeight: 'bold' }}>Action</TableCell>
                                 </TableRow>
-                            )}
-                        </TableBody>
-                    </Table>
+                            </TableHead>
+                            <TableBody>
+                                {pendingItems
+                                    .filter(item => {
+                                        if (!searchTerm) return true;
+                                        const lower = searchTerm.toLowerCase();
+                                        return (
+                                            item.displayId.toLowerCase().includes(lower) ||
+                                            (item.divisionName && item.divisionName.toLowerCase().includes(lower)) ||
+                                            (item.details && item.details.toLowerCase().includes(lower)) ||
+                                            (item.date && item.date.includes(lower))
+                                        );
+                                    })
+                                    .map(item => (
+                                        <TableRow key={item.id}>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.type}</TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                                <span style={{ fontWeight: 600 }}>{item.source === 'INVENTORY' && item.issuedTo ? item.issuedTo.split(' - ')[0] : 'System/Manager'}</span>
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                                <Chip label={item.divisionName || '-'} size="small" variant="outlined" sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }} />
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.date}</TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.time}</TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                                <Chip label={item.status} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }} />
+                                            </TableCell>
+                                            <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}><Typography variant="body2" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>{item.details}</Typography></TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', minWidth: '100px', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                                {item.quantity} {item.source === 'INVENTORY'
+                                                    ? inventoryItems.find((i: any) => i.id === item.itemId)?.unit || ''
+                                                    : 'Workers'}
+                                            </TableCell>
+                                            <TableCell align="right" sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                                <Box display="flex" gap={1} justifyContent="flex-end">
+                                                    {viewStatus === 'PENDING' && (
+                                                        <IconButton size="small" color="error" onClick={() => handleDelete(item)} title="Delete Record">
+                                                            <DeleteIcon sx={{ fontSize: isMobile ? '1.1rem' : 'inherit' }} />
+                                                        </IconButton>
+                                                    )}
+                                                    <Button
+                                                        size="small"
+                                                        variant="contained"
+                                                        color={viewStatus === 'APPROVED' ? 'inherit' : 'primary'}
+                                                        startIcon={<VisibilityIcon sx={{ fontSize: isMobile ? '1rem' : 'inherit' }} />}
+                                                        onClick={() => handleApprove(item)}
+                                                        sx={{ fontSize: isMobile ? '0.7rem' : 'inherit', px: isMobile ? 1 : 2 }}
+                                                    >
+                                                        View
+                                                    </Button>
+                                                </Box>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                {pendingItems.length === 0 && (
+                                    <TableRow>
+                                        <TableCell colSpan={9} align="center">No pending approvals found.</TableCell>
+                                    </TableRow>
+                                )}
+                            </TableBody>
+                        </Table>
+                    </Box>
                 </CardContent>
             </Card>
 
@@ -474,7 +477,7 @@ export default function PendingApprovals() {
             <Dialog open={Boolean(musterReviewItem)} onClose={() => setMusterReviewItem(null)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', borderBottom: '1px solid #c8e6c9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
-                        <Typography variant="h6" fontWeight="bold">Morning Muster Review</Typography>
+                        <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">Morning Muster Review</Typography>
                         <Typography variant="caption">{musterReviewItem?.date}</Typography>
                     </Box>
                     <Chip
@@ -486,46 +489,48 @@ export default function PendingApprovals() {
                     <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }}>
                         {/* LEFT: Muster Chit Summary */}
                         <Box flex={1} minWidth={{ md: '300px' }}>
-                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: '#2e7d32' }}>Muster Chit</Typography>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#2e7d32' }}>Muster Chit</Typography>
                             <Card variant="outlined" sx={{ bgcolor: 'white' }}>
-                                <Table size="small">
-                                    <TableHead sx={{ bgcolor: '#a5d6a7' }}>
-                                        <TableRow>
-                                            <TableCell><strong>Work Item</strong></TableCell>
-                                            <TableCell><strong>Field No</strong></TableCell>
-                                            <TableCell align="right"><strong>Workers</strong></TableCell>
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {(() => {
-                                            try {
-                                                const details = musterReviewItem?.detailsRaw ? JSON.parse(musterReviewItem.detailsRaw) : [];
-                                                if (Array.isArray(details)) {
-                                                    return details.map((d: any, idx: number) => (
-                                                        <TableRow key={idx}>
-                                                            <TableCell>{d.task || musterReviewItem.type}</TableCell>
-                                                            <TableCell>{d.field}</TableCell>
-                                                            <TableCell align="right"><strong>{d.count || d.workers}</strong></TableCell>
-                                                        </TableRow>
-                                                    ));
+                                <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                                    <Table size="small">
+                                        <TableHead sx={{ bgcolor: '#a5d6a7' }}>
+                                            <TableRow>
+                                                <TableCell><strong>Work Item</strong></TableCell>
+                                                <TableCell><strong>Field No</strong></TableCell>
+                                                <TableCell align="right"><strong>Workers</strong></TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {(() => {
+                                                try {
+                                                    const details = musterReviewItem?.detailsRaw ? JSON.parse(musterReviewItem.detailsRaw) : [];
+                                                    if (Array.isArray(details)) {
+                                                        return details.map((d: any, idx: number) => (
+                                                            <TableRow key={idx}>
+                                                                <TableCell>{d.task || musterReviewItem.type}</TableCell>
+                                                                <TableCell>{d.field}</TableCell>
+                                                                <TableCell align="right"><strong>{d.count || d.workers}</strong></TableCell>
+                                                            </TableRow>
+                                                        ));
+                                                    }
+                                                } catch (e) {
+                                                    return <TableRow><TableCell colSpan={3}>Error loading details</TableCell></TableRow>;
                                                 }
-                                            } catch (e) {
-                                                return <TableRow><TableCell colSpan={3}>Error loading details</TableCell></TableRow>;
-                                            }
-                                            return <TableRow><TableCell colSpan={3}>No details</TableCell></TableRow>;
-                                        })()}
-                                        <TableRow sx={{ bgcolor: '#c8e6c9' }}>
-                                            <TableCell colSpan={2}><strong>Grand Total</strong></TableCell>
-                                            <TableCell align="right"><strong>{musterReviewItem?.quantity}</strong></TableCell>
-                                        </TableRow>
-                                    </TableBody>
-                                </Table>
+                                                return <TableRow><TableCell colSpan={3}>No details</TableCell></TableRow>;
+                                            })()}
+                                            <TableRow sx={{ bgcolor: '#c8e6c9' }}>
+                                                <TableCell colSpan={2}><strong>Grand Total</strong></TableCell>
+                                                <TableCell align="right"><strong>{musterReviewItem?.quantity}</strong></TableCell>
+                                            </TableRow>
+                                        </TableBody>
+                                    </Table>
+                                </Box>
                             </Card>
                         </Box>
 
                         {/* RIGHT: Division View (Detailed Assignments) */}
                         <Box flex={2}>
-                            <Typography variant="subtitle1" fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>Field Assignments (Division View)</Typography>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>Field Assignments (Division View)</Typography>
                             <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
                                 {(() => {
                                     try {
@@ -540,10 +545,10 @@ export default function PendingApprovals() {
 
                                             return Object.entries(groupedByTask).map(([task, assignments]: any) => (
                                                 <Box key={task} mb={3}>
-                                                    <Typography variant="h6" color="primary" gutterBottom>{task}</Typography>
+                                                    <Typography variant={isMobile ? "subtitle1" : "h6"} color="primary" gutterBottom>{task}</Typography>
                                                     {assignments.map((assign: any, idx: number) => (
-                                                        <Card key={idx} variant="outlined" sx={{ mb: 1, p: 2 }}>
-                                                            <Typography variant="subtitle2" gutterBottom>
+                                                        <Card key={idx} variant="outlined" sx={{ mb: 1, p: isMobile ? 1.5 : 2 }}>
+                                                            <Typography variant={isMobile ? "body2" : "subtitle2"} gutterBottom sx={{ fontWeight: isMobile ? 600 : 'inherit' }}>
                                                                 Field: <strong>{assign.field}</strong> • ({assign.count || assign.workers} workers)
                                                             </Typography>
                                                             <Box display="flex" flexWrap="wrap" gap={1}>

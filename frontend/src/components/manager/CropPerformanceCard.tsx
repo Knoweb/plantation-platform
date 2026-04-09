@@ -148,6 +148,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
 
     return (
         <DashboardCard 
+            variant="emerald"
             title="Crop Performance (vs Budget)" 
             icon={<MenuBookIcon />}
             filters={

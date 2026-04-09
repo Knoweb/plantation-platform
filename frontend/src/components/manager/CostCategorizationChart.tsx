@@ -84,13 +84,12 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
 
     const [loading, setLoading] = useState(true);
     const [selectedFilter, setSelectedFilter] = useState('todateAmount');
-    const [chartData, setChartData] = useState<any[]>([]);
+    const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
     const [activeCrop, setActiveCrop] = useState('TEA');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['TEA']);
     const [drillDownCategory, setDrillDownCategory] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
-    const [activeIndex, setActiveIndex] = useState(0);
-    const [fullData, setFullData] = useState<any[]>([]);
+    const [fullData, setFullData] = useState<Category[]>([]);
     
     // New selection state
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -155,6 +154,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
             }
         };
         fetchData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [tenantId, activeCrop, selectedYear, selectedMonth]);
 
     useEffect(() => {
@@ -202,40 +202,6 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     }, [fullData, selectedFilter, drillDownCategory]);
 
 
-    const renderActiveShape = (props: any) => {
-        const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value, percent } = props;
-
-        return (
-            <g>
-                <text x={cx} y={cy} dy={8} textAnchor="middle" fill="#1e293b" style={{ fontSize: '1.2rem', fontWeight: '1000' }}>
-                    {((percent || 0) * 100).toFixed(0)}%
-                </text>
-                <Sector
-                    cx={cx}
-                    cy={cy}
-                    innerRadius={innerRadius}
-                    outerRadius={outerRadius}
-                    startAngle={startAngle}
-                    endAngle={endAngle}
-                    fill={fill}
-                />
-                <Sector
-                    cx={cx}
-                    cy={cy}
-                    startAngle={startAngle}
-                    endAngle={endAngle}
-                    innerRadius={outerRadius + 6}
-                    outerRadius={outerRadius + 10}
-                    fill={fill}
-                />
-                <path d={`M${cx},${cy}L${cx + 10},${cy + 10}`} stroke={fill} fill="none" />
-                <text x={cx > 200 ? cx + 120 : cx - 120} y={cy} textAnchor={cx > 200 ? "start" : "end"} fill="#1e293b" style={{ fontSize: '0.85rem', fontWeight: '900' }}>{payload.name}</text>
-                <text x={cx > 200 ? cx + 120 : cx - 120} y={cy} dy={20} textAnchor={cx > 200 ? "start" : "end"} fill="#64748b" style={{ fontSize: '0.75rem', fontWeight: '700' }}>
-                    Rs. {value?.toLocaleString()}
-                </text>
-            </g>
-        );
-    };
 
     const CustomTooltip = ({ active, payload }: { active?: boolean, payload?: any[] }) => {
         if (active && payload && payload.length) {
@@ -262,34 +228,6 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
         return null;
     };
 
-    const CustomLegend = () => {
-        if (isMobile) return null;
-        return (
-            <Box sx={{ 
-                display: 'flex', 
-                flexWrap: 'wrap', 
-                justifyContent: 'center', 
-                gap: 2, 
-                mt: 3,
-                px: 2,
-                pb: 2
-            }}>
-                {chartData.map((entry, index) => (
-                    <Box key={`legend-${index}`} sx={{ display: 'flex', alignItems: 'center', gap: 0.8 }}>
-                        <Box sx={{ 
-                            width: 8, 
-                            height: 8, 
-                            borderRadius: '50%', 
-                            bgcolor: drillDownCategory ? CATEGORY_COLORS[drillDownCategory] || '#10b981' : CATEGORY_COLORS[entry.name] || '#10b981'
-                        }} />
-                        <Typography sx={{ color: '#64748b', fontSize: '0.65rem', fontWeight: '800', letterSpacing: '0.01em' }}>
-                            {entry.name}
-                        </Typography>
-                    </Box>
-                ))}
-            </Box>
-        );
-    };
 
     const MobileListView = () => {
         const totalAmount = chartData.reduce((sum, item) => sum + item.amount, 0);
@@ -382,6 +320,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
 
     return (
         <DashboardCard
+            variant="indigo"
             title="Cost Distribution"
             subtitle={`Analyzing expenses for ${monthsList[selectedMonth]} ${selectedYear}`}
             icon={<BarChartIcon sx={{ color: '#10b981' }} />}

@@ -1,10 +1,10 @@
-import { Box, Typography, Paper, TextField, Button, Grid, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Chip, MenuItem, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions } from '@mui/material';
+import { Box, Typography, Paper, TextField, Button, Grid, Alert, TableContainer, Table, TableHead, TableRow, TableCell, TableBody, IconButton, Chip, MenuItem, InputAdornment, Dialog, DialogTitle, DialogContent, DialogActions, useTheme, useMediaQuery } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
 import AddIcon from '@mui/icons-material/Add';
 import SearchIcon from '@mui/icons-material/Search';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import KeyboardArrowUpIcon from '@mui/icons-material/KeyboardArrowUp';
@@ -26,30 +26,33 @@ export default function NormSettings() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
+    const fetchNorms = useCallback(async () => {
+        try {
+            const res = await axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } });
+            setNormsList(res.data);
+        } catch {
+            console.error("Failed to fetch norms");
+        }
+    }, [tenantId]);
+
+    const fetchTaskTypes = useCallback(async () => {
+        try {
+            const res = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
+            setTaskTypes(res.data);
+        } catch {
+            console.error("Failed to fetch task types");
+        }
+    }, [tenantId]);
+
     useEffect(() => {
         fetchTaskTypes();
         fetchNorms();
         const timer = setInterval(() => setCurrentTime(new Date()), 1000);
         return () => clearInterval(timer);
-    }, [tenantId]);
-
-    const fetchNorms = async () => {
-        try {
-            const res = await axios.get(`/api/operations/norms`, { headers: { 'X-Tenant-Id': tenantId } });
-            setNormsList(res.data);
-        } catch (error) {
-            console.error("Failed to fetch norms");
-        }
-    };
-
-    const fetchTaskTypes = async () => {
-        try {
-            const res = await axios.get(`/api/operations/task-types?tenantId=${tenantId}`);
-            setTaskTypes(res.data);
-        } catch (error) {
-            console.error("Failed to fetch task types");
-        }
-    };
+    }, [fetchTaskTypes, fetchNorms]);
 
     const handleAddEntry = () => {
         setEntries(prev => [...prev, { id: crypto.randomUUID(), jobRole: '', targetValue: '' }]);
@@ -88,7 +91,7 @@ export default function NormSettings() {
             setEndDate('');
             fetchNorms();
             setTimeout(() => setSaved(false), 3000);
-        } catch (error) {
+        } catch {
             console.error("Failed to save norm targets");
         }
     };
@@ -98,7 +101,7 @@ export default function NormSettings() {
         try {
             await axios.delete(`/api/operations/norms/${id}`, { headers: { 'X-Tenant-Id': tenantId } });
             fetchNorms();
-        } catch (err) {
+        } catch {
             console.error("Failed to delete norm");
         }
     };
@@ -118,7 +121,7 @@ export default function NormSettings() {
             });
             setEditingNorm(null);
             fetchNorms();
-        } catch (error) {
+        } catch {
             console.error("Failed to update norm");
         }
     };
@@ -151,31 +154,57 @@ export default function NormSettings() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+            <Box 
+                display="flex" 
+                justifyContent="space-between" 
+                alignItems={isMobile ? 'flex-start' : 'center'} 
+                mb={3}
+                flexDirection={isMobile ? 'column' : 'row'}
+                gap={2}
+            >
+                <Typography 
+                    variant={isMobile ? 'h5' : 'h4'} 
+                    fontWeight="bold" 
+                    sx={{ color: '#1b5e20', lineHeight: 1.2 }}
+                >
                     Operational Targets & Norms
                 </Typography>
-                <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#555', bgcolor: '#e8f5e9', px: 2, py: 1, borderRadius: 2 }}>
-                    {currentTime.toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </Typography>
+                <Paper 
+                    elevation={0} 
+                    sx={{ 
+                        px: 2, 
+                        py: 0.8, 
+                        borderRadius: 3, 
+                        bgcolor: '#f1f8e9',
+                        border: '1px solid #c8e6c9',
+                        display: 'flex',
+                        alignItems: 'center'
+                    }}
+                >
+                    <Typography variant="caption" fontWeight="bold" sx={{ color: '#2e7d32' }}>
+                        {currentTime.toLocaleString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </Typography>
+                </Paper>
             </Box>
-            <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Set the required daily targets (Plucking Norms, Fertilizer amounts, Weeding goals, Transport quotas) for Estate divisions.
-            </Typography>
 
-            {saved && <Alert severity="success" sx={{ mb: 3 }}>Monthly Norm Successfully Updated!</Alert>}
+            {saved && <Alert severity="success" sx={{ mb: 3, borderRadius: 2 }}>Monthly Norm Successfully Updated!</Alert>}
 
-            <Paper sx={{ p: 4, borderRadius: 3, mb: 4, maxWidth: 900 }}>
-                <Box display="flex" justifyContent="space-between" alignItems="center" mb={isAddSectionOpen ? 3 : 0}>
-                    <Typography variant="h6" fontWeight="bold">Add New Targets</Typography>
+            <Paper elevation={0} sx={{ p: isMobile ? 2 : 3, borderRadius: 4, mb: 4, border: '1px solid #e0e0e0', bgcolor: '#fafafa' }}>
+                <Box display="flex" justifyContent="space-between" alignItems="center" mb={isAddSectionOpen ? 1 : 0}>
+                    <Typography variant="subtitle1" fontWeight="bold" color="text.primary">Configure New Norms</Typography>
                     <Button
-                        variant="outlined"
-                        color="primary"
+                        variant={isAddSectionOpen ? "outlined" : "contained"}
+                        size="small"
                         onClick={() => setIsAddSectionOpen(!isAddSectionOpen)}
                         endIcon={isAddSectionOpen ? <KeyboardArrowUpIcon /> : <KeyboardArrowDownIcon />}
-                        sx={{ borderRadius: 2 }}
+                        sx={{ 
+                            borderRadius: 2,
+                            textTransform: 'none',
+                            bgcolor: isAddSectionOpen ? 'transparent' : '#1b5e20',
+                            '&:hover': { bgcolor: isAddSectionOpen ? 'rgba(27, 94, 32, 0.04)' : '#1b5e20' }
+                        }}
                     >
-                        {isAddSectionOpen ? 'Close Form' : 'Open Form'}
+                        {isAddSectionOpen ? 'Hide Form' : 'Add Target'}
                     </Button>
                 </Box>
 
@@ -223,8 +252,8 @@ export default function NormSettings() {
                             const unitLabel = selectedTask ? ` (${selectedTask.expectedUnit || 'Kg'})` : '';
 
                             return (
-                                <Box key={entry.id} sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Typography variant="body2" sx={{ width: 30, color: '#888' }}>{index + 1}.</Typography>
+                                <Box key={entry.id} sx={{ mb: 2, display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: isMobile ? 'stretch' : 'center', gap: isMobile ? 1 : 2 }}>
+                                    {!isMobile && <Typography variant="body2" sx={{ width: 30, color: '#888' }}>{index + 1}.</Typography>}
                                     <TextField
                                         select
                                         fullWidth
@@ -232,65 +261,67 @@ export default function NormSettings() {
                                         value={entry.jobRole}
                                         onChange={(e) => handleChangeEntry(entry.id, 'jobRole', e.target.value)}
                                         size="small"
-                                        sx={{ flex: 1 }}
+                                        sx={{ flex: 1.5 }}
                                     >
                                         {taskTypes.map(task => (
                                             <MenuItem key={task.id || task.name} value={task.name}>{task.name}</MenuItem>
                                         ))}
                                     </TextField>
 
-                                    <TextField
-                                        fullWidth
-                                        type="number"
-                                        label="Target Value"
-                                        value={entry.targetValue}
-                                        onChange={(e) => {
-                                            const val = e.target.value;
-                                            if (val === '' || Number(val) >= 0) {
-                                                handleChangeEntry(entry.id, 'targetValue', val);
-                                            }
-                                        }}
-                                        onKeyDown={(e) => {
-                                            if (e.key === '-' || e.key === 'e') {
-                                                e.preventDefault();
-                                            }
-                                        }}
-                                        size="small"
-                                        sx={{ flex: 1 }}
-                                        InputProps={{
-                                            endAdornment: unitLabel ? <InputAdornment position="end">{selectedTask?.expectedUnit || 'Kg'}</InputAdornment> : null,
-                                        }}
-                                        inputProps={{ min: 0 }}
-                                    />
+                                    <Box display="flex" gap={1} sx={{ flex: 1 }}>
+                                        <TextField
+                                            fullWidth
+                                            type="number"
+                                            label="Target Value"
+                                            value={entry.targetValue}
+                                            onChange={(e) => {
+                                                const val = e.target.value;
+                                                if (val === '' || Number(val) >= 0) {
+                                                    handleChangeEntry(entry.id, 'targetValue', val);
+                                                }
+                                            }}
+                                            size="small"
+                                            InputProps={{
+                                                endAdornment: unitLabel ? <InputAdornment position="end" sx={{ fontSize: '0.75rem' }}>{selectedTask?.expectedUnit || 'Kg'}</InputAdornment> : null,
+                                            }}
+                                            inputProps={{ min: 0 }}
+                                        />
 
-                                    {entries.length > 1 ? (
-                                        <IconButton color="error" onClick={() => handleRemoveEntry(entry.id)}>
-                                            <DeleteIcon />
-                                        </IconButton>
-                                    ) : (
-                                        <Box sx={{ width: 40 }} /> // Spacer to align with rows having delete button
-                                    )}
+                                        {entries.length > 1 && (
+                                            <IconButton size="small" color="error" onClick={() => handleRemoveEntry(entry.id)}>
+                                                <DeleteIcon fontSize="small" />
+                                            </IconButton>
+                                        )}
+                                    </Box>
                                 </Box>
                             );
                         })}
 
-                        <Box display="flex" justifyContent="space-between" mt={4} alignItems="center">
+                        <Box display="flex" justifyContent="space-between" mt={4} alignItems="center" flexDirection={isMobile ? 'column' : 'row'} gap={2}>
                             <Button
                                 startIcon={<AddIcon />}
                                 variant="outlined"
                                 onClick={handleAddEntry}
-                                sx={{ borderRadius: 2, height: 42 }}
+                                fullWidth={isMobile}
+                                sx={{ borderRadius: 2, height: 42, textTransform: 'none', color: '#1b5e20', borderColor: '#1b5e20' }}
                             >
-                                Add Another Job Target
+                                Add Row
                             </Button>
                             <Button
                                 variant="contained"
-                                color="primary"
+                                fullWidth={isMobile}
                                 onClick={handleSave}
                                 disabled={entries.filter(e => e.jobRole && e.targetValue).length === 0 || !startDate || !!isDateInvalid}
-                                sx={{ borderRadius: 2, height: 42, minWidth: 200 }}
+                                sx={{ 
+                                    borderRadius: 2, 
+                                    height: 42, 
+                                    minWidth: 200, 
+                                    textTransform: 'none',
+                                    bgcolor: '#1b5e20',
+                                    '&:hover': { bgcolor: '#1b5e20' }
+                                }}
                             >
-                                Save All Entries
+                                Save Targets
                             </Button>
                         </Box>
                     </Box>
@@ -313,38 +344,69 @@ export default function NormSettings() {
                 />
             </Box>
 
-            <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3 }}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+            <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 4, border: '1px solid #e0e0e0', overflowX: 'auto', width: '100%', mb: 4 }}>
+                <Table size={isMobile ? "small" : "medium"}>
+                    <TableHead sx={{ bgcolor: '#f1f8e9' }}>
                         <TableRow>
-                            <TableCell><strong>Task / Role Name</strong></TableCell>
-                            <TableCell align="center"><strong>Target</strong></TableCell>
-                            <TableCell align="center"><strong>Effective From</strong></TableCell>
-                            <TableCell align="center"><strong>Valid Until</strong></TableCell>
-                            <TableCell align="right"><strong>Actions</strong></TableCell>
+                            <TableCell sx={{ color: '#1b5e20', fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 1 : 2 }}>
+                                {isMobile ? 'Role' : 'Task / Role Name'}
+                            </TableCell>
+                            <TableCell align="center" sx={{ color: '#1b5e20', fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 0.5 : 2 }}>
+                                Target
+                            </TableCell>
+                            <TableCell align="center" sx={{ color: '#1b5e20', fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 0.5 : 2 }}>
+                                {isMobile ? 'From' : 'Effective From'}
+                            </TableCell>
+                            <TableCell align="center" sx={{ color: '#1b5e20', fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 0.5 : 2 }}>
+                                {isMobile ? 'Until' : 'Valid Until'}
+                            </TableCell>
+                            <TableCell align="right" sx={{ color: '#1b5e20', fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 1 : 2 }}>
+                                Actions
+                            </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {filteredNorms.length > 0 ? filteredNorms.map((n) => (
                             <TableRow key={n.id} hover>
-                                <TableCell sx={{ fontWeight: 500 }}>{n.jobRole}</TableCell>
-                                <TableCell align="center">
-                                    <Chip label={`${n.targetValue} ${n.unit}`} color="primary" variant="outlined" size="small" sx={{ fontWeight: 'bold' }} />
+                                <TableCell sx={{ fontWeight: 500, fontSize: isMobile ? '0.75rem' : '0.85rem', px: isMobile ? 1 : 2, py: isMobile ? 1.5 : 2 }}>
+                                    {n.jobRole}
                                 </TableCell>
-                                <TableCell align="center">{new Date(n.effectiveDate).toLocaleDateString()}</TableCell>
-                                <TableCell align="center">{n.endDate ? new Date(n.endDate).toLocaleDateString() : 'Active Until Changed'}</TableCell>
-                                <TableCell align="right">
-                                    <IconButton color="primary" onClick={() => setEditingNorm(n)}>
-                                        <EditIcon />
-                                    </IconButton>
-                                    <IconButton color="error" onClick={() => handleDeleteNorm(n.id)}>
-                                        <DeleteIcon />
-                                    </IconButton>
+                                <TableCell align="center" sx={{ px: isMobile ? 0.5 : 2 }}>
+                                    <Chip 
+                                        label={`${n.targetValue} ${n.unit}`} 
+                                        color="primary" 
+                                        variant="outlined" 
+                                        size={isMobile ? "small" : "medium"}
+                                        sx={{ 
+                                            fontWeight: 'bold', 
+                                            fontSize: isMobile ? '0.65rem' : '0.75rem',
+                                            height: isMobile ? 20 : 32
+                                        }} 
+                                    />
+                                </TableCell>
+                                <TableCell align="center" sx={{ fontSize: isMobile ? '0.7rem' : '0.8rem', px: isMobile ? 0.5 : 2 }}>
+                                    {new Date(n.effectiveDate).toLocaleDateString()}
+                                </TableCell>
+                                <TableCell align="center" sx={{ fontSize: isMobile ? '0.7rem' : '0.8rem', px: isMobile ? 0.5 : 2, color: n.endDate ? 'inherit' : '#2e7d32' }}>
+                                    {n.endDate 
+                                        ? new Date(n.endDate).toLocaleDateString()
+                                        : (isMobile ? '∞' : 'Active Until Changed')
+                                    }
+                                </TableCell>
+                                <TableCell align="right" sx={{ px: isMobile ? 1 : 2 }}>
+                                    <Box display="flex" justifyContent="flex-end" gap={isMobile ? 0.2 : 0.5}>
+                                        <IconButton size="small" sx={{ color: '#1b5e20', p: isMobile ? 0.5 : 1 }} onClick={() => setEditingNorm(n)}>
+                                            <EditIcon sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }} />
+                                        </IconButton>
+                                        <IconButton size="small" color="error" sx={{ p: isMobile ? 0.5 : 1 }} onClick={() => handleDeleteNorm(n.id)}>
+                                            <DeleteIcon sx={{ fontSize: isMobile ? '1rem' : '1.25rem' }} />
+                                        </IconButton>
+                                    </Box>
                                 </TableCell>
                             </TableRow>
                         )) : (
                             <TableRow>
-                                <TableCell colSpan={5} align="center">No norms configured yet.</TableCell>
+                                <TableCell colSpan={5} align="center" sx={{ py: 3 }}>No norms configured yet.</TableCell>
                             </TableRow>
                         )}
                     </TableBody>

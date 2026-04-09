@@ -1,9 +1,7 @@
-import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert, Snackbar } from '@mui/material';
+import { Box, Typography, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Paper, Chip, IconButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField, Alert, Snackbar, useTheme, useMediaQuery } from '@mui/material';
 import EditIcon from '@mui/icons-material/Edit';
 import WarningIcon from '@mui/icons-material/Warning';
-import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import InfoIcon from '@mui/icons-material/Info'; // For notification
-import SettingsIcon from '@mui/icons-material/Settings'; // For unconfigured status
 import DownloadIcon from '@mui/icons-material/Download';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
@@ -11,7 +9,6 @@ import axios from 'axios';
 export default function GeneralStock() {
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
 
     // Buffer Edit State
     const [editOpen, setEditOpen] = useState(false);
@@ -46,6 +43,9 @@ export default function GeneralStock() {
     const tenantId = userSession.tenantId;
     const isManager = userSession.role === 'MANAGER' || userSession.role === 'ESTATE_ADMIN';
 
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+
     const getRequestSourceLabel = (issuedTo?: string) => {
         const text = String(issuedTo || '').toLowerCase();
         if (text.includes('(store keeper)')) return 'Store Keeper';
@@ -76,7 +76,6 @@ export default function GeneralStock() {
             setLoading(false);
         } catch (err) {
             console.error(err);
-            setError("Failed to load inventory.");
             setLoading(false);
         }
     }, [tenantId, isManager]);
@@ -144,89 +143,171 @@ export default function GeneralStock() {
 
     return (
         <Box>
-            <Box display="flex" justifyContent="space-between" alignItems="center">
-                <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
+            <Box display="flex" justifyContent="space-between" alignItems="center" mb={isMobile ? 1 : 2} gap={1}>
+                <Typography 
+                    variant={isMobile ? 'h6' : 'h4'} 
+                    fontWeight="bold" 
+                    sx={{ color: '#1b5e20', lineHeight: 1.2, flex: 1, fontSize: isMobile ? '1.1rem' : 'inherit' }}
+                >
                     General Stock & Inventory Level
                 </Typography>
                 {isManager && (
-                    <Button
-                        variant="contained"
-                        color="success"
-                        startIcon={<DownloadIcon />}
-                        onClick={() => {
-                            // Professional "Neat & Clean" Stock Excel Export
-                            const headerRows = `
-                                <tr>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; padding: 10px; height: 35px; text-align: left; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Item Name</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Category</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Unit</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Current Qty</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Buffer Level</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Min. Level</th>
-                                    <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Status</th>
-                                </tr>
-                            `;
-
-                            const bodyRows = items.map((i, idx) => {
-                                const rowStyle = idx % 2 === 1 ? 'background: #f9fdf9;' : 'background: #ffffff;';
-                                const cellStyle = `border: 1px solid #eee; text-align: center; font-family: 'Segoe UI', Arial; padding: 6px; font-size: 11px; mso-number-format: "#,##0.00";`;
-                                const leftStyle = cellStyle + ' text-align: left; font-weight: bold;';
-                                const status = i.bufferLevel === 0 ? 'CONFIGURE' : i.currentQuantity < i.bufferLevel ? 'LOW STOCK' : 'GOOD';
-                                const statusColor = status === 'GOOD' ? '#2e7d32' : status === 'CONFIGURE' ? '#0288d1' : '#c62828';
-
-                                return `
-                                    <tr style="${rowStyle}">
-                                        <td style="${leftStyle}">${i.name}</td>
-                                        <td style="${cellStyle}">${i.category}</td>
-                                        <td style="${cellStyle}">${i.unit}</td>
-                                        <td style="${cellStyle}">${i.currentQuantity}</td>
-                                        <td style="${cellStyle}">${i.bufferLevel}</td>
-                                        <td style="${cellStyle}">${i.minimumLevel || 0}</td>
-                                        <td style="${cellStyle}; font-weight: bold; color: ${statusColor};">${status}</td>
+                    isMobile ? (
+                        <IconButton
+                            onClick={() => {
+                                // existing snapshot logic
+                                const headerRows = `
+                                    <tr>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; padding: 10px; height: 35px; text-align: left; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Item Name</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Category</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Unit</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Current Qty</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Buffer Level</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Min. Level</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Status</th>
                                     </tr>
                                 `;
-                            }).join('');
 
-                            const tableHtml = `
-                                <html>
-                                    <head><meta charset="utf-8"/><style>table { border-collapse: collapse; } th, td { border: 1px solid #ddd; }</style></head>
-                                    <body>
-                                        <h3 style="font-family: 'Segoe UI', Arial; color: #1b5e20;">Estate Inventory Status Snapshot — ${new Date().toLocaleDateString()}</h3>
-                                        <table>
-                                            ${headerRows}
-                                            ${bodyRows}
-                                        </table>
-                                    </body>
-                                </html>
-                            `;
+                                const bodyRows = items.map((i, idx) => {
+                                    const rowStyle = idx % 2 === 1 ? 'background: #f9fdf9;' : 'background: #ffffff;';
+                                    const cellStyle = `border: 1px solid #eee; text-align: center; font-family: 'Segoe UI', Arial; padding: 6px; font-size: 11px; mso-number-format: "#,##0.00";`;
+                                    const leftStyle = cellStyle + ' text-align: left; font-weight: bold;';
+                                    const status = i.bufferLevel === 0 ? 'CONFIGURE' : i.currentQuantity < i.bufferLevel ? 'LOW STOCK' : 'GOOD';
+                                    const statusColor = status === 'GOOD' ? '#2e7d32' : status === 'CONFIGURE' ? '#0288d1' : '#c62828';
 
-                            const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
-                            const url = window.URL.createObjectURL(blob);
-                            const link = document.createElement('a');
-                            link.href = url;
-                            link.download = `Estate_General_Stock_Snapshot_${new Date().toISOString().split('T')[0]}.xls`;
-                            link.click();
-                        }}
-                    >
-                        Download Snapshot
-                    </Button>
+                                    return `
+                                        <tr style="${rowStyle}">
+                                            <td style="${leftStyle}">${i.name}</td>
+                                            <td style="${cellStyle}">${i.category}</td>
+                                            <td style="${cellStyle}">${i.unit}</td>
+                                            <td style="${cellStyle}">${i.currentQuantity}</td>
+                                            <td style="${cellStyle}">${i.bufferLevel}</td>
+                                            <td style="${cellStyle}">${i.minimumLevel || 0}</td>
+                                            <td style="${cellStyle}; font-weight: bold; color: ${statusColor};">${status}</td>
+                                        </tr>
+                                    `;
+                                }).join('');
+
+                                const tableHtml = `
+                                    <html>
+                                        <head><meta charset="utf-8"/><style>table { border-collapse: collapse; } th, td { border: 1px solid #ddd; }</style></head>
+                                        <body>
+                                            <h3 style="font-family: 'Segoe UI', Arial; color: #1b5e20;">Estate Inventory Status Snapshot — ${new Date().toLocaleDateString()}</h3>
+                                            <table>
+                                                ${headerRows}
+                                                ${bodyRows}
+                                            </table>
+                                        </body>
+                                    </html>
+                                `;
+
+                                const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `Estate_General_Stock_Snapshot_${new Date().toISOString().split('T')[0]}.xls`;
+                                link.click();
+                            }}
+                            sx={{ bgcolor: '#2e7d32', color: 'white', '&:hover': { bgcolor: '#1b5e20' } }}
+                        >
+                            <DownloadIcon />
+                        </IconButton>
+                    ) : (
+                        <Button
+                            variant="contained"
+                            startIcon={<DownloadIcon />}
+                            onClick={() => {
+                                // existing snapshot logic
+                                const headerRows = `
+                                    <tr>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; padding: 10px; height: 35px; text-align: left; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Item Name</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Category</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Unit</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Current Qty</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Buffer Level</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Min. Level</th>
+                                        <th style="border: 1px solid #ddd; background: #f4f7f4; text-align: center; font-family: 'Segoe UI', Arial; font-weight: bold; color: #1b5e20;">Status</th>
+                                    </tr>
+                                `;
+
+                                const bodyRows = items.map((i, idx) => {
+                                    const rowStyle = idx % 2 === 1 ? 'background: #f9fdf9;' : 'background: #ffffff;';
+                                    const cellStyle = `border: 1px solid #eee; text-align: center; font-family: 'Segoe UI', Arial; padding: 6px; font-size: 11px; mso-number-format: "#,##0.00";`;
+                                    const leftStyle = cellStyle + ' text-align: left; font-weight: bold;';
+                                    const status = i.bufferLevel === 0 ? 'CONFIGURE' : i.currentQuantity < i.bufferLevel ? 'LOW STOCK' : 'GOOD';
+                                    const statusColor = status === 'GOOD' ? '#2e7d32' : status === 'CONFIGURE' ? '#0288d1' : '#c62828';
+
+                                    return `
+                                        <tr style="${rowStyle}">
+                                            <td style="${leftStyle}">${i.name}</td>
+                                            <td style="${cellStyle}">${i.category}</td>
+                                            <td style="${cellStyle}">${i.unit}</td>
+                                            <td style="${cellStyle}">${i.currentQuantity}</td>
+                                            <td style="${cellStyle}">${i.bufferLevel}</td>
+                                            <td style="${cellStyle}">${i.minimumLevel || 0}</td>
+                                            <td style="${cellStyle}; font-weight: bold; color: ${statusColor};">${status}</td>
+                                        </tr>
+                                    `;
+                                }).join('');
+
+                                const tableHtml = `
+                                    <html>
+                                        <head><meta charset="utf-8"/><style>table { border-collapse: collapse; } th, td { border: 1px solid #ddd; }</style></head>
+                                        <body>
+                                            <h3 style="font-family: 'Segoe UI', Arial; color: #1b5e20;">Estate Inventory Status Snapshot — ${new Date().toLocaleDateString()}</h3>
+                                            <table>
+                                                ${headerRows}
+                                                ${bodyRows}
+                                            </table>
+                                        </body>
+                                    </html>
+                                `;
+
+                                const blob = new Blob([tableHtml], { type: 'application/vnd.ms-excel' });
+                                const url = window.URL.createObjectURL(blob);
+                                const link = document.createElement('a');
+                                link.href = url;
+                                link.download = `Estate_General_Stock_Snapshot_${new Date().toISOString().split('T')[0]}.xls`;
+                                link.click();
+                            }}
+                            sx={{ 
+                                bgcolor: '#2e7d32', 
+                                '&:hover': { bgcolor: '#1b5e20' }
+                            }}
+                        >
+                            Download Snapshot
+                        </Button>
+                    )
                 )}
             </Box>
-            <Typography variant="body1" color="text.secondary" mb={4}>
-                Overview of current stock levels. Managers can set buffer and minimum thresholds here.
-            </Typography>
+            <Box mb={isMobile ? 1 : 2} />
 
             {/* Manager Alert Summary */}
             {isManager && items.some(i => i.bufferLevel === 0) && (
-                <Alert severity="info" icon={<InfoIcon />} sx={{ mb: 2, border: '1px solid #0288d1' }}>
-                    <strong>Action Required:</strong> New items detected. Please set simple buffer levels for unconfigured items.
+                <Alert 
+                    severity="info" 
+                    icon={<InfoIcon />} 
+                    sx={{ 
+                        mb: 2, 
+                        borderRadius: 2, 
+                        border: '1px solid #b3e5fc',
+                        bgcolor: '#e1f5fe'
+                    }}
+                >
+                    <Typography variant="subtitle2" fontWeight="bold">Action Required</Typography>
+                    <Typography variant="body2">New items detected. Please configure buffer levels for unconfigured items.</Typography>
                 </Alert>
             )}
 
             {isManager && items.some(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0) && (
                 <Alert 
                     severity="warning" 
-                    sx={{ mb: 3 }}
+                    sx={{ 
+                        mb: 3,
+                        borderRadius: 2,
+                        border: '1px solid #ffe082',
+                        bgcolor: '#fff8e1'
+                    }}
                     icon={<WarningIcon fontSize="inherit" />}
                 >
                     <Box>
@@ -234,7 +315,6 @@ export default function GeneralStock() {
                         <Typography variant="body2">
                             The following items have dropped below their buffer levels: 
                             <strong> {items.filter(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0).map(i => i.name).join(', ')}</strong>. 
-                            Please review the restock requests below and authorize purchase.
                         </Typography>
                     </Box>
                 </Alert>
@@ -242,99 +322,110 @@ export default function GeneralStock() {
 
             {/* Restock Requests Display */}
             {isManager && restockRequests.length > 0 && (
-                <Paper sx={{ mb: 4, p: 2, border: '1px solid #ed6c02', bgcolor: '#fff3e0' }}>
-                    <Box display="flex" alignItems="center" mb={2}>
+                <Paper elevation={0} sx={{ mb: 4, p: isMobile ? 1.5 : 2, border: '1px solid #ffcc80', bgcolor: '#fffbf0', borderRadius: 3 }}>
+                    <Box display="flex" alignItems="center" mb={1.5}>
                         <InfoIcon color="warning" sx={{ mr: 1 }} />
-                        <Typography variant="h6" color="warning.dark" fontWeight="bold">
-                            Pending Restock Requests (From Store Keeper / Chief Clerk)
+                        <Typography variant="subtitle1" color="warning.dark" fontWeight="bold">
+                            Pending Restock Requests
                         </Typography>
                     </Box>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow>
-                                <TableCell><strong>Date</strong></TableCell>
-                                <TableCell><strong>Item</strong></TableCell>
-                                <TableCell><strong>Quantity</strong></TableCell>
-                                <TableCell><strong>Note</strong></TableCell>
-                                <TableCell align="center"><strong>Actions</strong></TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            {restockRequests.map(req => (
-                                <TableRow key={req.id}>
-                                    <TableCell>{new Date(req.date + (req.date.includes('Z') ? '' : 'Z')).toLocaleString()}</TableCell>
-                                    <TableCell>{req.itemName}</TableCell>
-                                    <TableCell>{req.quantity || '-'}</TableCell>
-                                    <TableCell>{getManagerNoteText(req.issuedTo)}</TableCell>
-                                    <TableCell align="center">
-                                        <Button
-                                            size="small"
-                                            variant="contained"
-                                            color="success"
-                                            onClick={() => handleRequestAction(req)}
-                                        >
-                                            Review Request
-                                        </Button>
-                                    </TableCell>
+                    <TableContainer sx={{ overflowX: 'auto' }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Date</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Item</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Qty</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Note</TableCell>
+                                    <TableCell align="center" sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Actions</TableCell>
                                 </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                            </TableHead>
+                            <TableBody>
+                                {restockRequests.map(req => (
+                                    <TableRow key={req.id}>
+                                        <TableCell sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}>{new Date(req.date + (req.date.includes('Z') ? '' : 'Z')).toLocaleDateString()}</TableCell>
+                                        <TableCell sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : 'inherit' }}>{req.itemName}</TableCell>
+                                        <TableCell sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }}>{req.quantity || '-'}</TableCell>
+                                        <TableCell sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem', opacity: 0.8 }}>{getManagerNoteText(req.issuedTo)}</TableCell>
+                                        <TableCell align="center">
+                                            <Button
+                                                size="small"
+                                                variant="contained"
+                                                sx={{ 
+                                                    textTransform: 'none', 
+                                                    bgcolor: '#f57c00', 
+                                                    '&:hover': { bgcolor: '#ef6c00' },
+                                                    fontSize: '0.7rem'
+                                                }}
+                                                onClick={() => handleRequestAction(req)}
+                                            >
+                                                Review
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
                 </Paper>
             )}
 
-            <TableContainer component={Paper}>
-                <Table>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+            <TableContainer component={Paper} elevation={0} sx={{ borderRadius: 3, border: '1px solid #e0e0e0', overflowX: 'auto' }}>
+                <Table size={isMobile ? "small" : "medium"}>
+                    <TableHead sx={{ bgcolor: '#f1f8e9' }}>
                         <TableRow>
-                            <TableCell><strong>Item Name</strong></TableCell>
-                            <TableCell><strong>Category</strong></TableCell>
-                            <TableCell align="center"><strong>Unit</strong></TableCell>
-                            <TableCell align="center"><strong>Current Qty</strong></TableCell>
-                            <TableCell align="center"><strong>Buffer Level</strong></TableCell>
-                            <TableCell align="center"><strong>Minimum Level</strong></TableCell>
-                            <TableCell align="center"><strong>Status</strong></TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Item Name</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Category</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Unit</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Current Qty</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Buffer</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Minimum</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Status</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
                         {items.map((item) => {
                             const isLow = item.currentQuantity < item.bufferLevel;
                             return (
-                                <TableRow key={item.id} sx={{ bgcolor: isLow ? '#fff4f4' : 'inherit' }}>
-                                    <TableCell>{item.name}</TableCell>
-                                    <TableCell><Chip label={item.category} size="small" /></TableCell>
-                                    <TableCell align="center">{item.unit}</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 'bold' }}>{item.currentQuantity}</TableCell>
-                                    <TableCell align="center">
-                                        {item.bufferLevel}
-                                        {isManager && (
-                                            <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 1 }}>
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
+                                <TableRow key={item.id} hover sx={{ bgcolor: isLow ? '#fff4f4' : 'inherit' }}>
+                                    <TableCell sx={{ fontWeight: 600, fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.name}</TableCell>
+                                    <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}><Chip label={item.category} size="small" sx={{ fontSize: isMobile ? '0.65rem' : '0.7rem' }} /></TableCell>
+                                    <TableCell align="center" sx={{ fontSize: isMobile ? '0.75rem' : '0.875rem' }}>{item.unit}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.currentQuantity}</TableCell>
+                                    <TableCell align="center" sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                        <Box display="flex" alignItems="center" justifyContent="center">
+                                            {item.bufferLevel}
+                                            {isManager && (
+                                                <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 0.5, color: '#1b5e20' }}>
+                                                    <EditIcon sx={{ fontSize: isMobile ? 12 : 14 }} />
+                                                </IconButton>
+                                            )}
+                                        </Box>
                                     </TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: 'bold', color: 'error.main' }}>
-                                        {item.minimumLevel || 0}
-                                        {isManager && (
-                                            <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 1 }}>
-                                                <EditIcon fontSize="small" />
-                                            </IconButton>
-                                        )}
+                                    <TableCell align="center" sx={{ fontWeight: 'bold', color: 'error.main', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
+                                        <Box display="flex" alignItems="center" justifyContent="center">
+                                            {item.minimumLevel || 0}
+                                            {isManager && (
+                                                <IconButton size="small" onClick={() => handleEditClick(item)} sx={{ ml: 0.5, color: 'error.main' }}>
+                                                    <EditIcon sx={{ fontSize: isMobile ? 12 : 14 }} />
+                                                </IconButton>
+                                            )}
+                                        </Box>
                                     </TableCell>
                                     <TableCell align="center">
                                         {item.bufferLevel === 0 ? (
-                                            <Chip icon={<SettingsIcon />} label="Configure" color="info" size="small" variant="outlined" />
+                                            <Chip label="Setup" color="info" size="small" variant="outlined" />
                                         ) : item.currentQuantity < item.bufferLevel ? (
-                                            <Chip icon={<WarningIcon />} label="Low Stock" color="error" size="small" />
+                                            <Chip label="Low" color="error" size="small" />
                                         ) : (
-                                            <Chip icon={<CheckCircleIcon />} label="Good" color="success" size="small" variant="outlined" />
+                                            <Chip label="Good" color="success" size="small" variant="outlined" />
                                         )}
                                     </TableCell>
                                 </TableRow>
                             );
                         })}
                         {items.length === 0 && !loading && (
-                            <TableRow><TableCell colSpan={7} align="center">No inventory items found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>No inventory items found.</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>

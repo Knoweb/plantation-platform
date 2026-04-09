@@ -150,6 +150,7 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
 
     return (
         <DashboardCard 
+            variant="amber"
             title="Yield Analytics" 
             icon={<AgricultureIcon sx={{ color: '#10b981' }} />}
         >
@@ -280,7 +281,7 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
                                 animationDuration={1200}
                                 animationEasing="ease-in-out"
                                 dot={{ fill: '#10b981', strokeWidth: 0, r: 0 }}
-                                activeDot={{ r: 6, strokeWidth: 3, stroke: '#fff', fill: '#10b981', boxShadow: '0 0 10px rgba(16, 185, 129, 0.5)' }}
+                                activeDot={{ r: 6, strokeWidth: 3, stroke: '#fff', fill: '#10b981', filter: 'drop-shadow(0 0 5px rgba(16, 185, 129, 0.5))' }}
                             />
                         </AreaChart>
                     </ResponsiveContainer>
