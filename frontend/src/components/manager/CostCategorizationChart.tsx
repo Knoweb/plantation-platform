@@ -96,6 +96,11 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
 
+    const isCurrentMonth = useMemo(() => {
+        const now = new Date();
+        return selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+    }, [selectedYear, selectedMonth]);
+
     const years = useMemo(() => {
         const currentYear = new Date().getFullYear();
         return Array.from({ length: 5 }, (_, i) => currentYear - i);
@@ -151,6 +156,12 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
         };
         fetchData();
     }, [tenantId, activeCrop, selectedYear, selectedMonth]);
+
+    useEffect(() => {
+        if (!isCurrentMonth && selectedFilter === 'dayAmount') {
+            setSelectedFilter('todateAmount');
+        }
+    }, [isCurrentMonth, selectedFilter]);
 
     useEffect(() => {
         if (!fullData || fullData.length === 0) {
@@ -389,7 +400,13 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                         }
                     }}
                 >
-                    {FILTERS.map(f => <ToggleButton key={f.value} value={f.value}>{f.label}</ToggleButton>)}
+                    {FILTERS.filter(f => isCurrentMonth || f.value !== 'dayAmount').map(f => (
+                        <ToggleButton key={f.value} value={f.value}>
+                            {f.value === 'todateAmount' && !isCurrentMonth ? 'Month Total' : 
+                             f.value === 'lastMonthAmount' && !isCurrentMonth ? 'Prev. Month' : 
+                             f.label}
+                        </ToggleButton>
+                    ))}
                 </ToggleButtonGroup>
             }
         >
