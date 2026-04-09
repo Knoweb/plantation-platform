@@ -15,13 +15,14 @@ import {
     useTheme
 } from '@mui/material';
 import { 
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
     Tooltip, 
     ResponsiveContainer, 
     Cell,
-    Legend,
-    PieChart,
-    Pie,
-    Sector
+    LabelList
 } from 'recharts';
 import axios from 'axios';
 import BarChartIcon from '@mui/icons-material/BarChart';
@@ -88,6 +89,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     const [availableCrops, setAvailableCrops] = useState<string[]>(['TEA']);
     const [drillDownCategory, setDrillDownCategory] = useState<string | null>(null);
     const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+    const [activeIndex, setActiveIndex] = useState(0);
     const [fullData, setFullData] = useState<any[]>([]);
     
     // New selection state
@@ -159,25 +161,31 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
         if (drillDownCategory) {
             const categoryObj = (fullData as Category[]).find(cat => (cat.name || (cat as any).category) === drillDownCategory);
             if (categoryObj && categoryObj.items) {
-                const data: ChartDataPoint[] = categoryObj.items.map((item: WorkItem) => ({
-                    name: item.name,
-                    amount: Number(item[selectedFilter] || 0),
-                    fullItem: item
-                })).sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
+                const data: ChartDataPoint[] = categoryObj.items
+                    .map((item: WorkItem) => ({
+                        name: item.name,
+                        amount: Number(item[selectedFilter] || 0),
+                        fullItem: item
+                    }))
+                    .filter((item: ChartDataPoint) => item.amount > 0) // Filter zero costs
+                    .sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
                 setChartData(data);
             }
         } else {
-            const data: ChartDataPoint[] = (fullData as Category[]).map((cat: Category) => {
-                const total = (cat.items || []).reduce((sum: number, item: WorkItem) => {
-                    return sum + Number(item[selectedFilter] || 0);
-                }, 0);
-                
-                return {
-                    name: cat.name || (cat as any).category,
-                    amount: total,
-                    raw: cat
-                };
-            }).sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
+            const data: ChartDataPoint[] = (fullData as Category[])
+                .map((cat: Category) => {
+                    const total = (cat.items || []).reduce((sum: number, item: WorkItem) => {
+                        return sum + Number(item[selectedFilter] || 0);
+                    }, 0);
+                    
+                    return {
+                        name: cat.name || (cat as any).category,
+                        amount: total,
+                        raw: cat
+                    };
+                })
+                .filter((cat: ChartDataPoint) => cat.amount > 0) // Filter zero costs
+                .sort((a: ChartDataPoint, b: ChartDataPoint) => b.amount - a.amount);
             setChartData(data);
         }
     }, [fullData, selectedFilter, drillDownCategory]);
@@ -186,48 +194,10 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     const renderActiveShape = (props: any) => {
         const { cx, cy, innerRadius, outerRadius, startAngle, endAngle, fill, payload, value, percent } = props;
 
-        if (isMobile) {
-            // Simplified centered display for mobile
-            return (
-                <g>
-                    <text x={cx} y={cy} dy={-8} textAnchor="middle" fill="#64748b" style={{ fontSize: '10px', fontWeight: 'bold' }}>
-                        {payload.name.length > 15 ? payload.name.substring(0, 12) + '...' : payload.name}
-                    </text>
-                    <text x={cx} y={cy} dy={12} textAnchor="middle" fill="#1e293b" style={{ fontSize: '12px', fontWeight: '900' }}>
-                        Rs. {value.toLocaleString()}
-                    </text>
-                    <text x={cx} y={cy} dy={28} textAnchor="middle" fill="#10b981" style={{ fontSize: '9px', fontWeight: 'bold' }}>
-                        {(percent * 100).toFixed(0)}%
-                    </text>
-                    <Sector
-                        cx={cx}
-                        cy={cy}
-                        innerRadius={innerRadius}
-                        outerRadius={outerRadius + 4}
-                        startAngle={startAngle}
-                        endAngle={endAngle}
-                        fill={fill}
-                    />
-                </g>
-            );
-        }
-
-        const RADIAN = Math.PI / 180;
-        const midAngle = (startAngle + endAngle) / 2;
-        const sin = Math.sin(-RADIAN * midAngle);
-        const cos = Math.cos(-RADIAN * midAngle);
-        const sx = cx + (outerRadius + 10) * cos;
-        const sy = cy + (outerRadius + 10) * sin;
-        const mx = cx + (outerRadius + 30) * cos;
-        const my = cy + (outerRadius + 30) * sin;
-        const ex = sx + (cos >= 0 ? 1 : -1) * 22;
-        const ey = sy;
-        const textAnchor = cos >= 0 ? 'start' : 'end';
-
         return (
             <g>
-                <text x={cx} y={cy} dy={8} textAnchor="middle" fill="#1e293b" style={{ fontSize: '14px', fontWeight: '900' }}>
-                    {drillDownCategory ? 'DETAIL' : 'TOTAL'}
+                <text x={cx} y={cy} dy={8} textAnchor="middle" fill="#1e293b" style={{ fontSize: '1.2rem', fontWeight: '1000' }}>
+                    {((percent || 0) * 100).toFixed(0)}%
                 </text>
                 <Sector
                     cx={cx}
@@ -247,19 +217,16 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                     outerRadius={outerRadius + 10}
                     fill={fill}
                 />
-                <path d={`M${sx},${sy}L${mx},${my}L${ex},${ey}`} stroke={fill} fill="none" />
-                <circle cx={ex} cy={ey} r={2} fill={fill} stroke="none" />
-                <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} textAnchor={textAnchor} fill="#1e293b" style={{ fontSize: '11px', fontWeight: '800' }}>{payload.name}</text>
-                <text x={ex + (cos >= 0 ? 1 : -1) * 12} y={ey} dy={18} textAnchor={textAnchor} fill="#10b981" style={{ fontSize: '10px', fontWeight: '900' }}>
-                    {`Rs. ${value.toLocaleString()} (${(percent * 100).toFixed(1)}%)`}
+                <path d={`M${cx},${cy}L${cx + 10},${cy + 10}`} stroke={fill} fill="none" />
+                <text x={cx > 200 ? cx + 120 : cx - 120} y={cy} textAnchor={cx > 200 ? "start" : "end"} fill="#1e293b" style={{ fontSize: '0.85rem', fontWeight: '900' }}>{payload.name}</text>
+                <text x={cx > 200 ? cx + 120 : cx - 120} y={cy} dy={20} textAnchor={cx > 200 ? "start" : "end"} fill="#64748b" style={{ fontSize: '0.75rem', fontWeight: '700' }}>
+                    Rs. {value?.toLocaleString()}
                 </text>
             </g>
         );
     };
 
-    const [activeIndex, setActiveIndex] = useState(0);
-
-    const CustomTooltip = ({ active, payload }: any) => {
+    const CustomTooltip = ({ active, payload }: { active?: boolean, payload?: any[] }) => {
         if (active && payload && payload.length) {
             return (
                 <Box sx={{ 
@@ -285,7 +252,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     };
 
     const CustomLegend = () => {
-        if (isMobile) return null; // Hide desktop legend on mobile
+        if (isMobile) return null;
         return (
             <Box sx={{ 
                 display: 'flex', 
@@ -496,20 +463,27 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                             position: 'relative',
                         }}>
                             <ResponsiveContainer width="100%" height="100%" debounce={200}>
-                                <PieChart>
-                                    <Pie
-                                        activeIndex={activeIndex}
-                                        activeShape={renderActiveShape}
-                                        data={chartData}
-                                        cx="50%"
-                                        cy="50%"
-                                        innerRadius={70}
-                                        outerRadius={100}
-                                        fill="#8884d8"
-                                        dataKey="amount"
-                                        onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
+                                <BarChart 
+                                    data={chartData} 
+                                    margin={{ top: 30, right: 30, left: 10, bottom: 20 }}
+                                >
+                                    <XAxis 
+                                        dataKey="name" 
+                                        axisLine={false} 
+                                        tickLine={false} 
+                                        interval={0}
+                                        tick={{ fill: '#1e293b', fontSize: 11, fontWeight: '800' }}
+                                        height={40}
+                                    />
+                                    <YAxis hide domain={[0, 'auto']} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: '#f1f5f9', opacity: 0.5 }} />
+                                    
+                                    <Bar 
+                                        dataKey="amount" 
+                                        radius={[12, 12, 0, 0]} 
+                                        barSize={45}
                                         onClick={(data: any) => !drillDownCategory && data.name && setDrillDownCategory(data.name)}
-                                        paddingAngle={5}
+                                        style={{ cursor: drillDownCategory ? 'default' : 'pointer' }}
                                     >
                                         {chartData.map((entry, index) => (
                                             <Cell 
@@ -518,10 +492,15 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                                                 fillOpacity={0.9}
                                             />
                                         ))}
-                                    </Pie>
-                                    <Tooltip content={<CustomTooltip />} />
-                                    <Legend content={CustomLegend} verticalAlign="bottom" />
-                                </PieChart>
+                                        <LabelList 
+                                            dataKey="amount" 
+                                            position="top" 
+                                            formatter={(v: any) => `Rs.${v.toLocaleString()}`} 
+                                            style={{ fill: '#1e293b', fontSize: 11, fontWeight: '1000' }} 
+                                            offset={10}
+                                        />
+                                    </Bar>
+                                </BarChart>
                             </ResponsiveContainer>
                         </Box>
                     )}
