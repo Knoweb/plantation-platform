@@ -593,8 +593,8 @@ export default function WorkerRegistry() {
     };
 
     return (
-        <Box sx={{ p: { xs: 2, sm: 4 } }}>
-            <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', mb: isMobile ? 3 : 4, gap: 2 }}>
+        <Box sx={{ p: { xs: 1, sm: 4 }, px: { xs: 0, sm: 4 } }}>
+            <Box sx={{ px: { xs: 2, sm: 0 }, display: 'flex', flexDirection: isMobile ? 'column' : 'row', justifyContent: 'space-between', mb: isMobile ? 3 : 4, gap: 2 }}>
                 <Typography variant={isSmall ? "h4" : "h3"} sx={{ fontWeight: 'bold', color: '#1a5e20' }}>
                     Worker Registry
                 </Typography>
@@ -637,7 +637,7 @@ export default function WorkerRegistry() {
                 </Box>
             </Box>
 
-            <Paper sx={{ mb: 3, borderRadius: 3, overflow: 'hidden', boxShadow: '0 4px 12px rgba(0,0,0,0.05)' }}>
+            <Paper sx={{ mb: 3, borderRadius: { xs: 0, sm: 3 }, overflow: 'hidden', boxShadow: { xs: 'none', sm: '0 4px 12px rgba(0,0,0,0.05)' } }}>
                 <Tabs
                     value={activeTab}
                     onChange={(_, val) => setActiveTab(val)}
@@ -673,7 +673,7 @@ export default function WorkerRegistry() {
                 </Tabs>
             </Paper>
 
-            <TableContainer component={Paper} elevation={2} sx={{ borderRadius: 3 }}>
+            <TableContainer component={Paper} elevation={isSmall ? 0 : 2} sx={{ borderRadius: { xs: 0, sm: 3 } }}>
                 <Table>
                     <TableHead sx={{ bgcolor: '#f8fafc' }}>
                         <TableRow>
