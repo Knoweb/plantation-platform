@@ -1,4 +1,4 @@
-import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Divider, InputAdornment, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert } from '@mui/material';
+import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Divider, InputAdornment, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Tooltip } from '@mui/material';
 import { useState, useEffect, useRef } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
@@ -6,9 +6,10 @@ import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CampaignIcon from '@mui/icons-material/Campaign';
 import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import DownloadIcon from '@mui/icons-material/Download';
+import DoneIcon from '@mui/icons-material/Done';
+import DoneAllIcon from '@mui/icons-material/DoneAll';
 import axios from 'axios';
 
-// Shared correspondence component logic
 export default function Correspondence() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId || '';
@@ -24,23 +25,15 @@ export default function Correspondence() {
     const [unreadCounts, setUnreadCounts] = useState<{ [key: string]: number }>({});
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
 
-    // Dialog states
     const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
     const [broadcastText, setBroadcastText] = useState('');
     const [recordDialogOpen, setRecordDialogOpen] = useState(false);
     const [recentRecords, setRecentRecords] = useState<any[]>([]);
     const [zoomedImage, setZoomedImage] = useState<string | null>(null);
-
-    // Snackbar state for non-intrusive notifications
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
-    const handleSnackbarClose = () => {
-        setSnackbar({ ...snackbar, open: false });
-    };
-
-    const scrollToBottom = () => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    };
+    const handleSnackbarClose = () => setSnackbar({ ...snackbar, open: false });
+    const scrollToBottom = () => messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
 
     const handleDownloadImage = () => {
         if (!zoomedImage) return;
@@ -58,24 +51,20 @@ export default function Correspondence() {
                 headers: { 'X-Tenant-ID': tenantId }
             });
 
-            // Calculate unread counts per user
             const counts: { [key: string]: number } = {};
             res.data.forEach((m: any) => {
-                // If message is for us, unread, AND not from the currently active chat (which we auto-read)
                 if (m.receiverId === myId && !m.read && m.senderId !== selectedChatId) {
                     counts[m.senderId] = (counts[m.senderId] || 0) + 1;
                 }
             });
             setUnreadCounts(counts);
 
-            // Group messages for the selected user chat
             const filtered = res.data.filter((m: any) =>
                 (m.senderId === myId && m.receiverId === selectedChatId) ||
                 (m.senderId === selectedChatId && m.receiverId === myId)
             );
             setMessages(filtered);
 
-            // Auto mark received messages from currently active chat as read
             filtered.forEach((m: any) => {
                 if (m.senderId === selectedChatId && m.receiverId === myId && !m.read) {
                     axios.put(`/api/messages/${m.id}/read`, {}, {
@@ -88,29 +77,44 @@ export default function Correspondence() {
         }
     };
 
-    // Fetch all users for this tenant to provide direct messaging
+    // Heartbeat to update local lastSeen
+    useEffect(() => {
+        if (!myId) return;
+        const sendHeartbeat = () => {
+            axios.post(`/api/tenants/users/${myId}/heartbeat`).catch(err => console.error("Heartbeat failed", err));
+        };
+        sendHeartbeat();
+        const interval = setInterval(sendHeartbeat, 30000); // 30s heartbeat
+        return () => clearInterval(interval);
+    }, [myId]);
+
     useEffect(() => {
         if (!tenantId) return;
-        axios.get(`/api/tenants/${tenantId}/users`)
-            .then(res => {
-                const fetchedUsers = res.data
-                    .filter((u: any) => u.userId !== myId) // Exclude myself
-                    .map((u: any) => ({
-                        id: u.userId,
-                        name: `${u.fullName} (${u.role.replace('_', ' ')})`,
-                        active: false,
-                        type: 'user'
-                    }));
+        const loadUsers = () => {
+             axios.get(`/api/tenants/${tenantId}/users`)
+                .then(res => {
+                    const fetchedUsers = res.data
+                        .filter((u: any) => u.userId !== myId)
+                        .map((u: any) => ({
+                            id: u.userId,
+                            name: u.fullName,
+                            role: u.role.replace('_', ' '),
+                            lastSeen: u.lastSeen,
+                            type: 'user'
+                        }));
 
-                setChats(fetchedUsers);
-                if (fetchedUsers.length > 0 && !selectedChatId) {
-                    setSelectedChatId(fetchedUsers[0].id);
-                }
-            })
-            .catch(err => console.error("Failed to load users for chat", err));
-    }, [tenantId, myId]); // Remove selectedChatId from dependency so it only runs once and doesn't reset it
+                    setChats(fetchedUsers);
+                    if (fetchedUsers.length > 0 && !selectedChatId) {
+                        setSelectedChatId(fetchedUsers[0].id);
+                    }
+                })
+                .catch(err => console.error("Failed to load users for chat", err));
+        };
+        loadUsers();
+        const interval = setInterval(loadUsers, 10000); // Refresh user status every 10s
+        return () => clearInterval(interval);
+    }, [tenantId, myId, selectedChatId]);
 
-    // Polling simulation for Real-Time chat without massive WebSocket setup
     useEffect(() => {
         fetchMessages();
         const interval = setInterval(fetchMessages, 2000);
@@ -134,13 +138,13 @@ export default function Correspondence() {
             imageAttachment: attachedImage
         };
 
-        setInputText(''); // optimistic clear
+        setInputText('');
         setAttachedImage(null);
         try {
             await axios.post('/api/messages', newMsg, {
                 headers: { 'X-Tenant-ID': tenantId }
             });
-            fetchMessages(); // refresh immediately after post
+            fetchMessages();
         } catch (error) {
             console.error(error);
         }
@@ -150,9 +154,7 @@ export default function Correspondence() {
         const file = e.target.files?.[0];
         if (!file) return;
         const reader = new FileReader();
-        reader.onloadend = () => {
-            setAttachedImage(reader.result as string);
-        };
+        reader.onloadend = () => setAttachedImage(reader.result as string);
         reader.readAsDataURL(file);
     };
 
@@ -160,13 +162,13 @@ export default function Correspondence() {
         if (!broadcastText.trim()) return;
         const promises = chats.map(chat => {
             return axios.post('/api/messages', {
-                senderId: myId,
-                senderName: myName,
-                senderRole: myRole,
-                receiverId: chat.id,
-                receiverName: chat.name,
-                content: `[BROADCAST ANNOUNCEMENT]\n\n${broadcastText}`
-            }, { headers: { 'X-Tenant-ID': tenantId } });
+                    senderId: myId,
+                    senderName: myName,
+                    senderRole: myRole,
+                    receiverId: chat.id,
+                    receiverName: chat.name,
+                    content: `[BROADCAST ANNOUNCEMENT]\n\n${broadcastText}`
+                }, { headers: { 'X-Tenant-ID': tenantId } });
         });
 
         try {
@@ -174,7 +176,7 @@ export default function Correspondence() {
             setBroadcastText('');
             setBroadcastDialogOpen(false);
             fetchMessages();
-            setSnackbar({ open: true, message: 'Broadcast sent successfully to all personnel in your contact list!', severity: 'success' });
+            setSnackbar({ open: true, message: 'Broadcast sent to all personnel!', severity: 'success' });
         } catch (error) {
             console.error("Failed to broadcast", error);
             setSnackbar({ open: true, message: 'Failed to send broadcast.', severity: 'error' });
@@ -189,124 +191,167 @@ export default function Correspondence() {
             setRecordDialogOpen(true);
         } catch (error) {
             console.error("Failed to fetch records", error);
-            // Fallback mock data if table is empty / error
-            setRecentRecords([
-                { workId: 'W-001', workType: 'Harvesting', status: 'PENDING' },
-                { workId: 'W-002', workType: 'Weeding', status: 'COMPLETED' }
-            ]);
+            setRecentRecords([{ workId: 'W-001', workType: 'Harvesting', status: 'PENDING' }]);
             setRecordDialogOpen(true);
         }
     };
 
-    return (
-        <Box sx={{ height: 'calc(100vh - 100px)', display: 'flex', flexDirection: 'column' }}>
+    const isOnline = (lastSeen: string | null) => {
+        if (!lastSeen) return false;
+        const lastSeenDate = new Date(lastSeen);
+        const now = new Date();
+        const diffInMinutes = (now.getTime() - lastSeenDate.getTime()) / 60000;
+        return diffInMinutes < 2; // Online if heartbeat was in last 2 minutes
+    };
 
-            <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
-                <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
+    const formatLastSeen = (lastSeen: string | null) => {
+        if (!lastSeen) return 'Offline';
+        if (isOnline(lastSeen)) return 'Online';
+        const date = new Date(lastSeen);
+        return `Last seen ${date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`;
+    };
+
+    const activeChatUser = chats.find(c => c.id === selectedChatId);
+
+    return (
+        <Box sx={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
+            <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
+                <Typography variant="h4" fontWeight="800" sx={{ color: '#1b5e20', letterSpacing: '-0.5px' }}>
                     Correspondence
                 </Typography>
-                <Typography variant="caption" color="text.secondary">
-                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: '2-digit' }).replace(/ /g, '-')}
+                <Typography variant="body2" sx={{ color: '#666', fontWeight: 600 }}>
+                    {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                 </Typography>
             </Box>
 
-            <Paper elevation={3} sx={{ flex: 1, display: 'flex', overflow: 'hidden', border: '1px solid #000', borderRadius: 0 }}>
-
-                {/* Left Panel: Recent Chats */}
-                <Box sx={{ width: 300, borderRight: '1px solid #000', display: 'flex', flexDirection: 'column', bgcolor: '#fff' }}>
-
-                    {/* Search Bar */}
-                    <Box sx={{ p: 1, borderBottom: '1px solid #000' }}>
+            <Paper elevation={0} sx={{ flex: 1, display: 'flex', overflow: 'hidden', borderRadius: 4, bgcolor: '#fff', border: '1px solid #e0e0e0', boxShadow: '0 8px 24px rgba(0,0,0,0.05)' }}>
+                
+                {/* Contact List */}
+                <Box sx={{ width: { xs: 80, sm: 320 }, display: 'flex', flexDirection: 'column', borderRight: '1px solid #f0f0f0' }}>
+                    <Box sx={{ p: 2, pb: 1 }}>
                         <TextField
                             fullWidth
                             size="small"
-                            placeholder="Search Roles or Contacts..."
+                            placeholder="Search contacts..."
                             variant="outlined"
                             InputProps={{
-                                endAdornment: (
-                                    <InputAdornment position="end">
-                                        <SearchIcon />
-                                    </InputAdornment>
-                                ),
-                                sx: { borderRadius: 0 }
+                                startAdornment: <SearchIcon sx={{ color: '#aaa', mr: 1, fontSize: 20 }} />,
+                                sx: { borderRadius: 3, bgcolor: '#f5f5f5', border: 'none', '& fieldset': { border: 'none' } }
                             }}
+                            sx={{ display: { xs: 'none', sm: 'block' } }}
                         />
                     </Box>
-
-                    {/* Chat List */}
-                    <Typography variant="subtitle2" sx={{ p: 1, pl: 2, bgcolor: '#f5f5f5', borderBottom: '1px solid #e0e0e0' }}>
-                        Groups & Contacts
+                    
+                    <Typography variant="overline" sx={{ px: 3, mt: 1, color: '#999', fontWeight: 700, display: { xs: 'none', sm: 'block' } }}>
+                        All Personnel
                     </Typography>
-                    <List sx={{ flex: 1, overflowY: 'auto', p: 0 }}>
+                    
+                    <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
                         {chats.map(chat => {
-                            // Determine if this user has sent us any unread messages right now
-                            // We do this by checking if they are in the full unread backlog, but here we can just pass the prop
-                            // Actually properly handling live badges per user would involve storing global message state.
+                            const userOnline = isOnline(chat.lastSeen);
                             return (
-                                <Box key={chat.id}>
-                                    <ListItemButton
-                                        selected={selectedChatId === chat.id}
-                                        onClick={() => setSelectedChatId(chat.id)}
-                                        sx={{ '&.Mui-selected': { bgcolor: '#e8f5e9' } }}
-                                    >
-                                        <ListItemAvatar>
-                                            <Badge badgeContent={unreadCounts[chat.id] || 0} color="error">
-                                                <Avatar sx={{ bgcolor: selectedChatId === chat.id ? '#4caf50' : '#bdbdbd' }}>
+                                <ListItemButton
+                                    key={chat.id}
+                                    selected={selectedChatId === chat.id}
+                                    onClick={() => setSelectedChatId(chat.id)}
+                                    sx={{ 
+                                        borderRadius: 3, 
+                                        mb: 0.5,
+                                        py: 1.5,
+                                        '&.Mui-selected': { bgcolor: '#e8f5e9', '&:hover': { bgcolor: '#e8f5e9' } },
+                                        justifyContent: { xs: 'center', sm: 'flex-start' }
+                                    }}
+                                >
+                                    <ListItemAvatar sx={{ minWidth: { xs: 0, sm: 56 } }}>
+                                        <Badge overlap="circular" anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }} variant="dot" color={userOnline ? "success" : "default"}>
+                                            <Badge badgeContent={unreadCounts[chat.id] || 0} color="error" overlap="circular" sx={{ '& .MuiBadge-badge': { top: 4, right: 4 } }}>
+                                                <Avatar sx={{ width: 44, height: 44, bgcolor: selectedChatId === chat.id ? '#1b5e20' : '#f0f0f0', color: selectedChatId === chat.id ? '#fff' : '#1b5e20', fontWeight: 'bold' }}>
                                                     {chat.name.charAt(0)}
                                                 </Avatar>
                                             </Badge>
-                                        </ListItemAvatar>
-                                        <ListItemText
-                                            primary={<Typography fontWeight={selectedChatId === chat.id ? 'bold' : 'normal'}>{chat.name}</Typography>}
-                                            secondary={<Typography variant="caption" color="text.secondary" noWrap>Tap to direct message</Typography>}
-                                        />
-                                    </ListItemButton>
-                                    <Divider />
-                                </Box>
+                                        </Badge>
+                                    </ListItemAvatar>
+                                    <ListItemText
+                                        sx={{ display: { xs: 'none', sm: 'block' } }}
+                                        primary={<Typography variant="body2" fontWeight={selectedChatId === chat.id ? 700 : 500} color="#333">{chat.name}</Typography>}
+                                        secondary={
+                                            <Typography variant="caption" sx={{ color: userOnline ? '#4caf50' : '#888', fontWeight: userOnline ? 600 : 'normal' }}>
+                                                {userOnline ? 'Online' : chat.role}
+                                            </Typography>
+                                        }
+                                    />
+                                </ListItemButton>
                             );
                         })}
                     </List>
                 </Box>
 
-                {/* Right Panel: Chat Area */}
-                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', position: 'relative' }}>
-
-                    {/* Messages Area */}
-                    <Box sx={{ flex: 1, p: 2, overflowY: 'auto', bgcolor: '#f1f8e9' }}>
-                        {messages.length === 0 && (
-                            <Typography textAlign="center" color="text.secondary" sx={{ mt: 5 }}>
-                                No messages in this channel yet. Say hello!
+                {/* Conversation Area */}
+                <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
+                    {/* Chat Header */}
+                    <Box sx={{ p: 2, px: 3, bgcolor: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
+                        <Avatar sx={{ width: 36, height: 36, mr: 2, bgcolor: '#e8f5e9', color: '#1b5e20' }}>
+                            {activeChatUser?.name.charAt(0)}
+                        </Avatar>
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{activeChatUser?.name}</Typography>
+                            <Typography variant="caption" sx={{ color: isOnline(activeChatUser?.lastSeen) ? '#4caf50' : '#888', fontWeight: 600 }}>
+                                {formatLastSeen(activeChatUser?.lastSeen)}
                             </Typography>
+                        </Box>
+                    </Box>
+
+                    {/* Messages */}
+                    <Box sx={{ flex: 1, px: 3, pt: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+                        {messages.length === 0 && (
+                            <Box sx={{ m: 'auto', textAlign: 'center', opacity: 0.5 }}>
+                                <Typography variant="h6">No messages yet</Typography>
+                                <Typography variant="body2">Start a conversation with {activeChatUser?.name}</Typography>
+                            </Box>
                         )}
-                        {messages.map((msg) => {
+                        {messages.map((msg, idx) => {
                             const isMine = msg.senderId === myId;
+                            const showName = !isMine && (idx === 0 || messages[idx-1].senderId !== msg.senderId);
+                            
                             return (
-                                <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', mb: 2 }}>
+                                <Box key={msg.id} sx={{ alignSelf: isMine ? 'flex-end' : 'flex-start', maxWidth: '80%', mb: 1, mt: showName ? 1 : 0 }}>
+                                    {showName && (
+                                        <Typography variant="caption" sx={{ ml: 1, mb: 0.5, color: '#666', fontWeight: 600 }}>
+                                            {msg.senderName}
+                                        </Typography>
+                                    )}
                                     <Paper
-                                        elevation={1}
+                                        elevation={0}
                                         sx={{
                                             p: 1.5,
-                                            maxWidth: '70%',
-                                            bgcolor: isMine ? '#c8e6c9' : '#ffffff',
-                                            borderRadius: 2,
-                                            borderBottomRightRadius: isMine ? 0 : 8,
-                                            borderBottomLeftRadius: !isMine ? 0 : 8
+                                            px: 2,
+                                            bgcolor: isMine ? '#1b5e20' : '#fff',
+                                            color: isMine ? '#fff' : '#333',
+                                            borderRadius: isMine ? '18px 18px 2px 18px' : '18px 18px 18px 2px',
+                                            boxShadow: isMine ? '0 4px 12px rgba(27,94,32,0.2)' : '0 2px 8px rgba(0,0,0,0.05)',
+                                            position: 'relative'
                                         }}
                                     >
-                                        {!isMine && (
-                                            <Typography variant="caption" fontWeight="bold" color="#1b5e20" display="block">
-                                                {msg.senderName} ({msg.senderRole})
-                                            </Typography>
-                                        )}
-                                        <Typography variant="body1" sx={{ whiteSpace: 'pre-wrap' }}>{msg.content}</Typography>
+                                        <Typography variant="body2" sx={{ whiteSpace: 'pre-wrap', lineHeight: 1.5 }}>
+                                            {msg.content}
+                                        </Typography>
+                                        
                                         {msg.imageAttachment && (
-                                            <Box sx={{ mt: 1, maxWidth: '100%', cursor: 'pointer', display: 'flex', justifyContent: isMine ? 'flex-end' : 'flex-start' }} onClick={() => setZoomedImage(msg.imageAttachment)}>
-                                                <img src={msg.imageAttachment} alt="Attachment" style={{ maxWidth: '100%', maxHeight: '200px', objectFit: 'cover', borderRadius: 8, border: '1px solid #e0e0e0' }} />
+                                            <Box sx={{ mt: 1, overflow: 'hidden', borderRadius: 2, cursor: 'pointer' }} onClick={() => setZoomedImage(msg.imageAttachment)}>
+                                                <img src={msg.imageAttachment} alt="Attachment" style={{ width: '100%', maxHeight: 300, objectFit: 'cover' }} />
                                             </Box>
                                         )}
-                                        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', textAlign: 'right', mt: 0.5, fontSize: '0.7rem' }}>
-                                            {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                        </Typography>
+                                        
+                                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', mt: 0.5, gap: 0.5 }}>
+                                            <Typography variant="caption" sx={{ fontSize: '10px', opacity: 0.7 }}>
+                                                {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                            </Typography>
+                                            {isMine && (
+                                                msg.read ? 
+                                                <DoneAllIcon sx={{ fontSize: 14, color: '#4fc3f7' }} /> : 
+                                                <DoneIcon sx={{ fontSize: 14, opacity: 0.7 }} />
+                                            )}
+                                        </Box>
                                     </Paper>
                                 </Box>
                             );
@@ -314,137 +359,120 @@ export default function Correspondence() {
                         <div ref={messagesEndRef} />
                     </Box>
 
-                    {/* Input Area */}
-                    <Box sx={{ borderTop: '1px solid #000', bgcolor: '#fff', display: 'flex', flexDirection: 'column' }}>
-
-                        {/* Attached Image Preview */}
+                    {/* Input System */}
+                    <Box sx={{ p: 2, px: 3, bgcolor: '#fff', borderTop: '1px solid #f0f0f0' }}>
                         {attachedImage && (
-                            <Box sx={{ p: 1, borderBottom: '1px solid #e0e0e0', display: 'flex', alignItems: 'center' }}>
-                                <Badge badgeContent="x" color="error" onClick={() => setAttachedImage(null)} sx={{ cursor: 'pointer' }}>
-                                    <Avatar src={attachedImage} variant="rounded" sx={{ width: 60, height: 60 }} />
-                                </Badge>
-                                <Typography variant="caption" sx={{ ml: 2, color: 'text.secondary' }}>Image attached</Typography>
+                            <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', p: 1, bgcolor: '#f5f5f5', borderRadius: 2 }}>
+                                <Avatar src={attachedImage} variant="rounded" sx={{ width: 40, height: 40, mr: 2 }} />
+                                <Typography variant="caption" sx={{ flex: 1 }}>Image attached</Typography>
+                                <IconButton size="small" onClick={() => setAttachedImage(null)}><Typography variant="body2">×</Typography></IconButton>
                             </Box>
                         )}
+                        
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            <Box sx={{ display: 'flex', bgcolor: '#f5f5f5', borderRadius: 6, p: 0.5 }}>
+                                <Tooltip title="Attach Image">
+                                    <IconButton size="small" onClick={() => document.getElementById('camera-upload')?.click()}>
+                                        <CameraAltIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Broadcast">
+                                    <IconButton size="small" onClick={() => setBroadcastDialogOpen(true)}>
+                                        <CampaignIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <Tooltip title="Recent Records">
+                                    <IconButton size="small" onClick={fetchRecentRecords}>
+                                        <LibraryBooksIcon fontSize="small" />
+                                    </IconButton>
+                                </Tooltip>
+                                <input type="file" id="camera-upload" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} />
+                            </Box>
 
-                        {/* Action Icons */}
-                        <Box sx={{ display: 'flex', gap: 1, p: 0.5, px: 2, borderBottom: '1px solid #e0e0e0' }}>
-                            <input type="file" id="camera-upload" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} />
-                            <IconButton size="small" sx={{ color: '#000' }} onClick={() => document.getElementById('camera-upload')?.click()}>
-                                <CameraAltIcon />
-                            </IconButton>
-                            <IconButton size="small" sx={{ color: '#000' }} onClick={() => setBroadcastDialogOpen(true)}>
-                                <CampaignIcon />
-                            </IconButton>
-                            <IconButton size="small" sx={{ color: '#000' }} onClick={fetchRecentRecords}>
-                                <LibraryBooksIcon />
-                            </IconButton>
-                        </Box>
-
-                        {/* Text Input Row */}
-                        <Box sx={{ display: 'flex', alignItems: 'center', p: 1 }}>
                             <TextField
                                 fullWidth
-                                variant="standard"
-                                placeholder="Type a message to the group..."
+                                variant="outlined"
+                                placeholder="Write a message..."
+                                multiline
+                                maxRows={4}
                                 value={inputText}
                                 onChange={(e) => setInputText(e.target.value)}
-                                onKeyPress={(e) => { if (e.key === 'Enter') handleSend(); }}
-                                InputProps={{ disableUnderline: true, sx: { px: 2 } }}
+                                onKeyPress={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+                                sx={{ 
+                                    '& .MuiOutlinedInput-root': { 
+                                        borderRadius: 6, 
+                                        bgcolor: '#f5f5f5',
+                                        '& fieldset': { border: 'none' },
+                                        fontSize: '0.9rem'
+                                    } 
+                                }}
                             />
-                            <IconButton onClick={handleSend} sx={{ color: '#000', mr: 1 }}>
-                                <SendIcon />
+
+                            <IconButton 
+                                onClick={handleSend} 
+                                disabled={!inputText.trim() && !attachedImage}
+                                sx={{ 
+                                    bgcolor: '#1b5e20', 
+                                    color: '#fff', 
+                                    '&:hover': { bgcolor: '#2e7d32' },
+                                    '&.Mui-disabled': { bgcolor: '#f0f0f0', color: '#ccc' }
+                                }}
+                            >
+                                <SendIcon fontSize="small" />
                             </IconButton>
                         </Box>
-
                     </Box>
                 </Box>
             </Paper>
 
-            {/* Broadcast Dialog */}
-            <Dialog open={broadcastDialogOpen} onClose={() => setBroadcastDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Broadcast Announcement</DialogTitle>
+            {/* Dialogs */}
+            <Dialog open={broadcastDialogOpen} onClose={() => setBroadcastDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>Broadcast Message</DialogTitle>
                 <DialogContent>
-                    <Typography variant="body2" color="text.secondary" mb={2}>
-                        This message will be instantly sent to <strong>all {chats.length} personnel</strong> in your contact roster via direct message.
+                    <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
+                        Message will be sent to all {chats.length} contacts.
                     </Typography>
                     <TextField
                         fullWidth
                         multiline
                         rows={4}
-                        variant="outlined"
-                        placeholder="Type your massive announcement here..."
+                        placeholder="Type announcement..."
                         value={broadcastText}
                         onChange={(e) => setBroadcastText(e.target.value)}
+                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                     />
                 </DialogContent>
-                <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setBroadcastDialogOpen(false)} color="inherit">Cancel</Button>
-                    <Button onClick={handleBroadcastSend} variant="contained" color="error">Send Broadcast Now</Button>
+                <DialogActions sx={{ p: 3 }}>
+                    <Button onClick={() => setBroadcastDialogOpen(false)} variant="text" sx={{ color: '#666' }}>Cancel</Button>
+                    <Button onClick={handleBroadcastSend} variant="contained" color="error" sx={{ borderRadius: 2, px: 3 }}>Send Now</Button>
                 </DialogActions>
             </Dialog>
 
-            {/* Attach Record Dialog */}
-            <Dialog open={recordDialogOpen} onClose={() => setRecordDialogOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Attach Estate Record Reference</DialogTitle>
-                <DialogContent dividers>
-                    <Typography variant="body2" color="text.secondary" mb={2}>
-                        Select a recent Daily Work or Harvest Log record to ping into the chat:
-                    </Typography>
-                    <List>
-                        {recentRecords.map((rec: any, idx: number) => (
-                            <Box key={rec.workId || idx}>
-                                <ListItemButton onClick={() => {
-                                    setInputText(prev => prev + `[Ref Tracker: ${rec.workType} ID #${rec.workId}] `);
-                                    setRecordDialogOpen(false);
-                                }}>
-                                    <ListItemText
-                                        primary={`ID: ${rec.workId} - ${rec.workType}`}
-                                        secondary={`Status: ${rec.status || 'N/A'}`}
-                                    />
-                                </ListItemButton>
-                                <Divider />
-                            </Box>
-                        ))}
-                        {recentRecords.length === 0 && <Typography>No records found today.</Typography>}
-                    </List>
+            <Dialog open={recordDialogOpen} onClose={() => setRecordDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
+                <DialogTitle sx={{ fontWeight: 800 }}>Attach Record</DialogTitle>
+                <DialogContent sx={{ p: 1 }}>
+                    {recentRecords.map((rec: any) => (
+                        <ListItemButton key={rec.workId} onClick={() => {
+                            setInputText(prev => prev + `[Ref: ${rec.workType} #${rec.workId}] `);
+                            setRecordDialogOpen(false);
+                        }} sx={{ borderRadius: 2 }}>
+                            <ListItemText primary={rec.workType} secondary={`ID: ${rec.workId} • ${rec.status}`} />
+                        </ListItemButton>
+                    ))}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setRecordDialogOpen(false)}>Close</Button>
-                </DialogActions>
+                <DialogActions sx={{ p: 2 }}><Button onClick={() => setRecordDialogOpen(false)}>Close</Button></DialogActions>
             </Dialog>
 
-            {/* Image Zoom Modal */}
-            <Dialog open={!!zoomedImage} onClose={() => setZoomedImage(null)} maxWidth="lg" fullWidth>
-                <DialogContent sx={{ p: 0, bgcolor: '#000', display: 'flex', justifyContent: 'center', alignItems: 'center', position: 'relative' }}>
-                    <IconButton
-                        onClick={() => setZoomedImage(null)}
-                        sx={{ position: 'absolute', top: 8, right: 8, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)', zIndex: 10 }}
-                    >
-                        <Typography variant="h6" sx={{ lineHeight: 0.5 }}>×</Typography>
-                    </IconButton>
-                    <IconButton
-                        onClick={handleDownloadImage}
-                        sx={{ position: 'absolute', top: 8, right: 52, color: '#fff', bgcolor: 'rgba(0,0,0,0.5)', zIndex: 10 }}
-                    >
-                        <DownloadIcon />
-                    </IconButton>
-                    {zoomedImage && (
-                        <img src={zoomedImage} alt="Zoomed" style={{ width: '100%', height: 'auto', maxHeight: '90vh', objectFit: 'contain' }} />
-                    )}
-                </DialogContent>
+            <Dialog open={!!zoomedImage} onClose={() => setZoomedImage(null)} maxWidth="lg" PaperProps={{ sx: { bgcolor: 'transparent', boxShadow: 'none' } }}>
+                <Box sx={{ position: 'relative' }}>
+                    <IconButton onClick={() => setZoomedImage(null)} sx={{ position: 'absolute', top: -40, right: 0, color: '#fff' }}><Typography variant="h5">×</Typography></IconButton>
+                    <IconButton onClick={handleDownloadImage} sx={{ position: 'absolute', top: -40, right: 40, color: '#fff' }}><DownloadIcon /></IconButton>
+                    <img src={zoomedImage || ''} alt="Zoomed" style={{ maxWidth: '100%', maxHeight: '80vh', borderRadius: 12 }} />
+                </Box>
             </Dialog>
 
-            {/* Premium Toast Notification System */}
-            <Snackbar
-                open={snackbar.open}
-                autoHideDuration={4000}
-                onClose={handleSnackbarClose}
-                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
-            >
-                <Alert onClose={handleSnackbarClose} severity={snackbar.severity} sx={{ width: '100%', boxShadow: 3 }}>
-                    {snackbar.message}
-                </Alert>
+            <Snackbar open={snackbar.open} autoHideDuration={3000} onClose={handleSnackbarClose} anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}>
+                <Alert onClose={handleSnackbarClose} severity={snackbar.severity} variant="filled" sx={{ borderRadius: 5 }}>{snackbar.message}</Alert>
             </Snackbar>
         </Box>
     );

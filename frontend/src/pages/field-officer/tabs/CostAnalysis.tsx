@@ -179,6 +179,8 @@ export default function CostAnalysis() {
     const location = useLocation();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
+    const userRole = userSession.role || '';
+    const isChiefClerk = userRole === 'CHIEF_CLERK';
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
     const [categories, setCategories] = useState<CostCategory[]>([]);
     const [loading, setLoading] = useState(false);
@@ -442,6 +444,7 @@ export default function CostAnalysis() {
                                 <col style={{ width: isMobile ? '90px' : '9%' }} />
                                 <col style={{ width: isMobile ? '90px' : '9%' }} />
                                 <col style={{ width: isMobile ? '90px' : '9%' }} />
+                                {isChiefClerk && <col style={{ width: isMobile ? '90px' : '9%' }} />}
                             </colgroup>
                             <TableHead>
                                 <TableRow>
@@ -460,9 +463,11 @@ export default function CostAnalysis() {
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
                                         History
                                     </TableCell>
-                                    <TableCell rowSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
-                                        Actions
-                                    </TableCell>
+                                    {isChiefClerk && (
+                                        <TableCell rowSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
+                                            Actions
+                                        </TableCell>
+                                    )}
                                 </TableRow>
                                 <TableRow>
                                     {headerCell('Amount (Rs.)')}
@@ -479,7 +484,7 @@ export default function CostAnalysis() {
                             <TableBody>
                                 {categoriesWithBudgets.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={10} align="center" sx={{ py: 6, color: '#aaa' }}>
+                                        <TableCell colSpan={isChiefClerk ? 10 : 9} align="center" sx={{ py: 6, color: '#aaa' }}>
                                             <Typography variant="body2">
                                                 No published cost analysis is available yet for <strong>{activeCrop}</strong> on this date.<br />
                                                 The Chief Clerk must save or upload the report before it becomes visible here.
@@ -535,9 +540,11 @@ export default function CostAnalysis() {
                                             <TableCell align="right" sx={{ color: '#666', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.ytdAmount)}
                                             </TableCell>
-                                            <TableCell align="center" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
-                                                -
-                                            </TableCell>
+                                            {isChiefClerk && (
+                                                <TableCell align="center" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                                    -
+                                                </TableCell>
+                                            )}
                                         </TableRow>
                                     ));
 
@@ -592,9 +599,11 @@ export default function CostAnalysis() {
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                     {fmtTotal(catTotal(cat.items, 'ytdAmount'))}
                                                 </TableCell>
-                                                <TableCell align="center">
-                                                    -
-                                                </TableCell>
+                                                {isChiefClerk && (
+                                                    <TableCell align="center">
+                                                        -
+                                                    </TableCell>
+                                                )}
                                             </TableRow>
                                         );
                                     }

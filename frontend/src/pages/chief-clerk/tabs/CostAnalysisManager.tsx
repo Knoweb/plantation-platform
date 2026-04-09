@@ -222,6 +222,7 @@ export default function CostAnalysisManager() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role || '';
     const isManager = userRole === 'MANAGER' || userRole === 'ESTATE_ADMIN' || userRole === 'OWNER';
+    const isChiefClerk = userRole === 'CHIEF_CLERK';
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const isTablet = useMediaQuery(theme.breakpoints.down('md'));
@@ -865,7 +866,7 @@ export default function CostAnalysisManager() {
                         }}
                         sx={{ bgcolor: '#fff', borderRadius: 1, flex: isMobile ? '1 1 auto' : '0 0 auto' }}
                     />
-                    {!isEditable && !isManager && (
+                    {!isEditable && isChiefClerk && (
                         <Button
                             variant="contained"
                             startIcon={<EditIcon />}
@@ -1039,7 +1040,7 @@ export default function CostAnalysisManager() {
                                 <col style={{ width: isMobile ? '90px' : (isManager ? '12%' : '11%') }} />
                                 <col style={{ width: isMobile ? '80px' : '9%' }} />
                                 <col style={{ width: isMobile ? '80px' : '9%' }} />
-                                {!isManager && <col style={{ width: isMobile ? '60px' : '8%' }} />}
+                                {isChiefClerk && <col style={{ width: isMobile ? '60px' : '8%' }} />}
                             </colgroup>
                             <TableHead>
                                 <TableRow>
@@ -1048,7 +1049,7 @@ export default function CostAnalysisManager() {
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Todate</TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>This month</TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>History</TableCell>
-                                    {!isManager && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>}
+                                    {userRole === 'CHIEF_CLERK' && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>}
                                 </TableRow>
                                 <TableRow>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
@@ -1064,7 +1065,7 @@ export default function CostAnalysisManager() {
                             <TableBody>
                                 {categories.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={isManager ? 7 : 8} align="center" sx={{ py: 6, color: '#888' }}>
+                                        <TableCell colSpan={isChiefClerk ? 10 : 9} align="center" sx={{ py: 6, color: '#888' }}>
                                             <FolderIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
                                             <Typography>No categories yet. Click Add Category to start.</Typography>
                                         </TableCell>
@@ -1076,7 +1077,7 @@ export default function CostAnalysisManager() {
 
                                     rows.push(
                                         <TableRow key={`${category.id}-header`}>
-                                            <TableCell colSpan={isManager ? 9 : 10} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
+                                            <TableCell colSpan={isChiefClerk ? 10 : 9} sx={{ bgcolor: `${cropColor}18`, borderLeft: `4px solid ${cropColor}` }}>
                                                 <Box display="flex" alignItems="center" justifyContent="space-between">
                                                     <Box display="flex" alignItems="center" gap={1}>
                                                         <FolderIcon sx={{ color: cropColor, fontSize: 17 }} />
@@ -1193,7 +1194,7 @@ export default function CostAnalysisManager() {
                                                 </TableCell>
                                                 <TableCell align="right">{fmtAmount(item.lastMonthAmount)}</TableCell>
                                                 <TableCell align="right">{fmtAmount(item.ytdAmount)}</TableCell>
-                                                {!isManager && (
+                                                {isChiefClerk && (
                                                     <TableCell align="center">
                                                         <Tooltip title="Edit item details">
                                                             <IconButton
@@ -1238,7 +1239,7 @@ export default function CostAnalysisManager() {
                                     if (category.items.length === 0) {
                                         rows.push(
                                             <TableRow key={`${category.id}-empty`}>
-                                                <TableCell colSpan={isManager ? 7 : 8} sx={{ pl: 6, py: 1.5, color: '#999', fontStyle: 'italic' }}>
+                                                <TableCell colSpan={isChiefClerk ? 10 : 9} sx={{ pl: 6, py: 1.5, color: '#999', fontStyle: 'italic' }}>
                                                     No items yet. Use Add Item to create one.
                                                 </TableCell>
                                             </TableRow>,
@@ -1278,7 +1279,7 @@ export default function CostAnalysisManager() {
                                             <TableCell align="right" sx={{ fontWeight: 'bold', color: '#555' }}>
                                                 {fmtTotal(catFieldTotal(category, 'ytdAmount'))}
                                             </TableCell>
-                                            {!isManager && (
+                                            {isChiefClerk && (
                                                 <TableCell align="center">
                                                     <Tooltip title="Edit category details">
                                                         <IconButton
@@ -1330,7 +1331,7 @@ export default function CostAnalysisManager() {
                                         <TableCell align="right" sx={{ fontWeight: '1000', color: '#be123c' }}>
                                             {fmtTotal(categories.reduce((acc, cat) => acc + catFieldTotal(cat, 'ytdAmount'), 0))}
                                         </TableCell>
-                                        {!isManager && <TableCell />}
+                                        {isChiefClerk && <TableCell />}
                                     </TableRow>
                                 )}
                             </TableBody>

@@ -307,6 +307,14 @@ public class TenantService {
     }
 
     @Transactional
+    public void updateUserHeartbeat(java.util.UUID userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setLastSeen(LocalDateTime.now());
+        userRepository.save(user);
+    }
+
+    @Transactional
     public String forgotPassword(String email) {
         User user = userRepository.findByEmailIgnoreCase(email)
                 .orElseThrow(() -> new RuntimeException("User not found with email: " + email));

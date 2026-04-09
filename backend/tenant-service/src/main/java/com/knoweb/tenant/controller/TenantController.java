@@ -106,6 +106,12 @@ public class TenantController {
         return ResponseEntity.noContent().build();
     }
 
+    @PostMapping("/users/{userId}/heartbeat")
+    public ResponseEntity<?> heartbeat(@PathVariable java.util.UUID userId) {
+        tenantService.updateUserHeartbeat(userId);
+        return ResponseEntity.ok().build();
+    }
+
     @PostMapping("/forgot-password")
     public ResponseEntity<?> forgotPassword(@RequestBody Map<String, String> request) {
         try {

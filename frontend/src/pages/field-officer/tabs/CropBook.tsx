@@ -829,94 +829,57 @@ export default function CropBook() {
                 {/* Right Panel: Data Grid / Mobile Cards */}
                 {userRole !== 'CHIEF_CLERK' && (
                     <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', overflow: { xs: 'visible', md: 'hidden' }, minHeight: { xs: 400, md: 'auto' } }}>
-                        {isMobile ? (
-                            <Box sx={{ p: 1, display: 'flex', flexDirection: 'column', gap: 1.5, bgcolor: '#f0f2f5' }}>
-                                {realData.map((row) => (
-                                    <Card key={row.day} sx={{ borderRadius: 2, boxShadow: '0 1px 3px rgba(0,0,0,0.1)', border: '1px solid rgba(46,125,50,0.15)' }}>
-                                        <Box sx={{ bgcolor: '#e8f5e9', px: 1.5, py: 1, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <Typography variant="subtitle2" fontWeight="900" color="#1b5e20">DAY {row.day}</Typography>
-                                            <Stack direction="row" spacing={1}>
-                                                <Typography variant="caption" sx={{ bgcolor: '#fff', px: 1, py: 0.25, borderRadius: 1, fontWeight: '800', border: '1px solid #c8e6c9' }}>
-                                                    Fac: {row.factoryWeightDay || 0} Kg
-                                                </Typography>
-                                            </Stack>
-                                        </Box>
-                                        <Box sx={{ p: 1.5 }}>
-                                            <Grid container spacing={1}>
-                                                <Grid size={{ xs: 4 }}>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Field Wt</Typography>
-                                                    <Typography variant="body2" fontWeight="700">{row.fieldWeightDay || '-'}</Typography>
-                                                </Grid>
-                                                <Grid size={{ xs: 4 }}>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Plukers</Typography>
-                                                    <Typography variant="body2" fontWeight="700">{row.noOfPluckersDay || '-'}</Typography>
-                                                </Grid>
-                                                <Grid size={{ xs: 4 }}>
-                                                    <Typography variant="caption" color="text.secondary" display="block">Avg (Kg)</Typography>
-                                                    <Typography variant="body2" fontWeight="800" color="success.main">{row.pluckingAverageDay || '-'}</Typography>
-                                                </Grid>
-                                                
-                                                <Grid size={{ xs: 12 }} sx={{ mt: 0.5, pt: 0.5, borderTop: '1px dashed #ddd' }}>
-                                                    <Stack direction="row" justifyContent="space-between" alignItems="center">
-                                                        <Typography variant="caption" sx={{ fontStyle: 'italic', color: '#666' }}>To-date Progress</Typography>
-                                                        <Typography variant="caption" fontWeight="900" color="#1b5e20">
-                                                            Fac TD: {row.factoryWeightTodate || '-'} Kg
-                                                        </Typography>
-                                                    </Stack>
-                                                </Grid>
-                                            </Grid>
-                                        </Box>
-                                    </Card>
-                                ))}
-                            </Box>
-                        ) : (
-                            <TableContainer sx={{ flex: 1, overflow: 'auto' }}>
-                                <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', padding: '4px 8px', whiteSpace: 'nowrap', textAlign: 'center' } }}>
-                                    <TableHead>
-                                        <TableRow>
-                                            <TableCell sx={{ bgcolor: '#fafafa', position: 'sticky', top: 0, zIndex: 3 }} />
-                                            {['Factory Weight', 'Field Weight', 'Checkroll Weight', 'Yield per Acre', 'No. Of Pluckers', 'Over kilos', 'Cash Kilos', 'Plucking Average', 'Plucking Cost per Kg'].map(h => (
-                                                <TableCell key={h} colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>{h}</TableCell>
-                                            ))}
-                                        </TableRow>
-                                        <TableRow>
-                                            <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, top: '29px', zIndex: 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
-                                            {Array.from({ length: 9 }).map((_, i) => (
-                                                <React.Fragment key={i}>
-                                                    <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Day</TableCell>
-                                                    <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Todate</TableCell>
-                                                </React.Fragment>
-                                            ))}
-                                        </TableRow>
-                                    </TableHead>
-                                    <TableBody>
-                                        {realData.map((row) => (
-                                            <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
-                                                <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>{row.day}</TableCell>
-                                                <TableCell>{row.factoryWeightDay}</TableCell>
-                                                <TableCell>{row.factoryWeightTodate}</TableCell>
-                                                <TableCell>{row.fieldWeightDay}</TableCell>
-                                                <TableCell>{row.fieldWeightTodate}</TableCell>
-                                                <TableCell>{row.checkrollWeightDay}</TableCell>
-                                                <TableCell>{row.checkrollWeightTodate}</TableCell>
-                                                <TableCell>{row.yieldPerAcreDay}</TableCell>
-                                                <TableCell>{row.yieldPerAcreTodate}</TableCell>
-                                                <TableCell>{row.noOfPluckersDay}</TableCell>
-                                                <TableCell>{row.noOfPluckersTodate}</TableCell>
-                                                <TableCell>{row.overKilosDay}</TableCell>
-                                                <TableCell>{row.overKilosTodate}</TableCell>
-                                                <TableCell>{row.cashKilosDay}</TableCell>
-                                                <TableCell>{row.cashKilosTodate}</TableCell>
-                                                <TableCell>{row.pluckingAverageDay}</TableCell>
-                                                <TableCell>{row.pluckingAverageTodate}</TableCell>
-                                                <TableCell>{row.pluckingCostPerKgDay}</TableCell>
-                                                <TableCell>{row.pluckingCostPerKgTodate}</TableCell>
-                                            </TableRow>
+                        <TableContainer sx={{ 
+                            flex: 1, 
+                            overflow: 'auto',
+                            bgcolor: '#fff',
+                            borderTop: '1px solid #e0e0e0'
+                        }}>
+                            <Table size="small" stickyHeader sx={{ '& .MuiTableCell-root': { borderRight: '1px solid #e0e0e0', borderBottom: '1px solid #e0e0e0', padding: '4px 8px', whiteSpace: 'nowrap', textAlign: 'center' } }}>
+                                <TableHead dropShadow={0}>
+                                    <TableRow>
+                                        <TableCell sx={{ bgcolor: '#fafafa', position: 'sticky', top: 0, zIndex: 3 }} />
+                                        {['Factory Weight', 'Field Weight', 'Checkroll Weight', 'Yield per Acre', 'No. Of Pluckers', 'Over kilos', 'Cash Kilos', 'Plucking Average', 'Plucking Cost per Kg'].map(h => (
+                                            <TableCell key={h} colSpan={2} sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', top: 0, zIndex: 3 }}>{h}</TableCell>
                                         ))}
-                                    </TableBody>
-                                </Table>
-                            </TableContainer>
-                        )}
+                                    </TableRow>
+                                    <TableRow>
+                                        <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, top: '29px', zIndex: 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
+                                        {Array.from({ length: 9 }).map((_, i) => (
+                                            <React.Fragment key={i}>
+                                                <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Day</TableCell>
+                                                <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Todate</TableCell>
+                                            </React.Fragment>
+                                        ))}
+                                    </TableRow>
+                                </TableHead>
+                                <TableBody>
+                                    {realData.map((row) => (
+                                        <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
+                                            <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>{row.day}</TableCell>
+                                            <TableCell>{row.factoryWeightDay}</TableCell>
+                                            <TableCell>{row.factoryWeightTodate}</TableCell>
+                                            <TableCell>{row.fieldWeightDay}</TableCell>
+                                            <TableCell>{row.fieldWeightTodate}</TableCell>
+                                            <TableCell>{row.checkrollWeightDay}</TableCell>
+                                            <TableCell>{row.checkrollWeightTodate}</TableCell>
+                                            <TableCell>{row.yieldPerAcreDay}</TableCell>
+                                            <TableCell>{row.yieldPerAcreTodate}</TableCell>
+                                            <TableCell>{row.noOfPluckersDay}</TableCell>
+                                            <TableCell>{row.noOfPluckersTodate}</TableCell>
+                                            <TableCell>{row.overKilosDay}</TableCell>
+                                            <TableCell>{row.overKilosTodate}</TableCell>
+                                            <TableCell>{row.cashKilosDay}</TableCell>
+                                            <TableCell>{row.cashKilosTodate}</TableCell>
+                                            <TableCell>{row.pluckingAverageDay}</TableCell>
+                                            <TableCell>{row.pluckingAverageTodate}</TableCell>
+                                            <TableCell>{row.pluckingCostPerKgDay}</TableCell>
+                                            <TableCell>{row.pluckingCostPerKgTodate}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </TableContainer>
                     </Box>
                 )}
             </Paper>

@@ -22,7 +22,8 @@ import {
     DialogContentText,
     DialogActions,
     CircularProgress,
-    Alert
+    Alert,
+    Stack,
 } from '@mui/material';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
@@ -285,57 +286,6 @@ export default function LeaveApplication() {
                                 </TableContainer>
                             )}
 
-                            {/* Recent Leave Applications Tracker */}
-                            {recentApps.length > 0 && (
-                                <>
-                                    <Typography variant="subtitle2" fontWeight="bold" mb={1} color="#33691e">Recent Leave Applications:</Typography>
-                                    <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee', overflowX: 'auto' }}>
-                                        <Table size="small" sx={{ minWidth: 600 }}>
-                                            <TableHead sx={{ bgcolor: '#eeeeee' }}>
-                                                <TableRow>
-                                                    <TableCell sx={{ py: 0.5, fontSize: '0.7rem' }}>Type</TableCell>
-                                                    <TableCell sx={{ py: 0.5, fontSize: '0.7rem' }}>Submitted</TableCell>
-                                                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.7rem' }}>Days</TableCell>
-                                                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.7rem' }}>Acting</TableCell>
-                                                    <TableCell align="center" sx={{ py: 0.5, fontSize: '0.7rem' }}>Status</TableCell>
-                                                    <TableCell sx={{ py: 0.5, fontSize: '0.7rem' }}>Remarks</TableCell>
-                                                </TableRow>
-                                            </TableHead>
-                                            <TableBody>
-                                                {recentApps.map((app) => (
-                                                    <TableRow key={app.id}>
-                                                        <TableCell sx={{ fontSize: '0.8rem' }}>{app.leaveType}</TableCell>
-                                                        <TableCell sx={{ fontSize: '0.8rem' }}>
-                                                            {app.submittedAt ? (
-                                                                <Box sx={{ whiteSpace: 'nowrap', fontSize: '0.75rem' }}>
-                                                                    <Typography component="span" sx={{ display: 'block', fontWeight: 'bold', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>
-                                                                        {new Date(app.submittedAt).toLocaleDateString('en-CA')}
-                                                                    </Typography>
-                                                                    <Typography component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.65rem', whiteSpace: 'nowrap' }}>
-                                                                        {new Date(app.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
-                                                                    </Typography>
-                                                                </Box>
-                                                            ) : '—'}
-                                                        </TableCell>
-                                                        <TableCell align="center" sx={{ fontSize: '0.8rem' }}>{app.daysApplied}</TableCell>
-                                                        <TableCell align="center" sx={{ fontSize: '0.75rem' }}>
-                                                            {(!app.actingPersonId || app.actingPersonId === 'NONE') ? 'None' : (officerMap[app.actingPersonId] || app.actingPersonId)}
-                                                        </TableCell>
-                                                        <TableCell align="center">
-                                                            {app.status === 'PENDING' && <Chip label="Pending" color="warning" size="small" icon={<AccessTimeIcon />} />}
-                                                            {app.status === 'APPROVED' && <Chip label="Approved" color="success" size="small" icon={<CheckCircleIcon />} />}
-                                                            {app.status === 'REJECTED' && <Chip label="Rejected" color="error" size="small" icon={<CancelIcon />} />}
-                                                        </TableCell>
-                                                        <TableCell sx={{ fontSize: '0.75rem', color: 'text.secondary', minWidth: 120, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                                                            {app.managerRemarks || '—'}
-                                                        </TableCell>
-                                                    </TableRow>
-                                                ))}
-                                            </TableBody>
-                                        </Table>
-                                    </TableContainer>
-                                </>
-                            )}
                         </Paper>
                     </Grid>
 
@@ -343,64 +293,76 @@ export default function LeaveApplication() {
                     <Grid size={{ xs: 12, md: 5 }}>
                         <Paper elevation={3} sx={{ p: 1.5, borderRadius: 2 }}>
                             <Grid container spacing={1.5}>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField fullWidth label="Name" value={userName} disabled variant="filled" size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField fullWidth label="Designation" value={designation} disabled variant="filled" size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField fullWidth label="Application Date" value={applicationDate} disabled variant="filled" size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField
-                                        fullWidth label="No of Days" type="text"
-                                        value={daysApplying}
-                                        onChange={(e) => {
-                                            const raw = e.target.value.replace(/[^0-9]/g, '');
-                                            setDaysApplying(raw === '' ? '' : Number(raw));
-                                        }}
-                                        InputProps={{ inputProps: { min: 0 } }}
-                                        size="small"
-                                    />
+                                <Grid size={{ xs: 12 }}>
+                                    <Box sx={{ p: 1, bgcolor: '#f8fafc', borderRadius: 2, border: '1px dashed #cbd5e1', mb: 1 }}>
+                                        <Typography variant="caption" sx={{ fontWeight: 800, color: '#64748b', mb: 0.5, display: 'block', textTransform: 'uppercase' }}>Applicant Info</Typography>
+                                        <Stack direction="row" spacing={2} divider={<Divider orientation="vertical" flexItem />}>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Name</Typography>
+                                                <Typography variant="body2" fontWeight="700">{userName}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Position</Typography>
+                                                <Typography variant="body2" fontWeight="700">{designation}</Typography>
+                                            </Box>
+                                            <Box>
+                                                <Typography variant="caption" color="text.secondary">Date</Typography>
+                                                <Typography variant="body2" fontWeight="700">{applicationDate}</Typography>
+                                            </Box>
+                                        </Stack>
+                                    </Box>
                                 </Grid>
 
                                 <Grid size={{ xs: 12 }}>
                                     <Divider sx={{ my: 1, borderColor: '#c5e1a5' }} />
                                 </Grid>
 
-                                <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField fullWidth type="date" label="From" InputLabelProps={{ shrink: true }}
-                                        value={fromDate} onChange={(e) => setFromDate(e.target.value)} size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField fullWidth type="date" label="To" InputLabelProps={{ shrink: true }}
-                                        value={toDate} onChange={(e) => setToDate(e.target.value)} size="small" />
-                                </Grid>
-                                <Grid size={{ xs: 12, sm: 4 }}>
-                                    <TextField select fullWidth label="Type" value={leaveType} onChange={(e) => setLeaveType(e.target.value)} size="small">
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField select fullWidth label="Leave Type" value={leaveType} onChange={(e) => setLeaveType(e.target.value)} size="small"
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
                                         <MenuItem value="Annual">Annual</MenuItem>
                                         <MenuItem value="Casual">Casual</MenuItem>
                                         <MenuItem value="Duty">Duty</MenuItem>
                                         <MenuItem value="Medical">Medical</MenuItem>
                                     </TextField>
                                 </Grid>
+
+                                <Grid size={{ xs: 6 }}>
+                                    <TextField fullWidth type="date" label="From" InputLabelProps={{ shrink: true }}
+                                        value={fromDate} onChange={(e) => setFromDate(e.target.value)} size="small" 
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                                </Grid>
+                                <Grid size={{ xs: 6 }}>
+                                    <TextField fullWidth type="date" label="To" InputLabelProps={{ shrink: true }}
+                                        value={toDate} onChange={(e) => setToDate(e.target.value)} size="small" 
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
+                                </Grid>
+
                                 <Grid size={{ xs: 12 }}>
-                                    <TextField fullWidth label="Reason For Leave" multiline rows={1}
-                                        value={reason} onChange={(e) => setReason(e.target.value)} size="small" />
+                                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1.5, bgcolor: '#f0f4f8', borderRadius: 2, border: '1px solid #e2e8f0' }}>
+                                        <Typography variant="body2" fontWeight="700" color="text.secondary">Total Days (calculated)</Typography>
+                                        <Typography variant="h6" fontWeight="900" color="primary.dark">{daysApplying || '—'}</Typography>
+                                    </Box>
+                                </Grid>
+                                <Grid size={{ xs: 12 }}>
+                                    <TextField fullWidth label="Reason For Leave" multiline rows={2}
+                                        value={reason} onChange={(e) => setReason(e.target.value)} size="small" 
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
                                 </Grid>
                                 <Grid size={{ xs: 12 }}>
                                     <TextField fullWidth label="Address While on Leave"
-                                        value={address} onChange={(e) => setAddress(e.target.value)} size="small" />
+                                        value={address} onChange={(e) => setAddress(e.target.value)} size="small" 
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
-                                    <TextField fullWidth label="Additional Contact No"
-                                        value={contactNo} onChange={(e) => setContactNo(e.target.value)} size="small" />
+                                    <TextField fullWidth label="Contact Number"
+                                        value={contactNo} onChange={(e) => setContactNo(e.target.value)} size="small" 
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }} />
                                 </Grid>
                                 <Grid size={{ xs: 12, sm: 6 }}>
                                     <TextField select fullWidth label="Acting Arrangement"
-                                        value={actingPerson} onChange={(e) => setActingPerson(e.target.value)} size="small">
- drum
+                                        value={actingPerson} onChange={(e) => setActingPerson(e.target.value)} size="small"
+                                        sx={{ '& .MuiOutlinedInput-root': { borderRadius: 2 } }}>
                                         <MenuItem value="NONE"><em>None</em></MenuItem>
                                         {actingOfficers.length > 0 ? (
                                             actingOfficers.map((officer) => (
@@ -412,19 +374,84 @@ export default function LeaveApplication() {
                                     </TextField>
                                 </Grid>
 
-                                <Grid size={{ xs: 12 }} sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                                <Grid size={{ xs: 12 }} sx={{ mt: 1 }}>
                                     <Button
-                                        variant="contained" size="small"
+                                        variant="contained" 
+                                        fullWidth
                                         onClick={handleSubmit}
                                         disabled={submitLoading}
-                                        startIcon={submitLoading ? <CircularProgress size={16} color="inherit" /> : undefined}
-                                        sx={{ bgcolor: '#ffee58', color: 'black', fontWeight: 'bold', px: 3, '&:hover': { bgcolor: '#fdd835' }, fontSize: '0.75rem' }}
+                                        startIcon={submitLoading ? <CircularProgress size={20} color="inherit" /> : undefined}
+                                        sx={{ 
+                                            bgcolor: '#2e7d32', 
+                                            color: 'white', 
+                                            fontWeight: 'bold', 
+                                            py: 1.25,
+                                            borderRadius: 2,
+                                            boxShadow: '0 4px 12px rgba(46, 125, 50, 0.2)',
+                                            '&:hover': { bgcolor: '#1b5e20' },
+                                            fontSize: '0.9rem',
+                                            textTransform: 'none'
+                                        }}
                                     >
-                                        {submitLoading ? 'Submitting...' : 'Submit Application'}
+                                        {submitLoading ? 'Submitting Application...' : 'Submit Application'}
                                     </Button>
                                 </Grid>
                             </Grid>
                         </Paper>
+                    </Grid>
+
+                    {/* ── BOTTOM PANEL: Recent Applications (Full Width) ── */}
+                    <Grid size={{ xs: 12 }}>
+                        {recentApps.length > 0 && (
+                            <Paper elevation={3} sx={{ p: 2, borderRadius: 2 }}>
+                                <Typography variant="subtitle2" fontWeight="bold" mb={1.5} color="#33691e">Your Recent Leave Applications</Typography>
+                                <TableContainer component={Paper} elevation={0} sx={{ border: '1px solid #eeeeee', overflowX: 'auto' }}>
+                                    <Table size="small" sx={{ minWidth: 700 }}>
+                                        <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                                            <TableRow>
+                                                <TableCell sx={{ py: 1, fontWeight: 'bold' }}>Leave Type</TableCell>
+                                                <TableCell sx={{ py: 1, fontWeight: 'bold' }}>Submission Date</TableCell>
+                                                <TableCell align="center" sx={{ py: 1, fontWeight: 'bold' }}>Days</TableCell>
+                                                <TableCell align="center" sx={{ py: 1, fontWeight: 'bold' }}>Acting Person</TableCell>
+                                                <TableCell align="center" sx={{ py: 1, fontWeight: 'bold' }}>Status</TableCell>
+                                                <TableCell sx={{ py: 1, fontWeight: 'bold' }}>Manager Remarks</TableCell>
+                                            </TableRow>
+                                        </TableHead>
+                                        <TableBody>
+                                            {recentApps.map((app) => (
+                                                <TableRow key={app.id}>
+                                                    <TableCell sx={{ fontSize: '0.85rem' }}>{app.leaveType}</TableCell>
+                                                    <TableCell sx={{ fontSize: '0.85rem' }}>
+                                                        {app.submittedAt ? (
+                                                            <Box sx={{ whiteSpace: 'nowrap' }}>
+                                                                <Typography component="span" sx={{ display: 'block', fontWeight: 'bold', fontSize: '0.85rem' }}>
+                                                                    {new Date(app.submittedAt).toLocaleDateString('en-CA')}
+                                                                </Typography>
+                                                                <Typography component="span" sx={{ display: 'block', color: 'text.secondary', fontSize: '0.75rem' }}>
+                                                                    {new Date(app.submittedAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                                                                </Typography>
+                                                            </Box>
+                                                        ) : '—'}
+                                                    </TableCell>
+                                                    <TableCell align="center" sx={{ fontSize: '0.85rem' }}>{app.daysApplied} Days</TableCell>
+                                                    <TableCell align="center" sx={{ fontSize: '0.85rem' }}>
+                                                        {(!app.actingPersonId || app.actingPersonId === 'NONE') ? 'None' : (officerMap[app.actingPersonId] || app.actingPersonId)}
+                                                    </TableCell>
+                                                    <TableCell align="center">
+                                                        {app.status === 'PENDING' && <Chip label="Pending" color="warning" size="small" icon={<AccessTimeIcon />} sx={{ fontWeight: 'bold' }} />}
+                                                        {app.status === 'APPROVED' && <Chip label="Approved" color="success" size="small" icon={<CheckCircleIcon />} sx={{ fontWeight: 'bold' }} />}
+                                                        {app.status === 'REJECTED' && <Chip label="Rejected" color="error" size="small" icon={<CancelIcon />} sx={{ fontWeight: 'bold' }} />}
+                                                    </TableCell>
+                                                    <TableCell sx={{ fontSize: '0.8rem', color: 'text.secondary', minWidth: 150, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                                                        {app.managerRemarks || 'Waiting for review...'}
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
+                                </TableContainer>
+                            </Paper>
+                        )}
                     </Grid>
                 </Grid>
             </Box>

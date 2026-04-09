@@ -139,6 +139,17 @@ public class User {
         this.resetTokenExpiry = resetTokenExpiry;
     }
 
+    @Column(name = "last_seen")
+    private java.time.LocalDateTime lastSeen;
+
+    public java.time.LocalDateTime getLastSeen() {
+        return lastSeen;
+    }
+
+    public void setLastSeen(java.time.LocalDateTime lastSeen) {
+        this.lastSeen = lastSeen;
+    }
+
     // Helper for Frontend Compatibility (returns list of Division IDs)
     public java.util.List<String> getDivisionAccess() {
         return divisions.stream()
