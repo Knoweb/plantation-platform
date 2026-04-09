@@ -677,7 +677,14 @@ export default function WorkerRegistry() {
                 <Table>
                     <TableHead sx={{ bgcolor: '#f8fafc' }}>
                         <TableRow>
-                            <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Reg No</strong></TableCell>
+                            <TableCell sx={{ 
+                                py: isSmall ? 1 : 2, 
+                                px: isSmall ? 1 : 2, 
+                                fontSize: isSmall ? '0.75rem' : '0.85rem',
+                                width: isSmall ? '100px' : '15%' // Give more space on mobile to prevent wrapping
+                            }}>
+                                <strong>Reg No</strong>
+                            </TableCell>
                             <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Name</strong></TableCell>
                             {activeTab === 0 && <TableCell sx={{ display: { xs: 'none', md: 'table-cell' } }}><strong>Emp. Type</strong></TableCell>}
                             {activeTab === 1 && <>
@@ -686,7 +693,14 @@ export default function WorkerRegistry() {
                             </>}
                             {activeTab === 0 && <TableCell sx={{ display: { xs: 'none', sm: 'table-cell' } }}><strong>Gender</strong></TableCell>}
                             <TableCell sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Status</strong></TableCell>
-                            <TableCell align="right" sx={{ py: isSmall ? 1 : 2, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}><strong>Actions</strong></TableCell>
+                            <TableCell align="right" sx={{ 
+                                py: isSmall ? 1 : 2, 
+                                px: isSmall ? 1 : 2, 
+                                fontSize: isSmall ? '0.75rem' : '0.85rem',
+                                width: isSmall ? '60px' : 'auto' // Minimize actions on mobile
+                            }}>
+                                <strong>Actions</strong>
+                            </TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -731,7 +745,7 @@ export default function WorkerRegistry() {
                             })
                             .map((worker) => (
                                 <TableRow key={worker.id} sx={{ '&:nth-of-type(even)': { bgcolor: '#fdfdfd' } }}>
-                                    <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem', fontWeight: 600 }}>{worker.registrationNumber}</TableCell>
+                                    <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem', fontWeight: 600, whiteSpace: 'nowrap' }}>{worker.registrationNumber}</TableCell>
                                     <TableCell sx={{ py: isSmall ? 1 : 1.5, px: isSmall ? 1 : 2, fontSize: isSmall ? '0.75rem' : '0.85rem' }}>
                                         <Box display="flex" alignItems="center" gap={1}>
                                             <PersonIcon sx={{ fontSize: isSmall ? 16 : 20 }} color={worker.gender === 'MALE' ? 'primary' : 'secondary'} />
@@ -798,9 +812,13 @@ export default function WorkerRegistry() {
                                                 </Button>
                                             </Box>
                                         )}
-                                        <Box display="flex" justifyContent="flex-end">
-                                            <IconButton size="small" onClick={() => handleEdit(worker)} sx={{ p: isSmall ? 0.5 : 1 }}><EditIcon sx={{ fontSize: isSmall ? 18 : 20 }} /></IconButton>
-                                            <IconButton size="small" color="error" onClick={() => worker.id && handleDelete(worker.id)} sx={{ p: isSmall ? 0.5 : 1 }}><DeleteIcon sx={{ fontSize: isSmall ? 18 : 20 }} /></IconButton>
+                                        <Box display="flex" flexDirection={isSmall ? 'column' : 'row'} alignItems="center" justifyContent="flex-end">
+                                            <IconButton size="small" onClick={() => handleEdit(worker)} sx={{ p: isSmall ? 0.2 : 1 }}>
+                                                <EditIcon sx={{ fontSize: isSmall ? 18 : 20 }} />
+                                            </IconButton>
+                                            <IconButton size="small" color="error" onClick={() => worker.id && handleDelete(worker.id)} sx={{ p: isSmall ? 0.2 : 1 }}>
+                                                <DeleteIcon sx={{ fontSize: isSmall ? 18 : 20 }} />
+                                            </IconButton>
                                         </Box>
                                     </TableCell>
                                 </TableRow>
