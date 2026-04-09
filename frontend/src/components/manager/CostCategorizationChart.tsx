@@ -80,7 +80,6 @@ const monthsList = ['January', 'February', 'March', 'April', 'May', 'June', 'Jul
 const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenantId }) => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
-    const isSmallMobile = useMediaQuery('(max-width:400px)');
 
     const [loading, setLoading] = useState(true);
     const [selectedFilter, setSelectedFilter] = useState('todateAmount');
@@ -88,6 +87,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     const [activeCrop, setActiveCrop] = useState('TEA');
     const [availableCrops, setAvailableCrops] = useState<string[]>(['TEA']);
     const [drillDownCategory, setDrillDownCategory] = useState<string | null>(null);
+    const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
     const [fullData, setFullData] = useState<any[]>([]);
     
     // New selection state
@@ -285,6 +285,7 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
     };
 
     const CustomLegend = () => {
+        if (isMobile) return null; // Hide desktop legend on mobile
         return (
             <Box sx={{ 
                 display: 'flex', 
@@ -308,6 +309,95 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                         </Typography>
                     </Box>
                 ))}
+            </Box>
+        );
+    };
+
+    const MobileListView = () => {
+        const totalAmount = chartData.reduce((sum, item) => sum + item.amount, 0);
+
+        return (
+            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
+                {chartData.map((item, index) => {
+                    const percentage = totalAmount > 0 ? (item.amount / totalAmount) * 100 : 0;
+                    const color = drillDownCategory ? CATEGORY_COLORS[drillDownCategory] || '#10b981' : CATEGORY_COLORS[item.name] || '#10b981';
+                    const isSelected = selectedCategory === item.name;
+
+                    return (
+                        <Box 
+                            key={`mobile-item-${index}`}
+                            onClick={() => !drillDownCategory && setSelectedCategory(isSelected ? null : item.name)}
+                            sx={{ 
+                                bgcolor: '#ffffff', 
+                                p: 1.8, 
+                                borderRadius: 3, 
+                                border: '2px solid',
+                                borderColor: isSelected ? color : '#f1f5f9',
+                                boxShadow: isSelected ? `0 10px 20px -5px ${color}20` : '0 2px 8px rgba(0,0,0,0.02)',
+                                cursor: drillDownCategory ? 'default' : 'pointer',
+                                transition: 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+                                transform: isSelected ? 'scale(1.02)' : 'scale(1)',
+                                position: 'relative',
+                                overflow: 'hidden'
+                            }}
+                        >
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', mb: 1.2 }}>
+                                <Box>
+                                    <Typography sx={{ fontSize: '0.85rem', fontWeight: '900', color: '#1e293b', mb: 0.2 }}>
+                                        {item.name}
+                                    </Typography>
+                                    <Typography sx={{ fontSize: '0.7rem', fontWeight: '700', color: isSelected ? color : '#64748b', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+                                        {percentage.toFixed(0)}% Total Cost
+                                    </Typography>
+                                </Box>
+                                <Typography sx={{ fontSize: '1rem', fontWeight: '1000', color: color }}>
+                                    Rs. {item.amount.toLocaleString()}
+                                </Typography>
+                            </Box>
+                            
+                            <Box sx={{ height: 8, width: '100%', bgcolor: '#f1f5f9', borderRadius: 4, overflow: 'hidden', mb: isSelected ? 2 : 0 }}>
+                                <Box sx={{ 
+                                    height: '100%', 
+                                    width: `${percentage}%`, 
+                                    bgcolor: color, 
+                                    borderRadius: 4,
+                                    transition: 'width 1s cubic-bezier(0.4, 0, 0.2, 1)'
+                                }} />
+                            </Box>
+
+                            {isSelected && !drillDownCategory && (
+                                <Box 
+                                    onClick={(e) => {
+                                        e.stopPropagation();
+                                        setDrillDownCategory(item.name);
+                                        setSelectedCategory(null);
+                                    }}
+                                    sx={{ 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center',
+                                        gap: 1,
+                                        py: 1.2,
+                                        bgcolor: color,
+                                        borderRadius: 2,
+                                        color: '#ffffff',
+                                        animation: 'fadeInUp 0.3s ease-out'
+                                    }}
+                                >
+                                    <Typography sx={{ fontSize: '0.75rem', fontWeight: '900' }}>VIEW BREAKDOWN</Typography>
+                                    <ArrowBackIcon sx={{ fontSize: 14, transform: 'rotate(180deg)' }} />
+                                </Box>
+                            )}
+
+                            <style>{`
+                                @keyframes fadeInUp {
+                                    from { opacity: 0; transform: translateY(10px); }
+                                    to { opacity: 1; transform: translateY(0); }
+                                }
+                            `}</style>
+                        </Box>
+                    );
+                })}
             </Box>
         );
     };
@@ -395,49 +485,46 @@ const CostCategorizationChart: React.FC<CostCategorizationChartProps> = ({ tenan
                     <CircularProgress sx={{ color: '#10b981' }} size={40} thickness={4} />
                 </Box>
             ) : chartData.length > 0 ? (
-                <Box sx={{ 
-                    display: 'block', 
-                    width: '100%', 
-                    height: 360, 
-                    minHeight: 360,
-                    position: 'relative',
-                    mt: 2
-                }}>
-                    <ResponsiveContainer width="100%" height="100%" debounce={200}>
-                        <PieChart>
-                            <Pie
-                                activeIndex={activeIndex}
-                                activeShape={renderActiveShape}
-                                data={chartData}
-                                cx="50%"
-                                cy="50%"
-                                innerRadius={isSmallMobile ? 45 : isMobile ? 60 : 70}
-                                outerRadius={isSmallMobile ? 65 : isMobile ? 85 : 100}
-                                fill="#8884d8"
-                                dataKey="amount"
-                                onMouseEnter={(_: any, index: number) => !isMobile && setActiveIndex(index)}
-                                onClick={(data: any, index: number) => {
-                                    if (isMobile) {
-                                        setActiveIndex(index);
-                                    }
-                                    if (!drillDownCategory && data.name) {
-                                        setDrillDownCategory(data.name);
-                                    }
-                                }}
-                                paddingAngle={5}
-                            >
-                                {chartData.map((entry, index) => (
-                                    <Cell 
-                                        key={`cell-${index}`} 
-                                        fill={drillDownCategory ? CATEGORY_COLORS[drillDownCategory] || '#10b981' : CATEGORY_COLORS[entry.name] || '#10b981'} 
-                                        fillOpacity={0.9}
-                                    />
-                                ))}
-                            </Pie>
-                            <Tooltip content={<CustomTooltip />} />
-                            <Legend content={CustomLegend} verticalAlign="bottom" />
-                        </PieChart>
-                    </ResponsiveContainer>
+                <Box sx={{ mt: 2 }}>
+                    {isMobile ? (
+                        <MobileListView />
+                    ) : (
+                        <Box sx={{ 
+                            display: 'block', 
+                            width: '100%', 
+                            height: 380, 
+                            position: 'relative',
+                        }}>
+                            <ResponsiveContainer width="100%" height="100%" debounce={200}>
+                                <PieChart>
+                                    <Pie
+                                        activeIndex={activeIndex}
+                                        activeShape={renderActiveShape}
+                                        data={chartData}
+                                        cx="50%"
+                                        cy="50%"
+                                        innerRadius={70}
+                                        outerRadius={100}
+                                        fill="#8884d8"
+                                        dataKey="amount"
+                                        onMouseEnter={(_: any, index: number) => setActiveIndex(index)}
+                                        onClick={(data: any) => !drillDownCategory && data.name && setDrillDownCategory(data.name)}
+                                        paddingAngle={5}
+                                    >
+                                        {chartData.map((entry, index) => (
+                                            <Cell 
+                                                key={`cell-${index}`} 
+                                                fill={drillDownCategory ? CATEGORY_COLORS[drillDownCategory] || '#10b981' : CATEGORY_COLORS[entry.name] || '#10b981'} 
+                                                fillOpacity={0.9}
+                                            />
+                                        ))}
+                                    </Pie>
+                                    <Tooltip content={<CustomTooltip />} />
+                                    <Legend content={CustomLegend} verticalAlign="bottom" />
+                                </PieChart>
+                            </ResponsiveContainer>
+                        </Box>
+                    )}
                 </Box>
             ) : (
                 <Box display="flex" flexDirection="column" justifyContent="center" alignItems="center" height={360} sx={{ opacity: 0.5 }}>
