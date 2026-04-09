@@ -251,40 +251,53 @@ export default function MusterReviewManager() {
                                         </TableCell>
                                         <TableCell align="right">{row.quantity}</TableCell>
                                         <TableCell align="center">
-                                            <Button
-                                                variant="contained"
-                                                size="small"
-                                                color="success"
-                                                startIcon={<VisibilityIcon />}
-                                                onClick={() => { 
-                                                    setSelectedItem(row); 
-                                                    setIsEditMode(viewStatus === 'PENDING');
-                                                    
-                                                    // Mark Audit as Read
-                                                    if (row.auditRemarks) {
-                                                        const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
-                                                        if (!seenAudits.includes(row.id)) {
-                                                            seenAudits.push(row.id);
-                                                            localStorage.setItem('seen_audit_notes', JSON.stringify(seenAudits));
-                                                            window.dispatchEvent(new Event('muster-update'));
-                                                        }
-                                                    }
-                                                }}
-                                            >
-                                                Review
-                                            </Button>
-                                            {viewStatus === 'HISTORY' && row.date >= todayStr && (
+                                            <Box display="flex" flexDirection={isMobile ? 'column' : 'row'} gap={isMobile ? 1 : 1} justifyContent="center" alignItems="center">
                                                 <Button
-                                                    variant="outlined"
+                                                    variant="contained"
                                                     size="small"
-                                                    color="primary"
-                                                    startIcon={<EditIcon />}
-                                                    onClick={() => { setSelectedItem(row); setIsEditMode(true); }}
-                                                    sx={{ ml: 1 }}
+                                                    color="success"
+                                                    startIcon={<VisibilityIcon />}
+                                                    fullWidth={isMobile}
+                                                    onClick={() => { 
+                                                        setSelectedItem(row); 
+                                                        setIsEditMode(viewStatus === 'PENDING');
+                                                        
+                                                        // Mark Audit as Read
+                                                        if (row.auditRemarks) {
+                                                            const seenAudits = JSON.parse(localStorage.getItem('seen_audit_notes') || '[]');
+                                                            if (!seenAudits.includes(row.id)) {
+                                                                seenAudits.push(row.id);
+                                                                localStorage.setItem('seen_audit_notes', JSON.stringify(seenAudits));
+                                                                window.dispatchEvent(new Event('muster-update'));
+                                                            }
+                                                        }
+                                                    }}
+                                                    sx={{ 
+                                                        fontSize: isMobile ? '0.7rem' : 'inherit',
+                                                        whiteSpace: 'nowrap',
+                                                        minWidth: isMobile ? '80px' : 'auto'
+                                                    }}
                                                 >
-                                                    Edit
+                                                    Review
                                                 </Button>
-                                            )}
+                                                {viewStatus === 'HISTORY' && row.date >= todayStr && (
+                                                    <Button
+                                                        variant="outlined"
+                                                        size="small"
+                                                        color="primary"
+                                                        startIcon={<EditIcon />}
+                                                        fullWidth={isMobile}
+                                                        onClick={() => { setSelectedItem(row); setIsEditMode(true); }}
+                                                        sx={{ 
+                                                            fontSize: isMobile ? '0.7rem' : 'inherit',
+                                                            whiteSpace: 'nowrap',
+                                                            minWidth: isSmall ? '80px' : 'auto'
+                                                        }}
+                                                    >
+                                                        Edit
+                                                    </Button>
+                                                )}
+                                            </Box>
                                         </TableCell>
                                     </TableRow>
                                 ))
