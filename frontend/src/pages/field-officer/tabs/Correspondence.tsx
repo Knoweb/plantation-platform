@@ -1,10 +1,9 @@
-import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Divider, InputAdornment, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Tooltip } from '@mui/material';
+import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Tooltip } from '@mui/material';
 import { useState, useEffect, useRef } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import CampaignIcon from '@mui/icons-material/Campaign';
-import LibraryBooksIcon from '@mui/icons-material/LibraryBooks';
 import DownloadIcon from '@mui/icons-material/Download';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
@@ -27,8 +26,6 @@ export default function Correspondence() {
 
     const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
     const [broadcastText, setBroadcastText] = useState('');
-    const [recordDialogOpen, setRecordDialogOpen] = useState(false);
-    const [recentRecords, setRecentRecords] = useState<any[]>([]);
     const [zoomedImage, setZoomedImage] = useState<string | null>(null);
     const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
 
@@ -183,19 +180,6 @@ export default function Correspondence() {
         }
     };
 
-    const fetchRecentRecords = async () => {
-        try {
-            const today = new Date().toISOString().split('T')[0];
-            const res = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`);
-            setRecentRecords(res.data || []);
-            setRecordDialogOpen(true);
-        } catch (error) {
-            console.error("Failed to fetch records", error);
-            setRecentRecords([{ workId: 'W-001', workType: 'Harvesting', status: 'PENDING' }]);
-            setRecordDialogOpen(true);
-        }
-    };
-
     const isOnline = (lastSeen: string | null) => {
         if (!lastSeen) return false;
         const lastSeenDate = new Date(lastSeen);
@@ -214,9 +198,14 @@ export default function Correspondence() {
     const activeChatUser = chats.find(c => c.id === selectedChatId);
 
     return (
-        <Box sx={{ height: 'calc(100vh - 120px)', display: 'flex', flexDirection: 'column' }}>
-            <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={2}>
-                <Typography variant="h4" fontWeight="800" sx={{ color: '#1b5e20', letterSpacing: '-0.5px' }}>
+        <Box sx={{ 
+            height: { xs: 'calc(100dvh - 100px)', sm: 'calc(100vh - 120px)' }, 
+            display: 'flex', 
+            flexDirection: 'column',
+            overflow: 'hidden' 
+        }}>
+            <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={{ xs: 1, sm: 2 }}>
+                <Typography variant="h5" fontWeight="800" sx={{ color: '#1b5e20', letterSpacing: '-0.5px', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     Correspondence
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#666', fontWeight: 600 }}>
@@ -381,11 +370,6 @@ export default function Correspondence() {
                                         <CampaignIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Recent Records">
-                                    <IconButton size="small" onClick={fetchRecentRecords}>
-                                        <LibraryBooksIcon fontSize="small" />
-                                    </IconButton>
-                                </Tooltip>
                                 <input type="file" id="camera-upload" accept="image/*" style={{ display: 'none' }} onChange={handleImageSelect} />
                             </Box>
 
@@ -403,7 +387,7 @@ export default function Correspondence() {
                                         borderRadius: 6, 
                                         bgcolor: '#f5f5f5',
                                         '& fieldset': { border: 'none' },
-                                        fontSize: '0.9rem'
+                                        fontSize: { xs: '16px', sm: '0.9rem' }
                                     } 
                                 }}
                             />
@@ -446,21 +430,6 @@ export default function Correspondence() {
                     <Button onClick={() => setBroadcastDialogOpen(false)} variant="text" sx={{ color: '#666' }}>Cancel</Button>
                     <Button onClick={handleBroadcastSend} variant="contained" color="error" sx={{ borderRadius: 2, px: 3 }}>Send Now</Button>
                 </DialogActions>
-            </Dialog>
-
-            <Dialog open={recordDialogOpen} onClose={() => setRecordDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
-                <DialogTitle sx={{ fontWeight: 800 }}>Attach Record</DialogTitle>
-                <DialogContent sx={{ p: 1 }}>
-                    {recentRecords.map((rec: any) => (
-                        <ListItemButton key={rec.workId} onClick={() => {
-                            setInputText(prev => prev + `[Ref: ${rec.workType} #${rec.workId}] `);
-                            setRecordDialogOpen(false);
-                        }} sx={{ borderRadius: 2 }}>
-                            <ListItemText primary={rec.workType} secondary={`ID: ${rec.workId} • ${rec.status}`} />
-                        </ListItemButton>
-                    ))}
-                </DialogContent>
-                <DialogActions sx={{ p: 2 }}><Button onClick={() => setRecordDialogOpen(false)}>Close</Button></DialogActions>
             </Dialog>
 
             <Dialog open={!!zoomedImage} onClose={() => setZoomedImage(null)} maxWidth="lg" PaperProps={{ sx: { bgcolor: 'transparent', boxShadow: 'none' } }}>

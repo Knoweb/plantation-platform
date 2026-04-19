@@ -1,5 +1,5 @@
 import { Box, Typography, Button, Paper, Tabs, Tab, Table, TableBody, TableContainer, TableCell, TableHead, TableRow, Chip, IconButton, MenuItem, Select, FormControl, InputLabel, Avatar, CircularProgress, Alert, Snackbar, Tooltip, Dialog, DialogTitle, DialogContent, DialogActions, Grid, Badge, TextField, Autocomplete, Checkbox, InputAdornment, useMediaQuery, useTheme } from '@mui/material';
-import { useState, useEffect, useRef, useCallback, Fragment } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo, Fragment } from 'react';
 import axios from 'axios';
 import {
     Check as CheckIcon,
@@ -79,12 +79,12 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
     }, [fetchAuditAlerts]);
 
     return (
-        <Box sx={{ bgcolor: '#f4f7f5', minHeight: '100vh', pb: 10 }}>
+        <Box sx={{ bgcolor: '#f4f7f5', minHeight: '100vh', pb: 10, width: '100%', overflowX: 'hidden' }}>
             <Box sx={{ 
                 bgcolor: 'white', 
-                px: { xs: 2.5, sm: 4 }, 
-                pt: { xs: 2.5, sm: 2 }, 
-                pb: { xs: 2, sm: 2 },
+                px: { xs: 1.5, sm: 4 }, 
+                pt: { xs: 2, sm: 2 }, 
+                pb: { xs: 1.5, sm: 2 },
                 borderBottom: '1px solid #eef2f6',
                 boxShadow: '0 4px 20px rgba(0,0,0,0.03)'
             }}>
@@ -93,38 +93,73 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
                     flexDirection={{ xs: 'column', sm: 'row' }} 
                     justifyContent="space-between" 
                     alignItems="center" 
-                    gap={{ xs: 2.5, sm: 3 }}
+                    gap={{ xs: 1.5, sm: 3 }}
                 >
                     {/* Left Group: Branding & Context */}
-                    <Box sx={{ alignSelf: { xs: 'flex-start', sm: 'auto' } }}>
-                        <Box display="flex" alignItems="center" gap={1.2}>
-                            <Typography variant="h6" fontWeight="900" color="#1b5e20" sx={{ letterSpacing: '-0.02em', fontSize: { xs: '1.1rem', sm: '1.2rem' }, lineHeight: 1.2 }}>
-                                Field Officer Portal
+                    <Box sx={{ 
+                        alignSelf: { xs: 'stretch', sm: 'auto' },
+                        display: 'flex',
+                        flexDirection: { xs: 'row', sm: 'column' }, // Row on mobile to put date on right
+                        justifyContent: 'space-between',
+                        alignItems: { xs: 'center', sm: 'flex-start' },
+                        width: { xs: '100%', sm: 'auto' }
+                    }}>
+                        <Box>
+                            <Box display="flex" alignItems="center" gap={1.2}>
+                                <Typography variant="h6" fontWeight="900" color="#1b5e20" sx={{ letterSpacing: '-0.02em', fontSize: { xs: '0.95rem', sm: '1.2rem' }, lineHeight: 1.2 }}>
+                                    Field Officer Portal
+                                </Typography>
+                                <Box sx={{ 
+                                    width: 7, 
+                                    height: 7, 
+                                    borderRadius: '50%', 
+                                    bgcolor: '#4caf50', 
+                                    boxShadow: '0 0 0 2px rgba(76, 175, 80, 0.2)',
+                                    animation: 'pulse-green 2s infinite',
+                                    '@keyframes pulse-green': {
+                                        '0%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0.4)' },
+                                        '70%': { boxShadow: '0 0 0 6px rgba(76, 175, 80, 0)' },
+                                        '100%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0)' }
+                                    }
+                                }} />
+                            </Box>
+                            <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.55rem', mt: 0.1, display: 'block' }}>
+                                Operational Dashboard
                             </Typography>
-                            <Box sx={{ 
-                                width: 7, 
-                                height: 7, 
-                                borderRadius: '50%', 
-                                bgcolor: '#4caf50', 
-                                boxShadow: '0 0 0 2px rgba(76, 175, 80, 0.2)',
-                                animation: 'pulse-green 2s infinite',
-                                '@keyframes pulse-green': {
-                                    '0%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0.4)' },
-                                    '70%': { boxShadow: '0 0 0 6px rgba(76, 175, 80, 0)' },
-                                    '100%': { boxShadow: '0 0 0 0 rgba(76, 175, 80, 0)' }
-                                }
-                            }} />
                         </Box>
-                        <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: '800', textTransform: 'uppercase', letterSpacing: '0.08em', fontSize: '0.6rem', mt: 0.2, display: 'block' }}>
-                            Operational Dashboard
-                        </Typography>
+
+                        <Box sx={{ 
+                            display: { xs: 'flex', sm: 'none' },
+                            bgcolor: '#f1f8e9', 
+                            px: 1.2, 
+                            py: 0.6, 
+                            borderRadius: '15px', 
+                            border: '1px solid #c8e6c9',
+                            alignItems: 'center',
+                            gap: 0.8,
+                            whiteSpace: 'nowrap',
+                            boxShadow: '0 2px 5px rgba(46, 125, 50, 0.05)'
+                        }}>
+                             <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: '0.75rem', textTransform: 'uppercase' }}>
+                                 {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
+                             </Typography>
+                             <Box sx={{ width: '1px', height: 12, bgcolor: '#c8e6c9' }} />
+                             <Typography variant="body2" fontWeight="800" color="#1b5e20" sx={{ fontSize: '0.75rem' }}>
+                                 {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true })}
+                             </Typography>
+                             <Box sx={{ width: '1px', height: 12, bgcolor: '#c8e6c9' }} />
+                             <Typography variant="body2" fontWeight="700" color="#558b2f" sx={{ fontSize: '0.75rem' }}>
+                                 {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short' })}
+                             </Typography>
+                        </Box>
                     </Box>
 
                     {/* Right Group: Navigation & Utilities */}
                     <Box sx={{ 
                         display: 'flex', 
+                        flexDirection: { xs: 'column', sm: 'row' },
                         alignItems: 'center', 
-                        gap: { xs: 1.5, sm: 2 }, 
+                        gap: { xs: 2.5, sm: 2 }, 
                         width: { xs: '100%', sm: 'auto' }, 
                         justifyContent: { xs: 'center', sm: 'flex-end' } 
                     }}>
@@ -190,25 +225,25 @@ export default function EveningMusterPage({ defaultTab = 0 }: { defaultTab?: num
                             </Box>
                         </Box>
 
-                        {/* Date Pill */}
-                        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {/* Date Pill: Desktop position */}
+                        <Box sx={{ display: { xs: 'none', sm: 'flex' }, alignItems: 'center' }}>
                             <Box sx={{ 
                                 bgcolor: '#f1f8e9', 
-                                px: { xs: 1.5, sm: 1.8 }, 
-                                py: 0.7, 
-                                borderRadius: '20px', 
+                                px: { xs: 2, sm: 2.2 }, 
+                                py: { xs: 1, sm: 1.2 }, 
+                                borderRadius: '30px', 
                                 border: '1px solid #c8e6c9',
                                 display: 'flex',
                                 alignItems: 'center',
-                                gap: { xs: 1, sm: 1.2 },
+                                gap: { xs: 1.2, sm: 1.5 },
                                 whiteSpace: 'nowrap',
-                                boxShadow: '0 2px 6px rgba(46, 125, 50, 0.05)'
+                                boxShadow: '0 3px 8px rgba(46, 125, 50, 0.1)'
                             }}>
-                                <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' }, textTransform: 'uppercase', letterSpacing: '0.02em' }}>
+                                <Typography variant="body2" fontWeight="900" color="#2e7d32" sx={{ fontSize: { xs: '1rem', sm: '1.3rem' }, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                                     {new Date().toLocaleDateString('en-US', { weekday: 'short' })}
                                 </Typography>
-                                <Box sx={{ width: '1.5px', height: 12, bgcolor: '#c8e6c9', borderRadius: 1 }} />
-                                <Typography variant="body2" fontWeight="700" color="#558b2f" sx={{ fontSize: { xs: '0.65rem', sm: '0.7rem' } }}>
+                                <Box sx={{ width: '2px', height: 22, bgcolor: '#c8e6c9', borderRadius: 1 }} />
+                                <Typography variant="body2" fontWeight="700" color="#558b2f" sx={{ fontSize: { xs: '1rem', sm: '1.3rem' } }}>
                                     {new Date().toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' })}
                                 </Typography>
                             </Box>
@@ -240,10 +275,6 @@ function DailyEntryTab() {
     const now = new Date();
     const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
-    const [isSubmitted, setIsSubmitted] = useState(false);
-    // Persistence Key Helper
-    const getStorageKey = useCallback((divId: string) => `muster_submitted_${tenantId}_${today}_${divId}`, [tenantId, today]);
-
     const [loading, setLoading] = useState(true);
     const [attendanceData, setAttendanceData] = useState<AttendanceRecord[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
@@ -254,6 +285,16 @@ function DailyEntryTab() {
     const [norms, setNorms] = useState<any[]>([]);
     const [dailyWorks, setDailyWorks] = useState<any[]>([]);
     const [isEditMode, setIsEditMode] = useState(false);
+    const [isFirstLoad, setIsFirstLoad] = useState(true);
+    const lastDivisionRef = useRef(selectedDivision);
+
+    // Derived state for submission status to prevent flickering during refreshes
+    const isSubmitted = useMemo(() => {
+        if (!selectedDivision || selectedDivision === 'ALL' || !tenantId) return false;
+        const entry = dailyWorks.find((dw: any) => String(dw.divisionId) === String(selectedDivision));
+        const localStatus = localStorage.getItem(`muster_submitted_${tenantId}_${today}_${selectedDivision}`) === 'true';
+        return !!(entry && entry.submittedAt) || localStatus;
+    }, [selectedDivision, dailyWorks, tenantId, today]);
     const isEditModeRef = useRef(false);
     const [confirmSaveDraftOpen, setConfirmSaveDraftOpen] = useState(false);
     const [viewTargetsOpen, setViewTargetsOpen] = useState(false);
@@ -269,7 +310,8 @@ function DailyEntryTab() {
 
     const fetchInitialData = useCallback(async (silent = false) => {
         if (!tenantId) return;
-        if (!silent) setLoading(true);
+        const isDivisionSwitch = selectedDivision !== lastDivisionRef.current;
+        if (!silent && (isFirstLoad || isDivisionSwitch)) setLoading(true);
         try {
             const [attRes, fRes, wRes, tRes, dwRes, normsRes, allDivRes] = await Promise.all([
                 axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${today}`),
@@ -301,19 +343,42 @@ function DailyEntryTab() {
             const dbWeights: any = {};
             const backendSubmittedDivisions = new Set<string>();
             dwRes.data.forEach((dw: any) => {
-                dwMap.set(dw.workId || dw.id, dw.divisionId);
-                if (dw.bulkWeights) {
+                // IMPORTANT: Only process records for the CURRENT date.
+                // The API currently returns all records for the tenant, so we must filter locally.
+                if (dw.workDate !== today) return;
+
+                const divId = String(dw.divisionId);
+                dwMap.set(dw.workId || dw.id, divId);
+                
+                // Load weights for TODAY if they are in the DB (either submitted or just saved as draft)
+                const hasDraft = localStorage.getItem(`muster_draft_${tenantId}_${today}_${divId}`) === 'true';
+                if (dw.bulkWeights && (dw.submittedAt || hasDraft || dw.status === 'PENDING' || dw.status === 'APPROVED')) {
                     try {
-                        dbWeights[dw.divisionId] = JSON.parse(dw.bulkWeights);
+                        const parsed = JSON.parse(dw.bulkWeights);
+                        dbWeights[divId] = {
+                            ...(dbWeights[divId] || {}),
+                            ...parsed
+                        };
                     } catch (e) { }
                 }
+
                 if (dw.submittedAt) {
                     backendSubmittedDivisions.add(String(dw.divisionId));
                 }
             });
 
             if (!isEditModeRef.current) {
-                setDailyWeights((prev: any) => ({ ...prev, ...dbWeights }));
+                setDailyWeights((prev: any) => {
+                    const next = { ...prev };
+                    Object.entries(dbWeights).forEach(([divId, fields]: [string, any]) => {
+                        // Merge fields at the division level instead of replacing the whole division object
+                        next[divId] = { 
+                            ...(next[divId] || {}),
+                            ...fields 
+                        };
+                    });
+                    return next;
+                });
             }
 
             const enriched = attRes.data.map((rec: any) => {
@@ -335,9 +400,9 @@ function DailyEntryTab() {
                     workerType: wMap.get(rec.workerId)?.employmentType || 'PERMANENT',
                     status: (hasDraft || hasSubmitted || backendSubmitted) ? rec.status : '',
                     amWeight: rec.amWeight ?? '',
-                    pmWeight: rec.pmWeight ?? '',
-                    overKilos: rec.overKilos ?? '',
-                    otHours: rec.otHours ?? '',
+                    pmWeight: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.pmWeight ?? '') : '',
+                    overKilos: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.overKilos ?? '') : '',
+                    otHours: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.otHours ?? '') : '',
                     session: rec.session || 'FULL_DAY',
                     divisionId: divId,
                     tenantId: tenantId
@@ -364,21 +429,21 @@ function DailyEntryTab() {
             }
 
             if (selectedDivision && selectedDivision !== 'ALL') {
-                const backendSubmitted = backendSubmittedDivisions.has(String(selectedDivision));
-                const localSubmitted = localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
-                const status = backendSubmitted || localSubmitted;
-                setIsSubmitted(status);
-                if (status) {
+                const entry = dwRes.data.find((dw: any) => String(dw.divisionId) === String(selectedDivision));
+                if (entry && entry.submittedAt) {
                     setIsEditMode(false);
                 }
             }
 
+            if (!silent) setLoading(false);
+            setIsFirstLoad(false);
+            lastDivisionRef.current = selectedDivision;
         } catch (e) {
             console.error("Failed", e);
             if (!silent) setNotification({ open: true, message: "Failed to load data.", severity: 'error' });
+            setLoading(false);
         }
-        if (!silent) setLoading(false);
-    }, [tenantId, today, isEditModeRef, selectedDivision, getStorageKey]);
+    }, [tenantId, today, isEditModeRef, selectedDivision, isFirstLoad]);
 
     useEffect(() => {
         isEditModeRef.current = isEditMode;
@@ -433,14 +498,19 @@ function DailyEntryTab() {
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
 
-            // Also save Field and Factory weights to the DailyWork entity so they aren't lost on refresh/navigation
-            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
-            if (workIdSource) {
+            // Also save Field and Factory weights to ALL DailyWork entities for this division to keep them in sync
+            const allWorkIdsForDiv = dailyWorks
+                .filter((dw: any) => String(dw.divisionId) === String(selectedDivision))
+                .map((dw: any) => dw.workId || dw.id);
+
+            if (allWorkIdsForDiv.length > 0) {
                 try {
-                    await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
-                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
-                        isSubmission: false
-                    });
+                    await Promise.all(allWorkIdsForDiv.map(workId => 
+                        axios.put(`/api/operations/daily-work/${workId}/weights`, {
+                            bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                            isSubmission: false
+                        })
+                    ));
                 } catch (we) {
                     console.error("Failed to save draft bulk weights to DB", we);
                 }
@@ -473,15 +543,10 @@ function DailyEntryTab() {
     }, [tenantId, today]);
 
     useEffect(() => {
-        if (!selectedDivision || !tenantId || !today) return;
-        const entry = dailyWorks.find((dw: any) => String(dw.divisionId) === String(selectedDivision));
-        const status = !!(entry && entry.submittedAt) || localStorage.getItem(getStorageKey(selectedDivision)) === 'true';
-        
-        setIsSubmitted(status);
-        if (status) {
+        if (isSubmitted) {
             setIsEditMode(false);
         }
-    }, [selectedDivision, tenantId, today, dailyWorks, getStorageKey]);
+    }, [isSubmitted]);
 
     const handleSubmit = async () => {
         // Build a set of workerIds whose last assignment (per task order) needs a status
@@ -494,7 +559,6 @@ function DailyEntryTab() {
             // For each worker, find which task appears LAST in the ordered task list
             workerLastTaskMap[item.workerId] = item.workType; // last one wins (order = task grouping order)
         });
-        const workerIdsRequiringStatus = new Set(Object.values(workerLastTaskMap));
 
         const incomplete = divData.filter(item =>
             // Only check workers whose last assignment is this item AND they are not CONTRACT
@@ -530,27 +594,30 @@ function DailyEntryTab() {
             }));
             await axios.post(`/api/operations/attendance/bulk`, updates);
 
-            // Also save Field and Factory weights to the DailyWork entity
-            const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
-            console.log("Submitting weights for division:", selectedDivision, "Target DailyWorkId:", workIdSource?.dailyWorkId);
-            if (workIdSource) {
+            // Also save Field and Factory weights to ALL DailyWork entities for this division
+            const allWorkIdsForDiv = dailyWorks
+                .filter((dw: any) => String(dw.divisionId) === String(selectedDivision))
+                .map((dw: any) => dw.workId || dw.id);
+
+            if (allWorkIdsForDiv.length > 0) {
                 try {
-                    await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
-                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
-                        isSubmission: true // Tell backend to set the submitted_at timestamp
-                    });
+                    await Promise.all(allWorkIdsForDiv.map(workId => 
+                        axios.put(`/api/operations/daily-work/${workId}/weights`, {
+                            bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                            isSubmission: true // Tell backend to set the submitted_at timestamp
+                        })
+                    ));
                 } catch (we) {
                     console.error("Failed to save bulk weights to DB", we);
                 }
             } else {
-                console.warn("No DailyWork ID found for division:", selectedDivision, "Submission time might not be updated.");
+                console.warn("No DailyWork ID found for division:", selectedDivision);
             }
 
             setNotification({ open: true, message: "Saved Successfully!", severity: 'success' });
 
             // Persist Submission
-            localStorage.setItem(getStorageKey(selectedDivision), 'true');
-            setIsSubmitted(true);
+            localStorage.setItem(`muster_submitted_${tenantId}_${today}_${selectedDivision}`, 'true');
             isEditModeRef.current = false; // ensure polling can update state
 
             // Re-fetch so temp-ID workers get replaced with real backend IDs
@@ -626,17 +693,16 @@ function DailyEntryTab() {
         return categories;
     };
 
-    const categorizedSummary = getCategorizedSummary();
-    const grandMorningTotal = filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'MORNING_SESSION' || d.session === 'FULL_DAY')).length;
-    const grandEveningTotal = filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'EVENING_SESSION' || d.session === 'FULL_DAY')).length;
+    const categorizedSummary = useMemo(() => getCategorizedSummary(), [filteredData, fields]);
+    const grandMorningTotal = useMemo(() => filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'MORNING_SESSION' || d.session === 'FULL_DAY')).length, [filteredData]);
+    const grandEveningTotal = useMemo(() => filteredData.filter(d => d.status !== 'ABSENT' && (d.session === 'EVENING_SESSION' || d.session === 'FULL_DAY')).length, [filteredData]);
+
+    const pendingCount = useMemo(() => divisions.filter((d: { divisionId: string | number }) => !dailyWorks.some((dw: { divisionId: string | number, submittedAt: any }) => String(dw.divisionId) === String(d.divisionId) && Boolean(dw.submittedAt))).length, [divisions, dailyWorks]);
 
     if (loading) return <Box display="flex" justifyContent="center" p={4}><CircularProgress /></Box>;
 
-    // Calculate Pending Count
-    const pendingCount = divisions.filter((d: any) => !dailyWorks.some((dw: any) => String(dw.divisionId) === String(d.divisionId) && Boolean(dw.submittedAt))).length;
-
     return (
-        <Box>
+        <Box sx={{ width: '100%', overflowX: 'hidden' }}>
         <Box sx={{ mb: isMobile ? 2 : 3 }}>
             {!isMobile ? (
                 /* Desktop Toolbar: Restored to original exactly */
@@ -650,22 +716,54 @@ function DailyEntryTab() {
                             color="error"
                             invisible={pendingCount === 0}
                             sx={{
+                                overflow: 'visible', // Ensure label isn't cut
                                 '& .MuiBadge-badge': {
-                                    animation: 'blink 1.5s infinite',
                                     right: 10,
                                     top: 5
                                 }
                             }}
                         >
-                            <FormControl size="small" sx={{ minWidth: 200, bgcolor: 'white' }}>
-                                <InputLabel>Select Division</InputLabel>
-                                <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
+                            <FormControl size="small" sx={{ 
+                                mt: 1, // Added margin top to prevent label cutting
+                                minWidth: { xs: 200, sm: 250 }, 
+                                bgcolor: 'white',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2,
+                                    '& fieldset': { borderColor: '#c8e6c9', borderWidth: '1.5px' },
+                                    '&:hover fieldset': { borderColor: '#4caf50' },
+                                    '&.Mui-focused fieldset': { borderColor: '#2e7d32' }
+                                }
+                            }}>
+                                <InputLabel sx={{ 
+                                    color: '#2e7d32', 
+                                    fontWeight: 'bold',
+                                    bgcolor: 'white', // Mask the border
+                                    px: 0.5,         // Some padding for the mask
+                                    ml: -0.5         // Offset for padding
+                                }}>Select Division</InputLabel>
+                                <Select 
+                                    value={selectedDivision} 
+                                    label="Select Division" 
+                                    onChange={(e) => {
+                                        const newDiv = e.target.value;
+                                        setSelectedDivision(newDiv);
+                                        const hasDraft = localStorage.getItem(`muster_draft_${tenantId}_${today}_${newDiv}`) === 'true';
+                                        if (!hasDraft && isEditMode) {
+                                            setDailyWeights((prev: any) => ({
+                                                ...prev,
+                                                [newDiv]: {}
+                                            }));
+                                        }
+                                    }}
+                                    sx={{ fontWeight: 'bold', color: '#1b5e20' }}
+                                >
                                     {divisions.map((d: any) => {
-                                        const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
+                                        const isPending = localStorage.getItem(`muster_submitted_${tenantId}_${today}_${d.divisionId}`) !== 'true';
                                         return (
-                                            <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                            <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between', fontWeight: 'bold' }}>
                                                 {d.name}
-                                                {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem', ml: 1 }} />}
+                                                {isPending && <Chip label="Pending" color="error" size="small" sx={{ height: 20, fontSize: '0.65rem', ml: 1, fontWeight: 'bold' }} />}
                                             </MenuItem>
                                         );
                                     })}
@@ -689,13 +787,22 @@ function DailyEntryTab() {
                                 ) : !isEditMode ? (
                                     <>
                                         <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
-                                        <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)} sx={{ fontWeight: 'bold' }}>Edit Entry</Button>
-                                        <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold', borderWidth: 2, '&:hover': { borderWidth: 2 } }}>Submit Muster</Button>
+                                        <Button variant="contained" color="primary" onClick={() => {
+                                            setIsEditMode(true);
+                                            const hasDraft = localStorage.getItem(`muster_draft_${tenantId}_${today}_${selectedDivision}`) === 'true';
+                                            if (!hasDraft) {
+                                                setDailyWeights((prev: any) => ({
+                                                    ...prev,
+                                                    [selectedDivision]: {}
+                                                }));
+                                            }
+                                        }} sx={{ fontWeight: 'bold' }}>Edit Entry</Button>
+                                        <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold', borderWidth: 2, '&:hover': { borderWidth: 2 } }}>Submit</Button>
                                     </>
                                 ) : (
                                     <>
                                         <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ fontWeight: 'bold' }}>View Targets</Button>
-                                        <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold' }}>Assign Evening Worker</Button>
+                                        <Button variant="contained" color="error" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ fontWeight: 'bold', color: 'white' }}>Assign Evening Worker</Button>
                                         <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ fontWeight: 'bold', bgcolor: 'white' }}>Cancel</Button>
                                         <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ fontWeight: 'bold' }}>Save</Button>
                                     </>
@@ -707,7 +814,7 @@ function DailyEntryTab() {
                 </Box>
             ) : (
                 /* Mobile Toolbar: New optimized grid layout */
-                <Box display="flex" flexDirection="column" gap={1.5}>
+                <Box display="flex" flexDirection="column" gap={2} sx={{ pt: 2.5 }}>
                     {isSubmitted && (
                         <Box display="flex" justifyContent="center">
                             <Chip label="Read-Only Mode" color="info" sx={{ fontWeight: 'bold' }} />
@@ -721,17 +828,41 @@ function DailyEntryTab() {
                             sx={{
                                 flex: 1,
                                 '& .MuiBadge-badge': {
-                                    animation: 'blink 1.5s infinite',
                                     right: 10,
                                     top: 5
                                 }
                             }}
                         >
-                            <FormControl size="small" sx={{ bgcolor: 'white', width: '100%' }}>
-                                <InputLabel>Select Division</InputLabel>
-                                <Select value={selectedDivision} label="Select Division" onChange={(e) => setSelectedDivision(e.target.value)}>
+                            <FormControl size="small" sx={{ 
+                                bgcolor: 'white', 
+                                width: '100%',
+                                borderRadius: 2,
+                                '& .MuiOutlinedInput-root': {
+                                    borderRadius: 2,
+                                    '& fieldset': { borderColor: '#c8e6c9' },
+                                    '&:hover fieldset': { borderColor: '#4caf50' },
+                                    '&.Mui-focused fieldset': { borderColor: '#2e7d32' }
+                                }
+                            }}>
+                                <InputLabel sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Select Division</InputLabel>
+                                <Select 
+                                    value={selectedDivision} 
+                                    label="Select Division" 
+                                    onChange={(e) => {
+                                        const newDiv = e.target.value;
+                                        setSelectedDivision(newDiv);
+                                        const hasDraft = localStorage.getItem(`muster_draft_${tenantId}_${today}_${newDiv}`) === 'true';
+                                        if (!hasDraft && isEditMode) {
+                                            setDailyWeights((prev: any) => ({
+                                                ...prev,
+                                                [newDiv]: {}
+                                            }));
+                                        }
+                                    }}
+                                    sx={{ fontWeight: 'bold', color: '#1b5e20' }}
+                                >
                                     {divisions.map((d: any) => {
-                                        const isPending = localStorage.getItem(getStorageKey(d.divisionId)) !== 'true';
+                                        const isPending = localStorage.getItem(`muster_submitted_${tenantId}_${today}_${d.divisionId}`) !== 'true';
                                         return (
                                             <MenuItem key={d.divisionId} value={d.divisionId} sx={{ display: 'flex', justifyContent: 'space-between' }}>
                                                 {d.name}
@@ -767,15 +898,24 @@ function DailyEntryTab() {
                             ) : !isEditMode ? (
                                 <>
                                     <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ gridColumn: 'span 2' }}>View Targets</Button>
-                                    <Button variant="contained" color="primary" onClick={() => setIsEditMode(true)}>Edit Entry</Button>
+                                    <Button variant="contained" color="primary" onClick={() => {
+                                        setIsEditMode(true);
+                                        const hasDraft = localStorage.getItem(`muster_draft_${tenantId}_${today}_${selectedDivision}`) === 'true';
+                                        if (!hasDraft) {
+                                            setDailyWeights((prev: any) => ({
+                                                ...prev,
+                                                [selectedDivision]: {}
+                                            }));
+                                        }
+                                    }}>Edit Entry</Button>
                                     <Button variant="outlined" color="error" onClick={handleSubmit} sx={{ fontWeight: 'bold' }}>Submit</Button>
                                 </>
                             ) : (
                                 <>
-                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ gridColumn: 'span 2' }}>Targets</Button>
-                                    <Button variant="contained" color="secondary" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ gridColumn: 'span 2' }}>Add Worker</Button>
-                                    <Button variant="outlined" color="inherit" onClick={handleCancelEdit}>Cancel</Button>
-                                    <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)}>Save</Button>
+                                    <Button variant="contained" color="secondary" onClick={() => setViewTargetsOpen(true)} startIcon={<VisibilityIcon />} sx={{ py: 1.2, borderRadius: 2, fontWeight: 'bold' }}>Targets</Button>
+                                    <Button variant="contained" color="error" onClick={() => setAddWorkerOpen(true)} startIcon={<PersonIcon />} sx={{ py: 1.2, borderRadius: 2, fontWeight: 'bold', color: 'white' }}>Assign Evening Worker</Button>
+                                    <Button variant="outlined" color="inherit" onClick={handleCancelEdit} sx={{ py: 1.2, borderRadius: 2, fontWeight: 'bold' }}>Cancel</Button>
+                                    <Button variant="contained" color="success" onClick={() => setConfirmSaveDraftOpen(true)} sx={{ py: 1.2, borderRadius: 2, fontWeight: 'bold' }}>Save</Button>
                                 </>
                             )}
                         </Box>
@@ -793,9 +933,9 @@ function DailyEntryTab() {
                     {attendanceData.length === 0 ? (
                         <Alert severity="info" sx={{ fontSize: '1.1rem', py: 2 }}>No Morning Muster Approved for Today. Cannot verify Attendance.</Alert>
                     ) : (
-                        <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={3}>
+                        <Box display="flex" flexDirection={{ xs: 'column', lg: 'row' }} gap={{ xs: 2.5, lg: 3 }}>
                             {/* Left Column: Muster Chit + Submit */}
-                            <Box flex={0.8} sx={{ width: '100%', minWidth: 250, maxWidth: { lg: 350 }, display: 'flex', flexDirection: 'column', gap: 2 }}>
+                            <Box flex={0.8} sx={{ width: '100%', minWidth: 250, maxWidth: { lg: 350 }, display: 'flex', flexDirection: 'column', gap: 2.5 }}>
 
 
                                 {/* Muster Chit */}
@@ -803,19 +943,30 @@ function DailyEntryTab() {
                                     <Box bgcolor="#e0e0e0" p={1} borderBottom="1px solid #ccc">
                                         <Typography variant="h6" align="center" fontWeight="bold">Muster Chit</Typography>
                                     </Box>
-                                    <TableContainer sx={{ maxHeight: 600 }}>
+                                    <TableContainer sx={{ 
+                                        maxHeight: { xs: 600, lg: 'none' }, 
+                                        overflowX: { xs: 'auto', lg: 'hidden' } // Disable scroll on desktop
+                                    }}>
                                         <Table size="small" stickyHeader sx={{
-                                            '& .MuiTableCell-root': { py: 0.5, px: 1, fontSize: '0.75rem' }
+                                            minWidth: { xs: 320, lg: '100%' },
+                                            tableLayout: { lg: 'fixed' }, // Force fixed layout on desktop
+                                            '& .MuiTableCell-root': { py: 0.5, px: 0.8, fontSize: { xs: '0.85rem', sm: '0.75rem' } }
                                         }}>
                                             <TableHead sx={{ bgcolor: '#f5f5f5' }}>
                                                 <TableRow>
-                                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Task</TableCell>
-                                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold' }}>Field</TableCell>
+                                                    <TableCell 
+                                                        rowSpan={2} 
+                                                        sx={{ fontWeight: 'bold', width: { lg: '35%' } }}
+                                                    >Task</TableCell>
+                                                    <TableCell 
+                                                        rowSpan={2} 
+                                                        sx={{ fontWeight: 'bold', width: { lg: '35%' } }}
+                                                    >Field</TableCell>
                                                     <TableCell align="center" colSpan={2} sx={{ fontWeight: 'bold' }}>Workers</TableCell>
                                                 </TableRow>
                                                 <TableRow>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>AM</TableCell>
-                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0' }}>PM</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0', width: { lg: '15%' } }}>AM</TableCell>
+                                                    <TableCell align="center" sx={{ fontWeight: 'bold', borderLeft: '1px solid #e0e0e0', width: { lg: '15%' } }}>PM</TableCell>
                                                 </TableRow>
                                             </TableHead>
                                             <TableBody>
@@ -940,56 +1091,59 @@ function DailyEntryTab() {
                                         <Typography variant="subtitle2" fontWeight="bold" color="#1b5e20" sx={{ mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
                                             <EditStartIcon fontSize="small" /> Bulk Weights Entry
                                         </Typography>
-                                        <Box display="flex" flexWrap="wrap" gap={3} alignItems="center">
+                                        <Grid container spacing={2} sx={{ mt: 0.5 }}>
                                             {uniqueFieldsForWeights.map(field => (
-                                                <TextField
-                                                    key={field}
-                                                    label={`Field Wt. (${field})`}
-                                                    value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setDailyWeights((prev: any) => ({
-                                                            ...prev,
-                                                            [selectedDivision]: {
-                                                                ...(prev[selectedDivision] || {}),
-                                                                [field]: { ...(prev[selectedDivision]?.[field] || {}), fieldWt: val }
-                                                            }
-                                                        }));
-                                                    }}
-                                                    size="small"
-                                                    type="number"
-                                                    disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
-                                                    sx={{ bgcolor: 'white', width: 170, boxShadow: '0px 2px 4px rgba(0,0,0,0.05)' }}
-                                                    InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#333' } }}
-                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.85rem', fontWeight: 'bold', color: '#2e7d32' } }}
-                                                />
+                                                <Grid size={{ xs: 12, sm: 4 }} key={field}>
+                                                    <TextField
+                                                        fullWidth
+                                                        label={`Field Wt. (${field})`}
+                                                        value={dailyWeights[selectedDivision]?.[field]?.fieldWt || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setDailyWeights((prev: any) => ({
+                                                                ...prev,
+                                                                [selectedDivision]: {
+                                                                    ...(prev[selectedDivision] || {}),
+                                                                    [field]: { ...(prev[selectedDivision]?.[field] || {}), fieldWt: val }
+                                                                }
+                                                            }));
+                                                        }}
+                                                        size="small"
+                                                        type="number"
+                                                        disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
+                                                        sx={{ bgcolor: 'white', minWidth: { sm: 170 }, boxShadow: '0px 2px 4px rgba(0,0,0,0.05)' }}
+                                                        InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#333' } }}
+                                                        InputLabelProps={{ shrink: true, sx: { fontSize: '0.85rem', fontWeight: 'bold', color: '#2e7d32' } }}
+                                                    />
+                                                </Grid>
                                             ))}
 
-                                            <Box flex={1} /> {/* Spacer to push Factory weight to the right */}
-
-                                            <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9' }}>
-                                                <TextField
-                                                    label="Factory Weight (Total)"
-                                                    value={dailyWeights[selectedDivision]?.['__FACTORY__']?.factoryWt || ''}
-                                                    onChange={(e) => {
-                                                        const val = e.target.value;
-                                                        setDailyWeights((prev: any) => ({
-                                                            ...prev,
-                                                            [selectedDivision]: {
-                                                                ...(prev[selectedDivision] || {}),
-                                                                '__FACTORY__': { factoryWt: val }
-                                                            }
-                                                        }));
-                                                    }}
-                                                    size="small"
-                                                    type="number"
-                                                    disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
-                                                    sx={{ bgcolor: 'white', width: 200 }}
-                                                    InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold', color: '#1565c0' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#1565c0' } }}
-                                                    InputLabelProps={{ shrink: true, sx: { fontSize: '0.9rem', fontWeight: 'bold', color: '#1976d2' } }}
-                                                />
-                                            </Box>
-                                        </Box>
+                                            <Grid size={{ xs: 12, sm: 'auto' }} sx={{ ml: { sm: 'auto' } }}>
+                                                <Box sx={{ p: 1, bgcolor: '#e3f2fd', borderRadius: 2, border: '1px solid #90caf9' }}>
+                                                    <TextField
+                                                        fullWidth
+                                                        label="Factory Weight (Total)"
+                                                        value={dailyWeights[selectedDivision]?.['__FACTORY__']?.factoryWt || ''}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value;
+                                                            setDailyWeights((prev: any) => ({
+                                                                ...prev,
+                                                                [selectedDivision]: {
+                                                                    ...(prev[selectedDivision] || {}),
+                                                                    '__FACTORY__': { factoryWt: val }
+                                                                }
+                                                            }));
+                                                        }}
+                                                        size="small"
+                                                        type="number"
+                                                        disabled={(isSubmitted && !isEditingWeightsAfterSubmission) || (!isSubmitted && !isEditMode)}
+                                                        sx={{ bgcolor: 'white', minWidth: { sm: 200 } }}
+                                                        InputProps={{ endAdornment: <InputAdornment position="end" sx={{ '& .MuiTypography-root': { fontWeight: 'bold', color: '#1565c0' } }}>kg</InputAdornment>, sx: { fontSize: '1rem', fontWeight: 'bold', color: '#1565c0' } }}
+                                                        InputLabelProps={{ shrink: true, sx: { fontSize: '0.9rem', fontWeight: 'bold', color: '#1976d2' } }}
+                                                    />
+                                                </Box>
+                                            </Grid>
+                                        </Grid>
                                     </Paper>
                                 )}
 
@@ -1014,14 +1168,19 @@ function DailyEntryTab() {
                         setIsEditingWeightsAfterSubmission(false);
                         setConfirmWeightsOpen(false);
 
-                        // Save weights directly to the database for this DailyWork record
-                        const workIdSource = attendanceData.find(item => item.divisionId === selectedDivision && item.dailyWorkId && item.dailyWorkId !== '00000000-0000-0000-0000-000000000000');
-                        if (workIdSource) {
+                        // Save weights directly to the database for ALL DailyWork records for this division
+                        const allWorkIdsForDiv = dailyWorks
+                            .filter((dw: any) => String(dw.divisionId) === String(selectedDivision))
+                            .map((dw: any) => dw.workId || dw.id);
+
+                        if (allWorkIdsForDiv.length > 0) {
                             try {
-                                await axios.put(`/api/operations/daily-work/${workIdSource.dailyWorkId}/weights`, {
-                                    bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
-                                    isSubmission: false
-                                });
+                                await Promise.all(allWorkIdsForDiv.map(workId => 
+                                    axios.put(`/api/operations/daily-work/${workId}/weights`, {
+                                        bulkWeights: JSON.stringify(dailyWeights[selectedDivision] || {}),
+                                        isSubmission: false
+                                    })
+                                ));
                                 setNotification({ open: true, message: 'Weights updated successfully!', severity: 'success' });
                             } catch (error) {
                                 console.error("Failed to update weights", error);
@@ -1409,442 +1568,209 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
             </Box>
 
             {/* === READ-ONLY REVIEW LAYOUT — Mobile only: full names visible as cards === */}
-            {(isMobile && isFinalized) ? (
-                <Box p={1} display="flex" flexDirection="column" gap={0.75}>
-                    {items.map((item: any) => {
-                        const isPieceRate = item.workerType?.includes('CONTRACT');
-                        const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
-                        const typeColor = item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333';
-                        const typeBg = item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5';
-                        const typeBorder = item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8';
-                        return (
-                            <Box key={item.id} sx={{ bgcolor: '#fff', border: '1px solid #eef2f0', borderRadius: 2, overflow: 'hidden' }}>
-                                {/* Worker Name Row */}
-                                <Box display="flex" alignItems="center" gap={1} px={1.5} py={1} bgcolor="#f9fbf9" borderBottom="1px solid #eef2f0">
-                                    <Avatar sx={{ bgcolor: typeColor, width: 30, height: 30, flexShrink: 0 }}>
-                                        <PersonIcon sx={{ fontSize: 17, color: 'white' }} />
-                                    </Avatar>
-                                    <Typography variant="body2" fontWeight="bold" color="#1a1a1a" sx={{ fontSize: '0.9rem', flex: 1 }}>
-                                        {item.workerName}
-                                    </Typography>
-                                    <Chip
-                                        label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
-                                        size="small"
-                                        sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: typeBg, color: typeColor, border: '1px solid', borderColor: typeBorder, flexShrink: 0 }}
-                                    />
-                                    {/* Status badge */}
-                                    {item.status === 'ABSENT' && <Chip label="ABSENT" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#ffebee', color: '#c62828', border: '1px solid #ef9a9a', flexShrink: 0 }} />}
-                                    {item.status === 'HALF_DAY' && <Chip label="½ DAY" size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#fff8e1', color: '#e65100', border: '1px solid #ffe082', flexShrink: 0 }} />}
+            {/* Unified Layout for Desktop and Mobile (History & Actual) */}
+            <Box sx={{ width: '100%', overflowX: 'auto' }}>
+                        {/* Column Headers - Compact for Desktop */}
+                        {showInputs && (
+                            <Box display="flex" alignItems="center" px={1.5} py={1} bgcolor="#f5f7f7" borderBottom="1px solid #eaeeef" sx={{ gap: 0.5 }}>
+                                <Box sx={{ flex: 1, minWidth: 200 }}>
+                                    <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
                                 </Box>
-
-                                {/* Stats Row */}
-                                {showInputs && item.status !== 'ABSENT' && (
-                                    <Box display="flex" alignItems="center" gap={1} px={1.5} py={0.75} flexWrap="wrap">
-                                        <Box textAlign="center">
-                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>AM</Typography>
-                                            <Typography variant="body2" fontWeight="bold" color="#333" sx={{ fontSize: '0.85rem' }}>{item.amWeight ?? '—'}</Typography>
-                                        </Box>
-                                        <Typography color="text.disabled" sx={{ fontSize: '0.7rem' }}>+</Typography>
-                                        <Box textAlign="center">
-                                            <Typography variant="caption" color="text.secondary" display="block" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>PM</Typography>
-                                            <Typography variant="body2" fontWeight="bold" color="#333" sx={{ fontSize: '0.85rem' }}>{item.pmWeight ?? '—'}</Typography>
-                                        </Box>
-                                        <Box sx={{ bgcolor: '#e8f5e9', border: '2px solid #a5d6a7', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                            <Typography variant="caption" color="#2e7d32" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>TOTAL</Typography>
-                                            <Typography variant="body2" fontWeight="bold" color="#2e7d32" sx={{ fontSize: '0.95rem' }}>{total.toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}</Typography>
-                                        </Box>
-                                        {Number(item.overKilos) > 0 && (
-                                            <Box sx={{ bgcolor: '#fffde7', border: '1px solid #ffe082', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <Typography variant="caption" color="#e65100" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>OVER</Typography>
-                                                <Typography variant="body2" fontWeight="bold" color="#e65100" sx={{ fontSize: '0.9rem' }}>{item.overKilos}</Typography>
-                                            </Box>
-                                        )}
-                                        {isPieceRate && Number(item.cashKilos) > 0 && (
-                                            <Box sx={{ bgcolor: '#f3e5f5', border: '1px solid #ce93d8', borderRadius: 1.5, px: 1, py: 0.3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-                                                <Typography variant="caption" color="#7b1fa2" sx={{ fontSize: '0.6rem', fontWeight: 'bold', lineHeight: 1 }}>CASH</Typography>
-                                                <Typography variant="body2" fontWeight="bold" color="#7b1fa2" sx={{ fontSize: '0.9rem' }}>{item.cashKilos}</Typography>
-                                            </Box>
-                                        )}
-                                        {item.session && item.session !== 'FULL_DAY' && (
-                                            <Chip label={item.session === 'MORNING_SESSION' ? 'Morning' : 'Evening'} size="small" sx={{ height: 18, fontSize: '0.6rem', fontWeight: 'bold', bgcolor: '#fff3e0', color: '#e65100', border: '1px solid #ffcc80' }} />
-                                        )}
-                                        <Typography variant="caption" color="text.disabled" sx={{ fontSize: '0.7rem', ml: 'auto' }}>{item.fieldName}</Typography>
-                                    </Box>
-                                )}
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                                    <Typography sx={{ width: 55, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>AM</Typography>
+                                    <Typography sx={{ width: 55, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>PM</Typography>
+                                    <Typography sx={{ width: 50, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>TOTAL</Typography>
+                                    <Typography sx={{ width: 55, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>OVER</Typography>
+                                    {hasCashKilos && (
+                                        <Typography sx={{ width: 55, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>CASH</Typography>
+                                    )}
+                                    <Typography sx={{ width: 45, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>OT</Typography>
+                                    <Typography sx={{ width: 85, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>SESSION</Typography>
+                                    <Box sx={{ width: 110 }} /> {/* Actions */}
+                                </Box>
                             </Box>
-                        );
-                    })}
-                    {items.length === 0 && <Typography variant="caption" color="text.secondary" sx={{ p: 1, fontStyle: 'italic' }}>No workers recorded.</Typography>}
-                </Box>
-            ) : (
-            /* === EDITABLE TABLE LAYOUT — unchanged, scrollable for data entry === */
-            <Box sx={{ overflowX: 'auto', WebkitOverflowScrolling: 'touch' }}>
-                <Box sx={{ minWidth: 850 }}>
+                        )}
 
-                {/* Column Headers */}
-                {showInputs && (
-                    <Box display="flex" alignItems="center" px={2} py={1} bgcolor="#f5f7f7" borderBottom="1px solid #eaeeef">
-                        <Box flex={1} minWidth={150} px={1}>
-                            <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
-                        </Box>
-                        <Box display="flex" alignItems="center">
-                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>AM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            <Typography sx={{ width: 75, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>PM<br />{taskConfig.unit === 'kg' ? 'KILOS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>TOTAL</Typography>
-                            <Typography sx={{ width: 80, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>OVER<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            {hasCashKilos && (
-                                <Typography sx={{ width: 80, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>CASH<br />{taskConfig.unit === 'kg' ? 'KGS' : taskConfig.unit === 'L' ? 'LTRS' : taskConfig.unit ? taskConfig.unit.toUpperCase() : 'QTY'}</Typography>
-                            )}
-                            <Typography sx={{ width: 60, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>OT<br />HRS</Typography>
-                            <Typography sx={{ width: 110, fontSize: '0.7rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1 }}>SESSION</Typography>
-                            <Box sx={{ width: 130 }} /> {/* Spacer for Actions */}
-                        </Box>
-                    </Box>
-                )}
-
-                <Box p={1} display="flex" flexDirection="column" gap={0.5}>
-                    {items.map((item: any, index: number) => (
-                        <Box key={item.id}
-                            display="flex"
-                            alignItems="center"
-                            justifyContent="space-between"
-                            p={1} // Reduced padding
-                            mb={0.5}
-                            borderRadius={2}
-                            sx={{
-                                bgcolor: '#ffffff',
-                                border: '1px solid #f0f0f0',
-                                '&:hover': { bgcolor: '#fafdfa', borderColor: '#eaefe9' },
-                                transition: 'all 0.2s',
-                            }}
-                        >
-                            {/* Define if worker is Paid by Weight based on type */}
-                            {(() => {
+                        <Box p={1} display="flex" flexDirection="column" gap={0.5} sx={{ minWidth: 700 }}>
+                            {items.map((item: any) => {
                                 const isPieceRate = item.workerType?.includes('CONTRACT');
+                                const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+
                                 return (
-                                    <>
-                                        {/* Worker Info */}
-                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={150}>
+                                    <Box key={item.id}
+                                        display="flex"
+                                        alignItems="center"
+                                        justifyContent="space-between"
+                                        p={1}
+                                        mb={0.5}
+                                        borderRadius={2}
+                                        sx={{
+                                            bgcolor: '#ffffff',
+                                            border: '1px solid #f0f0f0',
+                                            transition: 'all 0.2s',
+                                        }}
+                                    >
+                                        <Box display="flex" alignItems="center" gap={1.5} flex={1} minWidth={200}>
                                             <Avatar sx={{
                                                 bgcolor: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
                                                 width: 36, height: 36
                                             }}><PersonIcon sx={{ fontSize: 20, color: 'white' }} /></Avatar>
-                                            <Box sx={{ minWidth: 0, overflow: 'hidden' }}>
+                                            <Box sx={{ minWidth: 0 }}>
+                                                <Typography variant="body2" fontWeight="bold" color="#333" sx={{ whiteSpace: 'nowrap', mb: 0.2 }}>{item.workerName}</Typography>
                                                 <Box display="flex" alignItems="center" gap={1}>
-                                                    <Typography variant="body2" fontWeight="bold" noWrap lineHeight={1.2} color="#333" sx={{ fontSize: '0.95rem' }}>{item.workerName}</Typography>
                                                     <Chip
                                                         label={item.workerType?.includes('CONTRACT') ? 'CONTRACT' : item.workerType}
                                                         size="small"
-                                                        sx={{
-                                                            height: 18,
-                                                            fontSize: '0.65rem',
+                                                        sx={{ 
+                                                            height: 16, 
+                                                            fontSize: '0.6rem', 
                                                             fontWeight: 'bold',
                                                             bgcolor: item.workerType === 'PERMANENT' ? '#e8f5e9' : item.workerType === 'CASUAL' ? '#e1f5fe' : '#f3e5f5',
-                                                            color: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : item.workerType?.includes('CONTRACT') ? '#9c27b0' : '#333',
-                                                            border: '1px solid',
-                                                            borderColor: item.workerType === 'PERMANENT' ? '#a5d6a7' : item.workerType === 'CASUAL' ? '#81d4fa' : '#ce93d8',
+                                                            color: item.workerType === 'PERMANENT' ? '#2e7d32' : item.workerType === 'CASUAL' ? '#0288d1' : '#9c27b0',
+                                                            border: '0.5px solid',
+                                                            borderColor: 'inherit'
                                                         }}
                                                     />
+                                                    <Typography variant="caption" color="text.secondary" sx={{ fontSize: '0.7rem' }}>{item.fieldName}</Typography>
                                                 </Box>
-                                                <Typography variant="caption" color="text.secondary" display="block" noWrap sx={{ fontSize: '0.75rem', mt: 0.5 }}>{item.fieldName}</Typography>
                                             </Box>
                                         </Box>
 
-                                        {/* Right Side: Inputs */}
                                         {showInputs && (
-                                            <Box display="flex" alignItems="center">
-                                                {/* AM Input */}
-                                                <Box width={75} display="flex" justifyContent="center">
+                                            <Box display="flex" alignItems="center" sx={{ gap: 0.5 }}>
+                                                <Box width={55} display="flex" justifyContent="center">
                                                     <input
                                                         type="number"
-                                                        min="0"
-                                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
                                                         value={item.amWeight ?? ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            if (val === '' || Number(val) >= 0) {
-                                                                onUpdate(item.id, 'amWeight', val);
-                                                                if (isPieceRate) {
-                                                                    const pmWeight = item.pmWeight || 0;
-                                                                    const newTotal = (Number(val) || 0) + Number(pmWeight);
-                                                                    onUpdate(item.id, 'cashKilos', newTotal > 0 ? newTotal.toString() : '');
-                                                                }
-                                                            }
-                                                        }}
+                                                        onChange={(e) => onUpdate(item.id, 'amWeight', e.target.value)}
                                                         disabled={isSubmitted || item.status === 'ABSENT' || item.session === 'EVENING_SESSION'}
-                                                        placeholder="AM"
-                                                        style={{ ...inputStyle, borderColor: item.session === 'EVENING_SESSION' ? '#e0e0e0' : '#81c784', width: 65, opacity: item.session === 'EVENING_SESSION' ? 0.4 : 1 }}
+                                                        style={{ ...inputStyle, width: 48, opacity: item.session === 'EVENING_SESSION' ? 0.4 : 1, fontSize: '0.8rem' }}
                                                     />
                                                 </Box>
-                                                {/* PM Input */}
-                                                <Box width={75} display="flex" justifyContent="center">
+                                                <Box width={55} display="flex" justifyContent="center">
                                                     <input
                                                         type="number"
-                                                        min="0"
-                                                        onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                        style={{ ...inputStyle, borderColor: item.session === 'MORNING_SESSION' ? '#e0e0e0' : '#81c784', width: 65, opacity: item.session === 'MORNING_SESSION' ? 0.4 : 1 }}
+                                                        style={{ ...inputStyle, width: 48, opacity: item.session === 'MORNING_SESSION' ? 0.4 : 1, fontSize: '0.8rem' }}
                                                         value={item.pmWeight ?? ''}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value;
-                                                            if (val === '' || Number(val) >= 0) {
-                                                                onUpdate(item.id, 'pmWeight', val);
-                                                                if (isPieceRate) {
-                                                                    const amWeight = item.amWeight || 0;
-                                                                    const newTotal = Number(amWeight) + (Number(val) || 0);
-                                                                    onUpdate(item.id, 'cashKilos', newTotal > 0 ? newTotal.toString() : '');
-                                                                }
-                                                            }
-                                                        }}
+                                                        onChange={(e) => onUpdate(item.id, 'pmWeight', e.target.value)}
                                                         disabled={isSubmitted || item.status === 'ABSENT' || item.session === 'MORNING_SESSION'}
-                                                        placeholder="PM"
                                                     />
                                                 </Box>
-                                                {/* Total Badge */}
-                                                <Box width={60} display="flex" justifyContent="center">
-                                                    <Box
-                                                        bgcolor="#e8f5e9"
-                                                        color="#2e7d32"
-                                                        borderRadius={2}
-                                                        width={55}
-                                                        height={34}
-                                                        display="flex"
-                                                        alignItems="center"
-                                                        justifyContent="center"
-                                                        border="2px solid #a5d6a7"
-                                                        sx={{ boxShadow: '0 2px 4px rgba(46, 125, 50, 0.1)' }}
-                                                    >
-                                                        <Typography variant="body2" fontWeight="600" fontSize="0.95rem">
-                                                            {((Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0)).toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 2)}
-                                                        </Typography>
+                                                <Box width={50} display="flex" justifyContent="center">
+                                                    <Box bgcolor="#e8f5e9" color="#2e7d32" borderRadius={1.5} width={45} height={30} display="flex" alignItems="center" justifyContent="center" border="1px solid #a5d6a7">
+                                                        <Typography sx={{ fontSize: '0.8rem', fontWeight: 'bold' }}>{total.toFixed(taskConfig.unit === 'kg' || taskConfig.unit === 'Count' ? 0 : 1)}</Typography>
                                                     </Box>
                                                 </Box>
-                                                {/* Over Kilos Input */}
-                                                <Box width={80} display="flex" justifyContent="center">
-                                                    {isPieceRate ? (
-                                                        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>Cash</Typography>
-                                                    ) : (
+                                                <Box width={55} display="flex" justifyContent="center">
+                                                    <input
+                                                        type="number"
+                                                        style={{ ...inputStyle, width: 48, fontSize: '0.8rem' }}
+                                                        value={isPieceRate ? '' : item.overKilos ?? ''}
+                                                        onChange={(e) => onUpdate(item.id, 'overKilos', e.target.value)}
+                                                        disabled={isSubmitted || item.status === 'ABSENT' || isPieceRate}
+                                                    />
+                                                </Box>
+                                                {hasCashKilos && (
+                                                    <Box width={55} display="flex" justifyContent="center">
                                                         <input
                                                             type="number"
-                                                            min="0"
-                                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                            style={{ ...inputStyle, borderColor: '#fbc02d', width: 70 }} // Highlight differently
-                                                            value={item.overKilos ?? ''}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'overKilos', val);
-                                                            }}
-                                                            disabled={isSubmitted || item.status === 'ABSENT'}
-                                                            placeholder="Over"
+                                                            value={isPieceRate ? item.cashKilos ?? '' : ''}
+                                                            onChange={(e) => onUpdate(item.id, 'cashKilos', e.target.value)}
+                                                            disabled={isSubmitted || item.status === 'ABSENT' || !isPieceRate}
+                                                            style={{ ...inputStyle, width: 48, fontSize: '0.8rem' }}
                                                         />
-                                                    )}
-                                                </Box>
-                                                {/* Cash Kilos Input - only show input for CONTRACT, spacer for others */}
-                                                {hasCashKilos && (
-                                                    <Box width={80} display="flex" justifyContent="center">
-                                                        {isPieceRate ? (
-                                                            <input
-                                                                type="number"
-                                                                min="0"
-                                                                onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                                style={{ ...inputStyle, borderColor: '#8bc34a', width: 70 }}
-                                                                value={item.cashKilos ?? ''}
-                                                                onChange={(e) => {
-                                                                    const val = e.target.value;
-                                                                    if (val === '' || Number(val) >= 0) onUpdate(item.id, 'cashKilos', val);
-                                                                }}
-                                                                disabled={isSubmitted || item.status === 'ABSENT'}
-                                                                placeholder="Cash"
-                                                            />
-                                                        ) : (
-                                                            // Non-contract workers don't get Cash KG input — show N/A label
-                                                            <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>N/A</Typography>
-                                                        )}
                                                     </Box>
                                                 )}
-                                                {/* OT Hours Input */}
-                                                <Box width={60} display="flex" justifyContent="center">
-                                                    {isPieceRate ? (
-                                                        <Typography variant="caption" color="text.disabled" sx={{ fontStyle: 'italic', fontSize: '0.65rem' }}>N/A</Typography>
-                                                    ) : (
-                                                        <input
-                                                            type="number"
-                                                            min="0"
-                                                            onKeyDown={(e) => e.key === '-' && e.preventDefault()}
-                                                            style={{ ...inputStyle, borderColor: '#0288d1', width: 50 }} // Highlight differently
-                                                            value={item.otHours ?? ''}
-                                                            onChange={(e) => {
-                                                                const val = e.target.value;
-                                                                if (val === '' || Number(val) >= 0) onUpdate(item.id, 'otHours', val);
-                                                            }}
-                                                            disabled={isSubmitted || item.status === 'ABSENT'}
-                                                            placeholder="OT"
-                                                        />
-                                                    )}
+                                                <Box width={45} display="flex" justifyContent="center">
+                                                    <input
+                                                        type="number"
+                                                        value={item.otHours ?? ''}
+                                                        onChange={(e) => onUpdate(item.id, 'otHours', e.target.value)}
+                                                        disabled={isSubmitted || item.status === 'ABSENT'}
+                                                        style={{ ...inputStyle, width: 40, fontSize: '0.8rem' }}
+                                                    />
                                                 </Box>
-                                                {/* Session Dropdown */}
-                                                <Box width={110} display="flex" justifyContent="center">
-                                                    <FormControl variant="standard" size="small" sx={{ width: '90%' }}>
-                                                        <Select
-                                                            value={item.session || 'FULL_DAY'}
-                                                            onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
-                                                            disableUnderline
-                                                            disabled={isSubmitted || item.status === 'ABSENT'}
-                                                            sx={{
-                                                                fontSize: '0.7rem',
-                                                                fontWeight: 'bold',
-                                                                color: item.session === 'FULL_DAY' ? '#1976d2' : '#ed6c02',
-                                                                bgcolor: item.session === 'FULL_DAY' ? '#f5f5f5' : '#fff3e0',
-                                                                border: item.session === 'FULL_DAY' ? '1px solid #e0e0e0' : '1px solid #ffcc80',
-                                                                borderRadius: 1,
-                                                                px: 0.5,
-                                                                height: 30
+                                                <Box width={85} display="flex" justifyContent="center">
+                                                    <Select
+                                                        value={item.session || 'FULL_DAY'}
+                                                        onChange={(e) => onUpdate(item.id, 'session', e.target.value)}
+                                                        size="small"
+                                                        sx={{ height: 28, fontSize: '0.65rem', borderRadius: 1.5 }}
+                                                        disabled={isSubmitted || item.status === 'ABSENT'}
+                                                    >
+                                                        <MenuItem value="FULL_DAY" sx={{ fontSize: '0.7rem' }}>Full</MenuItem>
+                                                        <MenuItem value="MORNING_SESSION" sx={{ fontSize: '0.7rem' }}>AM</MenuItem>
+                                                        <MenuItem value="EVENING_SESSION" sx={{ fontSize: '0.7rem' }}>PM</MenuItem>
+                                                    </Select>
+                                                </Box>
+                                                <Box width={110} display="flex" justifyContent="flex-end" alignItems="center" gap={0.5}>
+                                                    {!isSubmitted && onRemove && (item.session === 'EVENING_SESSION' || item.id.startsWith('temp-')) && (
+                                                        <IconButton size="small" color="error" onClick={() => onRemove(item.id)} sx={{ p: 0.4, bgcolor: '#ffebee' }}>
+                                                            <DeleteIcon sx={{ fontSize: 16 }} />
+                                                        </IconButton>
+                                                    )}
+                                                    <Box display="flex" gap={0.4} bgcolor="#1565c0" p={0.4} borderRadius={1.5}>
+                                                        {!isPieceRate && (
+                                                            <IconButton 
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Day' })} 
+                                                                size="small" 
+                                                                disabled={isSubmitted} 
+                                                                sx={{ 
+                                                                    bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white', 
+                                                                    p: 0.4, width: 24, height: 24,
+                                                                    '&.Mui-disabled': {
+                                                                        bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
+                                                                        opacity: 1,
+                                                                        color: 'rgba(0,0,0,0.7)'
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <BlockIcon sx={{ fontSize: 14 }} />
+                                                            </IconButton>
+                                                        )}
+                                                        {!isPieceRate && (
+                                                            <IconButton 
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Present' })} 
+                                                                size="small" 
+                                                                disabled={isSubmitted} 
+                                                                sx={{ 
+                                                                    bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white', 
+                                                                    p: 0.4, width: 24, height: 24,
+                                                                    '&.Mui-disabled': {
+                                                                        bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
+                                                                        opacity: 1,
+                                                                        color: 'rgba(0,0,0,0.7)'
+                                                                    }
+                                                                }}
+                                                            >
+                                                                <CheckIcon sx={{ fontSize: 14 }} />
+                                                            </IconButton>
+                                                        )}
+                                                        <IconButton 
+                                                            onClick={() => setStatusConfirm({ itemId: item.id, newStatus: item.status === 'ABSENT' ? 'PRESENT' : 'ABSENT', workerName: item.workerName, label: item.status === 'ABSENT' ? 'Undo Absent' : 'Absent' })} 
+                                                            size="small" 
+                                                            disabled={isSubmitted} 
+                                                            sx={{ 
+                                                                bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white', 
+                                                                p: 0.4, width: 24, height: 24,
+                                                                '&.Mui-disabled': {
+                                                                    bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
+                                                                    opacity: 1,
+                                                                    color: item.status === 'ABSENT' ? 'white' : 'rgba(0,0,0,0.7)'
+                                                                }
                                                             }}
                                                         >
-                                                            <MenuItem value="FULL_DAY" sx={{ fontSize: '0.75rem' }}>Full Day</MenuItem>
-                                                            <MenuItem value="MORNING_SESSION" sx={{ fontSize: '0.75rem' }}>Morning</MenuItem>
-                                                            <MenuItem value="EVENING_SESSION" sx={{ fontSize: '0.75rem' }}>Evening</MenuItem>
-                                                        </Select>
-                                                    </FormControl>
+                                                            <CloseIcon sx={{ fontSize: 14, color: item.status === 'ABSENT' ? 'white' : 'inherit' }} />
+                                                        </IconButton>
+                                                    </Box>
                                                 </Box>
                                             </Box>
                                         )}
-
-                                        {/* Actions */}
-                                        <Box width={130} display="flex" justifyContent="flex-end" alignItems="center" gap={0.5}>
-                                            {/* Remove button: for EVENING_SESSION workers OR temp (just-added) ones */}
-                                            {!isSubmitted && onRemove && (item.session === 'EVENING_SESSION' || item.id.startsWith('temp-')) && (
-                                                <Tooltip title="Remove from this evening slot">
-                                                    <IconButton size="small" color="error" onClick={() => onRemove(item.id)} sx={{ bgcolor: '#ffebee', '&:hover': { bgcolor: '#ffcdd2' } }}>
-                                                        <CloseIcon fontSize="small" />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            )}
-                                            {/* Status icon set: only shown on the worker's LAST task assignment */}
-                                            {(workerLastTaskMap[item.workerId] === task || isFinalized) && (
-                                                isFinalized ? (
-                                                    // Read-only: show recorded status
-                                                    <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                                        {!isPieceRate && (
-                                                            <Tooltip title="Half Athtama">
-                                                                <span style={{ display: 'inline-block' }}>
-                                                                    <IconButton size="small" disabled sx={{
-                                                                        padding: 0.5,
-                                                                        bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                        '&.Mui-disabled': {
-                                                                            bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                            color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                                        }
-                                                                    }}>
-                                                                        <BlockIcon sx={{ fontSize: 16 }} />
-                                                                    </IconButton>
-                                                                </span>
-                                                            </Tooltip>
-                                                        )}
-                                                        {!isPieceRate && (
-                                                            <Tooltip title="Full Athtama">
-                                                                <span style={{ display: 'inline-block' }}>
-                                                                    <IconButton size="small" disabled sx={{
-                                                                        padding: 0.5,
-                                                                        '&.Mui-disabled': {
-                                                                            bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                                            color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                                        }
-                                                                    }}>
-                                                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
-                                                                    </IconButton>
-                                                                </span>
-                                                            </Tooltip>
-                                                        )}
-                                                        <Tooltip title="Absent">
-                                                            <span style={{ display: 'inline-block' }}>
-                                                                <IconButton size="small" disabled sx={{
-                                                                    padding: 0.5,
-                                                                    '&.Mui-disabled': {
-                                                                        bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                                        color: item.status === 'ABSENT' ? '#fff' : '#cfd8dc',
-                                                                    }
-                                                                }}>
-                                                                    <CloseIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    </Box>
-                                                ) : (
-                                                    // Edit mode: clickable status buttons
-                                                    <Box display="flex" gap={0.5} bgcolor="#1565c0" p={0.5} borderRadius={2} boxShadow={1}>
-                                                        {!isPieceRate && (
-                                                            <Tooltip title="Half Athtama">
-                                                                <span style={{ display: 'inline-block' }}>
-                                                                    <IconButton
-                                                                        onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Athtama' })}
-                                                                        size="small"
-                                                                        disabled={isSubmitted}
-                                                                        sx={{
-                                                                            padding: 0.5,
-                                                                            bgcolor: item.status === 'HALF_DAY' ? '#ffd600' : 'white',
-                                                                            color: item.status === 'HALF_DAY' ? '#000' : '#cfd8dc',
-                                                                            '&:hover': { bgcolor: '#ffea00', color: '#000' }
-                                                                        }}>
-                                                                        <BlockIcon sx={{ fontSize: 16 }} />
-                                                                    </IconButton>
-                                                                </span>
-                                                            </Tooltip>
-                                                        )}
-                                                        {!isPieceRate && (
-                                                            <Tooltip title="Full Athtama">
-                                                                <span style={{ display: 'inline-block' }}>
-                                                                    <IconButton
-                                                                        onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full Athtama (Present)' })}
-                                                                        size="small"
-                                                                        disabled={isSubmitted}
-                                                                        sx={{
-                                                                            padding: 0.5,
-                                                                            bgcolor: item.status === 'PRESENT' ? '#00e676' : 'white',
-                                                                            color: item.status === 'PRESENT' ? '#000' : '#cfd8dc',
-                                                                            '&:hover': { bgcolor: '#00c853', color: '#000' }
-                                                                        }}>
-                                                                        <CheckIcon sx={{ fontSize: 16, fontWeight: 'bold' }} />
-                                                                    </IconButton>
-                                                                </span>
-                                                            </Tooltip>
-                                                        )}
-                                                        <Tooltip title={isPieceRate && item.status === 'ABSENT' ? 'Undo Absent' : 'Mark Absent'}>
-                                                            <span style={{ display: 'inline-block' }}>
-                                                                <IconButton
-                                                                    onClick={() => {
-                                                                        const isUndo = isPieceRate && item.status === 'ABSENT';
-                                                                        setStatusConfirm({
-                                                                            itemId: item.id,
-                                                                            newStatus: isUndo ? 'PRESENT' : 'ABSENT',
-                                                                            workerName: item.workerName,
-                                                                            label: isUndo ? 'Present (Undo Absent)' : 'Absent'
-                                                                        });
-                                                                    }}
-                                                                    size="small"
-                                                                    disabled={isSubmitted}
-                                                                    sx={{
-                                                                        padding: 0.5,
-                                                                        bgcolor: item.status === 'ABSENT' ? '#ff3d00' : 'white',
-                                                                        color: item.status === 'ABSENT' ? '#000' : '#cfd8dc',
-                                                                        '&:hover': { bgcolor: '#ff3d00', color: '#000' }
-                                                                    }}>
-                                                                    <CloseIcon sx={{ fontSize: 16 }} />
-                                                                </IconButton>
-                                                            </span>
-                                                        </Tooltip>
-                                                    </Box>
-                                                )
-                                            )}
-                                        </Box>
-                                    </>
+                                    </Box>
                                 );
-                            })()}
-                        </Box>
-                    ))}
+                            })}
+                    </Box>
                 </Box>
-                </Box>
-                </Box>
-            )} {/* end ternary: isFinalized ? card : table */}
             </Paper>
 
             <Dialog open={!!statusConfirm} onClose={() => setStatusConfirm(null)} PaperProps={{ sx: { borderRadius: 3 } }}>

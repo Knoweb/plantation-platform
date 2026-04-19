@@ -122,6 +122,10 @@ public class DailyWorkService {
     public List<DailyWork> getPendingRecords(UUID tenantId) {
         return dailyWorkRepository.findByTenantIdAndStatus(tenantId, "PENDING");
     }
+    
+    public List<DailyWork> getRecordsByTenantAndDate(UUID tenantId, java.time.LocalDate date) {
+        return dailyWorkRepository.findByTenantIdAndWorkDate(tenantId, date);
+    }
 
     public List<DailyWork> getRecordsByDivision(UUID tenantId, String divisionId) {
         return dailyWorkRepository.findByTenantIdAndDivisionId(tenantId, divisionId);

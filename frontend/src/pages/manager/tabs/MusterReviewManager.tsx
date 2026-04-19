@@ -49,31 +49,36 @@ export default function MusterReviewManager() {
             });
             setWorkerMap(wMap);
 
-            const mappedAll = workRes.data.map((item: any) => ({
-                id: item.workId,
-                displayId: item.workId.substring(0, 8),
-                type: item.workType,
-                detailsRaw: item.details,
-                date: item.workDate,
-                createdAt: item.createdAt,
-                actionAt: item.actionAt,
-                quantity: item.workerCount,
-                divisionName: divMap.get(item.divisionId) || 'Unknown Division',
-                status: item.status,
-                remarks: item.remarks,
-                auditRemarks: item.auditRemarks
-            }));
+            const mappedAll = workRes.data.map((item: any) => {
+                const workId = item.workId || item.id || '';
+                return {
+                    id: workId,
+                    displayId: workId.toString().substring(0, 8),
+                    type: item.workType,
+                    detailsRaw: item.details,
+                    date: item.workDate,
+                    createdAt: item.createdAt,
+                    actionAt: item.actionAt,
+                    quantity: item.workerCount,
+                    divisionName: divMap.get(item.divisionId) || 'Unknown Division',
+                    status: item.status,
+                    remarks: item.remarks,
+                    auditRemarks: item.auditRemarks
+                };
+            });
             setAllMusterRecords(mappedAll);
 
             const musters = mappedAll
                 .filter((item: any) => {
-                    const isMuster = item.type === 'Morning Muster' || item.type === 'Evening Muster';
+                    const type = (item.type || '').toString().toLowerCase();
+                    const isMuster = type === 'morning muster' || type === 'evening muster';
                     if (!isMuster) return false;
 
+                    const status = (item.status || '').toString().toUpperCase();
                     if (viewStatus === 'PENDING') {
-                        return item.status === 'PENDING' || !item.status;
+                        return status === 'PENDING' || status === 'SUBMITTED' || !status;
                     } else {
-                        return item.status === 'APPROVED' || item.status === 'REJECTED';
+                        return status === 'APPROVED' || status === 'REJECTED';
                     }
                 })
                 .sort((a: any, b: any) => {

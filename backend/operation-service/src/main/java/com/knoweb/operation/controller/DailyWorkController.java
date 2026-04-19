@@ -83,10 +83,15 @@ public class DailyWorkController {
     public ResponseEntity<?> getRecords(
             @RequestParam UUID tenantId,
             @RequestParam(required = false) String divisionId,
-            @RequestParam(required = false) String status) {
+            @RequestParam(required = false) String status,
+            @RequestParam(required = false) String date) {
 
         if (divisionId != null) {
             return ResponseEntity.ok(dailyWorkService.getRecordsByDivision(tenantId, divisionId));
+        }
+        if (date != null) {
+            java.time.LocalDate workDate = java.time.LocalDate.parse(date);
+            return ResponseEntity.ok(dailyWorkService.getRecordsByTenantAndDate(tenantId, workDate));
         }
         if ("PENDING".equalsIgnoreCase(status)) {
             return ResponseEntity.ok(dailyWorkService.getPendingRecords(tenantId));

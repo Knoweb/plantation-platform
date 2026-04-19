@@ -587,7 +587,9 @@ export default function MorningMuster() {
                             </Box>
 
                             <TableContainer component={Paper} variant="outlined">
-                                <Table size="small">
+                                <Table size="small" sx={{ 
+                                    '& .MuiTableCell-root': { fontSize: { xs: '0.85rem', sm: '0.75rem' } }
+                                }}>
                                     <TableHead sx={{ bgcolor: '#c8e6c9' }}>
                                         <TableRow>
                                             <TableCell><strong>Work item</strong></TableCell>
