@@ -1577,32 +1577,32 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     <Typography variant="caption" fontWeight="bold" color="#546e7a">WORKER</Typography>
                                 </Box>
                                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                    <Typography sx={{ width: 65, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>AM SESSION</Typography>
-                                    <Typography sx={{ width: 65, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>PM SESSION</Typography>
+                                    <Typography sx={{ width: 55, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>AM</Typography>
+                                    <Typography sx={{ width: 55, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>PM</Typography>
                                     <Typography sx={{ width: 50, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>TOTAL</Typography>
-                                    <Typography sx={{ width: 68, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>
+                                    <Typography sx={{ width: 55, fontSize: '0.58rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'pre-line' }}>
                                         {(() => {
                                             const u = taskConfig.unit?.toLowerCase();
-                                            if (u === 'kg') return 'OVER KILOS';
-                                            if (u === 'acres' || u === 'acre') return 'OVER ACRES';
-                                            if (u === 'l' || u === 'liters') return 'OVER LITERS';
-                                            if (u === 'ha' || u === 'hectares') return 'OVER HECTARES';
-                                            return `OVER ${u?.toUpperCase() || 'QTY'}`;
+                                            if (u === 'kg') return 'OVER\nKILOS';
+                                            if (u === 'acres' || u === 'acre') return 'OVER\nACRES';
+                                            if (u === 'l' || u === 'liters') return 'OVER\nLITERS';
+                                            if (u === 'ha' || u === 'hectares') return 'OVER\nHECTARES';
+                                            return `OVER\n${u?.toUpperCase() || 'QTY'}`;
                                         })()}
                                     </Typography>
                                     {hasCashKilos && (
-                                        <Typography sx={{ width: 68, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>
+                                        <Typography sx={{ width: 55, fontSize: '0.58rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'pre-line' }}>
                                             {(() => {
                                                 const u = taskConfig.unit?.toLowerCase();
-                                                if (u === 'kg') return 'CASH KILOS';
-                                                if (u === 'acres' || u === 'acre') return 'CASH ACRES';
-                                                if (u === 'l' || u === 'liters') return 'CASH LITERS';
-                                                if (u === 'ha' || u === 'hectares') return 'CASH HECTARES';
-                                                return `CASH ${u?.toUpperCase() || 'QTY'}`;
+                                                if (u === 'kg') return 'CASH\nKILOS';
+                                                if (u === 'acres' || u === 'acre') return 'CASH\nACRES';
+                                                if (u === 'l' || u === 'liters') return 'CASH\nLITERS';
+                                                if (u === 'ha' || u === 'hectares') return 'CASH\nHECTARES';
+                                                return `CASH\n${u?.toUpperCase() || 'QTY'}`;
                                             })()}
                                         </Typography>
                                     )}
-                                    <Typography sx={{ width: 60, fontSize: '0.62rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>OT HOURS</Typography>
+                                    <Typography sx={{ width: 45, fontSize: '0.6rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'pre-line' }}>OT\nHOURS</Typography>
                                     <Typography sx={{ width: 85, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>SESSION</Typography>
                                     <Box sx={{ width: 110 }} /> {/* Actions */}
                                 </Box>
