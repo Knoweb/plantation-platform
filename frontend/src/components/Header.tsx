@@ -98,6 +98,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
             case 'ESTATE_ADMIN': return 'Estate Admin Dashboard';
             case 'FIELD_OFFICER': return 'Field Officer Dashboard';
             case 'STORE_KEEPER': return 'Store Keeper Dashboard';
+            case 'CHIEF_CLERK': return 'Chief Clerk Dashboard';
             default: return 'Plantation Dashboard';
         }
     };

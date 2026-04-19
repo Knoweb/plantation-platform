@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Card, CardContent, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -18,10 +18,8 @@ export default function ChiefClerkDashboard() {
     const [inventoryPending, setInventoryPending] = useState(0);
     const [permanentWorkers, setPermanentWorkers] = useState(0);
     const [casualWorkers, setCasualWorkers] = useState(0);
-    const [workersPending, setWorkersPending] = useState(0);
     const [contractWorkersToday, setContractWorkersToday] = useState(0);
     const [costLoggedToday, setCostLoggedToday] = useState(false);
-    const [unreadMessages, setUnreadMessages] = useState(0);
     const [todateYield, setTodateYield] = useState(0);
 
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -37,47 +35,42 @@ export default function ChiefClerkDashboard() {
             const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
             const startOfMonth = today.substring(0, 8) + '01';
             
-            // 1. Inventory Transactions (Chief Clerk reviews SYSTEM Restocks & FO requests)
-            const invTransRes = await axios.get(`/api/inventory/transactions?tenantId=${tenantId}`);
-            const ccPending = invTransRes.data.filter((t: any) => 
+            // Perform all requests in parallel to optimize loading time
+            const [invTransRes, wRes, costsRes, workRes] = await Promise.all([
+                axios.get(`/api/inventory/transactions?tenantId=${tenantId}`),
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/daily-costs/range?tenantId=${tenantId}&cropType=TEA&startDate=${today}&endDate=${today}`),
+                // Fetch ONLY current month's work to minimize payload and processing time
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&startDate=${startOfMonth}&endDate=${today}`)
+            ]);
+
+            // 1. Inventory Transactions
+            const ccPending = (invTransRes.data || []).filter((t: any) => 
                 t.type === 'RESTOCK_REQUEST' && 
                 ((t.status === 'PENDING' && t.issuedTo && t.issuedTo.includes('SYSTEM')) || t.status === 'CHIEF_CLERK_PENDING')
             ).length;
             setInventoryPending(ccPending);
 
             // 2. Workers
-            const wRes = await axios.get(`/api/workers?tenantId=${tenantId}`);
             const wList = wRes.data || [];
             setPermanentWorkers(wList.filter((w: any) => w.employmentType === 'PERMANENT').length);
             setCasualWorkers(wList.filter((w: any) => w.employmentType === 'CASUAL').length);
-            setWorkersPending(wList.filter((w: any) => w.status === 'PENDING_APPROVAL' && w.employmentType !== 'CONTRACT_MEMBER').length);
-            // Count contract workers logged today (registeredDate matches today's local date)
             setContractWorkersToday(wList.filter((w: any) => w.employmentType === 'CONTRACT' && w.registeredDate === today).length);
 
-                // 3. Messages
-                try {
-                    const msgRes = await axios.get(`/api/messages?userId=${userId}&userRole=CHIEF_CLERK`, {
-                        headers: { 'X-Tenant-ID': tenantId }
-                    });
-                    setUnreadMessages(msgRes.data.filter((m: any) => m.receiverId === userId && !m.read).length);
-                } catch (e) {}
+            // 4. Cost Analysis
+            setCostLoggedToday((costsRes.data || []).length > 0);
 
-                // 4. Cost Analysis (Did they save today's row?)
-                const costsRes = await axios.get(`/api/daily-costs/range?tenantId=${tenantId}&cropType=TEA&startDate=${today}&endDate=${today}`);
-                setCostLoggedToday((costsRes.data || []).length > 0);
-
-                // 5. Crop Book Yield (Factory Weight MTD)
-                const workRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
-                let facWeight = 0;
-                (workRes.data || []).forEach((w: any) => {
-                    if (w.workDate && w.workDate >= startOfMonth && w.workDate <= today && w.bulkWeights) {
-                        try {
-                            const bw = JSON.parse(w.bulkWeights);
-                            if (bw['__FACTORY__']?.factoryWt) facWeight += Number(bw['__FACTORY__'].factoryWt);
-                        } catch(e) {}
-                    }
-                });
-                setTodateYield(facWeight);
+            // 5. Crop Book Yield
+            let facWeight = 0;
+            (workRes.data || []).forEach((w: any) => {
+                if (w.bulkWeights) {
+                    try {
+                        const bw = JSON.parse(w.bulkWeights);
+                        if (bw['__FACTORY__']?.factoryWt) facWeight += Number(bw['__FACTORY__'].factoryWt);
+                    } catch(e) {}
+                }
+            });
+            setTodateYield(facWeight);
 
             } catch (err) {
                 console.error("Dashboard error", err);
