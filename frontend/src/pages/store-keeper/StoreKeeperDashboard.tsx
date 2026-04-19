@@ -882,13 +882,20 @@ export default function StoreKeeperDashboard() {
             )}
 
             {/* Transaction Modal */}
-            <Dialog open={openModal} onClose={() => setOpenModal(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>
+            <Dialog 
+                open={openModal} 
+                onClose={() => setOpenModal(false)} 
+                maxWidth="sm" 
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, mt: 1, color: '#1a3352' }}>
                     {modalType === 'RECEIPT' ? 'Receive New Stock' :
                         modalType === 'ISSUE' ? 'Issue Stock to Field' :
                             'Request Restock'}
                 </DialogTitle>
-                <DialogContent sx={{ minWidth: 400, pt: 2 }}>
+                <DialogContent sx={{ pt: 2, px: { xs: 2.5, sm: 3 } }}>
                     <FormControl fullWidth margin="normal">
                         <InputLabel>Select Item</InputLabel>
                         <Select value={selectedItem} label="Select Item" onChange={(e) => setSelectedItem(e.target.value)}>
@@ -1011,9 +1018,19 @@ export default function StoreKeeperDashboard() {
                         />
                     )}
                 </DialogContent>
-                <DialogActions>
-                    <Button onClick={() => setOpenModal(false)}>Cancel</Button>
-                    <Button variant="contained" color={modalType === 'RECEIPT' ? "success" : "warning"} onClick={handleTransaction}>
+                <DialogActions sx={{ px: 3, pb: 3, pt: 1 }}>
+                    <Button onClick={() => setOpenModal(false)} sx={{ color: '#2e7d32', fontWeight: 600 }}>Cancel</Button>
+                    <Button 
+                        variant="contained" 
+                        sx={{ 
+                            borderRadius: 2.5, 
+                            px: 3, 
+                            fontWeight: 700, 
+                            bgcolor: modalType === 'RECEIPT' ? '#2e7d32' : '#f57c00', // Premium orange/green
+                            '&:hover': { bgcolor: modalType === 'RECEIPT' ? '#1b5e20' : '#e65100' }
+                        }}
+                        onClick={handleTransaction}
+                    >
                         {modalType === 'RESTOCK_REQUEST' ? 'Send Request' : `Confirm ${modalType}`}
                     </Button>
                 </DialogActions>
@@ -1110,8 +1127,13 @@ export default function StoreKeeperDashboard() {
             </Dialog>
 
             {/* Issue Order Confirmation Dialog */}
-            <Dialog open={confirmIssueOpen} onClose={() => setConfirmIssueOpen(false)}>
-                <DialogTitle>Confirm Issuance</DialogTitle>
+            <Dialog 
+                open={confirmIssueOpen} 
+                onClose={() => setConfirmIssueOpen(false)}
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>Confirm Issuance</DialogTitle>
                 <DialogContent>
                     <Typography>Are you sure you want to confirm issuance of stock to the Field Officer?</Typography>
                 </DialogContent>
@@ -1124,9 +1146,16 @@ export default function StoreKeeperDashboard() {
             </Dialog>
 
             {/* CC Request Auto-Refill Dialog */}
-            <Dialog open={ccApproveOpen} onClose={() => setCcApproveOpen(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Request Auto-Refill</DialogTitle>
-                <DialogContent>
+            <Dialog 
+                open={ccApproveOpen} 
+                onClose={() => setCcApproveOpen(false)} 
+                maxWidth="sm" 
+                fullWidth
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800, mt: 1 }}>Request Auto-Refill</DialogTitle>
+                <DialogContent sx={{ px: { xs: 2.5, sm: 3 } }}>
                     <Typography variant="body2" color="text.secondary" mb={3} mt={1}>
                         You are reviewing the system-generated auto-refill suggestion for <strong>{ccSelectedOrder?.itemName}</strong>.
                         You can adjust the required quantity or add internal comments before forwarding your request to the Manager.
@@ -1168,8 +1197,13 @@ export default function StoreKeeperDashboard() {
             </Dialog>
 
             {/* Global Confirmation Dialog */}
-            <Dialog open={confirmDialog.open} onClose={handleConfirmClose}>
-                <DialogTitle sx={{ fontWeight: 'bold' }}>{confirmDialog.title}</DialogTitle>
+            <Dialog 
+                open={confirmDialog.open} 
+                onClose={handleConfirmClose}
+                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+            >
+                <DialogTitle sx={{ fontWeight: 800 }}>{confirmDialog.title}</DialogTitle>
                 <DialogContent>
                     <Typography>{confirmDialog.message}</Typography>
                 </DialogContent>
