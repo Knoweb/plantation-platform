@@ -952,7 +952,7 @@ function DailyEntryTab() {
                                             tableLayout: { lg: 'fixed' }, // Force fixed layout on desktop
                                             '& .MuiTableCell-root': { py: 0.5, px: 0.8, fontSize: { xs: '0.85rem', sm: '0.75rem' } }
                                         }}>
-                                            <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                                            <TableHead sx={{ bgcolor: '#f5f7f7' }}>
                                                 <TableRow>
                                                     <TableCell 
                                                         rowSpan={2} 
@@ -1602,7 +1602,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                             })()}
                                         </Typography>
                                     )}
-                                    <Typography sx={{ width: 45, fontSize: '0.6rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'pre-line' }}>OT\nHOURS</Typography>
+                                    <Typography sx={{ width: 45, fontSize: '0.6rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1.1, whiteSpace: 'pre-line' }}>OT HOURS</Typography>
                                     <Typography sx={{ width: 85, fontSize: '0.65rem', fontWeight: 'bold', color: '#546e7a', textAlign: 'center', lineHeight: 1 }}>SESSION</Typography>
                                     <Box sx={{ width: 110 }} /> {/* Actions */}
                                 </Box>
@@ -1871,7 +1871,7 @@ const MusterChitSummary = ({ data = [], fields = [], label, includeAbsent = fals
             </Box>
             <Box>
                 <Table size="small" sx={{ '& .MuiTableCell-root': { py: 0.5, px: 1, fontSize: '0.75rem' } }}>
-                    <TableHead sx={{ bgcolor: '#f5f5f5' }}>
+                    <TableHead sx={{ bgcolor: '#f5f7f7' }}>
                         {isMorningPlan ? (
                             <TableRow>
                                 <TableCell sx={{ fontWeight: 'bold' }}>Task</TableCell>
@@ -2566,7 +2566,7 @@ function HistoryTab() {
                     <TableContainer sx={{ border: '1px solid #f0f4f8', borderRadius: 3, overflow: 'hidden' }}>
                         <Table>
                             <TableHead>
-                                <TableRow sx={{ bgcolor: '#f9fbfc' }}>
+                                <TableRow sx={{ bgcolor: '#f5f7f7' }}>
                                     <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Date</TableCell>
                                     <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Division</TableCell>
                                     <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Submitted At</TableCell>
