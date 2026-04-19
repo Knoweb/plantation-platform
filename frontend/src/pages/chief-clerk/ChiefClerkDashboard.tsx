@@ -117,7 +117,7 @@ export default function ChiefClerkDashboard() {
                 `}
             </style>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                <Typography variant="h4" fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: '-0.5px' }}>
+                <Typography variant="h4" fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: '-0.5px', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
                     Chief Clerk Dashboard
                 </Typography>
                 <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#689f38', bgcolor: '#f1f8e9', px: 2, py: 0.5, borderRadius: 2 }}>
@@ -137,11 +137,11 @@ export default function ChiefClerkDashboard() {
                         <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: inventoryPending > 0 ? '#ef4444' : '#3b82f6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <InventoryIcon fontSize="small" />
                         </Box>
-                        <Box overflow="hidden">
-                            <Typography variant="subtitle2" fontWeight="900" noWrap sx={{ color: inventoryPending > 0 ? '#b91c1c' : '#1e293b', lineHeight: 1.1 }}>
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="900" sx={{ color: inventoryPending > 0 ? '#b91c1c' : '#1e293b', lineHeight: 1.1 }}>
                                 {inventoryPending} Out of stock
                             </Typography>
-                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
                                 items to review
                             </Typography>
                         </Box>
@@ -154,11 +154,11 @@ export default function ChiefClerkDashboard() {
                         <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: !costLoggedToday ? '#ef4444' : '#22c55e', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <AttachMoneyIcon fontSize="small" />
                         </Box>
-                        <Box overflow="hidden">
-                            <Typography variant="subtitle2" fontWeight="900" noWrap className={!costLoggedToday ? "urgent-blink" : ""} sx={{ color: !costLoggedToday ? '#c53030' : '#15803d', lineHeight: 1.1 }}>
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="900" className={!costLoggedToday ? "urgent-blink" : ""} sx={{ color: !costLoggedToday ? '#c53030' : '#15803d', lineHeight: 1.1 }}>
                                 {costLoggedToday ? "Cost Entered" : "Cost not entered"}
                             </Typography>
-                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
                                 Daily Entry Status
                             </Typography>
                         </Box>
@@ -171,11 +171,11 @@ export default function ChiefClerkDashboard() {
                         <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: '#8b5cf6', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <EngineeringIcon fontSize="small" />
                         </Box>
-                        <Box overflow="hidden">
-                            <Typography variant="caption" fontWeight="900" noWrap sx={{ color: '#4c1d95', display: 'block', lineHeight: 1.1 }}>
+                        <Box>
+                            <Typography variant="caption" fontWeight="900" sx={{ color: '#4c1d95', display: 'block', lineHeight: 1.1 }}>
                                 {permanentWorkers} permanent
                             </Typography>
-                            <Typography variant="caption" fontWeight="900" color="#8b5cf6" noWrap sx={{ display: 'block', mt: 0.2 }}>
+                            <Typography variant="caption" fontWeight="900" color="#8b5cf6" sx={{ display: 'block', mt: 0.2 }}>
                                 {casualWorkers} casual
                             </Typography>
                         </Box>
@@ -188,11 +188,11 @@ export default function ChiefClerkDashboard() {
                         <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: contractWorkersToday === 0 ? '#ef4444' : '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <EngineeringIcon fontSize="small" />
                         </Box>
-                        <Box overflow="hidden">
-                            <Typography variant="caption" fontWeight="900" noWrap className={contractWorkersToday === 0 ? "urgent-blink" : ""} sx={{ color: contractWorkersToday === 0 ? '#c53030' : '#166534', display: 'block', lineHeight: 1.1 }}>
+                        <Box>
+                            <Typography variant="caption" fontWeight="900" className={contractWorkersToday === 0 ? "urgent-blink" : ""} sx={{ color: contractWorkersToday === 0 ? '#c53030' : '#166534', display: 'block', lineHeight: 1.1 }}>
                                 {contractWorkersToday > 0 ? `${contractWorkersToday} contracts logged` : "daily contract"}
                             </Typography>
-                            <Typography variant="caption" fontWeight="900" color="text.secondary" noWrap sx={{ display: 'block', mt: 0.2 }}>
+                            <Typography variant="caption" fontWeight="900" color="text.secondary" sx={{ display: 'block', mt: 0.2 }}>
                                 {contractWorkersToday === 0 ? "workers not logged" : "successfully saved"}
                             </Typography>
                         </Box>
@@ -205,11 +205,11 @@ export default function ChiefClerkDashboard() {
                         <Box sx={{ width: 40, height: 40, flexShrink: 0, borderRadius: 2, bgcolor: '#16a34a', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                             <MenuBookIcon fontSize="small" />
                         </Box>
-                        <Box overflow="hidden">
-                            <Typography variant="subtitle2" fontWeight="900" noWrap sx={{ color: '#166534', lineHeight: 1.1 }}>
+                        <Box>
+                            <Typography variant="subtitle2" fontWeight="900" sx={{ color: '#166534', lineHeight: 1.1 }}>
                                 {todateYield.toLocaleString()} <Typography component="span" variant="caption" fontWeight="bold">Kg</Typography>
                             </Typography>
-                            <Typography variant="caption" fontWeight="700" color="text.secondary" noWrap sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
+                            <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
                                 Harvested MTD
                             </Typography>
                         </Box>
