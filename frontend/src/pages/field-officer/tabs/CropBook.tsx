@@ -846,7 +846,7 @@ export default function CropBook() {
                                         ))}
                                     </TableRow>
                                     <TableRow>
-                                        <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: 0, top: '29px', zIndex: 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
+                                        <TableCell sx={{ bgcolor: '#fafafa', fontWeight: 'bold', position: 'sticky', left: isMobile ? 'auto' : 0, top: '29px', zIndex: isMobile ? 3 : 5, minWidth: 40, borderRight: '2px solid #000' }}>Day</TableCell>
                                         {Array.from({ length: 9 }).map((_, i) => (
                                             <React.Fragment key={i}>
                                                 <TableCell sx={{ bgcolor: '#fafafa', fontSize: '0.75rem', position: 'sticky', top: '29px', zIndex: 3 }}>Day</TableCell>
@@ -858,7 +858,7 @@ export default function CropBook() {
                                 <TableBody>
                                     {realData.map((row) => (
                                         <TableRow key={row.day} sx={{ '&:hover': { bgcolor: '#f5f5f5' } }}>
-                                            <TableCell sx={{ position: 'sticky', left: 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold' }}>{row.day}</TableCell>
+                                            <TableCell sx={{ position: 'sticky', left: isMobile ? 'auto' : 0, bgcolor: '#fff', borderRight: '2px solid #ccc', fontWeight: 'bold', zIndex: isMobile ? 1 : 2 }}>{row.day}</TableCell>
                                             <TableCell>{row.factoryWeightDay}</TableCell>
                                             <TableCell>{row.factoryWeightTodate}</TableCell>
                                             <TableCell>{row.fieldWeightDay}</TableCell>

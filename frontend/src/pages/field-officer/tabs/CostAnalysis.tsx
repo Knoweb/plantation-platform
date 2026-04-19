@@ -448,7 +448,7 @@ export default function CostAnalysis() {
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: 11, position: 'sticky', left: 0 }}>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0 }}>
                                         Work Item
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
@@ -500,12 +500,12 @@ export default function CostAnalysis() {
                                                 pl: idx === 0 ? 2 : 4, 
                                                 ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }),
                                                 position: 'sticky',
-                                                left: 0,
+                                                left: isMobile ? 'auto' : 0,
                                                 bgcolor: '#fff',
-                                                zIndex: 2,
+                                                zIndex: isMobile ? 1 : 2,
                                                 whiteSpace: 'normal',
                                                 wordBreak: 'break-word',
-                                                boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                                boxShadow: isMobile ? 'none' : '2px 0 5px -2px rgba(0,0,0,0.1)'
                                             }}>
                                                 {item.name}
                                             </TableCell>
@@ -560,10 +560,10 @@ export default function CostAnalysis() {
                                                     color: '#333', 
                                                     fontSize: '0.82rem',
                                                     position: 'sticky',
-                                                    left: 0,
+                                                    left: isMobile ? 'auto' : 0,
                                                     bgcolor: colors.total,
-                                                    zIndex: 2,
-                                                    boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                                    zIndex: isMobile ? 1 : 2,
+                                                    boxShadow: isMobile ? 'none' : '2px 0 5px -2px rgba(0,0,0,0.1)'
                                                 }}>
                                                     Total Cost for {cat.name}
                                                 </TableCell>
@@ -617,10 +617,10 @@ export default function CostAnalysis() {
                                             textTransform: 'uppercase', 
                                             fontSize: '0.85rem',
                                             position: 'sticky',
-                                            left: 0,
+                                            left: isMobile ? 'auto' : 0,
                                             bgcolor: '#eceff1',
-                                            zIndex: 2,
-                                            boxShadow: '2px 0 5px -2px rgba(0,0,0,0.1)'
+                                            zIndex: isMobile ? 1 : 2,
+                                            boxShadow: isMobile ? 'none' : '2px 0 5px -2px rgba(0,0,0,0.1)'
                                         }}>
                                             Grand Total Cost (Estate)
                                         </TableCell>
