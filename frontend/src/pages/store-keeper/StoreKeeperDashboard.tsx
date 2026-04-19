@@ -797,14 +797,14 @@ export default function StoreKeeperDashboard() {
                                 <Table sx={{ minWidth: 650 }}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell>Item Name</TableCell>
-                                        <TableCell>Category</TableCell>
-                                        <TableCell align="right">Available Stock</TableCell>
-                                        <TableCell align="right">Total Value (Rs)</TableCell>
-                                        <TableCell align="right">Buffer Level</TableCell>
-                                        <TableCell align="right">Minimum Level</TableCell>
-                                        <TableCell align="center">Status</TableCell>
-                                        <TableCell align="center">Actions</TableCell>
+                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Item Name</TableCell>
+                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Category</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Available Stock</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Total Value (Rs)</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Buffer Level</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Minimum Level</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Status</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -835,18 +835,18 @@ export default function StoreKeeperDashboard() {
                                         </TableRow>
                                     ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell sx={{ fontWeight: 'bold' }}>{item.name}</TableCell>
-                                            <TableCell><Chip label={item.category} size="small" /></TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: '1.1rem' }}>
+                                            <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>{item.name}</TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}><Chip label={item.category} size="small" sx={{ fontSize: { xs: '0.65rem', sm: '0.8125rem' } }} /></TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: { xs: '0.85rem', sm: '1.1rem' } }}>
                                                 {item.currentQuantity} {item.unit}
                                             </TableCell>
-                                            <TableCell align="right">
+                                            <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
                                                 {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: 'text.secondary' }}>
+                                            <TableCell align="right" sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'table-cell' } }}>
                                                 {item.bufferLevel} {item.unit}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold' }}>
+                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold', display: { xs: 'none', sm: 'table-cell' } }}>
                                                 {item.minimumLevel || 0} {item.unit}
                                             </TableCell>
                                             <TableCell align="center">
@@ -887,8 +887,7 @@ export default function StoreKeeperDashboard() {
                 onClose={() => setOpenModal(false)} 
                 maxWidth="sm" 
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4 } }}
+                PaperProps={{ sx: { borderRadius: 4, m: { xs: 2, sm: 'auto' } } }}
             >
                 <DialogTitle sx={{ fontWeight: 800, mt: 1, color: '#1a3352' }}>
                     {modalType === 'RECEIPT' ? 'Receive New Stock' :
@@ -1042,7 +1041,7 @@ export default function StoreKeeperDashboard() {
                 onClose={() => setNewItemOpen(false)}
                 fullWidth
                 maxWidth="sm"
-                fullScreen={isMobile}
+                PaperProps={{ sx: { borderRadius: 4, m: { xs: 2, sm: 'auto' } } }}
             >
                 <DialogTitle sx={{ fontWeight: 'bold' }}>{isEditing ? "Edit Item Details" : "Add New Inventory Item"}</DialogTitle>
                 <DialogContent sx={{ minWidth: { xs: 'auto', sm: 400 }, pt: 2 }}>
@@ -1130,8 +1129,7 @@ export default function StoreKeeperDashboard() {
             <Dialog 
                 open={confirmIssueOpen} 
                 onClose={() => setConfirmIssueOpen(false)}
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+                PaperProps={{ sx: { borderRadius: 3, m: { xs: 2, sm: 'auto' } } }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>Confirm Issuance</DialogTitle>
                 <DialogContent>
@@ -1151,8 +1149,7 @@ export default function StoreKeeperDashboard() {
                 onClose={() => setCcApproveOpen(false)} 
                 maxWidth="sm" 
                 fullWidth
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 4 } }}
+                PaperProps={{ sx: { borderRadius: 4, m: { xs: 2, sm: 'auto' } } }}
             >
                 <DialogTitle sx={{ fontWeight: 800, mt: 1 }}>Request Auto-Refill</DialogTitle>
                 <DialogContent sx={{ px: { xs: 2.5, sm: 3 } }}>
@@ -1200,8 +1197,7 @@ export default function StoreKeeperDashboard() {
             <Dialog 
                 open={confirmDialog.open} 
                 onClose={handleConfirmClose}
-                fullScreen={isMobile}
-                PaperProps={{ sx: { borderRadius: isMobile ? 0 : 3 } }}
+                PaperProps={{ sx: { borderRadius: 3, m: { xs: 2, sm: 'auto' } } }}
             >
                 <DialogTitle sx={{ fontWeight: 800 }}>{confirmDialog.title}</DialogTitle>
                 <DialogContent>
