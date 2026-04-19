@@ -797,14 +797,14 @@ export default function StoreKeeperDashboard() {
                                 <Table sx={{ minWidth: 650 }}>
                                 <TableHead>
                                     <TableRow>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Item Name</TableCell>
-                                        <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Category</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Available Stock</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Total Value (Rs)</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Buffer Level</TableCell>
-                                        <TableCell align="right" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' }, display: { xs: 'none', sm: 'table-cell' } }}>Minimum Level</TableCell>
-                                        <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Status</TableCell>
-                                        <TableCell align="center" sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}>Actions</TableCell>
+                                        <TableCell sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Item Name</TableCell>
+                                        <TableCell sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Category</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Available Stock</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Total Value (Rs)</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Buffer Level</TableCell>
+                                        <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Minimum Level</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Status</TableCell>
+                                        <TableCell align="center" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>Actions</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -835,18 +835,18 @@ export default function StoreKeeperDashboard() {
                                         </TableRow>
                                     ) : items.filter(i => i.name.toLowerCase().includes(search.toLowerCase())).map(item => (
                                         <TableRow key={item.id}>
-                                            <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.8rem', sm: 'inherit' } }}>{item.name}</TableCell>
-                                            <TableCell sx={{ fontSize: { xs: '0.75rem', sm: 'inherit' } }}><Chip label={item.category} size="small" sx={{ fontSize: { xs: '0.65rem', sm: '0.8125rem' } }} /></TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: { xs: '0.85rem', sm: '1.1rem' } }}>
+                                            <TableCell sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>{item.name}</TableCell>
+                                            <TableCell sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}><Chip label={item.category} size="small" sx={{ fontSize: { xs: '0.6rem', sm: '0.8125rem' }, height: { xs: 18, sm: 24 } }} /></TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', fontSize: { xs: '0.7rem', sm: '1.1rem' }, px: { xs: 0.5, sm: 2 } }}>
                                                 {item.currentQuantity} {item.unit}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ display: { xs: 'none', sm: 'table-cell' } }}>
-                                                {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { style: 'currency', currency: 'LKR' })}
+                                            <TableCell align="right" sx={{ fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>
+                                                {(item.currentQuantity * (item.pricePerUnit || 0)).toLocaleString('en-LK', { maximumFractionDigits: 0 })}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: 'text.secondary', display: { xs: 'none', sm: 'table-cell' } }}>
+                                            <TableCell align="right" sx={{ color: 'text.secondary', fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>
                                                 {item.bufferLevel} {item.unit}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold', display: { xs: 'none', sm: 'table-cell' } }}>
+                                            <TableCell align="right" sx={{ color: 'error.main', fontWeight: 'bold', fontSize: { xs: '0.65rem', sm: 'inherit' }, px: { xs: 0.5, sm: 2 } }}>
                                                 {item.minimumLevel || 0} {item.unit}
                                             </TableCell>
                                             <TableCell align="center">
