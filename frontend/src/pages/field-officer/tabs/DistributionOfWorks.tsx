@@ -7,6 +7,7 @@ import {
     TextField, Button, Snackbar, Alert
 } from '@mui/material';
 import ChatIcon from '@mui/icons-material/ChatBubbleOutline';
+import { useLanguage } from '../../../context/LanguageContext';
 
 const buildSocketUrl = (path: string) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -30,6 +31,7 @@ const getSessionRank = (session?: string) => {
 export default function DistributionOfWorks() {
     const [loading, setLoading] = useState(true);
     const [currentDate, setCurrentDate] = useState(new Date());
+    const { t } = useLanguage();
 
     const [data, setData] = useState<Record<number, Record<string, number>>>({});
     const [totalsByItem, setTotalsByItem] = useState<Record<string, number>>({});
@@ -367,7 +369,7 @@ export default function DistributionOfWorks() {
                     justifyContent="space-between" mb={2} gap={1}>
                     <Box>
                         <Typography variant="h5" fontWeight="bold" color="#1b5e20">
-                            Distribution of Works
+                            {t('Distribution of Works')}
                         </Typography>
                         <Box mt={0.5} display="flex" gap={1} flexWrap="wrap">
                             <Chip size="small" label="Work Prgrm from Chief Clerk" sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', fontWeight: 700 }} />
@@ -443,10 +445,10 @@ export default function DistributionOfWorks() {
                         <TableHead>
                             <TableRow>
                                 <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: 150, fontSize: '0.8rem' }}>
-                                    Work Items
+                                    {t('Item')}
                                 </TableCell>
                                 <TableCell sx={{ bgcolor: '#eee', fontWeight: 'bold', borderRight: '1px solid #ccc', minWidth: 80, fontSize: '0.8rem' }}>
-                                    Work Prgm
+                                    {t('Work Program')}
                                 </TableCell>
                                 {Array.from({ length: daysInMonth }, (_, i) => i + 1).map(d => (
                                     <TableCell key={d} align="center"
@@ -456,11 +458,11 @@ export default function DistributionOfWorks() {
                                 ))}
                                 <TableCell align="center"
                                     sx={{ bgcolor: '#eee', fontWeight: 'bold', borderLeft: '2px solid #ccc', minWidth: 50, fontSize: '0.8rem' }}>
-                                    Total
+                                    {t('Total')}
                                 </TableCell>
                                 <TableCell align="center"
                                     sx={{ bgcolor: '#e0f2f1', fontWeight: 'bold', minWidth: 60, fontSize: '0.8rem' }}>
-                                    Balance
+                                    {t('Balance')}
                                 </TableCell>
                             </TableRow>
                         </TableHead>
@@ -534,9 +536,9 @@ export default function DistributionOfWorks() {
 
             {/* Justification Dialog */}
             <Dialog open={justifyConfig.open} onClose={() => !savingJustification && setJustifyConfig(p => ({ ...p, open: false }))} fullWidth maxWidth="xs">
-                <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
+                    <DialogTitle sx={{ fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: 1 }}>
                     <ChatIcon color="primary" />
-                    Provide Justification
+                    {t('Provide Justification')}
                 </DialogTitle>
                 <DialogContent>
                     <Typography variant="subtitle2" gutterBottom color="text.secondary">
@@ -558,14 +560,14 @@ export default function DistributionOfWorks() {
                     />
                 </DialogContent>
                 <DialogActions sx={{ px: 3, pb: 2 }}>
-                    <Button onClick={() => setJustifyConfig(p => ({ ...p, open: false }))} color="inherit">Cancel</Button>
+                    <Button onClick={() => setJustifyConfig(p => ({ ...p, open: false }))} color="inherit">{t('Cancel')}</Button>
                     <Button 
                         onClick={handleSaveJustification} 
                         variant="contained" 
                         disabled={savingJustification || !justifyConfig.text.trim()}
                         startIcon={savingJustification ? <CircularProgress size={16} /> : null}
                     >
-                        {savingJustification ? 'Saving...' : 'Send to Chief Clerk'}
+                        {savingJustification ? t('Saving...') : t('Send to Chief Clerk')}
                     </Button>
                 </DialogActions>
             </Dialog>

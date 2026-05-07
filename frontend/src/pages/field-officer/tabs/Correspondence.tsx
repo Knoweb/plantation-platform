@@ -8,6 +8,7 @@ import DownloadIcon from '@mui/icons-material/Download';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function Correspondence() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -15,6 +16,7 @@ export default function Correspondence() {
     const myId = userSession.userId || userSession.id || '';
     const myName = userSession.fullName || userSession.name || 'User';
     const myRole = userSession.role || 'FIELD_OFFICER';
+    const { t } = useLanguage();
 
     const [chats, setChats] = useState<any[]>([]);
     const [selectedChatId, setSelectedChatId] = useState('');
@@ -206,7 +208,7 @@ export default function Correspondence() {
         }}>
             <Box display="flex" justifyContent="space-between" alignItems="baseline" mb={{ xs: 1, sm: 2 }}>
                 <Typography variant="h5" fontWeight="800" sx={{ color: '#1b5e20', letterSpacing: '-0.5px', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                    Correspondence
+                    {t('Correspondence')}
                 </Typography>
                 <Typography variant="body2" sx={{ color: '#666', fontWeight: 600 }}>
                     {new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
@@ -232,7 +234,7 @@ export default function Correspondence() {
                     </Box>
                     
                     <Typography variant="overline" sx={{ px: 3, mt: 1, color: '#999', fontWeight: 700, display: { xs: 'none', sm: 'block' } }}>
-                        All Personnel
+                        {t('All Personnel')}
                     </Typography>
                     
                     <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
@@ -294,8 +296,8 @@ export default function Correspondence() {
                     <Box sx={{ flex: 1, px: 3, pt: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
                         {messages.length === 0 && (
                             <Box sx={{ m: 'auto', textAlign: 'center', opacity: 0.5 }}>
-                                <Typography variant="h6">No messages yet</Typography>
-                                <Typography variant="body2">Start a conversation with {activeChatUser?.name}</Typography>
+                                <Typography variant="h6">{t('No messages yet')}</Typography>
+                                <Typography variant="body2">{t('Start a conversation with')} {activeChatUser?.name}</Typography>
                             </Box>
                         )}
                         {messages.map((msg, idx) => {
@@ -353,19 +355,19 @@ export default function Correspondence() {
                         {attachedImage && (
                             <Box sx={{ mb: 2, display: 'flex', alignItems: 'center', p: 1, bgcolor: '#f5f5f5', borderRadius: 2 }}>
                                 <Avatar src={attachedImage} variant="rounded" sx={{ width: 40, height: 40, mr: 2 }} />
-                                <Typography variant="caption" sx={{ flex: 1 }}>Image attached</Typography>
+                                <Typography variant="caption" sx={{ flex: 1 }}>{t('Image attached')}</Typography>
                                 <IconButton size="small" onClick={() => setAttachedImage(null)}><Typography variant="body2">×</Typography></IconButton>
                             </Box>
                         )}
                         
                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                             <Box sx={{ display: 'flex', bgcolor: '#f5f5f5', borderRadius: 6, p: 0.5 }}>
-                                <Tooltip title="Attach Image">
+                                <Tooltip title={t('Attach Image')}>
                                     <IconButton size="small" onClick={() => document.getElementById('camera-upload')?.click()}>
                                         <CameraAltIcon fontSize="small" />
                                     </IconButton>
                                 </Tooltip>
-                                <Tooltip title="Broadcast">
+                                <Tooltip title={t('Broadcast')}>
                                     <IconButton size="small" onClick={() => setBroadcastDialogOpen(true)}>
                                         <CampaignIcon fontSize="small" />
                                     </IconButton>
@@ -376,7 +378,7 @@ export default function Correspondence() {
                             <TextField
                                 fullWidth
                                 variant="outlined"
-                                placeholder="Write a message..."
+                                placeholder={t('Write a message...')}
                                 multiline
                                 maxRows={4}
                                 value={inputText}
@@ -411,7 +413,7 @@ export default function Correspondence() {
 
             {/* Dialogs */}
             <Dialog open={broadcastDialogOpen} onClose={() => setBroadcastDialogOpen(false)} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 4 } }}>
-                <DialogTitle sx={{ fontWeight: 800 }}>Broadcast Message</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 800 }}>{t('Broadcast Message')}</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" sx={{ mb: 2, color: '#666' }}>
                         Message will be sent to all {chats.length} contacts.
@@ -427,8 +429,8 @@ export default function Correspondence() {
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={() => setBroadcastDialogOpen(false)} variant="text" sx={{ color: '#666' }}>Cancel</Button>
-                    <Button onClick={handleBroadcastSend} variant="contained" color="error" sx={{ borderRadius: 2, px: 3 }}>Send Now</Button>
+                    <Button onClick={() => setBroadcastDialogOpen(false)} variant="text" sx={{ color: '#666' }}>{t('Cancel')}</Button>
+                    <Button onClick={handleBroadcastSend} variant="contained" color="error" sx={{ borderRadius: 2, px: 3 }}>{t('Send Now')}</Button>
                 </DialogActions>
             </Dialog>
 

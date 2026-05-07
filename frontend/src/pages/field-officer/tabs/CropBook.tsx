@@ -16,10 +16,12 @@ import {
     serializeWorkingDayCalendar,
     toggleWorkingDay,
 } from '../../../utils/workingDayCalendar';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function CropBook() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role;
+    const { t } = useLanguage();
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -540,14 +542,14 @@ export default function CropBook() {
 
     // Data for the left sidebar KPI section based on the db config
     const kpiData = [
-        { label: `Budgeted crop for the Year`, value: `${config.budgetYear || 0} Kg`, type: 'header', bgColor: '#e8f5e9' },
-        { label: `Achieved Crop - Todate (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
-        { label: `Total Achieved To Date`, value: `${totalAchievedToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#a5d6a7' },
-        { label: 'Achievement (vs Annual Budget)', value: config.budgetYear > 0 ? `${((totalAchievedToDate / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
-        { label: `Budgeted crop for ${currentMonthName}`, value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
-        { label: 'Budgeted Crop for todate', value: `${automatedBudgetToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
-        { label: `Achievement For ${currentMonthName}`, value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
-        { label: 'Achievement For To Date', value: automatedBudgetToDate > 0 ? `${((facTodateMetric / automatedBudgetToDate) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
+        { label: t('Budgeted crop for the Year'), value: `${config.budgetYear || 0} Kg`, type: 'header', bgColor: '#e8f5e9' },
+        { label: `${t('Achieved Crop - Todate')} (${currentMonthName})`, value: `${facTodateMetric.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
+        { label: t('Total Achieved To Date'), value: `${totalAchievedToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#a5d6a7' },
+        { label: t('Achievement (vs Annual Budget)'), value: config.budgetYear > 0 ? `${((totalAchievedToDate / Number(config.budgetYear || 0)) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
+        { label: `${t('Budgeted crop for')} ${currentMonthName}`, value: `${budgetMonthCalculated} Kg`, type: 'header', bgColor: '#c8e6c9' },
+        { label: t('Budgeted Crop for todate'), value: `${automatedBudgetToDate.toFixed(1)} Kg`, type: 'achieved', bgColor: '#c8e6c9' },
+        { label: `${t('Achievement For')} ${currentMonthName}`, value: budgetMonthCalculated > 0 ? `${((facTodateMetric / budgetMonthCalculated) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#a5d6a7' },
+        { label: t('Achievement For To Date'), value: automatedBudgetToDate > 0 ? `${((facTodateMetric / automatedBudgetToDate) * 100).toFixed(2)} %` : '0 %', type: 'percentage', bgColor: '#66bb6a' },
     ];
 
     const handleSaveConfig = async () => {
@@ -582,7 +584,7 @@ export default function CropBook() {
             <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, justifyContent: 'space-between', alignItems: { xs: 'stretch', md: 'center' }, gap: 2, mb: 2 }}>
                 {/* Title */}
                 <Typography variant={isMobile ? "h5" : "h4"} fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: -0.5 }}>
-                    Crop Book
+                    {t('Crop Book')}
                 </Typography>
 
                 {/* Center Bar: Month + Clock */}
@@ -600,7 +602,7 @@ export default function CropBook() {
                     width: { xs: '100%', md: 'auto' }
                 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1.5 }}>
-                        <Typography variant="caption" sx={{ fontWeight: 900, color: '#2e7d32', textTransform: 'uppercase' }}>Month</Typography>
+                        <Typography variant="caption" sx={{ fontWeight: 900, color: '#2e7d32', textTransform: 'uppercase' }}>{t('Month')}</Typography>
                         <TextField
                             type="month"
                             value={selectedMonth}
@@ -687,7 +689,7 @@ export default function CropBook() {
                                 '&:hover': { bgcolor: '#1b5e20' }
                             }}
                         >
-                            Download Snapshot
+                            {t('Download Snapshot')}
                         </Button>
                     )}
                 </Box>
@@ -744,7 +746,7 @@ export default function CropBook() {
                             {/* LEFT: Budget KPI tiles */}
                             <Box sx={{ flex: { xs: 'none', lg: '0 0 62%' }, display: 'flex', flexDirection: 'column', bgcolor: '#f9fbe7' }}>
                                 <Box sx={{ px: 2, py: 1, bgcolor: '#558b2f' }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>📊 Budget Targets</Typography>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>📊 {t('Budget Targets')}</Typography>
                                 </Box>
                                 <Box sx={{ flex: 1, display: 'grid', gridTemplateColumns: { xs: 'repeat(1, 1fr)', sm: 'repeat(2, 1fr)' }, gap: 1.5, p: 2, alignContent: 'flex-start' }}>
                                     {kpiData.map((kpi, idx) => (
@@ -756,7 +758,7 @@ export default function CropBook() {
                                 </Box>
                                 {isManagerOrChief && (
                                     <Box sx={{ p: 1.5, borderTop: '2px solid #c5e1a5', display: 'flex', justifyContent: 'center', bgcolor: '#f1f8e9' }}>
-                                        <Button fullWidth variant="contained" color="success" size="small" onClick={() => setOpenConfig(true)}>Edit Targets</Button>
+                                        <Button fullWidth variant="contained" color="success" size="small" onClick={() => setOpenConfig(true)}>{t('Edit Targets')}</Button>
                                     </Box>
                                 )}
                             </Box>
@@ -764,14 +766,14 @@ export default function CropBook() {
                             {/* RIGHT: Wage Rate tiles */}
                             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fffde7' }}>
                                 <Box sx={{ px: 2, py: 1, bgcolor: '#f57f17' }}>
-                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>💰 Wage Rates</Typography>
+                                    <Typography variant="subtitle2" sx={{ fontWeight: '900', color: '#fff', letterSpacing: 1, textTransform: 'uppercase' }}>💰 {t('Wage Rates')}</Typography>
                                 </Box>
                                 <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', gap: 1.5 }}>
                                     {[
-                                        { label: 'Aththama Wage', value: `රු. ${config.aththamaWage}`, color: '#e65100', bg: '#fff9c4' },
-                                        { label: 'Over Kilo Rate', value: `රු. ${config.overKiloRate}`, color: '#e65100', bg: '#fff3e0' },
-                                        { label: 'Cash Kilo Rate', value: `රු. ${config.cashKiloRate}`, color: '#33691e', bg: '#f1f8e9' },
-                                        { label: 'OT Hour Rate', value: `රු. ${config.otHourRate}`, color: '#4527a0', bg: '#ede7f6' },
+                                        { label: t('Aththama Wage'), value: `රු. ${config.aththamaWage}`, color: '#e65100', bg: '#fff9c4' },
+                                        { label: t('Over Kilo Rate'), value: `රු. ${config.overKiloRate}`, color: '#e65100', bg: '#fff3e0' },
+                                        { label: t('Cash Kilo Rate'), value: `රු. ${config.cashKiloRate}`, color: '#33691e', bg: '#f1f8e9' },
+                                        { label: t('OT Hour Rate'), value: `රු. ${config.otHourRate}`, color: '#4527a0', bg: '#ede7f6' },
                                     ].map((w, i) => (
                                         <Box key={i} sx={{ bgcolor: w.bg, borderRadius: 2, p: 1.5, border: '1px solid rgba(0,0,0,0.05)' }}>
                                             <Typography variant="caption" fontWeight="800" color="text.secondary">{w.label}</Typography>
@@ -781,7 +783,7 @@ export default function CropBook() {
                                 </Box>
                                 {isManagerOrChief && (
                                     <Box sx={{ p: 1.5, borderTop: '2px solid #ffe082', bgcolor: '#fff8e1' }}>
-                                        <Button fullWidth variant="outlined" color="warning" size="small" onClick={() => setOpenWages(true)}>Edit Wages</Button>
+                                        <Button fullWidth variant="outlined" color="warning" size="small" onClick={() => setOpenWages(true)}>{t('Edit Wages')}</Button>
                                     </Box>
                                 )}
                             </Box>
@@ -820,8 +822,8 @@ export default function CropBook() {
                             {/* Bottom Buttons - Fixed height */}
                             {isManagerOrChief && (
                                 <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, p: 2, bgcolor: '#ffffff', borderTop: '1px solid #e0e0e0' }}>
-                                    <Button fullWidth size="small" variant="contained" color="success" onClick={() => setOpenConfig(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>Budgets</Button>
-                                    <Button fullWidth size="small" variant="outlined" color="success" onClick={() => setOpenWages(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>Wages</Button>
+                                    <Button fullWidth size="small" variant="contained" color="success" onClick={() => setOpenConfig(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>{t('Budgets')}</Button>
+                                    <Button fullWidth size="small" variant="outlined" color="success" onClick={() => setOpenWages(true)} sx={{ py: 1, fontSize: '0.75rem', fontWeight: '900' }}>{t('Wages')}</Button>
                                 </Box>
                             )}
                         </Box>
@@ -887,17 +889,17 @@ export default function CropBook() {
             </Paper>
 
             <Dialog open={openConfig} onClose={() => setOpenConfig(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Edit Budget Metrics ({activeCrop})</DialogTitle>
+                <DialogTitle>{t('Edit Budget Metrics')} ({activeCrop})</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Budgeted Crop for the Year (Kg)" type="number" margin="normal"
+                            <TextField fullWidth label={t('Budgeted Crop for the Year (Kg)')} type="number" margin="normal"
                                 value={config.budgetYear} onChange={e => setConfig({ ...config, budgetYear: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ endAdornment: <InputAdornment position="end">Kg</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Budgeted Crop up to Last Month (Kg)" type="number" margin="normal"
+                            <TextField fullWidth label={t('Budgeted Crop up to Last Month (Kg)')} type="number" margin="normal"
                                 value={budgetLastMonthCalculated || ''} disabled
                                 sx={{
                                     "& .MuiInputBase-input.Mui-disabled": {
@@ -909,29 +911,29 @@ export default function CropBook() {
                                 InputProps={{ endAdornment: <InputAdornment position="end">Kg</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label={`Budgeted Crop for the Month (Kg)`} type="number" margin="normal"
+                            <TextField fullWidth label={t('Budgeted Crop for the Month (Kg)')} type="number" margin="normal"
                                 value={config[monthPropertyMap[selMonthStr]] || ''}
                                 onChange={e => setConfig({ ...config, [monthPropertyMap[selMonthStr]]: e.target.value.replace(/^0+(?=\d)/, '') })}
-                                helperText={`Saving for: ${selectedMonth}`}
+                                helperText={`${t('Saving for')}: ${selectedMonth}`}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ endAdornment: <InputAdornment position="end">Kg</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Working Days for the Month" type="number" margin="normal"
+                            <TextField fullWidth label={t('Working Days for the Month')} type="number" margin="normal"
                                 value={selectedMonthWorkingDaysCount}
-                                helperText={`Auto-count from working dates for: ${selectedMonth}`}
+                                helperText={`${t('Auto-count from working dates for')}: ${selectedMonth}`}
                                 InputLabelProps={{ shrink: true }}
                                 inputProps={{ min: 0, max: 31, step: 1 }}
                                 disabled
-                                InputProps={{ endAdornment: <InputAdornment position="end">days</InputAdornment> }} />
+                                InputProps={{ endAdornment: <InputAdornment position="end">{t('days')}</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12 }}>
                             <Box sx={{ mt: 1, p: 1.5, border: '1px solid #c8e6c9', borderRadius: 2, bgcolor: '#f8fff7' }}>
                                 <Typography variant="subtitle2" sx={{ fontWeight: 'bold', color: '#1b5e20', mb: 0.25 }}>
-                                    Working Day Calendar
+                                    {t('Working Day Calendar')}
                                 </Typography>
                                 <Typography variant="caption" color="text.secondary">
-                                    Weekdays start as working days by default. Click a date to mark it on or off for {selectedMonth}.
+                                    {t('Weekdays start as working days by default. Click a date to mark it on or off for')} {selectedMonth}.
                                 </Typography>
                                 <Box sx={{
                                     mt: 1.5,
@@ -1014,15 +1016,15 @@ export default function CropBook() {
                                     <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1.25, justifyContent: 'center' }}>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#43a047' }} />
-                                            <Typography variant="caption" color="text.secondary">Working day</Typography>
+                                            <Typography variant="caption" color="text.secondary">{t('Working day')}</Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#ffffff', border: '1px solid #c8e6c9' }} />
-                                            <Typography variant="caption" color="text.secondary">Off day</Typography>
+                                            <Typography variant="caption" color="text.secondary">{t('Off day')}</Typography>
                                         </Box>
                                         <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
                                             <Box sx={{ width: 14, height: 14, borderRadius: '4px', bgcolor: '#fff3f3', border: '1px solid #ef9a9a' }} />
-                                            <Typography variant="caption" color="text.secondary">Weekend</Typography>
+                                            <Typography variant="caption" color="text.secondary">{t('Weekend')}</Typography>
                                         </Box>
                                     </Box>
                                 </Box>
@@ -1037,35 +1039,35 @@ export default function CropBook() {
                     </Grid>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenConfig(false)} color="inherit">Cancel</Button>
-                    <Button onClick={handleSaveConfig} variant="contained" color="primary">Save Changes</Button>
+                    <Button onClick={() => setOpenConfig(false)} color="inherit">{t('Cancel')}</Button>
+                    <Button onClick={handleSaveConfig} variant="contained" color="primary">{t('Save Changes')}</Button>
                 </DialogActions>
             </Dialog >
 
             <Dialog open={openWages} onClose={() => setOpenWages(false)} maxWidth="sm" fullWidth>
-                <DialogTitle>Edit Plucking Wages ({activeCrop})</DialogTitle>
+                <DialogTitle>{t('Edit Plucking Wages')} ({activeCrop})</DialogTitle>
                 <DialogContent dividers>
                     <Grid container spacing={2}>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Aththama Daily Wage (රු.)" type="number" margin="normal"
+                            <TextField fullWidth label={t('Aththama Daily Wage (රු.)')} type="number" margin="normal"
                                 value={config.aththamaWage} onChange={e => setConfig({ ...config, aththamaWage: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Over Kilo Rate (රු. / Kg)" type="number" margin="normal"
+                            <TextField fullWidth label={t('Over Kilo Rate (රු. / Kg)')} type="number" margin="normal"
                                 value={config.overKiloRate} onChange={e => setConfig({ ...config, overKiloRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="Cash Kilo Rate (රු. / Kg)" type="number" margin="normal"
+                            <TextField fullWidth label={t('Cash Kilo Rate (රු. / Kg)')} type="number" margin="normal"
                                 value={config.cashKiloRate} onChange={e => setConfig({ ...config, cashKiloRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
                         </Grid>
                         <Grid size={{ xs: 12, sm: 6 }}>
-                            <TextField fullWidth label="OT Hour Rate (රු. / Hour)" type="number" margin="normal"
+                            <TextField fullWidth label={t('OT Hour Rate (රු. / Hour)')} type="number" margin="normal"
                                 value={config.otHourRate} onChange={e => setConfig({ ...config, otHourRate: e.target.value.replace(/^0+(?=\d)/, '') })}
                                 InputLabelProps={{ shrink: true }}
                                 InputProps={{ startAdornment: <InputAdornment position="start">රු.</InputAdornment> }} />
@@ -1073,8 +1075,8 @@ export default function CropBook() {
                     </Grid>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setOpenWages(false)} color="inherit">Cancel</Button>
-                    <Button onClick={handleSaveConfig} variant="contained" color="primary">Save Changes</Button>
+                    <Button onClick={() => setOpenWages(false)} color="inherit">{t('Cancel')}</Button>
+                    <Button onClick={handleSaveConfig} variant="contained" color="primary">{t('Save Changes')}</Button>
                 </DialogActions>
             </Dialog>
         </Box >

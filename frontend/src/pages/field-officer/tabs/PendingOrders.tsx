@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import axios from 'axios';
 import CancelIcon from '@mui/icons-material/Cancel';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface DivisionalStock {
     itemId: string;
@@ -40,6 +41,7 @@ export default function PendingOrders() {
     const [selectedDivision, setSelectedDivision] = useState<string>('');
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [items, setItems] = useState<InventoryItem[]>([]);
+    const { t } = useLanguage();
 
     const { tenantId, divisionAccess } = useMemo(() => {
         const session = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -127,7 +129,7 @@ export default function PendingOrders() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
-                    Orders & Requisitions
+                    {t('Orders & Requisitions')}
                 </Typography>
             </Box>
 
@@ -136,11 +138,11 @@ export default function PendingOrders() {
                 <Grid size={{ xs: 12, md: 3 }}>
                     <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0', height: '100%', display: 'flex', flexDirection: 'column' }}>
                         <Box sx={{ bgcolor: '#455a64', color: 'white', py: 1, px: 1.5, fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            Divisional Stock
+                            {t('Divisional Stock')}
                         </Box>
                         <Box sx={{ p: 1.5, flex: 1, display: 'flex', flexDirection: 'column' }}>
                             <FormControl fullWidth size="small" sx={{ mb: 1.5 }}>
-                                <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary', fontSize: '0.7rem' }}>Filter by Division</Typography>
+                                <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary', fontSize: '0.7rem' }}>{t('Filter by Division')}</Typography>
                                 <Select
                                     value={selectedDivision || ''}
                                     onChange={handleDivisionChange}
@@ -161,9 +163,9 @@ export default function PendingOrders() {
                                 }}>
                                     <TableHead>
                                         <TableRow>
-                                            <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>Item</TableCell>
-                                            <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>Unit</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>Qty</TableCell>
+                                        <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>{t('Item')}</TableCell>
+                                            <TableCell sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>{t('Unit')}</TableCell>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#f1f5f9', py: 1, fontSize: '0.75rem', color: '#334155' }}>{t('Quantity')}</TableCell>
                                         </TableRow>
                                     </TableHead>
                                     <TableBody>
@@ -193,7 +195,7 @@ export default function PendingOrders() {
                 <Grid size={{ xs: 12, md: 9 }}>
                     <Paper elevation={1} sx={{ borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
                         <Box sx={{ bgcolor: '#2e7d32', color: 'white', py: 1, px: 2, fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            My Order History
+                            {t('My Order History')}
                         </Box>
                         <Box sx={{ overflowX: 'auto' }}>
                             <Table size="small" sx={{ 
@@ -224,19 +226,19 @@ export default function PendingOrders() {
                                         let statusChip;
                                         switch (order.status) {
                                             case 'APPROVED':
-                                                statusChip = <Chip icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />} label="Approved" size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
+                                                statusChip = <Chip icon={<CheckCircleIcon sx={{ fontSize: '14px !important' }} />} label={t('Approved')} size="small" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;
                                             case 'ISSUED':
-                                                statusChip = <Chip label="Issued" size="small" color="primary" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
+                                                statusChip = <Chip label={t('Issued')} size="small" color="primary" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;
                                             case 'DECLINED':
-                                                statusChip = <Chip label="Declined" size="small" color="error" variant="outlined" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
+                                                statusChip = <Chip label={t('Declined')} size="small" color="error" variant="outlined" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;
                                             case 'CANCELLED':
-                                                statusChip = <Chip label="Cancelled" size="small" variant="outlined" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
+                                                statusChip = <Chip label={t('Cancelled')} size="small" variant="outlined" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;
                                             default:
-                                                statusChip = <Chip label="Pending" size="small" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', color: '#ef6c00', height: 20, fontSize: '0.65rem' }} />;
+                                                statusChip = <Chip label={t('Pending')} size="small" sx={{ fontWeight: 'bold', bgcolor: '#fff3e0', color: '#ef6c00', height: 20, fontSize: '0.65rem' }} />;
                                         }
 
                                         return (

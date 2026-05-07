@@ -1,10 +1,12 @@
-import { AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem } from '@mui/material';
+import { AppBar, Toolbar, Typography, IconButton, Box, Avatar, Menu, MenuItem, Tooltip } from '@mui/material';
 import NotificationsIcon from '@mui/icons-material/Notifications';
 import MenuIcon from '@mui/icons-material/Menu';
+import LanguageIcon from '@mui/icons-material/Language';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Badge } from '@mui/material';
 import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
 
 interface HeaderProps {
     handleDrawerToggle: () => void;
@@ -13,6 +15,7 @@ interface HeaderProps {
 
 export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps) {
     const navigate = useNavigate();
+    const { language, toggleLanguage, t } = useLanguage();
     const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
     const [notifAnchorEl, setNotifAnchorEl] = useState<null | HTMLElement>(null);
     const [globalAlerts, setGlobalAlerts] = useState<{ total: number, alertsList: any[] }>({ total: 0, alertsList: [] });
@@ -33,7 +36,6 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         const s = JSON.parse(sessionStorage.getItem('user') || '{}');
         const isAdmin = s.role === 'ESTATE_ADMIN';
         return {
-            // Estate admin → show estate name; others → show their personal fullName
             displayName: isAdmin
                 ? (s.estateName || s.fullName || s.username || 'Estate Admin')
                 : (s.fullName || s.username || 'Guest User'),
@@ -54,7 +56,6 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
             if (!tenantId) return;
             try {
                 if (session.role === 'ESTATE_ADMIN') {
-                    // Estate admin: show estate name from tenant API
                     const res = await axios.get(`/api/tenants/${tenantId}`);
                     const name = res.data?.companyName || res.data?.name;
                     if (name) {
@@ -63,7 +64,6 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         setUserInfo(prev => ({ ...prev, displayName: name }));
                     }
                 } else if (myId) {
-                    // Other roles: show personal name from their user record
                     const usersRes = await axios.get(`/api/tenants/${tenantId}/users`);
                     const me = usersRes.data.find((u: any) => u.userId === myId || u.id === myId);
                     if (me) {
@@ -82,7 +82,6 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         fetchLiveInfo();
         const interval = setInterval(fetchLiveInfo, 30000);
 
-        // Also react to Sidebar's estate-name update event
         const handleSessionUpdate = () => setUserInfo(readSession());
         window.addEventListener('user-session-updated', handleSessionUpdate);
 
@@ -98,6 +97,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
             case 'ESTATE_ADMIN': return 'Estate Admin Dashboard';
             case 'FIELD_OFFICER': return 'Field Officer Dashboard';
             case 'STORE_KEEPER': return 'Store Keeper Dashboard';
+            case 'CHIEF_CLERK': return 'Chief Clerk Dashboard';
             default: return 'Plantation Dashboard';
         }
     };
@@ -116,6 +116,8 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
         navigate('/login');
     };
 
+    const isSinhala = language === 'si';
+
     return (
         <AppBar
             position="fixed"
@@ -124,7 +126,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
             sx={{
                 width: { sm: `calc(100% - ${drawerWidth}px)` },
                 ml: { sm: `${drawerWidth}px` },
-                bgcolor: 'background.default', // Matches page background so it floats
+                bgcolor: 'background.default',
                 borderBottom: '1px solid #e0e0e0'
             }}
         >
@@ -140,13 +142,119 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                 </IconButton>
 
                 <Typography variant="h6" noWrap component="div" sx={{ color: 'text.primary', fontWeight: 'bold', flexGrow: 1, textTransform: 'capitalize', fontSize: { xs: '1.1rem', sm: '1.25rem' } }}>
-                    {dashboardTitle.replace('Dashboard', '').trim()}
-                    <Box component="span" sx={{ display: { xs: 'none', sm: 'inline' }, ml: 0.5 }}>
-                        Dashboard
-                    </Box>
+                    {dashboardTitle}
                 </Typography>
 
                 <Box display="flex" alignItems="center" gap={1}>
+
+                    {/* ── Language Toggle — Segmented Pill ── */}
+                    <Tooltip title={isSinhala ? 'Switch to English' : 'සිංහලට මාරු වන්න'} arrow placement="bottom">
+                        <Box
+                            onClick={toggleLanguage}
+                            sx={{
+                                position: 'relative',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                cursor: 'pointer',
+                                userSelect: 'none',
+                                borderRadius: '999px',
+                                border: '1.5px solid',
+                                borderColor: '#2e7d32',
+                                bgcolor: 'rgba(46,125,50,0.06)',
+                                p: '3px',
+                                gap: 0,
+                                transition: 'box-shadow 0.2s',
+                                '&:hover': {
+                                    boxShadow: '0 0 0 3px rgba(46,125,50,0.18)',
+                                }
+                            }}
+                        >
+                            {/* Sliding highlight capsule */}
+                            <Box
+                                sx={{
+                                    position: 'absolute',
+                                    top: 3,
+                                    bottom: 3,
+                                    width: 'calc(50% - 3px)',
+                                    borderRadius: '999px',
+                                    bgcolor: '#2e7d32',
+                                    left: isSinhala ? 'calc(50%)' : '3px',
+                                    transition: 'left 0.26s cubic-bezier(0.4,0,0.2,1)',
+                                    boxShadow: '0 2px 6px rgba(46,125,50,0.35)',
+                                }}
+                            />
+
+                            {/* EN segment */}
+                            <Box
+                                sx={{
+                                    position: 'relative',
+                                    zIndex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    px: 1.1,
+                                    py: 0.35,
+                                    borderRadius: '999px',
+                                    minWidth: 52,
+                                    justifyContent: 'center',
+                                    transition: 'color 0.26s',
+                                }}
+                            >
+                                <LanguageIcon
+                                    sx={{
+                                        fontSize: 13,
+                                        color: isSinhala ? '#2e7d32' : 'white',
+                                        transition: 'color 0.26s',
+                                    }}
+                                />
+                                <Typography
+                                    sx={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        letterSpacing: '0.04em',
+                                        color: isSinhala ? '#2e7d32' : 'white',
+                                        transition: 'color 0.26s',
+                                        lineHeight: 1,
+                                    }}
+                                >
+                                    EN
+                                </Typography>
+                            </Box>
+
+                            {/* SI segment */}
+                            <Box
+                                sx={{
+                                    position: 'relative',
+                                    zIndex: 1,
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '4px',
+                                    px: 1.1,
+                                    py: 0.35,
+                                    borderRadius: '999px',
+                                    minWidth: 52,
+                                    justifyContent: 'center',
+                                    transition: 'color 0.26s',
+                                }}
+                            >
+                                <Typography
+                                    sx={{
+                                        fontSize: '0.72rem',
+                                        fontWeight: 800,
+                                        letterSpacing: '0.02em',
+                                        color: isSinhala ? 'white' : '#2e7d32',
+                                        transition: 'color 0.26s',
+                                        lineHeight: 1,
+                                        fontFamily: '"Noto Sans Sinhala", sans-serif',
+                                    }}
+                                >
+                                    සිං
+                                </Typography>
+                            </Box>
+                        </Box>
+                    </Tooltip>
+
+                    {/* ── Notification Bell ── */}
                     <IconButton onClick={(e) => setNotifAnchorEl(e.currentTarget)}>
                         <Badge badgeContent={globalAlerts.total} color="error">
                             <NotificationsIcon color="action" />
@@ -166,12 +274,12 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         }}
                     >
                         <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #eee' }}>
-                            <Typography variant="subtitle1" fontWeight="bold">Notifications</Typography>
+                            <Typography variant="subtitle1" fontWeight="bold">{t('Notifications')}</Typography>
                         </Box>
 
                         {globalAlerts.alertsList.length === 0 ? (
                             <MenuItem disabled sx={{ py: 2, justifyContent: 'center' }}>
-                                <Typography variant="body2" color="text.secondary">No pending alerts</Typography>
+                                <Typography variant="body2" color="text.secondary">{t('No pending alerts')}</Typography>
                             </MenuItem>
                         ) : (
                             globalAlerts.alertsList.map((alert: any) => (
@@ -192,12 +300,13 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         )}
                     </Menu>
 
+                    {/* ── User Avatar + Name ── */}
                     <Box
                         ml={1}
                         display="flex"
                         alignItems="center"
                         gap={1.5}
-                        sx={{ 
+                        sx={{
                             cursor: 'pointer',
                             p: 0.5,
                             px: 1,
@@ -215,7 +324,7 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                                 {userDisplayName}
                             </Typography>
                             <Typography variant="caption" color="text.secondary" sx={{ textTransform: 'capitalize', fontWeight: 500 }}>
-                                {userRole.toLowerCase().replace(/_/g, ' ')}
+                                {t(userRole.toLowerCase().replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase()))}
                             </Typography>
                         </Box>
                     </Box>
@@ -245,13 +354,13 @@ export default function Header({ handleDrawerToggle, drawerWidth }: HeaderProps)
                         }}
                     >
                         <Box sx={{ px: 2, py: 1.5, borderBottom: '1px solid #f0f0f0', mb: 1 }}>
-                            <Typography variant="subtitle2" fontWeight="800" color="primary">Account</Typography>
+                            <Typography variant="subtitle2" fontWeight="800" color="primary">{t('Account')}</Typography>
                             <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.75rem', mt: 0.5 }}>
-                                Logged in as: <strong>{userRole.replace('_', ' ')}</strong>
+                                {t('Logged in as:')} <strong>{userRole.replace('_', ' ')}</strong>
                             </Typography>
                         </Box>
                         <MenuItem onClick={handleLogout} sx={{ color: 'error.main', fontWeight: 'bold', py: 1.5 }}>
-                            Logout
+                            {t('Logout')}
                         </MenuItem>
                     </Menu>
                 </Box>

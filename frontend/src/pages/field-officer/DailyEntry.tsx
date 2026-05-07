@@ -12,6 +12,7 @@ import {
     Delete as DeleteIcon,
     Refresh as RefreshIcon
 } from '@mui/icons-material';
+import { useLanguage } from '../../context/LanguageContext';
 
 // --- Interfaces ---
 interface AttendanceRecord {
@@ -2132,6 +2133,7 @@ function MorningPlanDisplay({ plans }: { plans: any[] }) {
 function HistoryTab() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { t } = useLanguage();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const userRole = userSession.role;
@@ -2425,16 +2427,16 @@ function HistoryTab() {
                         </Box>
                         <Box>
                             <Typography variant={isMobile ? "h6" : "h5"} fontWeight="900" color="#2e7d32" sx={{ letterSpacing: '-0.02em', lineHeight: 1.2 }}>
-                                Muster History
+                                {t('Muster History')}
                             </Typography>
                             <Typography variant="caption" sx={{ color: 'text.secondary', fontWeight: 'bold', display: { xs: 'none', sm: 'block' } }}>
-                                Review and track past operational records
+                                {t('Review and track past operational records')}
                             </Typography>
                         </Box>
                     </Box>
                     <Box display="flex" alignItems="center" gap={1}>
                         <Chip 
-                            label={`${history.length} Records`} 
+                            label={`${history.length} ${t('Records')}`} 
                             size="small" 
                             sx={{ 
                                 fontWeight: '900', 
@@ -2503,7 +2505,7 @@ function HistoryTab() {
                                             />
                                             {row.auditRemarks && (
                                                 <Chip 
-                                                    label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                    label={isUnread ? t('NEW REMARK') : t('Audited')} 
                                                     size="small" 
                                                     color={isUnread ? "error" : "warning"}
                                                     sx={{ 
@@ -2539,7 +2541,7 @@ function HistoryTab() {
                                                 '&:hover': { bgcolor: '#1b5e20' }
                                             }}
                                         >
-                                            View Details
+                                            {t('View Details')}
                                         </Button>
                                         <IconButton
                                             size="small"
@@ -2559,7 +2561,7 @@ function HistoryTab() {
                             );
                         })}
                         {history.length === 0 && (
-                            <Box sx={{ py: 8, textAlign: 'center', opacity: 0.6 }}>No records found.</Box>
+                            <Box sx={{ py: 8, textAlign: 'center', opacity: 0.6 }}>{t('No records found.')}</Box>
                         )}
                     </Box>
                 ) : (
@@ -2567,10 +2569,10 @@ function HistoryTab() {
                         <Table>
                             <TableHead>
                                 <TableRow sx={{ bgcolor: '#f5f7f7' }}>
-                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Date</TableCell>
-                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Division</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Submitted At</TableCell>
-                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>Action</TableCell>
+                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>{t('Date')}</TableCell>
+                                    <TableCell sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>{t('Division')}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>{t('Submitted At')}</TableCell>
+                                    <TableCell align="center" sx={{ fontWeight: '800', color: '#2e7d32', py: 2 }}>{t('Action')}</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -2588,7 +2590,7 @@ function HistoryTab() {
                                                     return (
                                                         <Tooltip title={isUnread ? "Unread Audit Remark" : "Has Audit Note"}>
                                                             <Chip 
-                                                                label={isUnread ? "NEW REMARK" : "Audited"} 
+                                                                label={isUnread ? t('NEW REMARK') : t('Audited')} 
                                                                 size="small" 
                                                                 color={isUnread ? "error" : "warning"} 
                                                                 sx={{ 
@@ -2629,9 +2631,9 @@ function HistoryTab() {
                                                     '&:hover': { borderColor: '#1b5e20', bgcolor: 'rgba(46, 125, 50, 0.04)' }
                                                 }}
                                             >
-                                                View
+                                                {t('View')}
                                             </Button>
-                                            <Tooltip title="Delete Report">
+                                            <Tooltip title={t('Delete Report')}>
                                                 <IconButton
                                                     size="small"
                                                     color="error"
@@ -2645,7 +2647,7 @@ function HistoryTab() {
                                     </TableRow>
                                 ))}
                                 {history.length === 0 && (
-                                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 6, color: 'text.secondary', fontStyle: 'italic' }}>No muster records found.</TableCell></TableRow>
+                                    <TableRow><TableCell colSpan={4} align="center" sx={{ py: 6, color: 'text.secondary', fontStyle: 'italic' }}>{t('No muster records found.')}</TableCell></TableRow>
                                 )}
                             </TableBody>
                         </Table>
@@ -2815,7 +2817,7 @@ function HistoryTab() {
                     )}
                 </DialogContent>
                 <DialogActions sx={{ p: 2, bgcolor: '#fff' }}>
-                    <Button onClick={() => setReviewOpen(false)} variant="contained" color="primary" size="large">Close Review</Button>
+                    <Button onClick={() => setReviewOpen(false)} variant="contained" color="primary" size="large">{t('Close Review')}</Button>
                 </DialogActions>
             </Dialog >
 

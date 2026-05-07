@@ -5,6 +5,7 @@ import InfoIcon from '@mui/icons-material/Info'; // For notification
 import DownloadIcon from '@mui/icons-material/Download';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function GeneralStock() {
     const [items, setItems] = useState<any[]>([]);
@@ -45,6 +46,7 @@ export default function GeneralStock() {
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { t } = useLanguage();
 
     const getRequestSourceLabel = (issuedTo?: string) => {
         const text = String(issuedTo || '').toLowerCase();
@@ -149,7 +151,7 @@ export default function GeneralStock() {
                     fontWeight="bold" 
                     sx={{ color: '#1b5e20', lineHeight: 1.2, flex: 1, fontSize: isMobile ? '1.1rem' : 'inherit' }}
                 >
-                    General Stock & Inventory Level
+                    {t('General Stock & Inventory Level')}
                 </Typography>
                 {isManager && (
                     isMobile ? (
@@ -275,7 +277,7 @@ export default function GeneralStock() {
                                 '&:hover': { bgcolor: '#1b5e20' }
                             }}
                         >
-                            Download Snapshot
+                            {t('Download Snapshot')}
                         </Button>
                     )
                 )}
@@ -294,8 +296,8 @@ export default function GeneralStock() {
                         bgcolor: '#e1f5fe'
                     }}
                 >
-                    <Typography variant="subtitle2" fontWeight="bold">Action Required</Typography>
-                    <Typography variant="body2">New items detected. Please configure buffer levels for unconfigured items.</Typography>
+                    <Typography variant="subtitle2" fontWeight="bold">{t('Action Required')}</Typography>
+                    <Typography variant="body2">{t('New items detected. Please configure buffer levels for unconfigured items.')}</Typography>
                 </Alert>
             )}
 
@@ -311,9 +313,9 @@ export default function GeneralStock() {
                     icon={<WarningIcon fontSize="inherit" />}
                 >
                     <Box>
-                        <Typography variant="subtitle2" fontWeight="bold">Attention Manager: Inventory Shortfall Detected</Typography>
+                        <Typography variant="subtitle2" fontWeight="bold">{t('Attention Manager: Inventory Shortfall Detected')}</Typography>
                         <Typography variant="body2">
-                            The following items have dropped below their buffer levels: 
+                            {t('The following items have dropped below their buffer levels:')} 
                             <strong> {items.filter(i => i.currentQuantity < i.bufferLevel && i.bufferLevel > 0).map(i => i.name).join(', ')}</strong>. 
                         </Typography>
                     </Box>
@@ -326,18 +328,18 @@ export default function GeneralStock() {
                     <Box display="flex" alignItems="center" mb={1.5}>
                         <InfoIcon color="warning" sx={{ mr: 1 }} />
                         <Typography variant="subtitle1" color="warning.dark" fontWeight="bold">
-                            Pending Restock Requests
+                            {t('Pending Restock Requests')}
                         </Typography>
                     </Box>
                     <TableContainer sx={{ overflowX: 'auto' }}>
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Date</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Item</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Qty</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Note</TableCell>
-                                    <TableCell align="center" sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Actions</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Date')}</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Item')}</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Qty')}</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Note')}</TableCell>
+                                    <TableCell align="center" sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Actions')}</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -359,7 +361,7 @@ export default function GeneralStock() {
                                                 }}
                                                 onClick={() => handleRequestAction(req)}
                                             >
-                                                Review
+                                                {t('Review')}
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -374,13 +376,13 @@ export default function GeneralStock() {
                 <Table size={isMobile ? "small" : "medium"}>
                     <TableHead sx={{ bgcolor: '#f1f8e9' }}>
                         <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Item Name</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Category</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Unit</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Current Qty</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Buffer</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Minimum</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Status</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Item Name')}</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Category')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Unit')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Current Qty')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Buffer')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Minimum')}</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Status')}</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -414,18 +416,18 @@ export default function GeneralStock() {
                                     </TableCell>
                                     <TableCell align="center">
                                         {item.bufferLevel === 0 ? (
-                                            <Chip label="Setup" color="info" size="small" variant="outlined" />
+                                            <Chip label={t('Setup')} color="info" size="small" variant="outlined" />
                                         ) : item.currentQuantity < item.bufferLevel ? (
-                                            <Chip label="Low" color="error" size="small" />
+                                            <Chip label={t('Low')} color="error" size="small" />
                                         ) : (
-                                            <Chip label="Good" color="success" size="small" variant="outlined" />
+                                            <Chip label={t('Good')} color="success" size="small" variant="outlined" />
                                         )}
                                     </TableCell>
                                 </TableRow>
                             );
                         })}
                         {items.length === 0 && !loading && (
-                            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>No inventory items found.</TableCell></TableRow>
+                            <TableRow><TableCell colSpan={7} align="center" sx={{ py: 4 }}>{t('No inventory items found.')}</TableCell></TableRow>
                         )}
                     </TableBody>
                 </Table>
@@ -433,39 +435,39 @@ export default function GeneralStock() {
 
             {/* Buffer Edit Dialog */}
             <Dialog open={editOpen} onClose={() => setEditOpen(false)}>
-                <DialogTitle>Update Stock Levels</DialogTitle>
+                <DialogTitle>{t('Update Stock Levels')}</DialogTitle>
                 <DialogContent>
                     <Typography variant="body2" mb={2}>
                         Set stock thresholds for <strong>{selectedItem?.name}</strong>.
                     </Typography>
                     <TextField
                         type="number"
-                        label="Buffer Level (Reorder Point)"
+                        label={t('Buffer Level (Reorder Point)')}
                         fullWidth
                         margin="normal"
                         value={bufferInput}
                         onChange={(e) => setBufferInput(e.target.value)}
-                        helperText="Stock level to trigger restock alerts"
+                        helperText={t('Stock level to trigger restock alerts')}
                     />
                     <TextField
                         type="number"
-                        label="Minimum Level (Blocking Point)"
+                        label={t('Minimum Level (Blocking Point)')}
                         fullWidth
                         margin="normal"
                         value={minimumInput}
                         onChange={(e) => setMinimumInput(e.target.value)}
-                        helperText="Absolute minimum. Issues below this are blocked."
+                        helperText={t('Absolute minimum. Issues below this are blocked.')}
                     />
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={() => setEditOpen(false)}>Cancel</Button>
-                    <Button variant="contained" onClick={handleSaveBuffer}>Update</Button>
+                    <Button onClick={() => setEditOpen(false)}>{t('Cancel')}</Button>
+                    <Button variant="contained" onClick={handleSaveBuffer}>{t('Update')}</Button>
                 </DialogActions>
             </Dialog>
 
             {/* Approval Confirmation Dialog */}
             <Dialog open={approveOpen} onClose={() => setApproveOpen(false)}>
-                <DialogTitle>Review Refill Request</DialogTitle>
+                <DialogTitle>{t('Review Refill Request')}</DialogTitle>
                 <DialogContent sx={{ minWidth: 350, pt: 2 }}>
                     <Typography variant="body1" gutterBottom>
                         Refilling for: <strong>{approveReq?.itemName}</strong>
@@ -519,14 +521,14 @@ export default function GeneralStock() {
                             color="error"
                             onClick={() => handleConfirmApprove('DECLINED')}
                         >
-                            Reject Request
+                            {t('Reject Request')}
                         </Button>
                         <Button
                             variant="contained"
                             color="success"
                             onClick={() => handleConfirmApprove('APPROVED')}
                         >
-                            Final Approve & Refill
+                            {t('Final Approve & Refill')}
                         </Button>
                     </Box>
                 </DialogActions>

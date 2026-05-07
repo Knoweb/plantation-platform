@@ -6,12 +6,14 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import DashboardCard from './DashboardCard';
 import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
 import { eachDayOfInterval, format, endOfMonth, eachWeekOfInterval, isSameDay, isSameWeek } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface CostAnalyticsProps {
     tenantId: string;
 }
 
 const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
+    const { t } = useLanguage();
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
     const [selectedMonth, setSelectedMonth] = useState<number>(new Date().getMonth());
     const [granularity, setGranularity] = useState<'daily' | 'weekly' | 'monthly'>('monthly');
@@ -218,9 +220,9 @@ const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
     };
 
     return (
-        <DashboardCard 
+        <DashboardCard
             variant="slate"
-            title="Cost Analytics" 
+            title={t('Cost Analytics')}
             icon={<MonetizationOnIcon sx={{ color: '#ef4444' }} />}
             filters={
                 <Box display="flex" gap={1} flexWrap="wrap">
@@ -231,23 +233,23 @@ const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
                         onChange={(_, v) => v && setGranularity(v)}
                         sx={{ mr: 1, bgcolor: '#f8fafc' }}
                     >
-                        <ToggleButton value="daily" sx={{ textTransform: 'none', fontWeight: 'bold' }}>Day</ToggleButton>
-                        <ToggleButton value="weekly" sx={{ textTransform: 'none', fontWeight: 'bold' }}>Week</ToggleButton>
-                        <ToggleButton value="monthly" sx={{ textTransform: 'none', fontWeight: 'bold' }}>Month</ToggleButton>
+                        <ToggleButton value="daily" sx={{ textTransform: 'none', fontWeight: 'bold' }}>{t('Day')}</ToggleButton>
+                        <ToggleButton value="weekly" sx={{ textTransform: 'none', fontWeight: 'bold' }}>{t('Week')}</ToggleButton>
+                        <ToggleButton value="monthly" sx={{ textTransform: 'none', fontWeight: 'bold' }}>{t('Month')}</ToggleButton>
                     </ToggleButtonGroup>
 
                     {granularity !== 'monthly' && (
                         <FormControl size="small" sx={{ minWidth: 100 }}>
-                            <InputLabel>Month</InputLabel>
-                            <Select value={selectedMonth} label="Month" onChange={(e) => setSelectedMonth(Number(e.target.value))}>
+                            <InputLabel>{t('Month')}</InputLabel>
+                            <Select value={selectedMonth} label={t('Month')} onChange={(e) => setSelectedMonth(Number(e.target.value))}>
                                 {months.map((m, i) => (<MenuItem key={i} value={i}>{m}</MenuItem>))}
                             </Select>
                         </FormControl>
                     )}
 
                     <FormControl size="small" sx={{ minWidth: 100 }}>
-                        <InputLabel>Year</InputLabel>
-                        <Select value={selectedYear} label="Year" onChange={(e) => setSelectedYear(Number(e.target.value))}>
+                        <InputLabel>{t('Year')}</InputLabel>
+                        <Select value={selectedYear} label={t('Year')} onChange={(e) => setSelectedYear(Number(e.target.value))}>
                             {[2024, 2025, 2026].map(y => (<MenuItem key={y} value={y}>{y}</MenuItem>))}
                         </Select>
                     </FormControl>
@@ -261,7 +263,7 @@ const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
                         sx={{ p: 2, borderRadius: 3, bgcolor: '#eff6ff', border: '1px solid', borderColor: activeMetric === 'cost' ? '#3b82f6' : '#bfdbfe', display: 'flex', alignItems: 'center', gap: 2.5, cursor: 'pointer', opacity: activeMetric === 'cost' ? 1 : 0.6, transition: 'all 0.2s', boxShadow: activeMetric === 'cost' ? '0 4px 12px -2px rgba(59, 130, 246, 0.2)' : 'none' }}>
                         <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: '#3b82f6', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><PaymentsIcon /></Box>
                         <Box>
-                            <Typography variant="caption" color="#1e40af" fontWeight="800" sx={{ textTransform: 'uppercase' }}>Total Cost</Typography>
+                            <Typography variant="caption" color="#1e40af" fontWeight="800" sx={{ textTransform: 'uppercase' }}>{t('Total Cost')}</Typography>
                             <Typography variant="h5" fontWeight="900" color="#1e40af">රු. {totalCost.toLocaleString()}</Typography>
                         </Box>
                     </Box>
@@ -272,7 +274,7 @@ const CostAnalytics: React.FC<CostAnalyticsProps> = ({ tenantId }) => {
                         sx={{ p: 2, borderRadius: 3, bgcolor: '#fef2f2', border: '1px solid', borderColor: activeMetric === 'costPerKg' ? '#ef4444' : '#fecaca', display: 'flex', alignItems: 'center', gap: 2.5, cursor: 'pointer', opacity: activeMetric === 'costPerKg' ? 1 : 0.6, transition: 'all 0.2s', boxShadow: activeMetric === 'costPerKg' ? '0 4px 12px -2px rgba(239, 68, 68, 0.2)' : 'none' }}>
                         <Box sx={{ width: 44, height: 44, borderRadius: '12px', bgcolor: '#ef4444', display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'white' }}><MonetizationOnIcon /></Box>
                         <Box>
-                            <Typography variant="caption" color="#991b1b" fontWeight="800" sx={{ textTransform: 'uppercase' }}>Plucking Cost Per Kg</Typography>
+                            <Typography variant="caption" color="#991b1b" fontWeight="800" sx={{ textTransform: 'uppercase' }}>{t('Plucking Cost Per Kg')}</Typography>
                             <Typography variant="h5" fontWeight="900" color="#991b1b">රු. {avgCostPerKg.toFixed(2)}</Typography>
                         </Box>
                     </Box>

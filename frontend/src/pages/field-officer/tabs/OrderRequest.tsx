@@ -2,6 +2,7 @@ import { Box, Typography, Card, CardContent, Button, TextField, FormControl, Sel
 import type { SelectChangeEvent } from '@mui/material';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface InventoryItem {
     id: string;
@@ -26,6 +27,7 @@ export default function OrderRequest() {
     const [itemId, setItemId] = useState('');
     const [quantity, setQuantity] = useState('');
     const [remarks, setRemarks] = useState('');
+    const { t } = useLanguage();
     const [divisions, setDivisions] = useState<Division[]>([]);
     const [fields, setFields] = useState<Field[]>([]);
     const [selectedDivision, setSelectedDivision] = useState('');
@@ -136,7 +138,7 @@ export default function OrderRequest() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={4}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20' }}>
-                    Order Request
+                    {t('Order Request')}
                 </Typography>
             </Box>
 
@@ -145,16 +147,16 @@ export default function OrderRequest() {
                 <Grid size={{ xs: 12, md: 5 }}>
                     <Paper elevation={2} sx={{ height: '100%', display: 'flex', flexDirection: 'column', borderRadius: 2, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
                         <Box sx={{ bgcolor: '#455a64', color: 'white', py: 1.25, textAlign: 'center', fontWeight: 'bold', fontSize: '0.85rem' }}>
-                            Current Inventory
+                            {t('Current Inventory')}
                         </Box>
 
                         <Box sx={{ flex: 1, overflow: 'auto', maxHeight: { xs: '200px', md: '500px' } }}>
                             <Table size="small" stickyHeader>
                                 <TableHead sx={{ bgcolor: '#f5f7f9' }}>
                                     <TableRow>
-                                        <TableCell sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>Item</TableCell>
-                                        <TableCell sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>Unit</TableCell>
-                                        <TableCell align="right" sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>Stock</TableCell>
+                                        <TableCell sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>{t('Item')}</TableCell>
+                                        <TableCell sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>{t('Unit')}</TableCell>
+                                        <TableCell align="right" sx={{ py: 1, fontWeight: 'bold', borderBottom: '2px solid #edf2f7' }}>{t('Stock')}</TableCell>
                                     </TableRow>
                                 </TableHead>
                                 <TableBody>
@@ -181,7 +183,7 @@ export default function OrderRequest() {
                     <Card elevation={2} sx={{ borderRadius: 2, height: '100%', border: '1px solid #e0e0e0' }}>
                         <CardContent sx={{ p: 0, pb: '0 !important' }}>
                             <Box sx={{ bgcolor: '#2e7d32', p: 1.25, color: 'white' }}>
-                                <Typography variant="subtitle2" align="center" fontWeight="bold">Request Details</Typography>
+                                <Typography variant="subtitle2" align="center" fontWeight="bold">{t('Request Details')}</Typography>
                             </Box>
 
                             <Box sx={{ p: { xs: 2.5, sm: 3 } }}>
@@ -189,7 +191,7 @@ export default function OrderRequest() {
                                     {/* Line 1: Division & Field */}
                                     <Grid size={{ xs: 6 }}>
                                         <FormControl fullWidth size="small">
-                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>Division</Typography>
+                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>{t('Division')}</Typography>
                                             <Select
                                                 value={selectedDivision}
                                                 displayEmpty
@@ -205,7 +207,7 @@ export default function OrderRequest() {
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
                                         <FormControl fullWidth size="small">
-                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>Field No</Typography>
+                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>{t('Field No')}</Typography>
                                             <Select
                                                 value={selectedField}
                                                 displayEmpty
@@ -232,7 +234,7 @@ export default function OrderRequest() {
                                     {/* Line 2: Crop & Item */}
                                     <Grid size={{ xs: 6 }}>
                                         <FormControl fullWidth size="small">
-                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>Crop</Typography>
+                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>{t('Crop')}</Typography>
                                             <Select
                                                 value={selectedCrop}
                                                 displayEmpty
@@ -259,7 +261,7 @@ export default function OrderRequest() {
                                     </Grid>
                                     <Grid size={{ xs: 6 }}>
                                         <FormControl fullWidth size="small">
-                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>Item</Typography>
+                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary' }}>{t('Item')}</Typography>
                                             <Select
                                                 value={itemId}
                                                 displayEmpty
@@ -277,7 +279,7 @@ export default function OrderRequest() {
                                     {/* Line 3: Quantity */}
                                     <Grid size={{ xs: 12 }}>
                                         <Box>
-                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>Quantity Needed</Typography>
+                                            <Typography variant="caption" sx={{ mb: 0.5, fontWeight: 'bold', color: 'text.secondary', display: 'block' }}>{t('Quantity Needed')}</Typography>
                                             <TextField
                                                 fullWidth
                                                 size="small"
@@ -312,7 +314,7 @@ export default function OrderRequest() {
                                         )}
                                         
                                         <Box sx={{ p: 1.5, bgcolor: '#fffde7', borderRadius: 2, border: '1px solid #fff9c4', mt: 2 }}>
-                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#fbc02d', display: 'block', mb: 0.5 }}>Remarks / Note</Typography>
+                                            <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#fbc02d', display: 'block', mb: 0.5 }}>{t('Remarks / Note')}</Typography>
                                             <TextField
                                                 fullWidth
                                                 variant="standard"
@@ -343,7 +345,7 @@ export default function OrderRequest() {
                                         }}
                                         onClick={handleSubmitRequest}
                                     >
-                                        Submit Request
+                                        {t('Submit Request')}
                                     </Button>
                                 </Box>
                             </Box>

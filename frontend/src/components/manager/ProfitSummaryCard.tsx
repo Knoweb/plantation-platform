@@ -6,12 +6,14 @@ import PaymentsIcon from '@mui/icons-material/Payments';
 import SaveIcon from '@mui/icons-material/Save';
 import EditIcon from '@mui/icons-material/Edit';
 import { format, startOfMonth, endOfMonth } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface ProfitSummaryCardProps {
     tenantId: string;
 }
 
 const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(true);
     const [assumedRate, setAssumedRate] = useState(0);
     const [savedRate, setSavedRate] = useState(0);
@@ -180,28 +182,19 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
                 <Box>
                     <Box display="flex" alignItems="center" gap={1}>
                         <Typography variant="caption" fontWeight="1000" color="text.secondary" sx={{ letterSpacing: 1.5, textTransform: 'uppercase', opacity: 0.7 }}>
-                            Internal Projections
+                            {t('Internal Projections')}
                         </Typography>
-                        <Chip 
-                            label="PROJECTION" 
-                            size="small" 
-                            sx={{ height: 16, fontSize: '0.6rem', fontWeight: '1000', bgcolor: '#e2e8f0', color: '#64748b' }} 
-                        />
+                        <Chip label={t('PROJECTION')} size="small" sx={{ height: 16, fontSize: '0.6rem', fontWeight: '1000', bgcolor: '#e2e8f0', color: '#64748b' }} />
                     </Box>
                     <Typography variant="h6" fontWeight="1000" sx={{ color: '#0f172a', mt: 0.5 }}>
                         {monthName.toUpperCase()}
                     </Typography>
                 </Box>
                 <Box display="flex" flexDirection="column" alignItems="flex-end" gap={0.5}>
-                    <Chip 
-                        label={isProfit ? 'PROFITABLE' : 'POTENTIAL LOSS'} 
+                    <Chip
+                        label={isProfit ? t('PROFITABLE') : t('POTENTIAL LOSS')}
                         size="small"
-                        sx={{ 
-                            fontWeight: '1000', 
-                            fontSize: '0.65rem',
-                            bgcolor: isProfit ? '#22c55e' : '#ef4444', 
-                            color: '#fff'
-                        }} 
+                        sx={{ fontWeight: '1000', fontSize: '0.65rem', bgcolor: isProfit ? '#22c55e' : '#ef4444', color: '#fff' }}
                     />
                 </Box>
             </Box>
@@ -211,7 +204,7 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
             {/* Assumed Profit Metric */}
             <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', textAlign: 'center', zIndex: 1, py: 2 }}>
                 <Typography variant="caption" color="text.secondary" fontWeight="900" sx={{ letterSpacing: 3, textTransform: 'uppercase', mb: 1 }}>
-                    Assumed Profit
+                    {t('Assumed Profit')}
                 </Typography>
                 <Typography 
                     variant="h2" 
@@ -237,7 +230,7 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
                 }}>
                     <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: isProfit ? '#22c55e' : '#ef4444', animation: 'pulse 2s infinite' }} />
                     <Typography variant="subtitle2" fontWeight="1000" color={isProfit ? '#15803d' : '#991b1b'}>
-                        {isProfit ? 'Operating with Surplus' : 'Budget Shortfall'}
+                        {isProfit ? t('Operating with Surplus') : t('Budget Shortfall')}
                     </Typography>
                 </Box>
             </Box>
@@ -259,7 +252,7 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
                     >
                         <Box display="flex" alignItems="center" gap={1} mb={1}>
                             <TrendingUpIcon sx={{ fontSize: 16, color: '#22c55e' }} />
-                            <Typography variant="caption" fontWeight="1000" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Assumed green leaf rate</Typography>
+                            <Typography variant="caption" fontWeight="1000" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{t('Assumed green leaf rate')}</Typography>
                         </Box>
                         
                         <Box display="flex" alignItems="center" gap={1}>
@@ -317,7 +310,7 @@ const ProfitSummaryCard: React.FC<ProfitSummaryCardProps> = ({ tenantId }) => {
                     <Box sx={{ p: 1.5, borderRadius: 4, bgcolor: '#f8fafc', border: '1px solid', borderColor: '#e2e8f0' }}>
                         <Box display="flex" alignItems="center" gap={1} mb={1}>
                             <PaymentsIcon sx={{ fontSize: 16, color: '#ef4444' }} />
-                            <Typography variant="caption" fontWeight="1000" color="text.secondary" sx={{ letterSpacing: 0.5 }}>Total Cost (Actual)</Typography>
+                            <Typography variant="caption" fontWeight="1000" color="text.secondary" sx={{ letterSpacing: 0.5 }}>{t('Total Cost (Actual)')}</Typography>
                         </Box>
                         <Typography variant="h6" fontWeight="1000" sx={{ color: '#0f172a', display: 'flex', alignItems: 'baseline', gap: 0.5 }}>
                             <Typography component="span" variant="subtitle2" fontWeight="1000" sx={{ color: '#64748b' }}>Rs.</Typography>

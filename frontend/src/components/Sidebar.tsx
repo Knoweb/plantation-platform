@@ -37,6 +37,7 @@ import WorkHistoryIcon from '@mui/icons-material/WorkHistory';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useLanguage } from '../context/LanguageContext';
 
 const menuItems = [
     { text: 'Dashboard', icon: <DashboardIcon />, path: '/dashboard', roles: ['ESTATE_ADMIN', 'MANAGER', 'FIELD_OFFICER', 'CHIEF_CLERK'] },
@@ -107,6 +108,7 @@ interface SidebarProps {
 export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }: SidebarProps) {
     const navigate = useNavigate();
     const location = useLocation();
+    const { t } = useLanguage();
 
     // Load estate name & logo from backend session
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
@@ -644,7 +646,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                         <ListItemIcon sx={{ color: 'white', minWidth: 40, justifyContent: 'center', mr: 2 }}>
                             <DashboardIcon />
                         </ListItemIcon>
-                        <ListItemText primary="Dashboard" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
+                        <ListItemText primary={t('Dashboard')} primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
                     </ListItemButton>
                 </ListItem>
 
@@ -652,7 +654,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                 {(userRole === 'MANAGER' || userRole === 'MANAGER_CLERK') && sidebarDivisions.length > 0 && (
                     <Box sx={{ mt: 1, mb: 1 }}>
                         <Typography variant="overline" sx={{ px: 3, color: 'rgba(255,255,255,0.5)', fontWeight: 'bold' }}>
-                            Divisions
+                            {t('DIVISIONS')}
                         </Typography>
                         {sidebarDivisions.map((div: any) => {
                             const isActive = !!divMusterActive[String(div.divisionId)];
@@ -735,7 +737,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                     <GroupIcon />
                                 )}
                             </ListItemIcon>
-                            <ListItemText primary="Muster Review" primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
+                            <ListItemText primary={t('Muster Review')} primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }} />
                         </ListItemButton>
                     </ListItem>
                 )}
@@ -811,7 +813,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                                 )}
                             </ListItemIcon>
                             <ListItemText
-                                primary={item.text}
+                                primary={t(item.text)}
                                 primaryTypographyProps={{ fontSize: '1rem', fontWeight: 500 }}
                             />
                             {item.text === 'Evening Muster' && eveningPendingCount > 0 && (
@@ -852,7 +854,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
                     sx={{ borderRadius: 2, '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
                 >
                     <ListItemIcon sx={{ color: 'white' }}><LogoutIcon /></ListItemIcon>
-                    <ListItemText primary="Logout" />
+                    <ListItemText primary={t('Logout')} />
                 </ListItemButton>
             </Box>
         </Box>

@@ -25,10 +25,12 @@ import SpaIcon from '@mui/icons-material/Spa';
 import ForestIcon from '@mui/icons-material/Forest';
 import TerrainIcon from '@mui/icons-material/Terrain';
 import axios from 'axios';
+import { useLanguage } from '../context/LanguageContext';
 
 export default function Divisions() {
     const [divisions, setDivisions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { t } = useLanguage();
     const [error, setError] = useState('');
     const [openDialog, setOpenDialog] = useState(false);
     const [editingDivision, setEditingDivision] = useState<any>(null);
@@ -145,7 +147,7 @@ export default function Divisions() {
         <Container maxWidth="lg" sx={{ mt: 4, mb: 4 }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" color="primary" fontWeight="bold">
-                    Divisions
+                    {t('Divisions')}
                 </Typography>
                 <Button
                     variant="contained"
@@ -154,7 +156,7 @@ export default function Divisions() {
                     disabled={isManager}
                     sx={{ visibility: isManager ? 'hidden' : 'visible' }}
                 >
-                    Add Division
+                    {t('Add Division')}
                 </Button>
             </Box>
 
@@ -183,13 +185,13 @@ export default function Divisions() {
                         <Paper sx={{ p: 6, textAlign: 'center', width: '100%', borderRadius: 4, bgcolor: '#f5f5f5' }}>
                             <Box mb={2}><AgricultureIcon sx={{ fontSize: 60, color: '#bdbdbd' }} /></Box>
                             <Typography variant="h6" color="text.secondary" gutterBottom>
-                                No Divisions Found
+                                {t('No Divisions Found')}
                             </Typography>
                             <Typography variant="body2" color="text.secondary" mb={3}>
-                                Start mapping your estate by adding a division.
+                                {t('Start mapping your estate by adding a division.')}
                             </Typography>
                             <Button variant="outlined" startIcon={<AddIcon />} onClick={() => handleOpen()}>
-                                Create Division
+                                {t('Create Division')}
                             </Button>
                         </Paper>
                     )}
@@ -198,12 +200,12 @@ export default function Divisions() {
 
             {/* Add/Edit Dialog */}
             <Dialog open={openDialog} onClose={handleClose} maxWidth="xs" fullWidth PaperProps={{ sx: { borderRadius: 3 } }}>
-                <DialogTitle sx={{ fontWeight: 'bold' }}>{editingDivision ? "Edit Division" : "New Division"}</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>{editingDivision ? t('Edit Division') : t('New Division')}</DialogTitle>
                 <DialogContent>
                     <TextField
                         autoFocus
                         margin="dense"
-                        label="Division Name"
+                        label={t('Division Name')}
                         fullWidth
                         variant="outlined"
                         value={formData.name}
@@ -213,8 +215,8 @@ export default function Divisions() {
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 3 }}>
-                    <Button onClick={handleClose} color="inherit">Cancel</Button>
-                    <Button onClick={handleSave} variant="contained" sx={{ px: 4, borderRadius: 2 }}>Save</Button>
+                    <Button onClick={handleClose} color="inherit">{t('Cancel')}</Button>
+                    <Button onClick={handleSave} variant="contained" sx={{ px: 4, borderRadius: 2 }}>{t('Save')}</Button>
                 </DialogActions>
             </Dialog>
 
@@ -245,6 +247,7 @@ interface DivisionMapTileProps {
 function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly = false }: DivisionMapTileProps) {
     const [fields, setFields] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const { t } = useLanguage();
 
     useEffect(() => {
         fetchFields();
@@ -302,7 +305,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                         {division.name}
                     </Typography>
                     <Typography variant="caption" sx={{ color: '#2e7d32', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                        <TerrainIcon fontSize="inherit" /> {fields.length} Fields
+                        <TerrainIcon fontSize="inherit" /> {fields.length} {t('Fields')}
                     </Typography>
                 </Box>
                 <IconButton
@@ -332,7 +335,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                         sx={{ opacity: 0.6 }}
                     >
                         <AgricultureIcon sx={{ fontSize: 40, mb: 1, color: '#dcedc8' }} />
-                        <Typography variant="caption">Uncultivated Land</Typography>
+                        <Typography variant="caption">{t('Uncultivated Land')}</Typography>
                     </Box>
                 ) : (
                     <Box display="flex" flexWrap="wrap" gap={1.5}>
@@ -402,7 +405,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                                 onClick={() => onManageFields('ADD')}
                             >
                                 <AddIcon fontSize="small" />
-                                <Typography variant="button" fontSize="0.75rem">Add Field</Typography>
+                                <Typography variant="button" fontSize="0.75rem">{t('Add Field')}</Typography>
                             </Box>
                         )}
                     </Box>
@@ -444,7 +447,7 @@ function DivisionMapTile({ division, onEdit, onDelete, onManageFields, readOnly 
                             '&:hover': { color: 'primary.main', bgcolor: 'transparent' }
                         }}
                     >
-                        Manage Map
+                        {t('Manage Map')}
                     </Button>
                 )}
             </Box>

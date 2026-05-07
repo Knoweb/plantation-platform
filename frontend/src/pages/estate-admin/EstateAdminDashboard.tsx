@@ -1,6 +1,7 @@
 import React from 'react';
 import { Box, Typography, Grid } from '@mui/material';
 import CalendarMonthIcon from '@mui/icons-material/CalendarMonth';
+import { useLanguage } from '../../context/LanguageContext';
 
 import YieldAnalytics from '../../components/manager/YieldAnalytics';
 import CostAnalytics from '../../components/manager/CostAnalytics';
@@ -9,6 +10,7 @@ import CropPerformanceCard from '../../components/manager/CropPerformanceCard';
 const EstateAdminDashboard: React.FC = () => {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const { t } = useLanguage();
 
     return (
         <Box sx={{ p: { xs: 2, md: 4 }, bgcolor: '#f8fafc', minHeight: '100vh' }}>
@@ -38,7 +40,7 @@ const EstateAdminDashboard: React.FC = () => {
                     <CalendarMonthIcon sx={{ color: '#10b981' }} />
                     <Box>
                         <Typography variant="caption" sx={{ fontWeight: 'bold', color: '#64748b', textTransform: 'uppercase' }}>
-                            Current Date
+                            {t('Current Date')}
                         </Typography>
                         <Typography variant="subtitle2" sx={{ fontWeight: '800', color: '#1e293b' }}>
                             {new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}

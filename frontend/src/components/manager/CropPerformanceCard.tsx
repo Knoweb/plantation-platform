@@ -5,6 +5,8 @@ import DashboardCard from './DashboardCard';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import StarIcon from '@mui/icons-material/Star';
 import ApartmentIcon from '@mui/icons-material/Apartment';
+import { useLanguage } from '../../context/LanguageContext';
+
 
 interface DivisionContribution {
     id: string;
@@ -18,6 +20,7 @@ interface CropPerformanceProps {
 }
 
 const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
+    const { t } = useLanguage();
     const [activeCrop, setActiveCrop] = useState('Tea');
     const [selectedMonth, setSelectedMonth] = useState(() => {
         const d = new Date();
@@ -147,17 +150,17 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
     }, [tenantId, activeCrop, selectedMonth, divisions]);
 
     return (
-        <DashboardCard 
+        <DashboardCard
             variant="emerald"
-            title="Crop Performance (vs Budget)" 
+            title={t('Crop Performance (vs Budget)')}
             icon={<MenuBookIcon />}
             filters={
                 <Box display="flex" gap={1.5}>
                     <FormControl size="small" sx={{ minWidth: 100 }}>
-                        <InputLabel>Crop</InputLabel>
+                        <InputLabel>{t('Crop')}</InputLabel>
                         <Select
                             value={activeCrop}
-                            label="Crop"
+                            label={t('Crop')}
                             onChange={(e) => setActiveCrop(e.target.value)}
                         >
                             {availableCrops.map(crop => (
@@ -191,16 +194,16 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                     <Grid container spacing={4} sx={{ mb: 4 }}>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Paper variant="outlined" sx={{ p: 2.5, textAlign: 'center', bgcolor: '#fdfcfe', borderRadius: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 'bold', textTransform: 'uppercase' }}>Achievement</Typography>
+                                <Typography variant="caption" sx={{ color: '#6366f1', fontWeight: 'bold', textTransform: 'uppercase' }}>{t('Achievement')}</Typography>
                                 <Typography variant="h4" fontWeight="800" sx={{ color: '#4f46e5', my: 0.5 }}>{performance.actual.toLocaleString()} <Typography component="span" variant="subtitle1">kg</Typography></Typography>
-                                <Typography variant="body2" color="text.secondary">Total harvested this month to date</Typography>
+                                <Typography variant="body2" color="text.secondary">{t('Total harvested this month to date')}</Typography>
                             </Paper>
                         </Grid>
                         <Grid size={{ xs: 12, md: 6 }}>
                             <Paper variant="outlined" sx={{ p: 2.5, textAlign: 'center', bgcolor: '#fffbeb', borderRadius: 3, height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                                <Typography variant="caption" sx={{ color: '#d97706', fontWeight: 'bold', textTransform: 'uppercase' }}>Target Budget</Typography>
+                                <Typography variant="caption" sx={{ color: '#d97706', fontWeight: 'bold', textTransform: 'uppercase' }}>{t('Target Budget')}</Typography>
                                 <Typography variant="h4" fontWeight="800" sx={{ color: '#b45309', my: 0.5 }}>{performance.budget.toLocaleString()} <Typography component="span" variant="subtitle1">kg</Typography></Typography>
-                                <Typography variant="body2" color="text.secondary">Budgeted for {new Date(selectedMonth).toLocaleString('default', { month: 'long' })}</Typography>
+                                <Typography variant="body2" color="text.secondary">{t('Budgeted for')} {new Date(selectedMonth).toLocaleString('default', { month: 'long' })}</Typography>
                             </Paper>
                         </Grid>
                     </Grid>
@@ -209,7 +212,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                         <Box display="flex" justifyContent="space-between" mb={1} alignItems="center">
                             <Box display="flex" alignItems="center" gap={1}>
                                 <StarIcon fontSize="small" sx={{ color: '#fbbf24' }} />
-                                <Typography variant="subtitle2" fontWeight="bold" color="#1e293b">Target Achievement</Typography>
+                                <Typography variant="subtitle2" fontWeight="bold" color="#1e293b">{t('Target Achievement')}</Typography>
                             </Box>
                             <Typography variant="h6" fontWeight="bold" color={performance.percent >= 100 ? '#10b981' : '#f59e0b'}>
                                 {performance.percent.toFixed(1)}%
@@ -230,12 +233,12 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                         />
                         {performance.percent < 100 && (
                             <Typography variant="caption" color="text.secondary" sx={{ mt: 1, display: 'block' }}>
-                                Shortfall of {(performance.budget - performance.actual).toLocaleString()} kg to reach target.
+                                {t('Shortfall of')} {(performance.budget - performance.actual).toLocaleString()} {t('kg to reach target.')}
                             </Typography>
                         )}
                         {performance.percent >= 100 && (
                             <Typography variant="caption" color="#10b981" sx={{ mt: 1, display: 'block', fontWeight: 'bold' }}>
-                                Target Exceeded! Well done.
+                                {t('Target Exceeded! Well done.')}
                             </Typography>
                         )}
                     </Box>
@@ -245,7 +248,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                         <Box display="flex" alignItems="center" gap={1} mb={2}>
                             <ApartmentIcon sx={{ fontSize: 18, color: '#64748b' }} />
                             <Typography variant="subtitle2" fontWeight="800" color="#475569" sx={{ textTransform: 'uppercase', letterSpacing: 1 }}>
-                                Contribution by Division
+                                {t('Contribution by Division')}
                             </Typography>
                         </Box>
                         
@@ -285,7 +288,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                             ) : (
                                 <Grid size={{ xs: 12 }}>
                                     <Box sx={{ p: 2, textAlign: 'center', bgcolor: '#f8fafc', borderRadius: 3, border: '1px dashed #cbd5e1' }}>
-                                        <Typography variant="caption" color="text.secondary">No division-wise data available for this month.</Typography>
+                                        <Typography variant="caption" color="text.secondary">{t('No division-wise data available for this month.')}</Typography>
                                     </Box>
                                 </Grid>
                             )}
@@ -293,7 +296,7 @@ const CropPerformanceCard: React.FC<CropPerformanceProps> = ({ tenantId }) => {
                     </Box>
                 </Box>
             ) : (
-                <Typography color="text.secondary">No performance data available for this selection.</Typography>
+                <Typography color="text.secondary">{t('No performance data available for this selection.')}</Typography>
             )}
         </DashboardCard>
     );

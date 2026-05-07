@@ -6,6 +6,7 @@ import TrendingUpIcon from '@mui/icons-material/TrendingUp';
 import DashboardCard from './DashboardCard';
 import AgricultureIcon from '@mui/icons-material/Agriculture';
 import { eachDayOfInterval, format, endOfMonth, eachWeekOfInterval, isSameDay, isSameWeek } from 'date-fns';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface YieldAnalyticsProps {
     tenantId: string;
@@ -18,6 +19,7 @@ interface ChartDataPoint {
 }
 
 const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
+    const { t } = useLanguage();
     const [divisions, setDivisions] = useState<any[]>([]);
     const [selectedDivision, setSelectedDivision] = useState<string>('ALL');
     const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
@@ -149,9 +151,9 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
     };
 
     return (
-        <DashboardCard 
+        <DashboardCard
             variant="amber"
-            title="Yield Analytics" 
+            title={t('Yield Analytics')}
             icon={<AgricultureIcon sx={{ color: '#10b981' }} />}
         >
             {/* Relocated Filter Bar: Integrated into Body for better space management */}
@@ -174,9 +176,9 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
                         }
                     }}
                 >
-                    <ToggleButton value="daily">Day</ToggleButton>
-                    <ToggleButton value="weekly">Week</ToggleButton>
-                    <ToggleButton value="monthly">Month</ToggleButton>
+                    <ToggleButton value="daily">{t('Day')}</ToggleButton>
+                    <ToggleButton value="weekly">{t('Week')}</ToggleButton>
+                    <ToggleButton value="monthly">{t('Month')}</ToggleButton>
                 </ToggleButtonGroup>
 
                 <FormControl size="small" sx={{ minWidth: 100 }}>
@@ -185,7 +187,7 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
                         onChange={(e) => setSelectedDivision(e.target.value)}
                         sx={{ borderRadius: 2, bgcolor: '#ffffff', height: 28, fontSize: '0.65rem', fontWeight: '800', border: '1px solid #e2e8f0', '& .MuiOutlinedInput-notchedOutline': { border: 'none' } }}
                     >
-                        <MenuItem value="ALL" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>All Divisions</MenuItem>
+                        <MenuItem value="ALL" sx={{ fontSize: '0.7rem', fontWeight: 'bold' }}>{t('All Divisions')}</MenuItem>
                         {divisions.map((d: any) => (<MenuItem key={d.divisionId} value={d.divisionId} sx={{ fontSize: '0.7rem' }}>{d.name}</MenuItem>))}
                     </Select>
                 </FormControl>
@@ -230,12 +232,12 @@ const YieldAnalytics: React.FC<YieldAnalyticsProps> = ({ tenantId }) => {
                 <Box sx={{ textAlign: 'right', display: 'flex', flexDirection: 'column', gap: 1 }}>
                     <Box sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5, px: 2, py: 0.75, borderRadius: 10, bgcolor: '#f0fdf4', border: '1px solid #dcfce7', boxShadow: '0 2px 10px rgba(16, 185, 129, 0.05)' }}>
                         <TrendingUpIcon sx={{ fontSize: 16, color: '#166534' }} />
-                        <Typography variant="caption" fontWeight="950" color="#166534">
-                            LIVE TREND
+                        <Typography variant="caption" fontWeight="900" color="#166534">
+                            {t('LIVE TREND')}
                         </Typography>
                     </Box>
                     <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 'bold', display: 'block' }}>
-                        Updated just now
+                        {t('Updated just now')}
                     </Typography>
                 </Box>
             </Box>
