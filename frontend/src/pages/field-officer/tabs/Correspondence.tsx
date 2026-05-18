@@ -20,6 +20,7 @@ export default function Correspondence() {
 
     const [chats, setChats] = useState<any[]>([]);
     const [selectedChatId, setSelectedChatId] = useState('');
+    const [searchQuery, setSearchQuery] = useState('');
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState('');
     const [attachedImage, setAttachedImage] = useState<string | null>(null);
@@ -92,27 +93,35 @@ export default function Correspondence() {
         const loadUsers = () => {
              axios.get(`/api/tenants/${tenantId}/users`)
                 .then(res => {
+                    if (!res.data || !Array.isArray(res.data)) {
+                        setChats([]);
+                        return;
+                    }
+                    const myIdStr = myId ? myId.toString().toLowerCase() : '';
                     const fetchedUsers = res.data
-                        .filter((u: any) => u.userId !== myId)
+                        .filter((u: any) => u.userId && u.userId.toString().toLowerCase() !== myIdStr)
                         .map((u: any) => ({
                             id: u.userId,
-                            name: u.fullName,
-                            role: u.role.replace('_', ' '),
+                            name: u.fullName || u.name || 'Unknown User',
+                            role: u.role ? u.role.replace('_', ' ') : 'USER',
                             lastSeen: u.lastSeen,
                             type: 'user'
                         }));
 
                     setChats(fetchedUsers);
-                    if (fetchedUsers.length > 0 && !selectedChatId) {
-                        setSelectedChatId(fetchedUsers[0].id);
-                    }
+                    setSelectedChatId(prev => {
+                        if (!prev && fetchedUsers.length > 0) {
+                            return fetchedUsers[0].id;
+                        }
+                        return prev;
+                    });
                 })
                 .catch(err => console.error("Failed to load users for chat", err));
         };
         loadUsers();
         const interval = setInterval(loadUsers, 10000); // Refresh user status every 10s
         return () => clearInterval(interval);
-    }, [tenantId, myId, selectedChatId]);
+    }, [tenantId, myId]);
 
     useEffect(() => {
         fetchMessages();
@@ -225,6 +234,8 @@ export default function Correspondence() {
                             size="small"
                             placeholder="Search contacts..."
                             variant="outlined"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
                             InputProps={{
                                 startAdornment: <SearchIcon sx={{ color: '#aaa', mr: 1, fontSize: 20 }} />,
                                 sx: { borderRadius: 3, bgcolor: '#f5f5f5', border: 'none', '& fieldset': { border: 'none' } }
@@ -238,10 +249,15 @@ export default function Correspondence() {
                     </Typography>
                     
                     <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
-                        {chats.map(chat => {
-                            const userOnline = isOnline(chat.lastSeen);
-                            return (
-                                <ListItemButton
+                        {chats
+                            .filter(chat => 
+                                (chat.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                (chat.role || '').toLowerCase().includes(searchQuery.toLowerCase())
+                            )
+                            .map(chat => {
+                                const userOnline = isOnline(chat.lastSeen);
+                                return (
+                                    <ListItemButton
                                     key={chat.id}
                                     selected={selectedChatId === chat.id}
                                     onClick={() => setSelectedChatId(chat.id)}
@@ -282,7 +298,7 @@ export default function Correspondence() {
                     {/* Chat Header */}
                     <Box sx={{ p: 2, px: 3, bgcolor: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
                         <Avatar sx={{ width: 36, height: 36, mr: 2, bgcolor: '#e8f5e9', color: '#1b5e20' }}>
-                            {activeChatUser?.name.charAt(0)}
+                            {activeChatUser?.name?.charAt(0) || ''}
                         </Avatar>
                         <Box>
                             <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{activeChatUser?.name}</Typography>
