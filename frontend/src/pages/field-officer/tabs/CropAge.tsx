@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react';
 import {
-    Box, Typography, Card, CardContent, Grid, CircularProgress
+    Box, Typography, Card, CardContent, Grid, CircularProgress,
+    Dialog, DialogTitle, DialogContent, DialogActions, Button, TextField,
+    Snackbar, Alert, Tooltip
 } from '@mui/material';
 import SpaIcon from '@mui/icons-material/Spa';
 import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 import ForestIcon from '@mui/icons-material/Forest';
+import EditIcon from '@mui/icons-material/Edit';
 import axios from 'axios';
 import { keyframes } from '@mui/system';
 import { useLanguage } from '../../../context/LanguageContext';
@@ -40,6 +43,50 @@ export default function CropAge() {
     const [fieldsData, setFieldsData] = useState<any[]>([]);
     const [divisions, setDivisions] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+
+    // Edit Field Age State
+    const [selectedField, setSelectedField] = useState<any | null>(null);
+    const [editDate, setEditDate] = useState<string>('');
+    const [openDialog, setOpenDialog] = useState(false);
+    const [snackbar, setSnackbar] = useState<{ open: boolean; message: string; severity: 'success' | 'error' }>({
+        open: false,
+        message: '',
+        severity: 'success'
+    });
+
+    const handleOpenEdit = (field: any) => {
+        setSelectedField(field);
+        setEditDate(field.plantedDate || '');
+        setOpenDialog(true);
+    };
+
+    const handleSaveDate = async () => {
+        if (!selectedField) return;
+        try {
+            const payload = {
+                name: selectedField.name,
+                acreage: selectedField.acreage,
+                cropType: selectedField.cropType,
+                plantedDate: editDate || null
+            };
+            await axios.put(`/api/fields/${selectedField.fieldId}`, payload);
+            setOpenDialog(false);
+            setSnackbar({
+                open: true,
+                message: t('Field age updated successfully!'),
+                severity: 'success'
+            });
+            // Update local state to reflect change immediately without full reload
+            setFieldsData(prev => prev.map(f => f.fieldId === selectedField.fieldId ? { ...f, plantedDate: editDate || null } : f));
+        } catch (error) {
+            console.error(error);
+            setSnackbar({
+                open: true,
+                message: t('Failed to update field age.'),
+                severity: 'error'
+            });
+        }
+    };
 
     useEffect(() => {
         const fetchData = async () => {
@@ -210,19 +257,40 @@ export default function CropAge() {
                                                                 animation: `${floatUp} 4s infinite ease-in-out`
                                                             }} />
                                                     </Box>
-
-                                                    <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 1.5, border: '1px solid #edf2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                                        <Box>
-                                                            <Typography sx={{ fontSize: '0.5rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase' }}>{t('Field Age')}</Typography>
-                                                            <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#2d3748' }}>
-                                                                {field.plantedDate ? `${age.years}y ${age.months}m` : 'N/A'}
-                                                            </Typography>
-                                                        </Box>
-                                                        <Box sx={{ textAlign: 'right' }}>
-                                                            <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, display: 'inline-block', mr: 0.5, animation: 'pulse 2s infinite' }} />
-                                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700 }}>{t('Active')}</Typography>
-                                                        </Box>
-                                                    </Box>
+                                                     <Tooltip title={t("Click to set/edit crop age")} arrow>
+                                                         <Box 
+                                                             onClick={() => handleOpenEdit(field)}
+                                                             sx={{ 
+                                                                 bgcolor: '#f8fafc', 
+                                                                 p: 1, 
+                                                                 borderRadius: 1.5, 
+                                                                 border: '1px solid #edf2f7', 
+                                                                 display: 'flex', 
+                                                                 justifyContent: 'space-between', 
+                                                                 alignItems: 'center',
+                                                                 cursor: 'pointer',
+                                                                 transition: 'all 0.2s',
+                                                                 '&:hover': {
+                                                                     bgcolor: '#edf2f7',
+                                                                     borderColor: '#cbd5e1'
+                                                                 }
+                                                             }}
+                                                         >
+                                                             <Box>
+                                                                 <Typography sx={{ fontSize: '0.5rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase' }}>{t('Field Age')}</Typography>
+                                                                 <Box display="flex" alignItems="center" gap={0.5}>
+                                                                     <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#2d3748' }}>
+                                                                         {field.plantedDate ? `${age.years}y ${age.months}m` : 'N/A'}
+                                                                     </Typography>
+                                                                     <EditIcon sx={{ fontSize: 10, color: 'text.secondary', opacity: 0.6 }} />
+                                                                 </Box>
+                                                             </Box>
+                                                             <Box sx={{ textAlign: 'right' }}>
+                                                                 <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, display: 'inline-block', mr: 0.5, animation: 'pulse 2s infinite' }} />
+                                                                 <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700 }}>{t('Active')}</Typography>
+                                                             </Box>
+                                                         </Box>
+                                                     </Tooltip>
                                                 </CardContent>
                                             </Card>
                                         </Grid>
@@ -239,6 +307,62 @@ export default function CropAge() {
                     {t('No infrastructure data detected. Please register divisions.')}
                 </Typography>
             )}
+            {/* Edit Field Age Dialog */}
+            <Dialog 
+                open={openDialog} 
+                onClose={() => setOpenDialog(false)}
+                PaperProps={{
+                    sx: {
+                        borderRadius: 3,
+                        p: 1,
+                        minWidth: { xs: 280, sm: 360 }
+                    }
+                }}
+            >
+                <DialogTitle sx={{ fontWeight: 'bold', color: 'primary.main', pb: 1 }}>
+                    {t('Set Planted Date')}
+                </DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                        {t('Enter the date when crops were planted in')} <strong>{selectedField?.name}</strong>. {t('The field age will be calculated automatically.')}
+                    </Typography>
+                    <TextField
+                        fullWidth
+                        type="date"
+                        label={t('Planted Date')}
+                        InputLabelProps={{ shrink: true }}
+                        value={editDate}
+                        onChange={(e) => setEditDate(e.target.value)}
+                        variant="outlined"
+                        sx={{ mt: 1 }}
+                    />
+                </DialogContent>
+                <DialogActions sx={{ px: 3, pb: 2 }}>
+                    <Button onClick={() => setOpenDialog(false)} color="inherit" sx={{ fontWeight: 'bold' }}>
+                        {t('Cancel')}
+                    </Button>
+                    <Button 
+                        onClick={handleSaveDate} 
+                        variant="contained" 
+                        color="success" 
+                        sx={{ fontWeight: 'bold', borderRadius: 2 }}
+                    >
+                        {t('Save')}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+
+            {/* Snackbar feedback */}
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={4000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <Alert onClose={() => setSnackbar({ ...snackbar, open: false })} severity={snackbar.severity} sx={{ width: '100%' }}>
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
         </Box>
     );
 }
