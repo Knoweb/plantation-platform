@@ -14,6 +14,7 @@ import {
 } from '@mui/material';
 import { DataGrid, type GridColDef } from '@mui/x-data-grid';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 import DownloadIcon from '@mui/icons-material/Download';
 import {
@@ -29,6 +30,7 @@ type PeriodKey = 'today' | 'toDate';
 type MetricValues = Record<CropKey, Record<PeriodKey, string>>;
 
 interface MetricRow {
+    key: string;
     label: string;
     unit?: string;
     values: MetricValues;
@@ -281,22 +283,24 @@ type DisplayRow = {
     emphasis?: 'normal' | 'dark';
 };
 
-const metricRows: MetricRow[] = [
-    { label: 'Budgeted Crop',     unit: 'Kg',     values: defaultValues() },
-    { label: 'Crop',              unit: 'Kg',     values: defaultValues() },
-    { label: 'Crop per day',      unit: 'Kg',     values: defaultValues() },
-    { label: 'Balance',           unit: 'Kg',     values: defaultValues(), emphasis: 'dark' },
-    { label: 'Per Day',           unit: 'Kg',     values: defaultValues() },
-    { label: 'Work Offered days', unit: 'Days',   values: defaultValues() },
-    { label: 'Plucking Average',  unit: 'Kg',     values: defaultValues() },
-    { label: 'Plucking Cost',     unit: 'Rs.',    values: defaultValues() },
-    { label: 'Weeding Cost',      unit: 'Rs.',    values: defaultValues() },
-    { label: 'RLO',               unit: 'Kg/LD',  values: defaultValues(), emphasis: 'dark' },
-    { label: 'Crop/Acre',         unit: 'Kg/Ac', values: defaultValues() },
-    { label: 'Checkroll Weight',  unit: 'Kg',     values: defaultValues() },
-];
-
 export default function CropAchievements() {
+    const { t } = useLanguage();
+
+    const metricRows: MetricRow[] = useMemo(() => [
+        { key: 'Budgeted Crop',     label: t('Budgeted Crop'),     unit: 'Kg',     values: defaultValues() },
+        { key: 'Crop',              label: t('Crop'),              unit: 'Kg',     values: defaultValues() },
+        { key: 'Crop per day',      label: t('Crop per day'),      unit: 'Kg',     values: defaultValues() },
+        { key: 'Balance',           label: t('Balance'),           unit: 'Kg',     values: defaultValues(), emphasis: 'dark' },
+        { key: 'Per Day',           label: t('Per Day'),           unit: 'Kg',     values: defaultValues() },
+        { key: 'Work Offered days', label: t('Work Offered days'), unit: 'Days',   values: defaultValues() },
+        { key: 'Plucking Average',  label: t('Plucking Average'),  unit: 'Kg',     values: defaultValues() },
+        { key: 'Plucking Cost',     label: t('Plucking Cost'),     unit: 'Rs.',    values: defaultValues() },
+        { key: 'Weeding Cost',      label: t('Weeding Cost'),      unit: 'Rs.',    values: defaultValues() },
+        { key: 'RLO',               label: t('RLO'),               unit: 'Kg/LD',  values: defaultValues(), emphasis: 'dark' },
+        { key: 'Crop/Acre',         label: t('Crop/Acre'),         unit: 'Kg/Ac', values: defaultValues() },
+        { key: 'Checkroll Weight',  label: t('Checkroll Weight'),  unit: 'Kg',     values: defaultValues() },
+    ], [t]);
+
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     const userSession = useMemo(() => JSON.parse(sessionStorage.getItem('user') || '{}'), []);
@@ -393,9 +397,9 @@ export default function CropAchievements() {
 
         // Column headers
         rows.push([
-            mkCell('Metric',  { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'left' }),
-            mkCell('Today',   { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
-            mkCell('To Date', { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
+            mkCell(t('Metric'),  { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'left' }),
+            mkCell(t('Today'),   { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
+            mkCell(t('To Date'), { bg: G_MID, fc: WHITE, bold: true, sz: 11, hz: 'right' }),
         ]);
 
         // Data rows
@@ -844,40 +848,40 @@ export default function CropAchievements() {
     const displayedRows = useMemo(
         () =>
             metricRows.map((row) => {
-                if (row.label === 'Budgeted Crop') {
+                if (row.key === 'Budgeted Crop') {
                     return { ...row, values: achievementMetrics.budgetedCrop };
                 }
-                if (row.label === 'Crop') {
+                if (row.key === 'Crop') {
                     return { ...row, values: achievementMetrics.crop };
                 }
-                if (row.label === 'Crop per day') {
+                if (row.key === 'Crop per day') {
                     return { ...row, values: achievementMetrics.cropPerDay };
                 }
-                if (row.label === 'Balance') {
+                if (row.key === 'Balance') {
                     return { ...row, values: achievementMetrics.balance };
                 }
-                if (row.label === 'Per Day') {
+                if (row.key === 'Per Day') {
                     return { ...row, values: achievementMetrics.perDay };
                 }
-                if (row.label === 'Work Offered days') {
+                if (row.key === 'Work Offered days') {
                     return { ...row, values: achievementMetrics.workOfferedDays };
                 }
-                if (row.label === 'Plucking Average') {
+                if (row.key === 'Plucking Average') {
                     return { ...row, values: achievementMetrics.pluckingAverage };
                 }
-                if (row.label === 'Checkroll Weight') {
+                if (row.key === 'Checkroll Weight') {
                     return { ...row, values: achievementMetrics.checkrollWeight };
                 }
-                if (row.label === 'Plucking Cost') {
+                if (row.key === 'Plucking Cost') {
                     return { ...row, values: achievementMetrics.pluckingCost };
                 }
-                if (row.label === 'Weeding Cost') {
+                if (row.key === 'Weeding Cost') {
                     return { ...row, values: achievementMetrics.weedingCost };
                 }
-                if (row.label === 'RLO') {
+                if (row.key === 'RLO') {
                     return { ...row, values: achievementMetrics.rlo };
                 }
-                if (row.label === 'Crop/Acre') {
+                if (row.key === 'Crop/Acre') {
                     return { ...row, values: achievementMetrics.cropAcre };
                 }
                 return row;
@@ -901,13 +905,13 @@ export default function CropAchievements() {
         () => [
             {
                 field: 'label',
-                headerName: 'Metric',
+                headerName: t('Metric'),
                 flex: isMobile ? 1 : 1.2,
                 minWidth: isMobile ? 130 : 200,
             },
             {
                 field: 'today',
-                headerName: 'Today',
+                headerName: t('Today'),
                 flex: isMobile ? 0.6 : 0.7,
                 minWidth: isMobile ? 85 : 140,
                 align: 'right',
@@ -915,7 +919,7 @@ export default function CropAchievements() {
             },
             {
                 field: 'toDate',
-                headerName: 'To Date',
+                headerName: t('To Date'),
                 flex: isMobile ? 0.6 : 0.7,
                 minWidth: isMobile ? 85 : 140,
                 align: 'right',
@@ -938,7 +942,7 @@ export default function CropAchievements() {
             {/* ── Page Header: Title + Download button ── */}
             <Box display="flex" alignItems="center" justifyContent="space-between" mb={{ xs: 1, md: 2 }} px={{ xs: 0.5, md: 0 }}>
                 <Typography variant={isMobile ? 'h6' : 'h4'} fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.2rem', md: '2.125rem' } }}>
-                    Crop Achievements
+                    {t('Crop Achievements')}
                 </Typography>
                 <Button
                     variant="contained"
@@ -958,7 +962,7 @@ export default function CropAchievements() {
                         height: isMobile ? 28 : 36,
                     }}
                 >
-                    {isMobile ? 'Snapshot' : 'Download Snapshot'}
+                    {isMobile ? t('Snapshot') : t('Download Snapshot')}
                 </Button>
             </Box>
 

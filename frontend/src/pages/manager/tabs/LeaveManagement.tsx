@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 import {
     Box,
     Typography,
@@ -36,6 +37,7 @@ import { Autocomplete } from '@mui/material';
 export default function LeaveManagement() {
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
+    const { t } = useLanguage();
 
     const [tabIndex, setTabIndex] = useState(0);
     const [staffMembers, setStaffMembers] = useState<any[]>([]);
@@ -198,7 +200,7 @@ export default function LeaveManagement() {
     return (
         <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
             <Typography variant="h6" fontWeight="bold" color="primary">
-                Staff Leave Management
+                {t('Staff Leave Management')}
             </Typography>
 
             <Box sx={{ borderBottom: '1px solid #e2e8f0', mb: 2, width: '100%', display: 'flex' }}>
@@ -219,7 +221,7 @@ export default function LeaveManagement() {
                     }}
                 >
                     <Tab 
-                        label="Quotas" 
+                        label={t('Quotas')} 
                         icon={<EventAvailableIcon sx={{ fontSize: 18 }} />} 
                         iconPosition="start" 
                         sx={{ 
@@ -234,7 +236,7 @@ export default function LeaveManagement() {
                     <Tab
                         label={
                             <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                                <span>Approvals</span>
+                                <span>{t('Approvals')}</span>
                                 {pendingLeaves.length > 0 && (
                                     <Box sx={{ 
                                         bgcolor: 'error.main', color: 'white', 
@@ -259,7 +261,7 @@ export default function LeaveManagement() {
                         }}
                     />
                     <Tab
-                        label="History"
+                        label={t('History')}
                         icon={<VisibilityIcon sx={{ fontSize: 18 }} />}
                         iconPosition="start"
                         sx={{ 
@@ -278,9 +280,9 @@ export default function LeaveManagement() {
                 <Grid container spacing={3}>
                     <Grid size={{ xs: 12, md: 4 }}>
                         <Paper sx={{ p: 2, height: '100%' }}>
-                            <Typography variant="subtitle1" fontWeight="bold" mb={2}>Select Staff Member</Typography>
+                            <Typography variant="subtitle1" fontWeight="bold" mb={2}>{t('Select Staff Member')}</Typography>
                             {loading ? <CircularProgress /> : staffMembers.length === 0 ? (
-                                <Typography>No field staff found.</Typography>
+                                <Typography>{t('No field staff found.')}</Typography>
                             ) : (
                                 staffMembers.map(staff => (
                                     <Box
@@ -310,30 +312,30 @@ export default function LeaveManagement() {
                         {selectedStaff && (
                             <Paper sx={{ p: 3 }}>
                                 <Typography variant="h6" gutterBottom color="primary.dark">
-                                    Configure Quotas for {staffMembers.find(s => s.id === selectedStaff)?.name}
+                                    {t('Configure Quotas for')} {staffMembers.find(s => s.id === selectedStaff)?.name}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary" mb={3}>
-                                    Set annual leave availability. Field Officers will see these values in their dashboard.
+                                    {t('Set annual leave availability. Field Officers will see these values in their dashboard.')}
                                 </Typography>
                                 <Grid container spacing={3}>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField fullWidth label="Duty Leave" type="text" value={quotas.duty}
+                                        <TextField fullWidth label={t('Duty Leave')} type="text" value={quotas.duty}
                                             onChange={(e) => setQuotas({ ...quotas, duty: Number(e.target.value.replace(/[^0-9]/g, '')) })}
                                             InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField fullWidth label="Annual Leave" type="text" value={quotas.annual}
+                                        <TextField fullWidth label={t('Annual Leave')} type="text" value={quotas.annual}
                                             onChange={(e) => setQuotas({ ...quotas, annual: Number(e.target.value.replace(/[^0-9]/g, '')) })}
                                             InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12, sm: 4 }}>
-                                        <TextField fullWidth label="Casual Leave" type="text" value={quotas.casual}
+                                        <TextField fullWidth label={t('Casual Leave')} type="text" value={quotas.casual}
                                             onChange={(e) => setQuotas({ ...quotas, casual: Number(e.target.value.replace(/[^0-9]/g, '')) })}
                                             InputProps={{ inputProps: { min: 0, inputMode: 'numeric' } }} />
                                     </Grid>
                                     <Grid size={{ xs: 12 }}>
                                         <Button variant="contained" color="success" size="large" onClick={handleSaveQuota} sx={{ mt: 2 }}>
-                                            Update Quotas
+                                            {t('Update Quotas')}
                                         </Button>
                                     </Grid>
                                 </Grid>
@@ -347,9 +349,9 @@ export default function LeaveManagement() {
             {tabIndex === 1 && (
                 <Paper sx={{ p: 2 }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={2}>
-                        <Typography variant="subtitle1" fontWeight="bold">Pending Leave Requests</Typography>
+                        <Typography variant="subtitle1" fontWeight="bold">{t('Pending Leave Requests')}</Typography>
                         {pendingLeaves.length > 0 && (
-                            <Chip label={`${pendingLeaves.length} Pending`} color="error" size="small" />
+                            <Chip label={`${pendingLeaves.length} ${t('Pending')}`} color="error" size="small" />
                         )}
                     </Box>
 
@@ -403,7 +405,7 @@ export default function LeaveManagement() {
                                                                 startIcon={<VisibilityIcon />}
                                                                 onClick={() => handleOpenView(req)}
                                                             >
-                                                                View
+                                                                {t('View')}
                                                             </Button>
                                                         </TableCell>
                                                     </TableRow>
@@ -411,7 +413,7 @@ export default function LeaveManagement() {
                                     ) : (
                                         <TableRow>
                                             <TableCell colSpan={8} align="center" sx={{ py: 4 }}>
-                                                <Typography color="text.secondary">No pending leave requests at this time.</Typography>
+                                                <Typography color="text.secondary">{t('No pending leave requests at this time.')}</Typography>
                                             </TableCell>
                                         </TableRow>
                                     )}
@@ -426,8 +428,8 @@ export default function LeaveManagement() {
             {tabIndex === 2 && (
                 <Paper sx={{ p: 0, overflow: 'hidden', borderRadius: 2, border: '1px solid #e0e0e0' }}>
                     <Box display="flex" justifyContent="space-between" alignItems="center" p={3} bgcolor="#f8fafc" borderBottom="1px solid #e0e0e0">
-                        <Typography variant="h6" fontWeight="bold">Leave Processing History</Typography>
-                        <Chip label={`${historyLeaves.length} records`} size="small" variant="outlined" />
+                        <Typography variant="h6" fontWeight="bold">{t('Leave Processing History')}</Typography>
+                        <Chip label={`${historyLeaves.length} ${t('records')}`} size="small" variant="outlined" />
                     </Box>
                     <TableContainer component={Box} sx={{ maxHeight: '60vh', overflowX: 'auto' }}>
                         <Table stickyHeader size="small" sx={{ minWidth: 750 }}>
@@ -446,7 +448,7 @@ export default function LeaveManagement() {
                                     <TableRow>
                                         <TableCell colSpan={6} align="center" sx={{ py: 10 }}>
                                             <Box sx={{ opacity: 0.5 }}>
-                                                <Typography color="text.secondary">No leave applications found in history.</Typography>
+                                                <Typography color="text.secondary">{t('No leave applications found in history.')}</Typography>
                                             </Box>
                                         </TableCell>
                                     </TableRow>
@@ -489,7 +491,7 @@ export default function LeaveManagement() {
                                                     onClick={() => handleOpenView(app)}
                                                     sx={{ fontSize: '0.75rem' }}
                                                 >
-                                                    View Details
+                                                    {t('View Details')}
                                                 </Button>
                                             </TableCell>
                                         </TableRow>
@@ -504,14 +506,14 @@ export default function LeaveManagement() {
             {/* Leave Details Dialog */}
             <Dialog open={viewDialog.open} onClose={() => setViewDialog({ open: false, application: null })} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                    <Typography variant="h6" fontWeight="bold">Leave Application Details</Typography>
+                    <Typography variant="h6" fontWeight="bold">{t('Leave Application Details')}</Typography>
                     <Button onClick={() => setViewDialog({ open: false, application: null })} color="inherit"><CloseIcon /></Button>
                 </DialogTitle>
                 <DialogContent sx={{ py: 3 }}>
                     {viewDialog.application && (
                         <Grid container spacing={3}>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Staff Name</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Staff Name')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">
                                     {viewDialog.application.userName}
                                     {(() => {
@@ -521,41 +523,41 @@ export default function LeaveManagement() {
                                 </Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Leave Type</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Leave Type')}</Typography>
                                 <Box mt={0.5}>
                                     <Chip label={viewDialog.application.leaveType} color="primary" size="small" />
                                 </Box>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">From Date</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('From Date')}</Typography>
                                 <Typography variant="body1">{viewDialog.application.fromDate}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">To Date</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('To Date')}</Typography>
                                 <Typography variant="body1">{viewDialog.application.toDate}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Days Applied</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Days Applied')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{viewDialog.application.daysApplied} Days</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Applied On</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Applied On')}</Typography>
                                 <Typography variant="body1">{viewDialog.application.submittedAt ? new Date(viewDialog.application.submittedAt + (viewDialog.application.submittedAt.includes('Z') ? '' : 'Z')).toLocaleDateString() : '—'}</Typography>
                             </Grid>
 
                             <Grid size={{ xs: 12 }}>
-                                <Typography variant="caption" color="text.secondary">Reason for Leave</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Reason for Leave')}</Typography>
                                 <Paper variant="outlined" sx={{ p: 1.5, mt: 0.5, bgcolor: '#f5f5f5' }}>
                                     <Typography variant="body2">{viewDialog.application.reason || 'No reason provided.'}</Typography>
                                 </Paper>
                             </Grid>
 
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Contact Number</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Contact Number')}</Typography>
                                 <Typography variant="body1">{viewDialog.application.contactNo || '—'}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12, sm: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Address While on Leave</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Address While on Leave')}</Typography>
                                 <Typography variant="body1">{viewDialog.application.address || '—'}</Typography>
                             </Grid>
 
@@ -564,7 +566,7 @@ export default function LeaveManagement() {
                             </Grid>
 
                             <Grid size={{ xs: 12 }}>
-                                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>Acting Arrangement</Typography>
+                                <Typography variant="subtitle2" fontWeight="bold" gutterBottom>{t('Acting Arrangement')}</Typography>
                                 <Autocomplete
                                     freeSolo
                                     disabled={viewDialog.application?.status !== 'PENDING'}
@@ -583,7 +585,7 @@ export default function LeaveManagement() {
                                     renderInput={(params) => (
                                         <TextField 
                                             {...params} 
-                                            label="Select or Type Acting Officer" 
+                                            label={t('Select or Type Acting Officer')} 
                                             size="small"
                                             onChange={(e) => setEditedActingPerson(e.target.value)}
                                         />
@@ -593,7 +595,7 @@ export default function LeaveManagement() {
 
                             <Grid size={{ xs: 12 }}>
                                 <TextField
-                                    fullWidth label="Manager Remarks"
+                                    fullWidth label={t('Manager Remarks')}
                                     multiline rows={2}
                                     disabled={viewDialog.application?.status !== 'PENDING'}
                                     value={managerRemarks}
@@ -611,7 +613,7 @@ export default function LeaveManagement() {
                                 color="error" 
                                 onClick={() => handleRejectConfirm()}
                             >
-                                Reject Application
+                                {t('Reject Application')}
                             </Button>
                             <Box flexGrow={1} />
                             <Button 
@@ -619,13 +621,13 @@ export default function LeaveManagement() {
                                 color="success" 
                                 onClick={() => handleApprove(viewDialog.application.id)}
                             >
-                                Approve Leave
+                                {t('Approve Leave')}
                             </Button>
                         </>
                     ) : (
                         <Box sx={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
                             <Chip 
-                                label={`Request ${viewDialog.application?.status === 'APPROVED' ? 'Approved' : 'Rejected'}`} 
+                                label={t(`Request ${viewDialog.application?.status === 'APPROVED' ? 'Approved' : 'Rejected'}`)} 
                                 color={viewDialog.application?.status === 'APPROVED' ? 'success' : 'error'}
                                 sx={{ fontWeight: 'bold', px: 2 }}
                             />
@@ -636,21 +638,21 @@ export default function LeaveManagement() {
 
             {/* Reject Confirmation Dialog (Keep as backup or simplified) */}
             <Dialog open={rejectDialog.open} onClose={() => setRejectDialog({ open: false, appId: null, remarks: '' })}>
-                <DialogTitle sx={{ fontWeight: 'bold' }}>Reject Leave Request</DialogTitle>
+                <DialogTitle sx={{ fontWeight: 'bold' }}>{t('Reject Leave Request')}</DialogTitle>
                 <DialogContent sx={{ pt: 2 }}>
                     <Typography variant="body2" mb={2} color="text.secondary">
                         Optionally provide a reason for rejection. The Field Officer will see this message.
                     </Typography>
                     <TextField
-                        fullWidth label="Reason for Rejection (Optional)"
+                        fullWidth label={t('Reason for Rejection (Optional)')}
                         multiline rows={3}
                         value={rejectDialog.remarks}
                         onChange={(e) => setRejectDialog(prev => ({ ...prev, remarks: e.target.value }))}
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 2 }}>
-                    <Button onClick={() => setRejectDialog({ open: false, appId: null, remarks: '' })} sx={{ color: 'text.secondary' }}>Cancel</Button>
-                    <Button variant="contained" color="error" onClick={handleRejectConfirm}>Confirm Reject</Button>
+                    <Button onClick={() => setRejectDialog({ open: false, appId: null, remarks: '' })} sx={{ color: 'text.secondary' }}>{t('Cancel')}</Button>
+                    <Button variant="contained" color="error" onClick={handleRejectConfirm}>{t('Confirm Reject')}</Button>
                 </DialogActions>
             </Dialog>
 

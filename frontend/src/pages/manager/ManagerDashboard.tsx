@@ -34,7 +34,7 @@ const ManagerDashboard: React.FC = () => {
                             letterSpacing: '-0.025em'
                         }}
                     >
-                        Manager Dashboard
+                        {t('Manager Dashboard')}
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
                         {t('Welcome back,')} {userSession.name}. {t("Here's what's happening today.")}

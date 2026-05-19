@@ -26,6 +26,7 @@ import {
 import { Assignment as AssignmentIcon, TableChart as TableChartIcon, Add as AddIcon, Close as CloseIcon, Check as CheckIcon, Edit as EditIcon } from '@mui/icons-material';
 import { useMemo, useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 type CropKey = string | 'ALL';
 
@@ -118,6 +119,7 @@ const ymToYearMonth = (ym: string) => {
 };
 
 export default function Fertilizer() {
+    const { t } = useLanguage();
     const [tab, setTab] = useState<'ENTRY' | 'PROGRAMME'>('PROGRAMME');
     const [activeCrop, setActiveCrop] = useState<CropKey>('TEA');
     const [divisions, setDivisions] = useState<any[]>([]);
@@ -526,7 +528,7 @@ export default function Fertilizer() {
             }}>
                 <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} gap={1.5}>
                     <Typography variant={isMobile ? "h6" : "h5"} fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: -0.5, lineHeight: 1 }}>
-                        Fertilizer Programme
+                        {t('Fertilizer Programme')}
                     </Typography>
                     
                     <Stack 
@@ -538,17 +540,17 @@ export default function Fertilizer() {
                         <TextField
                             type="month"
                             size="small"
-                            label="Plan Month"
+                            label={t('Plan Month')}
                             value={planMonth}
                             onChange={(e) => setPlanMonth(e.target.value)}
                             sx={{ flex: 1, minWidth: { xs: 0, sm: 170 } }}
                             InputLabelProps={{ shrink: true }}
                         />
                         <FormControl size="small" sx={{ flex: 1, minWidth: { xs: 0, sm: 200 } }}>
-                            <InputLabel>Division</InputLabel>
+                            <InputLabel>{t('Division')}</InputLabel>
                             <Select
                                 value={selectedDivision}
-                                label="Division"
+                                label={t('Division')}
                                 onChange={(e) => setSelectedDivision(e.target.value)}
                             >
                                 {divisions.map((div: any) => (
@@ -599,7 +601,7 @@ export default function Fertilizer() {
                         >
                             <Tab
                                 value="ENTRY"
-                                label="Daily Entry"
+                                label={t('Daily Entry')}
                                 icon={<AssignmentIcon sx={{ fontSize: '1.2rem !important' }} />}
                                 iconPosition="start"
                                 sx={{
@@ -622,7 +624,7 @@ export default function Fertilizer() {
                             />
                             <Tab
                                 value="PROGRAMME"
-                                label="Fertilizer Programme"
+                                label={t('Fertilizer Programme')}
                                 icon={<TableChartIcon sx={{ fontSize: '1.2rem !important' }} />}
                                 iconPosition="start"
                                 sx={{
@@ -646,10 +648,10 @@ export default function Fertilizer() {
                         </Tabs>
 
                         <FormControl size="small" fullWidth sx={{ maxWidth: isMobile ? '100%' : 220, alignSelf: isMobile ? 'stretch' : 'flex-end' }}>
-                            <InputLabel sx={{ fontWeight: 700 }}>Select Crop Type</InputLabel>
+                            <InputLabel sx={{ fontWeight: 700 }}>{t('Select Crop Type')}</InputLabel>
                             <Select
                                 value={activeCrop}
-                                label="Select Crop Type"
+                                label={t('Select Crop Type')}
                                 onChange={(e) => setActiveCrop(e.target.value as CropKey)}
                                 sx={{ 
                                     bgcolor: '#fff', 
@@ -662,7 +664,7 @@ export default function Fertilizer() {
                                         {c.charAt(0) + c.slice(1).toLowerCase()}
                                     </MenuItem>
                                 ))}
-                                <MenuItem value="ALL" sx={{ fontWeight: 700 }}>General / All</MenuItem>
+                                <MenuItem value="ALL" sx={{ fontWeight: 700 }}>{t('General / All')}</MenuItem>
                             </Select>
                         </FormControl>
                     </Box>
@@ -688,7 +690,7 @@ export default function Fertilizer() {
                         >
                             <Box sx={{ bgcolor: '#2e7d32', px: 2, py: 1 }}>
                                 <Typography sx={{ fontWeight: 900, color: '#fff', fontSize: '0.95rem', letterSpacing: 0.3 }}>
-                                    Monthly Fertilizer Detail
+                                    {t('Monthly Fertilizer Detail')}
                                 </Typography>
                             </Box>
                             <Stack
@@ -701,10 +703,10 @@ export default function Fertilizer() {
                             >
                                 <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1.5} alignItems={{ xs: 'stretch', sm: 'center' }} flexWrap="wrap">
                                     <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 110 } }}>
-                                        <InputLabel>Year</InputLabel>
+                                        <InputLabel>{t('Year')}</InputLabel>
                                         <Select
                                             value={entryYear}
-                                            label="Year"
+                                            label={t('Year')}
                                             onChange={(e) => setEntryYear(Number(e.target.value))}
                                         >
                                             {Array.from({ length: 4 }).map((_, idx) => {
@@ -714,10 +716,10 @@ export default function Fertilizer() {
                                         </Select>
                                     </FormControl>
                                     <FormControl size="small" sx={{ minWidth: { xs: '100%', sm: 160 } }}>
-                                        <InputLabel>Field</InputLabel>
+                                        <InputLabel>{t('Field')}</InputLabel>
                                         <Select
                                             value={selectedFieldId}
-                                            label="Field"
+                                            label={t('Field')}
                                             onChange={(e) => setSelectedFieldId(String(e.target.value))}
                                         >
                                             {fields.map((f) => (<MenuItem key={f.fieldId} value={String(f.fieldId)}>{f.name}</MenuItem>))}
@@ -729,15 +731,15 @@ export default function Fertilizer() {
                                     {!isReadOnly && (
                                         !entryMode ? (
                                             <Button onClick={enterEditMode} variant="contained" color="success" fullWidth sx={{ fontWeight: 800, px: 2.5, width: { xs: '100%', sm: 'auto' } }}>
-                                                Edit Entry
+                                                {t('Edit Entry')}
                                             </Button>
                                         ) : (
                                             <>
                                                 <Button onClick={saveEntry} variant="contained" color="success" disabled={savingEntry} sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }}>
-                                                    {savingEntry ? 'Saving…' : 'Save'}
+                                                    {savingEntry ? t('Saving…') : t('Save')}
                                                 </Button>
                                                 <Button onClick={cancelEdit} variant="outlined" color="error" sx={{ fontWeight: 800, flex: { xs: 1, sm: 'none' } }} disabled={savingEntry}>
-                                                    Cancel
+                                                    {t('Cancel')}
                                                 </Button>
                                             </>
                                         )
@@ -776,7 +778,7 @@ export default function Fertilizer() {
                                                                                         ))}
                                                                                     </Select>
                                                                                 </FormControl>
-                                                                                <TextField fullWidth size="small" label="Qty (kg)" type="number" value={editValues.qtyKg} onChange={(e) => setEditValues({ ...editValues, qtyKg: e.target.value })} />
+                                                                                <TextField fullWidth size="small" label={t('Qty (kg)')} type="number" value={editValues.qtyKg} onChange={(e) => setEditValues({ ...editValues, qtyKg: e.target.value })} />
                                                                                 <Stack direction="row" spacing={1}>
                                                                                     <Button fullWidth variant="contained" color="success" size="small" onClick={() => saveRowEdit(row.rowId)}>Save</Button>
                                                                                     <Button fullWidth variant="outlined" color="error" size="small" onClick={() => setEditingRowId(null)}>Cancel</Button>

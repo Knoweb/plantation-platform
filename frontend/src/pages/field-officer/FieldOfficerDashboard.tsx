@@ -9,6 +9,7 @@ import PaidIcon from '@mui/icons-material/Paid';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
+import { useLanguage } from '../../context/LanguageContext';
 
 interface Muster {
     id: number;
@@ -45,6 +46,7 @@ interface Worker {
 }
 
 export default function FieldOfficerDashboard() {
+    const { t } = useLanguage();
     const navigate = useNavigate();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
@@ -758,7 +760,7 @@ export default function FieldOfficerDashboard() {
         <Box>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={3}>
                 <Typography variant="h4" fontWeight="bold" color="primary">
-                    Field Operation Center
+                    {t('Field Operation Center')}
                 </Typography>
             </Box>
 
@@ -808,7 +810,7 @@ export default function FieldOfficerDashboard() {
                                 <Box>
                                     <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                                         <Box display="flex" alignItems="center" gap={1}>
-                                            <Typography variant="caption" fontWeight="800" sx={{ color: '#1e3c72', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>AI Field Insight</Typography>
+                                            <Typography variant="caption" fontWeight="800" sx={{ color: '#1e3c72', fontSize: '0.65rem', textTransform: 'uppercase', letterSpacing: 0.5 }}>{t('AI Field Insight')}</Typography>
                                             <Box sx={{ width: 8, height: 8, borderRadius: '50%', bgcolor: weather.rainEveningChance >= 60 ? '#ef5350' : weather.rainAfternoonChance >= 40 ? '#ff9800' : '#4caf50', animation: 'pulse 2s infinite' }} />
                                         </Box>
                                     </Box>
@@ -818,12 +820,12 @@ export default function FieldOfficerDashboard() {
                                 </Box>
                                 <Box display="flex" gap={1} mt={1.5}>
                                     <Box sx={{ bgcolor: 'rgba(30,60,114,0.06)', borderRadius: 1.5, px: 1, py: 0.5, flex: 1, textAlign: 'center' }}>
-                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>MORNING</Typography>
-                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: '#1e3c72' }}>{weather.rainMorningChance}% Rain</Typography>
+                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>{t('MORNING')}</Typography>
+                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: '#1e3c72' }}>{weather.rainMorningChance}% {t('Rain')}</Typography>
                                     </Box>
                                     <Box sx={{ bgcolor: weather.rainEveningChance >= 70 ? 'rgba(239,83,80,0.08)' : 'rgba(30,60,114,0.06)', borderRadius: 1.5, px: 1, py: 0.5, flex: 1, textAlign: 'center' }}>
-                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>EVENING</Typography>
-                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: weather.rainEveningChance >= 70 ? '#ef5350' : '#1e3c72' }}>{weather.rainEveningChance}% Rain</Typography>
+                                        <Typography variant="caption" sx={{ fontSize: '0.62rem', color: 'text.secondary', display: 'block', fontWeight: 800 }}>{t('EVENING')}</Typography>
+                                        <Typography variant="caption" fontWeight="900" sx={{ fontSize: '0.8rem', color: weather.rainEveningChance >= 70 ? '#ef5350' : '#1e3c72' }}>{weather.rainEveningChance}% {t('Rain')}</Typography>
                                     </Box>
                                 </Box>
                             </Box>
@@ -833,10 +835,10 @@ export default function FieldOfficerDashboard() {
 
                 {[
                     {
-                        title: 'Yield per Acre',
+                        title: t('Yield per Acre'),
                         value: landProductivity > 0 ? landProductivity.toFixed(2) : '0.00',
-                        unit: 'kg / Acre',
-                        note: 'Crop Book MTD',
+                        unit: t('kg / Acre'),
+                        note: t('Crop Book MTD'),
                         noteColor: 'success.main',
                         accent: '#43a047',
                         softBg: 'linear-gradient(135deg, #f4fff5 0%, #ffffff 100%)',
@@ -844,10 +846,10 @@ export default function FieldOfficerDashboard() {
                         icon: <TrendingUpIcon sx={{ color: '#2e7d32', fontSize: 28 }} />,
                     },
                     {
-                        title: 'Plucking Average',
+                        title: t('Plucking Average'),
                         value: laborEfficiency > 0 ? laborEfficiency.toFixed(2) : '0.00',
-                        unit: 'kg / Worker',
-                        note: 'Month to Date',
+                        unit: t('kg / Worker'),
+                        note: t('Month to Date'),
                         noteColor: 'success.main',
                         accent: '#1e88e5',
                         softBg: 'linear-gradient(135deg, #f3faff 0%, #ffffff 100%)',
@@ -855,10 +857,10 @@ export default function FieldOfficerDashboard() {
                         icon: <GroupIcon sx={{ color: '#1565c0', fontSize: 28 }} />,
                     },
                     {
-                        title: 'Cost per Kg',
+                        title: t('Cost per Kg'),
                         value: `Rs. ${costPerKg > 0 ? costPerKg.toFixed(2) : '0.00'}`,
-                        unit: 'Production Cost',
-                        note: 'Month to Date',
+                        unit: t('Production Cost'),
+                        note: t('Month to Date'),
                         noteColor: 'text.secondary',
                         accent: '#fb8c00',
                         softBg: 'linear-gradient(135deg, #fff8ef 0%, #ffffff 100%)',
@@ -949,9 +951,9 @@ export default function FieldOfficerDashboard() {
                     >
                         <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} justifyContent="space-between" alignItems={{ xs: 'flex-start', sm: 'center' }} mb={2} gap={2}>
                             <Box>
-                                <Typography variant="h6" color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, fontWeight: 700 }}>Factory Weight Performance</Typography>
+                                <Typography variant="h6" color="primary" sx={{ fontSize: { xs: '1.1rem', sm: '1.25rem' }, fontWeight: 700 }}>{t('Factory Weight Performance')}</Typography>
                                 <Typography variant="body2" color="text.secondary" sx={{ fontSize: '0.8rem' }}>
-                                    {chartDescriptionByView[factoryWeightView]}
+                                    {t(chartDescriptionByView[factoryWeightView])}
                                 </Typography>
                             </Box>
                             <ToggleButtonGroup
@@ -981,10 +983,10 @@ export default function FieldOfficerDashboard() {
                                     },
                                 }}
                             >
-                                <ToggleButton value="daily">Daily</ToggleButton>
-                                <ToggleButton value="weekly">Weekly</ToggleButton>
-                                <ToggleButton value="monthly">Monthly</ToggleButton>
-                                <ToggleButton value="yearly">Yearly</ToggleButton>
+                                <ToggleButton value="daily">{t('Daily')}</ToggleButton>
+                                <ToggleButton value="weekly">{t('Weekly')}</ToggleButton>
+                                <ToggleButton value="monthly">{t('Monthly')}</ToggleButton>
+                                <ToggleButton value="yearly">{t('Yearly')}</ToggleButton>
                             </ToggleButtonGroup>
                         </Box>
                         <Box sx={{ width: '100%', height: { xs: 260, sm: 300, md: 320 } }}>
@@ -1086,9 +1088,9 @@ export default function FieldOfficerDashboard() {
                             <Box display="flex" alignItems="center" mb={2} justifyContent="space-between">
                                 <Box display="flex" alignItems="center">
                                     <GroupIcon color="secondary" sx={{ mr: 1 }} />
-                                    <Typography variant="h6">Today's Plan</Typography>
+                                    <Typography variant="h6">{t("Today's Plan")}</Typography>
                                 </Box>
-                                <Chip label={`${workerTurnout} Workers`} size="small" color="success" variant="outlined" />
+                                <Chip label={`${workerTurnout} ${t('Workers')}`} size="small" color="success" variant="outlined" />
                             </Box>
 
                             <List dense>
@@ -1098,7 +1100,7 @@ export default function FieldOfficerDashboard() {
                                             <Typography variant="subtitle2" fontWeight="bold" sx={{ color: '#1b5e20' }}>
                                                 {divisionSection.label}
                                             </Typography>
-                                            <Chip label={`${divisionSection.items.reduce((sum: number, item: any) => sum + Number(item.workerCount || 0), 0)} Workers`} size="small" variant="outlined" />
+                                            <Chip label={`${divisionSection.items.reduce((sum: number, item: any) => sum + Number(item.workerCount || 0), 0)} ${t('Workers')}`} size="small" variant="outlined" />
                                         </Box>
 
                                         {divisionSection.items.length > 0 ? (
@@ -1126,7 +1128,7 @@ export default function FieldOfficerDashboard() {
                                             ))
                                         ) : (
                                             <Typography variant="body2" color="text.secondary" sx={{ px: 1, mb: 2 }}>
-                                                No assignments for this division yet.
+                                                {t('No assignments for this division yet.')}
                                             </Typography>
                                         )}
                                     </Box>

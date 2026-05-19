@@ -1,5 +1,5 @@
-import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Tooltip, Skeleton, CircularProgress } from '@mui/material';
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { Box, Typography, Paper, TextField, IconButton, List, ListItemText, ListItemAvatar, Avatar, Badge, ListItemButton, Dialog, DialogTitle, DialogContent, DialogActions, Button, Snackbar, Alert, Tooltip } from '@mui/material';
+import { useState, useEffect, useRef } from 'react';
 import SearchIcon from '@mui/icons-material/Search';
 import SendIcon from '@mui/icons-material/Send';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
@@ -20,14 +20,14 @@ export default function Correspondence() {
 
     const [chats, setChats] = useState<any[]>([]);
     const [selectedChatId, setSelectedChatId] = useState('');
-    const selectedChatIdRef = useRef('');
     const [searchQuery, setSearchQuery] = useState('');
-    const [contactsLoading, setContactsLoading] = useState(true);
     const [messages, setMessages] = useState<any[]>([]);
     const [inputText, setInputText] = useState('');
     const [attachedImage, setAttachedImage] = useState<string | null>(null);
     const [unreadCounts, setUnreadCounts] = useState<{ [key: string]: number }>({});
     const messagesEndRef = useRef<null | HTMLDivElement>(null);
+    const selectedChatIdRef = useRef(selectedChatId);
+    useEffect(() => { selectedChatIdRef.current = selectedChatId; }, [selectedChatId]);
 
     const [broadcastDialogOpen, setBroadcastDialogOpen] = useState(false);
     const [broadcastText, setBroadcastText] = useState('');
@@ -47,12 +47,8 @@ export default function Correspondence() {
         document.body.removeChild(link);
     };
 
-    // Keep ref in sync so fetchMessages interval always reads latest value
-    useEffect(() => { selectedChatIdRef.current = selectedChatId; }, [selectedChatId]);
-
-    const fetchMessages = useCallback(async () => {
+    const fetchMessages = async () => {
         const activeChatId = selectedChatIdRef.current;
-        if (!myId || !tenantId) return;
         try {
             const res = await axios.get(`/api/messages?userId=${myId}&userRole=${myRole}`, {
                 headers: { 'X-Tenant-ID': tenantId }
@@ -82,7 +78,7 @@ export default function Correspondence() {
         } catch (error) {
             console.error("Failed to fetch messages", error);
         }
-    }, [myId, myRole, tenantId]);
+    };
 
     // Heartbeat to update local lastSeen
     useEffect(() => {
@@ -97,45 +93,37 @@ export default function Correspondence() {
 
     useEffect(() => {
         if (!tenantId) return;
-        let cancelled = false;
-        const loadUsers = async () => {
-            try {
-                const res = await axios.get(`/api/tenants/${tenantId}/users`);
-                if (cancelled) return;
-                if (!res.data || !Array.isArray(res.data)) {
-                    setChats([]);
-                    setContactsLoading(false);
-                    return;
-                }
-                const myIdStr = myId ? myId.toString().toLowerCase() : '';
-                const fetchedUsers = res.data
-                    .filter((u: any) => u.userId && u.userId.toString().toLowerCase() !== myIdStr)
-                    .map((u: any) => ({
-                        id: u.userId,
-                        name: u.fullName || u.name || 'Unknown User',
-                        role: u.role ? u.role.replace(/_/g, ' ') : 'USER',
-                        lastSeen: u.lastSeen,
-                        type: 'user'
-                    }));
-
-                setChats(fetchedUsers);
-                setContactsLoading(false);
-                setSelectedChatId(prev => {
-                    if (!prev && fetchedUsers.length > 0) {
-                        return fetchedUsers[0].id;
+        const loadUsers = () => {
+             axios.get(`/api/tenants/${tenantId}/users`)
+                .then(res => {
+                    if (!res.data || !Array.isArray(res.data)) {
+                        setChats([]);
+                        return;
                     }
-                    return prev;
-                });
-            } catch (err) {
-                if (!cancelled) {
-                    console.error("Failed to load users for chat", err);
-                    setContactsLoading(false);
-                }
-            }
+                    const myIdStr = myId ? myId.toString().toLowerCase() : '';
+                    const fetchedUsers = res.data
+                        .filter((u: any) => u.userId && u.userId.toString().toLowerCase() !== myIdStr)
+                        .map((u: any) => ({
+                            id: u.userId,
+                            name: u.fullName || u.name || 'Unknown User',
+                            role: u.role ? u.role.replace('_', ' ') : 'USER',
+                            lastSeen: u.lastSeen,
+                            type: 'user'
+                        }));
+
+                    setChats(fetchedUsers);
+                    setSelectedChatId(prev => {
+                        if (!prev && fetchedUsers.length > 0) {
+                            return fetchedUsers[0].id;
+                        }
+                        return prev;
+                    });
+                })
+                .catch(err => console.error("Failed to load users for chat", err));
         };
         loadUsers();
-        const interval = setInterval(loadUsers, 10000);
-        return () => { cancelled = true; clearInterval(interval); };
+        const interval = setInterval(loadUsers, 10000); // Refresh user status every 10s
+        return () => clearInterval(interval);
     }, [tenantId, myId]);
 
     useEffect(() => {
@@ -264,26 +252,7 @@ export default function Correspondence() {
                     </Typography>
                     
                     <List sx={{ flex: 1, overflowY: 'auto', px: 1 }}>
-                        {contactsLoading ? (
-                            <Box sx={{ px: 1, py: 1 }}>
-                                {[1,2,3,4].map(i => (
-                                    <Box key={i} sx={{ display: 'flex', alignItems: 'center', gap: 1.5, py: 1.5, px: 1 }}>
-                                        <Skeleton variant="circular" width={44} height={44} />
-                                        <Box sx={{ flex: 1, display: { xs: 'none', sm: 'block' } }}>
-                                            <Skeleton variant="text" width="70%" height={16} />
-                                            <Skeleton variant="text" width="45%" height={13} />
-                                        </Box>
-                                    </Box>
-                                ))}
-                            </Box>
-                        ) : chats.filter(chat =>
-                                (chat.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-                                (chat.role || '').toLowerCase().includes(searchQuery.toLowerCase())
-                            ).length === 0 ? (
-                            <Box sx={{ textAlign: 'center', py: 4, opacity: 0.4, display: { xs: 'none', sm: 'block' } }}>
-                                <Typography variant="caption">No contacts found</Typography>
-                            </Box>
-                        ) : chats
+                        {chats
                             .filter(chat => 
                                 (chat.name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
                                 (chat.role || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -331,38 +300,20 @@ export default function Correspondence() {
                 <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', bgcolor: '#fafafa' }}>
                     {/* Chat Header */}
                     <Box sx={{ p: 2, px: 3, bgcolor: '#fff', borderBottom: '1px solid #f0f0f0', display: 'flex', alignItems: 'center' }}>
-                        {contactsLoading ? (
-                            <Skeleton variant="circular" width={36} height={36} sx={{ mr: 2 }} />
-                        ) : (
-                            <Avatar sx={{ width: 36, height: 36, mr: 2, bgcolor: '#e8f5e9', color: '#1b5e20' }}>
-                                {activeChatUser?.name?.charAt(0) || ''}
-                            </Avatar>
-                        )}
-                        <Box sx={{ flex: 1 }}>
-                            {contactsLoading ? (
-                                <>
-                                    <Skeleton variant="text" width={140} height={20} />
-                                    <Skeleton variant="text" width={80} height={14} />
-                                </>
-                            ) : (
-                                <>
-                                    <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{activeChatUser?.name}</Typography>
-                                    <Typography variant="caption" sx={{ color: isOnline(activeChatUser?.lastSeen) ? '#4caf50' : '#888', fontWeight: 600 }}>
-                                        {formatLastSeen(activeChatUser?.lastSeen)}
-                                    </Typography>
-                                </>
-                            )}
+                        <Avatar sx={{ width: 36, height: 36, mr: 2, bgcolor: '#e8f5e9', color: '#1b5e20' }}>
+                            {activeChatUser?.name?.charAt(0) || ''}
+                        </Avatar>
+                        <Box>
+                            <Typography variant="subtitle1" fontWeight={700} sx={{ lineHeight: 1.2 }}>{activeChatUser?.name}</Typography>
+                            <Typography variant="caption" sx={{ color: isOnline(activeChatUser?.lastSeen) ? '#4caf50' : '#888', fontWeight: 600 }}>
+                                {formatLastSeen(activeChatUser?.lastSeen)}
+                            </Typography>
                         </Box>
                     </Box>
 
                     {/* Messages */}
                     <Box sx={{ flex: 1, px: 3, pt: 2, overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
-                        {contactsLoading ? (
-                            <Box sx={{ m: 'auto', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, opacity: 0.6 }}>
-                                <CircularProgress size={36} sx={{ color: '#1b5e20' }} />
-                                <Typography variant="body2" color="text.secondary">Loading contacts...</Typography>
-                            </Box>
-                        ) : messages.length === 0 && (
+                        {messages.length === 0 && (
                             <Box sx={{ m: 'auto', textAlign: 'center', opacity: 0.5 }}>
                                 <Typography variant="h6">{t('No messages yet')}</Typography>
                                 <Typography variant="body2">{t('Start a conversation with')} {activeChatUser?.name}</Typography>

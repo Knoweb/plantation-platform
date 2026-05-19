@@ -2,6 +2,7 @@ import { Box, Typography, Paper, Table, TableBody, TableCell, TableContainer, Ta
 import { useState, useEffect } from 'react';
 import axios from 'axios';
 import { useLocation } from 'react-router-dom';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface CostItem {
     id: string;
@@ -179,6 +180,7 @@ export default function CostAnalysis() {
     const location = useLocation();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
+    const { t } = useLanguage();
     const userRole = userSession.role || '';
     const isChiefClerk = userRole === 'CHIEF_CLERK';
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
@@ -332,10 +334,10 @@ export default function CostAnalysis() {
             {/* Consolidated Header */}
             <Box display="flex" justifyContent="space-between" alignItems="center" gap={2} mb={1}>
                 <Typography variant="h4" fontWeight="bold" sx={{ color: '#1b5e20', fontSize: { xs: '1.5rem', sm: '2rem' } }}>
-                    Cost Analysis
+                    {t('Cost Analysis')}
                 </Typography>
                 <Box display="flex" alignItems="center" gap={1.5} sx={{ bgcolor: '#e8f5e9', p: '4px 12px', borderRadius: 2, border: '1px solid #81c784' }}>
-                    <Typography variant="body2" fontWeight="bold" color="#1b5e20" sx={{ display: { xs: 'none', md: 'block' } }}>Date:</Typography>
+                    <Typography variant="body2" fontWeight="bold" color="#1b5e20" sx={{ display: { xs: 'none', md: 'block' } }}>{t('Date')}:</Typography>
                     <TextField
                         type="date"
                         size="small"
@@ -356,7 +358,7 @@ export default function CostAnalysis() {
                 <Box sx={{ borderBottom: '1px solid #ccc', bgcolor: '#fff', pt: 0, pb: 0 }}>
                     <Box sx={{ borderTop: '2px solid #1b5e20', borderBottom: '1px solid #ccc', textAlign: 'center', py: 0.5 }}>
                         <Typography sx={{ fontSize: { xs: '1rem', sm: '1.2rem' }, color: '#000', fontFamily: 'Calibri, Arial, sans-serif' }}>
-                            Cost Analysis - {activeCrop}
+                            {t('Cost Analysis')} - {activeCrop}
                         </Typography>
                     </Box>
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, borderBottom: '1px solid #ccc', py: { xs: 0.5, sm: 0.2 } }}>
@@ -486,8 +488,8 @@ export default function CostAnalysis() {
                                     <TableRow>
                                         <TableCell colSpan={isChiefClerk ? 10 : 9} align="center" sx={{ py: 6, color: '#aaa' }}>
                                             <Typography variant="body2">
-                                                No published cost analysis is available yet for <strong>{activeCrop}</strong> on this date.<br />
-                                                The Chief Clerk must save or upload the report before it becomes visible here.
+                                                {t('No published cost analysis is available yet for')} <strong>{activeCrop}</strong> {t('on this date.')}<br />
+                                                {t('The Chief Clerk must save or upload the report before it becomes visible here.')}
                                             </Typography>
                                         </TableCell>
                                     </TableRow>

@@ -24,10 +24,10 @@ const EstateAdminDashboard: React.FC = () => {
                         color="#1e293b"
                         sx={{ fontSize: { xs: '1.75rem', md: '2.5rem' }, letterSpacing: '-0.025em' }}
                     >
-                        Estate Admin Dashboard
+                        {t('Estate Admin Dashboard')}
                     </Typography>
                     <Typography variant="body1" color="text.secondary" sx={{ mt: 1 }}>
-                        Overview of your plantation's performance and yield.
+                        {t("Overview of your plantation's performance and yield.")}
                     </Typography>
                 </Box>
                 <Box

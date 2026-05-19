@@ -4,10 +4,12 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function PendingApprovals() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { t } = useLanguage();
     // Data State
     const [pendingItems, setPendingItems] = useState<any[]>([]);
     const [inventoryItems, setInventoryItems] = useState<any[]>([]);
@@ -132,10 +134,10 @@ export default function PendingApprovals() {
                 // Future: Inventory delete endpoint
             }
             fetchPending();
-            showNotification("Item deleted successfully", "success");
+            showNotification(t("Item deleted successfully"), "success");
         } catch (e) {
             console.error("Delete failed", e);
-            showNotification("Failed to delete item", "error");
+            showNotification(t("Failed to delete item"), "error");
         }
     };
 
@@ -166,9 +168,9 @@ export default function PendingApprovals() {
             await axios.put(`/api/operations/daily-work/${musterReviewItem.id}/approve`);
             setMusterReviewItem(null);
             fetchPending();
-            showNotification("Muster Approved", 'success');
+            showNotification(t("Muster Approved"), 'success');
         } catch (err) {
-            showNotification("Failed to approve muster.", 'error');
+            showNotification(t("Failed to approve muster."), 'error');
         }
     };
 
@@ -178,9 +180,9 @@ export default function PendingApprovals() {
             await axios.put(`/api/inventory/transactions/${approveItem.id}/status?status=APPROVED&quantity=${approveQty}&remarks=${encodeURIComponent(approveRemarks)}`);
             setApproveOpen(false);
             fetchPending();
-            showNotification("Inventory Request Approved", 'success');
+            showNotification(t("Inventory Request Approved"), 'success');
         } catch (e: any) {
-            showNotification("Failed to approve inventory.", 'error');
+            showNotification(t("Failed to approve inventory."), 'error');
         }
     };
 
@@ -189,11 +191,11 @@ export default function PendingApprovals() {
         try {
             await axios.put(`/api/inventory/transactions/${item.id}/status?status=DECLINED&remarks=${encodeURIComponent(approveRemarks)}`);
             fetchPending();
-            showNotification("Request Rejected", "success");
+            showNotification(t("Request Rejected"), "success");
             setApproveOpen(false);
         } catch (e) {
             console.error("Reject failed", e);
-            showNotification("Failed to reject request", "error");
+            showNotification(t("Failed to reject request"), "error");
         }
     };
 
@@ -201,13 +203,13 @@ export default function PendingApprovals() {
 
     return (
         <Box>
-            <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom color="primary">Pending Approvals</Typography>
+            <Typography variant={isMobile ? "h5" : "h4"} fontWeight="bold" gutterBottom color="primary">{t('Pending Approvals')}</Typography>
 
             <Card>
                 <CardContent>
                     <Box display="flex" alignItems="center" mb={2}>
                         <PendingActionsIcon color="warning" sx={{ mr: 1, fontSize: 32 }} />
-                        <Typography variant="h6">{viewStatus === 'PENDING' ? 'Items Waiting for Action' : 'Approval History'}</Typography>
+                        <Typography variant="h6">{viewStatus === 'PENDING' ? t('Items Waiting for Action') : t('Approval History')}</Typography>
                         <Box flexGrow={1} />
                         <ToggleButtonGroup
                             value={viewStatus}
@@ -243,8 +245,8 @@ export default function PendingApprovals() {
                                 },
                             }}
                         >
-                            <ToggleButton value="PENDING" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>Pending Orders</ToggleButton>
-                            <ToggleButton value="APPROVED" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>Review History</ToggleButton>
+                            <ToggleButton value="PENDING" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>{t('Pending Orders')}</ToggleButton>
+                            <ToggleButton value="APPROVED" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>{t('Review History')}</ToggleButton>
                         </ToggleButtonGroup>
                     </Box>
 
@@ -253,7 +255,7 @@ export default function PendingApprovals() {
                         <TextField
                             fullWidth
                             size="small"
-                            placeholder="Search by ID, Division, or Details..."
+                            placeholder={t('Search by ID, Division, or Details...')}
                             value={searchTerm}
                             onChange={(e) => setSearchTerm(e.target.value)}
                         />
@@ -298,7 +300,7 @@ export default function PendingApprovals() {
                                             <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.date}</TableCell>
                                             <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{item.time}</TableCell>
                                             <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
-                                                <Chip label={item.status} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }} />
+                                                <Chip label={t(item.status)} size="small" color={item.status === 'APPROVED' ? 'success' : (item.status === 'DECLINED' ? 'error' : 'warning')} sx={{ fontSize: isMobile ? '0.65rem' : '0.75rem' }} />
                                             </TableCell>
                                             <TableCell sx={{ fontSize: isMobile ? '0.75rem' : '0.85rem' }}><Typography variant="body2" sx={{ fontSize: isMobile ? '0.75rem' : 'inherit' }}>{item.details}</Typography></TableCell>
                                             <TableCell sx={{ fontWeight: 'bold', minWidth: '100px', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>
@@ -321,7 +323,7 @@ export default function PendingApprovals() {
                                                         onClick={() => handleApprove(item)}
                                                         sx={{ fontSize: isMobile ? '0.7rem' : 'inherit', px: isMobile ? 1 : 2 }}
                                                     >
-                                                        View
+                                                        {t('View')}
                                                     </Button>
                                                 </Box>
                                             </TableCell>
@@ -329,7 +331,7 @@ export default function PendingApprovals() {
                                     ))}
                                 {pendingItems.length === 0 && (
                                     <TableRow>
-                                        <TableCell colSpan={9} align="center">No pending approvals found.</TableCell>
+                                        <TableCell colSpan={9} align="center">{t('No pending approvals found.')}</TableCell>
                                     </TableRow>
                                 )}
                             </TableBody>
@@ -342,19 +344,19 @@ export default function PendingApprovals() {
             <Dialog open={approveOpen} onClose={() => setApproveOpen(false)} maxWidth="sm" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', borderBottom: '1px solid #c8e6c9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Typography variant="h6" fontWeight="bold">
-                        {approveItem?.actualType === 'FO_REQUISITION' ? 'Review Order Request' : 'Approve Refill Request'}
+                        {approveItem?.actualType === 'FO_REQUISITION' ? t('Review Order Request') : t('Approve Refill Request')}
                     </Typography>
-                    <Chip label={approveItem?.status || 'PENDING'} color={approveItem?.status === 'APPROVED' ? "success" : "warning"} size="small" />
+                    <Chip label={t(approveItem?.status || 'PENDING')} color={approveItem?.status === 'APPROVED' ? "success" : "warning"} size="small" />
                 </DialogTitle>
                 <DialogContent sx={{ minWidth: 350, pt: 3 }}>
                     {approveItem?.actualType === 'FO_REQUISITION' ? (
                         <Grid container spacing={2}>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Item</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Item')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.details}</Typography>
                             </Grid>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Quantity Request</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Quantity Request')}</Typography>
                                 {approveItem?.status === 'PENDING' ? (
                                     <Box display="flex" alignItems="center">
                                         <TextField
@@ -373,29 +375,29 @@ export default function PendingApprovals() {
                                 )}
                             </Grid>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Division</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Division')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.divisionName || '-'}</Typography>
                             </Grid>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Field</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Field')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.fieldName || '-'}</Typography>
                             </Grid>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Date & Time</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Date & Time')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.date} {approveItem?.time !== '-' ? approveItem?.time : ''}</Typography>
                             </Grid>
                             <Grid size={{ xs: 6 }}>
-                                <Typography variant="caption" color="text.secondary">Requested By</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Requested By')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[0] || '-'}</Typography>
                             </Grid>
                             <Grid size={{ xs: 12 }}>
-                                <Typography variant="caption" color="text.secondary">Field Officer Remarks</Typography>
+                                <Typography variant="caption" color="text.secondary">{t('Field Officer Remarks')}</Typography>
                                 <Typography variant="body1" fontWeight="bold">{approveItem?.issuedTo?.split(' - ')[1] || '-'}</Typography>
                             </Grid>
 
                             {approveItem?.status !== 'PENDING' && (
                                 <Grid size={{ xs: 12 }}>
-                                    <Typography variant="caption" color="text.secondary">Manager Remarks</Typography>
+                                    <Typography variant="caption" color="text.secondary">{t('Manager Remarks')}</Typography>
                                     <Typography variant="body1" fontWeight="bold" sx={{ color: approveItem?.status === 'APPROVED' ? 'green' : 'red' }}>
                                         {approveItem?.managerRemarks || 'No manager remarks provided.'}
                                     </Typography>
@@ -405,14 +407,14 @@ export default function PendingApprovals() {
                     ) : (
                         <>
                             <Typography variant="body1" gutterBottom>
-                                Refilling for: <strong>{approveItem?.details}</strong>
+                                Refilling for: <strong>{t(approveItem?.details)}</strong>
                             </Typography>
                             {(() => {
                                 const invItem = inventoryItems.find(i => i.id === approveItem?.itemId);
                                 return invItem ? (
                                     <Box sx={{ mb: 2, p: 1, bgcolor: '#f0faff', borderRadius: 1 }}>
-                                        <Typography variant="caption" display="block">Buffer Level: <strong>{invItem.bufferLevel} {invItem.unit}</strong></Typography>
-                                        <Typography variant="caption" display="block">Current Stock: <strong>{invItem.currentQuantity} {invItem.unit}</strong></Typography>
+                                        <Typography variant="caption" display="block">{t('Buffer Level')}: <strong>{invItem.bufferLevel} {invItem.unit}</strong></Typography>
+                                        <Typography variant="caption" display="block">{t('Current Stock')}: <strong>{invItem.currentQuantity} {invItem.unit}</strong></Typography>
                                     </Box>
                                 ) : null;
                             })()}
@@ -420,23 +422,23 @@ export default function PendingApprovals() {
                                 <TextField
                                     autoFocus
                                     fullWidth
-                                    label="Quantity to Refill"
+                                    label={t('Quantity to Refill')}
                                     type="number"
                                     value={approveQty}
                                     onChange={(e) => setApproveQty(e.target.value)}
                                     placeholder="Enter amount"
-                                    helperText="System Auto-Request: Please specify refill amount."
+                                    helperText={t('System Auto-Request: Please specify refill amount.')}
                                 />
                             ) : (
                                 <Box mt={2}>
                                     <Typography variant="subtitle1" gutterBottom sx={{ color: 'text.secondary' }}>
-                                        Store Keeper Requested Amount:
+                                        {t('Store Keeper Requested Amount')}:
                                     </Typography>
                                     <Typography variant="h5" color="primary" fontWeight="bold">
                                         {approveQty} {inventoryItems.find(i => i.id === approveItem?.itemId)?.unit}
                                     </Typography>
                                     <Typography variant="caption" color="text.secondary">
-                                        Click 'Confirm Approval' to accept this request.
+                                        {t("Click 'Confirm Approval' to accept this request.")}
                                     </Typography>
                                 </Box>
                             )}
@@ -446,7 +448,7 @@ export default function PendingApprovals() {
                         <Box sx={{ mt: 3, pt: 2, borderTop: '1px solid #ddd' }}>
                             <TextField
                                 fullWidth
-                                label="Manager Remarks (Optional)"
+                                label={t('Manager Remarks (Optional)')}
                                 multiline
                                 rows={2}
                                 value={approveRemarks}
@@ -459,16 +461,16 @@ export default function PendingApprovals() {
                 <DialogActions sx={{ p: 2, bgcolor: '#f5f5f5', justifyContent: approveItem?.status === 'PENDING' ? 'space-between' : 'flex-end' }}>
                     {approveItem?.status === 'PENDING' ? (
                         <>
-                            <Button variant="outlined" color="error" onClick={() => handleRejectInv(approveItem)}>Reject</Button>
+                            <Button variant="outlined" color="error" onClick={() => handleRejectInv(approveItem)}>{t('Reject')}</Button>
                             <Box>
-                                <Button onClick={() => setApproveOpen(false)} sx={{ mr: 1 }}>Cancel</Button>
+                                <Button onClick={() => setApproveOpen(false)} sx={{ mr: 1 }}>{t('Cancel')}</Button>
                                 <Button variant="contained" color="success" onClick={handleConfirmApprove}>
-                                    {approveItem?.isFORequisition ? 'Approve' : 'Confirm Approval'}
+                                    {approveItem?.isFORequisition ? t('Approve') : t('Confirm Approval')}
                                 </Button>
                             </Box>
                         </>
                     ) : (
-                        <Button onClick={() => setApproveOpen(false)}>Close</Button>
+                        <Button onClick={() => setApproveOpen(false)}>{t('Close')}</Button>
                     )}
                 </DialogActions>
             </Dialog>
@@ -477,11 +479,11 @@ export default function PendingApprovals() {
             <Dialog open={Boolean(musterReviewItem)} onClose={() => setMusterReviewItem(null)} maxWidth="lg" fullWidth>
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#1b5e20', borderBottom: '1px solid #c8e6c9', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>
-                        <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">Morning Muster Review</Typography>
+                        <Typography variant={isMobile ? "subtitle1" : "h6"} fontWeight="bold">{t('Morning Muster Review')}</Typography>
                         <Typography variant="caption">{musterReviewItem?.date}</Typography>
                     </Box>
                     <Chip
-                        label={viewStatus === 'APPROVED' ? "APPROVED" : "PENDING APPROVAL"}
+                        label={t(viewStatus === 'APPROVED' ? "APPROVED" : "PENDING APPROVAL")}
                         color={viewStatus === 'APPROVED' ? "success" : "warning"}
                     />
                 </DialogTitle>
@@ -489,7 +491,7 @@ export default function PendingApprovals() {
                     <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }}>
                         {/* LEFT: Muster Chit Summary */}
                         <Box flex={1} minWidth={{ md: '300px' }}>
-                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#2e7d32' }}>Muster Chit</Typography>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#2e7d32' }}>{t('Muster Chit')}</Typography>
                             <Card variant="outlined" sx={{ bgcolor: 'white' }}>
                                 <Box sx={{ width: '100%', overflowX: 'auto' }}>
                                     <Table size="small">
@@ -519,7 +521,7 @@ export default function PendingApprovals() {
                                                 return <TableRow><TableCell colSpan={3}>No details</TableCell></TableRow>;
                                             })()}
                                             <TableRow sx={{ bgcolor: '#c8e6c9' }}>
-                                                <TableCell colSpan={2}><strong>Grand Total</strong></TableCell>
+                                                <TableCell colSpan={2}><strong>{t('Grand Total')}</strong></TableCell>
                                                 <TableCell align="right"><strong>{musterReviewItem?.quantity}</strong></TableCell>
                                             </TableRow>
                                         </TableBody>
@@ -530,7 +532,7 @@ export default function PendingApprovals() {
 
                         {/* RIGHT: Division View (Detailed Assignments) */}
                         <Box flex={2}>
-                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>Field Assignments (Division View)</Typography>
+                            <Typography variant={isMobile ? "subtitle2" : "subtitle1"} fontWeight="bold" gutterBottom sx={{ color: '#1565c0' }}>{t('Field Assignments (Division View)')}</Typography>
                             <Box sx={{ maxHeight: '400px', overflowY: 'auto' }}>
                                 {(() => {
                                     try {
@@ -587,14 +589,14 @@ export default function PendingApprovals() {
                                     setMusterReviewItem(null);
                                 }
                             }}>
-                                Reject Muster
+                                {t('Reject Muster')}
                             </Button>
                             <Button variant="contained" color="success" onClick={handleConfirmMusterApprove}>
-                                Approve & Sign
+                                {t('Approve & Sign')}
                             </Button>
                         </>
                     ) : (
-                        <Button onClick={() => setMusterReviewItem(null)}>Close</Button>
+                        <Button onClick={() => setMusterReviewItem(null)}>{t('Close')}</Button>
                     )}
                 </DialogActions>
             </Dialog>

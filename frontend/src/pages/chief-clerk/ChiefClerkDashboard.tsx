@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Box, Typography, Grid, Card, CardContent, CircularProgress } from '@mui/material';
 import { useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 import axios from 'axios';
 import EngineeringIcon from '@mui/icons-material/Engineering';
 import AttachMoneyIcon from '@mui/icons-material/AttachMoney';
@@ -13,6 +14,7 @@ import CropPerformanceCard from '../../components/manager/CropPerformanceCard';
 
 export default function ChiefClerkDashboard() {
     const navigate = useNavigate();
+    const { t } = useLanguage();
     const [loading, setLoading] = useState(true);
 
     const [inventoryPending, setInventoryPending] = useState(0);
@@ -118,7 +120,7 @@ export default function ChiefClerkDashboard() {
             </style>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="h4" fontWeight="900" sx={{ color: '#1b5e20', letterSpacing: '-0.5px', fontSize: { xs: '1.5rem', sm: '2.125rem' } }}>
-                    Chief Clerk Dashboard
+                    {t('Chief Clerk Dashboard')}
                 </Typography>
                 <Typography variant="subtitle1" fontWeight="bold" sx={{ color: '#689f38', bgcolor: '#f1f8e9', px: 2, py: 0.5, borderRadius: 2 }}>
                     {todayDateStr}
@@ -126,7 +128,7 @@ export default function ChiefClerkDashboard() {
             </Box>
             
             <Typography variant="body1" color="text.secondary" sx={{ mb: 4 }}>
-                Welcome back. Here is your fast-action operational overview.
+                {t('Welcome back. Here is your fast-action operational overview.')}
             </Typography>
 
             {/* TOP ROW: 5 Little Tiles - Compact Operational Overview */}
@@ -139,10 +141,10 @@ export default function ChiefClerkDashboard() {
                         </Box>
                         <Box>
                             <Typography variant="subtitle2" fontWeight="900" sx={{ color: inventoryPending > 0 ? '#b91c1c' : '#1e293b', lineHeight: 1.1 }}>
-                                {inventoryPending} Out of stock
+                                {inventoryPending} {t('Out of stock')}
                             </Typography>
                             <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
-                                items to review
+                                {t('items to review')}
                             </Typography>
                         </Box>
                     </CardContent>
@@ -156,10 +158,10 @@ export default function ChiefClerkDashboard() {
                         </Box>
                         <Box>
                             <Typography variant="subtitle2" fontWeight="900" className={!costLoggedToday ? "urgent-blink" : ""} sx={{ color: !costLoggedToday ? '#c53030' : '#15803d', lineHeight: 1.1 }}>
-                                {costLoggedToday ? "Cost Entered" : "Cost not entered"}
+                                {costLoggedToday ? t("Cost Entered") : t("Cost not entered")}
                             </Typography>
                             <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
-                                Daily Entry Status
+                                {t('Daily Entry Status')}
                             </Typography>
                         </Box>
                     </CardContent>
@@ -173,10 +175,10 @@ export default function ChiefClerkDashboard() {
                         </Box>
                         <Box>
                             <Typography variant="caption" fontWeight="900" sx={{ color: '#4c1d95', display: 'block', lineHeight: 1.1 }}>
-                                {permanentWorkers} permanent
+                                {permanentWorkers} {t('permanent')}
                             </Typography>
                             <Typography variant="caption" fontWeight="900" color="#8b5cf6" sx={{ display: 'block', mt: 0.2 }}>
-                                {casualWorkers} casual
+                                {casualWorkers} {t('casual')}
                             </Typography>
                         </Box>
                     </CardContent>
@@ -190,10 +192,10 @@ export default function ChiefClerkDashboard() {
                         </Box>
                         <Box>
                             <Typography variant="caption" fontWeight="900" className={contractWorkersToday === 0 ? "urgent-blink" : ""} sx={{ color: contractWorkersToday === 0 ? '#c53030' : '#166534', display: 'block', lineHeight: 1.1 }}>
-                                {contractWorkersToday > 0 ? `${contractWorkersToday} contracts logged` : "daily contract"}
+                                {contractWorkersToday > 0 ? `${contractWorkersToday} ${t('contracts logged')}` : t("daily contract")}
                             </Typography>
                             <Typography variant="caption" fontWeight="900" color="text.secondary" sx={{ display: 'block', mt: 0.2 }}>
-                                {contractWorkersToday === 0 ? "workers not logged" : "successfully saved"}
+                                {contractWorkersToday === 0 ? t("workers not logged") : t("successfully saved")}
                             </Typography>
                         </Box>
                     </CardContent>
@@ -210,7 +212,7 @@ export default function ChiefClerkDashboard() {
                                 {todateYield.toLocaleString()} <Typography component="span" variant="caption" fontWeight="bold">Kg</Typography>
                             </Typography>
                             <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', display: 'block', mt: 0.2 }}>
-                                Harvested MTD
+                                {t('Harvested MTD')}
                             </Typography>
                         </Box>
                     </CardContent>

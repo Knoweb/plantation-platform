@@ -7,6 +7,7 @@ import LocalFloristIcon from '@mui/icons-material/LocalFlorist';
 import ForestIcon from '@mui/icons-material/Forest';
 import axios from 'axios';
 import { keyframes } from '@mui/system';
+import { useLanguage } from '../../../context/LanguageContext';
 
 const swayAnimation = keyframes`
   0% { transform: rotate(0deg); }
@@ -32,6 +33,7 @@ const capitalize = (s: string) => {
 };
 
 export default function CropAge() {
+    const { t } = useLanguage();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
 
@@ -87,10 +89,10 @@ export default function CropAge() {
         <Box sx={{ p: { xs: 1, sm: 2, md: 3 } }}>
             <Box mb={{ xs: 1, sm: 3 }} px={{ xs: 0.5, sm: 0 }}>
                 <Typography variant="h4" fontWeight="bold" color="primary" sx={{ fontSize: { xs: '1.25rem', sm: '2.125rem' } }}>
-                    Field Log
+                    {t('Field Log')}
                 </Typography>
                 <Typography variant="caption" color="text.secondary" sx={{ display: { xs: 'none', sm: 'block' }, mt: 0.5 }}>
-                    Detailed field tracking and lifecycle management by division.
+                    {t('Detailed field tracking and lifecycle management by division.')}
                 </Typography>
             </Box>
 
@@ -143,7 +145,7 @@ export default function CropAge() {
 
                         {divisionFields.length === 0 ? (
                             <Typography variant="body2" color="text.secondary" fontStyle="italic" sx={{ mt: 2 }}>
-                                No fields assigned to this division.
+                                {t('No fields assigned to this division.')}
                             </Typography>
                         ) : (
                             <Grid container spacing={{ xs: 2, sm: 3 }} sx={{ mt: 1 }}>
@@ -180,13 +182,13 @@ export default function CropAge() {
                                                                 {field.name}
                                                             </Typography>
                                                             <Typography variant="caption" sx={{ fontWeight: 900, color: color, letterSpacing: 0.5, textTransform: 'uppercase', opacity: 0.8 }}>
-                                                                {cropType} Plantation
+                                                                {cropType} {t('Plantation')}
                                                             </Typography>
                                                         </Box>
                                                         <Box sx={{ textAlign: 'right' }}>
                                                             <Typography sx={{ fontSize: '1.25rem', fontWeight: 900, color: '#1a202c', lineHeight: 1 }}>
                                                                 {field.acreage}
-                                                                <Box component="span" sx={{ fontSize: '0.65rem', color: 'text.secondary', ml: 0.2, verticalAlign: 'middle' }}>ACRES</Box>
+                                                                <Box component="span" sx={{ fontSize: '0.65rem', color: 'text.secondary', ml: 0.2, verticalAlign: 'middle' }}>{t('ACRES')}</Box>
                                                             </Typography>
                                                         </Box>
                                                     </Box>
@@ -211,14 +213,14 @@ export default function CropAge() {
 
                                                     <Box sx={{ bgcolor: '#f8fafc', p: 1, borderRadius: 1.5, border: '1px solid #edf2f7', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                                         <Box>
-                                                            <Typography sx={{ fontSize: '0.5rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase' }}>Field Age</Typography>
+                                                            <Typography sx={{ fontSize: '0.5rem', color: 'text.secondary', fontWeight: 800, textTransform: 'uppercase' }}>{t('Field Age')}</Typography>
                                                             <Typography sx={{ fontSize: '0.85rem', fontWeight: 800, color: '#2d3748' }}>
                                                                 {field.plantedDate ? `${age.years}y ${age.months}m` : 'N/A'}
                                                             </Typography>
                                                         </Box>
                                                         <Box sx={{ textAlign: 'right' }}>
                                                             <Box sx={{ width: 6, height: 6, borderRadius: '50%', bgcolor: color, display: 'inline-block', mr: 0.5, animation: 'pulse 2s infinite' }} />
-                                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700 }}>Active</Typography>
+                                                            <Typography variant="caption" sx={{ fontSize: '0.6rem', color: 'text.secondary', fontWeight: 700 }}>{t('Active')}</Typography>
                                                         </Box>
                                                     </Box>
                                                 </CardContent>
@@ -234,7 +236,7 @@ export default function CropAge() {
 
             {divisions.length === 0 && (
                 <Typography color="text.secondary" fontStyle="italic" sx={{ textAlign: 'center', py: 10 }}>
-                    No infrastructure data detected. Please register divisions.
+                    {t('No infrastructure data detected. Please register divisions.')}
                 </Typography>
             )}
         </Box>

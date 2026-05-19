@@ -2,6 +2,7 @@ import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, Butto
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 interface Muster {
     id: number;
@@ -13,6 +14,7 @@ interface Muster {
 }
 
 export default function MusterApproval() {
+    const { t } = useLanguage();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const tenantId = userSession.tenantId;
     const [pendingMusters, setPendingMusters] = useState<Muster[]>([]);
@@ -37,34 +39,34 @@ export default function MusterApproval() {
             await axios.put(`/api/operations/muster/${id}/approve`);
             fetchMusters(); // Refresh list
         } catch (err) {
-            alert("Approval Failed");
+            alert(t("Approval Failed"));
         }
     };
 
     const handleReject = async (id: number) => {
-        if (!confirm("Are you sure you want to reject this muster? It will be deleted.")) return;
+        if (!confirm(t("Are you sure you want to reject this muster? It will be deleted."))) return;
         try {
             await axios.delete(`/api/operations/muster/${id}`);
             fetchMusters();
         } catch (err) {
-            alert("Rejection Failed");
+            alert(t("Rejection Failed"));
         }
     };
 
     return (
         <Box>
             <Typography variant="h4" fontWeight="bold" gutterBottom color="primary">
-                Muster Approval
+                {t('Muster Approval')}
             </Typography>
             <Typography variant="body1" color="text.secondary" mb={4}>
-                Approve daily attendance and activity records.
+                {t('Approve daily attendance and activity records.')}
             </Typography>
 
             <Card>
                 <CardContent>
                     <Box display="flex" alignItems="center" mb={2}>
                         <DoneAllIcon color="secondary" sx={{ mr: 1 }} />
-                        <Typography variant="h6">Pending Approvals ({pendingMusters.length})</Typography>
+                        <Typography variant="h6">{t('Pending Approvals')} ({pendingMusters.length})</Typography>
                     </Box>
                     <List>
                         {pendingMusters.map((muster) => (
@@ -78,7 +80,7 @@ export default function MusterApproval() {
                                                     {muster.workerCount} Workers • {muster.date}
                                                 </Typography>
                                                 <br />
-                                                <Chip label={muster.status} size="small" color="warning" sx={{ mt: 0.5 }} />
+                                                <Chip label={t(muster.status)} size="small" color="warning" sx={{ mt: 0.5 }} />
                                             </>
                                         }
                                     />
@@ -90,7 +92,7 @@ export default function MusterApproval() {
                                             sx={{ mr: 1 }}
                                             onClick={() => handleReject(muster.id)}
                                         >
-                                            Reject
+                                            {t('Reject')}
                                         </Button>
                                         <Button
                                             size="small"
@@ -98,7 +100,7 @@ export default function MusterApproval() {
                                             color="success"
                                             onClick={() => handleApprove(muster.id)}
                                         >
-                                            Approve
+                                            {t('Approve')}
                                         </Button>
                                     </Box>
                                 </ListItem>
@@ -107,7 +109,7 @@ export default function MusterApproval() {
                         ))}
                         {pendingMusters.length === 0 && (
                             <Typography color="text.secondary" align="center" sx={{ py: 4 }}>
-                                No pending approvals.
+                                {t('No pending approvals.')}
                             </Typography>
                         )}
                     </List>

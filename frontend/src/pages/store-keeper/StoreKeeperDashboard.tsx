@@ -15,6 +15,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import { useLocation, useNavigate } from 'react-router-dom';
+import { useLanguage } from '../../context/LanguageContext';
 
 const buildSocketUrl = (path: string) => {
     const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -24,6 +25,7 @@ const buildSocketUrl = (path: string) => {
 export default function StoreKeeperDashboard() {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const { t } = useLanguage();
     
     const [items, setItems] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -230,10 +232,10 @@ export default function StoreKeeperDashboard() {
         try {
             await axios.put(`/api/inventory/transactions/${orderToIssue}/status?status=ISSUED`);
             fetchInventory();
-            showNotification('Stock Successfully Issued to Field Officer', 'success');
+            showNotification(t('Stock Successfully Issued to Field Officer'), 'success');
             setConfirmIssueOpen(false);
         } catch (err: any) {
-            showNotification('Failed to issue order: ' + (err.response?.data || err.message), 'error');
+            showNotification(t('Failed to issue order') + ': ' + (err.response?.data || err.message), 'error');
         }
     };
 
@@ -270,8 +272,8 @@ export default function StoreKeeperDashboard() {
 
     const handleRejectOrder = (orderId: number) => {
         triggerConfirm(
-            "Reject Field Requisition?",
-            "Are you sure you want to REJECT this field requisition? This will remove it from the dispatch queue.",
+            t("Reject Field Requisition?"),
+            t("Are you sure you want to REJECT this field requisition? This will remove it from the dispatch queue."),
             async () => {
                 try {
                     await axios.put(`/api/inventory/transactions/${orderId}/status?status=REJECTED&remarks=${encodeURIComponent('Rejected by Store Keeper (Insufficient Stock)')}`);
@@ -299,26 +301,26 @@ export default function StoreKeeperDashboard() {
             await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=PENDING&quantity=${ccApproveQty}${remarksParam}${issuedToParam}`);
             setCcApproveOpen(false);
             fetchInventory();
-            showNotification('Auto-Refill Request forwarded to Manager', 'success');
+            showNotification(t('Auto-Refill Request forwarded to Manager'), 'success');
         } catch (err: any) {
-            showNotification('Failed to forward order: ' + (err.response?.data || err.message), 'error');
+            showNotification(t('Failed to forward order') + ': ' + (err.response?.data || err.message), 'error');
         }
     };
 
     const handleCcReject = () => {
         if (!ccSelectedOrder) return;
         triggerConfirm(
-            "Reject Auto-Refill?",
-            "Are you sure you want to REJECT this auto-refill request?",
+            t("Reject Auto-Refill?"),
+            t("Are you sure you want to REJECT this auto-refill request?"),
             async () => {
                 try {
                     const remarksParam = ccRemarks ? `&remarks=${encodeURIComponent(ccRemarks)}` : '';
                     await axios.put(`/api/inventory/transactions/${ccSelectedOrder.id}/status?status=REJECTED${remarksParam}`);
                     setCcApproveOpen(false);
                     fetchInventory();
-                    showNotification('Auto-Refill Request Rejected', 'success');
+                    showNotification(t('Auto-Refill Request Rejected'), 'success');
                 } catch (err: any) {
-                    showNotification('Failed to reject order: ' + (err.response?.data || err.message), 'error');
+                    showNotification(t('Failed to reject order') + ': ' + (err.response?.data || err.message), 'error');
                 }
             }
         );
@@ -336,7 +338,7 @@ export default function StoreKeeperDashboard() {
                 const minLevel = item.minimumLevel || 0;
 
                 if (projectedQty < minLevel) {
-                    showNotification(`Cannot issue stock! Remaining quantity (${projectedQty} ${item.unit}) would fall below the mandatory minimum level of ${minLevel} ${item.unit}.`, 'error');
+                    showNotification(t('Cannot issue stock! Remaining quantity') + ` (${projectedQty} ${item.unit}) ` + t('would fall below the mandatory minimum level of') + ` ${minLevel} ${item.unit}.`, 'error');
                     return;
                 }
             }
@@ -376,9 +378,9 @@ export default function StoreKeeperDashboard() {
             setSelectedDivisions([]);
             setSelectedFields([]);
             fetchInventory();
-            showNotification(modalType === 'RESTOCK_REQUEST' ? "Request sent to manager" : "Transaction Successful", 'success');
+            showNotification(modalType === 'RESTOCK_REQUEST' ? t("Request sent to manager") : t("Transaction Successful"), 'success');
         } catch (err: any) {
-            showNotification("Transaction Failed: " + (err.response?.data || err.message), 'error');
+            showNotification(t("Transaction Failed") + ": " + (err.response?.data || err.message), 'error');
         }
     };
 
@@ -391,7 +393,7 @@ export default function StoreKeeperDashboard() {
                     pricePerUnit: Number(newItem.pricePerUnit) || 0,
                     tenantId
                 });
-                showNotification("Item Updated Successfully", 'success');
+                showNotification(t("Item Updated Successfully"), 'success');
             } else {
                 // Create Item
                 await axios.post('/api/inventory', {
@@ -400,13 +402,13 @@ export default function StoreKeeperDashboard() {
                     pricePerUnit: Number(newItem.pricePerUnit) || 0,
                     tenantId
                 });
-                showNotification("Item Created Successfully", 'success');
+                showNotification(t("Item Created Successfully"), 'success');
             }
             setNewItemOpen(false);
             fetchInventory();
             resetForm();
         } catch (err) {
-            showNotification(isEditing ? "Failed to update item" : "Failed to create item", 'error');
+            showNotification(isEditing ? t("Failed to update item") : t("Failed to create item"), 'error');
         }
     };
 
@@ -422,7 +424,7 @@ export default function StoreKeeperDashboard() {
         <Box sx={{ px: { xs: 1.5, md: 3 }, py: { xs: 2, md: 3 }, height: '100%', overflowY: 'auto', position: 'relative' }}>
             <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
                 <Typography variant="h5" fontWeight="800" color="primary" sx={{ fontSize: { xs: '1.25rem', md: '2rem' } }}>
-                    {currentTab === 0 ? "Overview" : currentTab === 1 ? "Inventory" : "Approvals"}
+                    {currentTab === 0 ? t("Overview") : currentTab === 1 ? t("Inventory") : t("Approvals")}
                 </Typography>
 
                 {currentTab === 1 && user.role === 'CHIEF_CLERK' && (
@@ -433,15 +435,15 @@ export default function StoreKeeperDashboard() {
                             sx={{ mr: 2, bgcolor: '#424242' }}
                             onClick={() => { resetForm(); setNewItemOpen(true); }}
                         >
-                            New Item
+                            {t('New Item')}
                         </Button>
                     </Box>
                 )}
             </Box>
             <Typography variant="body2" color="text.secondary" mb={3} sx={{ fontSize: { xs: '0.85rem', md: '1rem' } }}>
-                {currentTab === 0 ? "Stock alerts and internal notifications." :
-                    currentTab === 1 ? "Manage materials and issue stock." :
-                        "Review and dispatch officer requests."}
+                {currentTab === 0 ? t("Stock alerts and internal notifications.") :
+                    currentTab === 1 ? t("Manage materials and issue stock.") :
+                        t("Review and dispatch officer requests.")}
             </Typography>
 
             {/* Stop Pilferage / Low Stock Alerts -> DASHBOARD TAB */}
@@ -463,11 +465,11 @@ export default function StoreKeeperDashboard() {
                                             {approvedOrders.length}
                                         </Typography>
                                         <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                                            Pending Orders
+                                            {t('Pending Orders')}
                                         </Typography>
                                         <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5, color: approvedOrders.length > 0 ? '#d32f2f' : '#718096' }}>
                                             {approvedOrders.length > 0 ? <WarningAmberIcon sx={{ fontSize: 14 }}/> : <CheckCircleOutlineIcon sx={{ fontSize: 14 }}/>}
-                                            <Typography variant="caption" fontWeight="600">{approvedOrders.length > 0 ? 'Action Reqd' : 'No Action'}</Typography>
+                                            <Typography variant="caption" fontWeight="600">{approvedOrders.length > 0 ? t('Action Reqd') : t('No Action')}</Typography>
                                         </Box>
                                     </Box>
                                 </CardContent>
@@ -489,11 +491,11 @@ export default function StoreKeeperDashboard() {
                                             {lowStockItems.length}
                                         </Typography>
                                         <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                                            Critical Alerts
+                                            {t('Critical Alerts')}
                                         </Typography>
                                         <Box sx={{ mt: 1, display: 'flex', alignItems: 'center', gap: 0.5, color: lowStockItems.length > 0 ? '#f57c00' : '#718096' }}>
                                             {lowStockItems.length > 0 ? <WarningAmberIcon sx={{ fontSize: 14 }}/> : <CheckCircleOutlineIcon sx={{ fontSize: 14 }}/>}
-                                            <Typography variant="caption" fontWeight="600">{lowStockItems.length > 0 ? 'Restock Reqd' : 'Stock Safe'}</Typography>
+                                            <Typography variant="caption" fontWeight="600">{lowStockItems.length > 0 ? t('Restock Reqd') : t('Stock Safe')}</Typography>
                                         </Box>
                                     </Box>
                                 </CardContent>
@@ -515,10 +517,10 @@ export default function StoreKeeperDashboard() {
                                             {items.reduce((s, i) => s + (i.currentQuantity * (i.pricePerUnit || 0)), 0).toLocaleString('en-LK', { maximumFractionDigits: 0 })}
                                         </Typography>
                                         <Typography variant="caption" fontWeight="700" color="#2e7d32" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                                            Stock Value (LKR)
+                                            {t('Stock Value (LKR)')}
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: '#388e3c', mt: 1, fontWeight: 600 }}>
-                                            Across {items.length} items
+                                            {t('Across')} {items.length} {t('items')}
                                         </Typography>
                                     </Box>
                                 </CardContent>
@@ -540,10 +542,10 @@ export default function StoreKeeperDashboard() {
                                             {unreadMessages}
                                         </Typography>
                                         <Typography variant="caption" fontWeight="700" color="text.secondary" sx={{ textTransform: 'uppercase', mt: 0.5, display: 'block', letterSpacing: 0.5, fontSize: { xs: '0.65rem', sm: '0.75rem' } }}>
-                                            Messages
+                                            {t('Messages')}
                                         </Typography>
                                         <Typography variant="caption" sx={{ color: unreadMessages > 0 ? '#0284c7' : '#718096', mt: 1, fontWeight: 600 }}>
-                                            {unreadMessages > 0 ? 'Review chats' : 'No new mail'}
+                                            {unreadMessages > 0 ? t('Review chats') : t('No new mail')}
                                         </Typography>
                                     </Box>
                                 </CardContent>
@@ -557,7 +559,7 @@ export default function StoreKeeperDashboard() {
                                 <Box display="flex" alignItems="center" mb={2}>
                                     <WarningIcon color="error" sx={{ mr: 1, fontSize: 24 }} />
                                     <Typography variant="subtitle1" color="error" fontWeight="800">
-                                        ACTION REQUIRED: LOW STOCK
+                                        {t('ACTION REQUIRED: LOW STOCK')}
                                     </Typography>
                                 </Box>
                                 <Box display="flex" flexDirection="column" gap={1.5}>
@@ -580,7 +582,7 @@ export default function StoreKeeperDashboard() {
                                                 }}
                                             />
                                             <Typography variant="caption" color="text.secondary" sx={{ mt: 0.5, display: 'block', fontWeight: 500 }}>
-                                                {item.currentQuantity <= item.minimumLevel ? '⚠️ Below Critical Minimum' : '⚠️ Below Buffer Level'}
+                                                {item.currentQuantity <= item.minimumLevel ? t('Below Critical Minimum') : t('Below Buffer Level')}
                                             </Typography>
                                         </Box>
                                     ))}
@@ -589,7 +591,7 @@ export default function StoreKeeperDashboard() {
                         </Card>
                     ) : (
                         <Alert severity="success" sx={{ mb: 4, borderRadius: 3, fontWeight: 600 }}>
-                            Inventory healthy. No critical restock alerts.
+                            {t('Inventory healthy. No critical restock alerts.')}
                         </Alert>
                     )}
                 </Box>
@@ -603,7 +605,7 @@ export default function StoreKeeperDashboard() {
                         <Card sx={{ borderTop: '4px solid #1976d2', height: '100%' }}>
                             <CardContent>
                                 <Typography variant="h6" color="primary" fontWeight="bold" mb={2}>
-                                    General Stock Overview
+                                    {t('General Stock Overview')}
                                 </Typography>
                                 <TableContainer sx={{ maxHeight: 400 }}>
                                     <Table size="small" stickyHeader>
@@ -637,7 +639,7 @@ export default function StoreKeeperDashboard() {
                                     <Box display="flex" alignItems="center" mb={2}>
                                         <InventoryIcon color="success" sx={{ mr: 1, fontSize: 30 }} />
                                         <Typography variant="h6" color="success" fontWeight="bold">
-                                            Approved Field Orders (Ready for Dispatch)
+                                            {t('Approved Field Orders (Ready for Dispatch)')}
                                         </Typography>
                                     </Box>
                                     <TableContainer>
@@ -663,7 +665,7 @@ export default function StoreKeeperDashboard() {
                                                             <TableCell sx={{ fontWeight: 'bold', color: isShortfall ? 'error.main' : 'inherit' }}>
                                                                 {order.quantity}
                                                                 {isShortfall && (
-                                                                    <Chip label="Shortfall" size="small" color="error" sx={{ ml: 1, height: 18, fontSize: '10px' }} />
+                                                                    <Chip label={t("Shortfall")} size="small" color="error" sx={{ ml: 1, height: 18, fontSize: '10px' }} />
                                                                 )}
                                                             </TableCell>
                                                             <TableCell align="right" sx={{ fontWeight: 'bold' }}>
@@ -683,7 +685,7 @@ export default function StoreKeeperDashboard() {
                                                                         disabled={!!isShortfall}
                                                                         onClick={() => handleIssueOrder(order.id)}
                                                                     >
-                                                                        Issue Stock
+                                                                        {t('Issue Stock')}
                                                                     </Button>
                                                                     <Button
                                                                         variant="outlined"
@@ -691,7 +693,7 @@ export default function StoreKeeperDashboard() {
                                                                         size="small"
                                                                         onClick={() => handleRejectOrder(order.id)}
                                                                     >
-                                                                        Reject
+                                                                        {t('Reject')}
                                                                     </Button>
                                                                 </Box>
                                                             </TableCell>
@@ -705,7 +707,7 @@ export default function StoreKeeperDashboard() {
                             </Card>
                         ) : (
                             <Alert severity="info" sx={{ height: '100%' }}>
-                                There are no pending manager approvals waiting to be dispatched.
+                                {t('There are no pending manager approvals waiting to be dispatched.')}
                             </Alert>
                         )}
                     </Grid>
@@ -724,11 +726,11 @@ export default function StoreKeeperDashboard() {
                                             <Box display="flex" alignItems="center" mb={2}>
                                                 <InventoryIcon color="primary" sx={{ mr: 1, fontSize: 30 }} />
                                                 <Typography variant="h6" color="primary" fontWeight="bold">
-                                                    System Refill Review (Chief Clerk)
+                                                    {t('System Refill Review (Chief Clerk)')}
                                                 </Typography>
                                             </Box>
                                             <Typography variant="body2" color="text.secondary" mb={2}>
-                                                The following low-stock auto-refill suggestions require Chief Clerk review before being sent to the Manager.
+                                                {t('The following low-stock auto-refill suggestions require Chief Clerk review before being sent to the Manager.')}
                                             </Typography>
                                             <TableContainer>
                                                 <Table size="small">
@@ -753,7 +755,7 @@ export default function StoreKeeperDashboard() {
                                                                         size="small"
                                                                         onClick={() => handleOpenCcApproveModal(order)}
                                                                     >
-                                                                        Request Refill
+                                                                        {t('Request Refill')}
                                                                     </Button>
                                                                 </TableCell>
                                                             </TableRow>
@@ -765,7 +767,7 @@ export default function StoreKeeperDashboard() {
                                     </Card>
                                 ) : (
                                     <Alert severity="info">
-                                        No pending auto-refill requests requiring Chief Clerk approval at this time.
+                                        {t('No pending auto-refill requests requiring Chief Clerk approval at this time.')}
                                     </Alert>
                                 )}
                             </Grid>
@@ -777,10 +779,10 @@ export default function StoreKeeperDashboard() {
                             <Box display="flex" flexDirection={{ xs: 'column', sm: 'row' }} alignItems={{ xs: 'flex-start', sm: 'center' }} justifyContent="space-between" mb={2}>
                                 <Box display="flex" alignItems="center">
                                     <InventoryIcon color="action" sx={{ mr: 1 }} />
-                                    <Typography variant="h6">Current Inventory</Typography>
+                                    <Typography variant="h6">{t('Current Inventory')}</Typography>
                                 </Box>
                                 <TextField
-                                    placeholder="Search..."
+                                    placeholder={t("Search...")}
                                     size="small"
                                     value={search}
                                     onChange={(e) => setSearch(e.target.value)}

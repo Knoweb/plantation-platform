@@ -500,20 +500,20 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
         let total = 0;
         const alertsList: any[] = [];
 
-        if (alertCount > 0) { total += alertCount; alertsList.push({ id: 1, label: `${alertCount} Pending Approvals`, path: userRole === 'STORE_KEEPER' ? '/dashboard/store/approvals' : '/dashboard/approvals' }); }
-        if (restockCount > 0) { total += restockCount; alertsList.push({ id: 2, label: `${restockCount} General Stock Issues`, path: '/dashboard/stock' }); }
-        if (musterReviewCount > 0) { total += musterReviewCount; alertsList.push({ id: 3, label: `${musterReviewCount} Daily Muster Reviews`, path: '/dashboard/muster-review-manager' }); }
-        if (eveningPendingCount > 0) { total += eveningPendingCount; alertsList.push({ id: 4, label: `${eveningPendingCount} Evening Mustee Submissions`, path: '/dashboard/evening-muster' }); }
-        if (storePendingCount > 0) { total += storePendingCount; alertsList.push({ id: 5, label: `${storePendingCount} Dispatches`, path: '/dashboard/store/approvals' }); }
-        if (chiefClerkPendingCount > 0) { total += chiefClerkPendingCount; alertsList.push({ id: 6, label: `${chiefClerkPendingCount} Pending Inventory Actions`, path: '/dashboard/chief-inventory' }); }
-        if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} Unread Messages`, path: '/dashboard/correspondence' }); }
-        if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} Worker Approvals`, path: '/dashboard/workers' }); }
-        if (leaveApprovalCount > 0) { total += leaveApprovalCount; alertsList.push({ id: 9, label: `${leaveApprovalCount} Leave Approval${leaveApprovalCount > 1 ? 's' : ''} Pending`, path: '/dashboard/leave-management' }); }
+        if (alertCount > 0) { total += alertCount; alertsList.push({ id: 1, label: `${alertCount} ${t('Pending Approvals')}`, path: userRole === 'STORE_KEEPER' ? '/dashboard/store/approvals' : '/dashboard/approvals' }); }
+        if (restockCount > 0) { total += restockCount; alertsList.push({ id: 2, label: `${restockCount} ${t('General Stock Issues')}`, path: '/dashboard/stock' }); }
+        if (musterReviewCount > 0) { total += musterReviewCount; alertsList.push({ id: 3, label: `${musterReviewCount} ${t('Daily Muster Reviews')}`, path: '/dashboard/muster-review-manager' }); }
+        if (eveningPendingCount > 0) { total += eveningPendingCount; alertsList.push({ id: 4, label: `${eveningPendingCount} ${t('Evening Muster Submissions')}`, path: '/dashboard/evening-muster' }); }
+        if (storePendingCount > 0) { total += storePendingCount; alertsList.push({ id: 5, label: `${storePendingCount} ${t('Dispatches')}`, path: '/dashboard/store/approvals' }); }
+        if (chiefClerkPendingCount > 0) { total += chiefClerkPendingCount; alertsList.push({ id: 6, label: `${chiefClerkPendingCount} ${t('Pending Inventory Actions')}`, path: '/dashboard/chief-inventory' }); }
+        if (unreadChatCount > 0) { total += unreadChatCount; alertsList.push({ id: 7, label: `${unreadChatCount} ${t('Unread Messages')}`, path: '/dashboard/correspondence' }); }
+        if (workerApprovalCount > 0) { total += workerApprovalCount; alertsList.push({ id: 8, label: `${workerApprovalCount} ${t('Worker Approvals')}`, path: '/dashboard/workers' }); }
+        if (leaveApprovalCount > 0) { total += leaveApprovalCount; alertsList.push({ id: 9, label: `${leaveApprovalCount} ${t('Leave Approvals Pending')}`, path: '/dashboard/leave-management' }); }
         if (auditAlertCount > 0) { 
             total += auditAlertCount; 
             const alertLabel = (auditAlertCount === 1 && recentAuditMetadata.division)
-                ? `Audit Alert: ${recentAuditMetadata.division} (${recentAuditMetadata.date})`
-                : `${auditAlertCount} Unread Audit Notes`;
+                ? `${t('Audit Alert')}: ${recentAuditMetadata.division} (${recentAuditMetadata.date})`
+                : `${auditAlertCount} ${t('Unread Audit Notes')}`;
 
             // Field Officer should go to History Tab (Tab 1)
             // Manager should go to MusterReviewManager
@@ -528,7 +528,7 @@ export default function Sidebar({ mobileOpen, handleDrawerToggle, drawerWidth }:
             total += unjustifiedWorkCount;
             alertsList.push({ 
                 id: 11, 
-                label: `${unjustifiedWorkCount} Over-utilization Tasks Action Required`, 
+                label: `${unjustifiedWorkCount} ${t('Over-utilization Tasks Action Required')}`, 
                 path: '/dashboard/chief-distribution-works' 
             });
         }

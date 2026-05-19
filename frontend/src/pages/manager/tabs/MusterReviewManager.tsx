@@ -11,6 +11,7 @@ import CheckBoxIcon from '@mui/icons-material/CheckBox';
 import AddCircleOutlineIcon from '@mui/icons-material/AddCircleOutline';
 import { useState, useEffect } from 'react';
 import axios from 'axios';
+import { useLanguage } from '../../../context/LanguageContext';
 
 export default function MusterReviewManager() {
     const [pendingItems, setPendingItems] = useState<any[]>([]);
@@ -18,6 +19,7 @@ export default function MusterReviewManager() {
     const [loading, setLoading] = useState(true);
     const [viewStatus, setViewStatus] = useState<'PENDING' | 'HISTORY'>('PENDING');
     const [workerMap, setWorkerMap] = useState<Map<string, any>>(new Map());
+    const { t } = useLanguage();
 
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
@@ -109,11 +111,11 @@ export default function MusterReviewManager() {
                 workerCount: currentQuantity,
                 remarks: remarks
             });
-            setNotification({ open: true, message: "Muster Approved Successfully", severity: 'success' });
+            setNotification({ open: true, message: t("Muster Approved Successfully"), severity: 'success' });
             setSelectedItem(null);
             fetchPending();
         } catch (e) {
-            setNotification({ open: true, message: "Failed to Approve", severity: 'error' });
+            setNotification({ open: true, message: t("Failed to Approve"), severity: 'error' });
         }
     };
 
@@ -131,15 +133,15 @@ export default function MusterReviewManager() {
                 await axios.put(`/api/operations/daily-work/${selectedItem.id}/reject`, {
                     remarks: remarks
                 });
-                setNotification({ open: true, message: "Muster Rejected", severity: 'warning' });
+                setNotification({ open: true, message: t("Muster Rejected"), severity: 'warning' });
             } else {
                 await axios.delete(`/api/operations/daily-work/${selectedItem?.id}`);
-                setNotification({ open: true, message: "Record Deleted", severity: 'success' });
+                setNotification({ open: true, message: t("Record Deleted"), severity: 'success' });
             }
             setSelectedItem(null);
             fetchPending();
         } catch (e) {
-            setNotification({ open: true, message: "Failed to Process", severity: 'error' });
+            setNotification({ open: true, message: t("Failed to Process"), severity: 'error' });
         }
     };
 
@@ -165,11 +167,11 @@ export default function MusterReviewManager() {
 
     return (
         <Box>
-            <Typography variant="h5" fontWeight="bold" mb={3}>Muster Review</Typography>
+            <Typography variant="h5" fontWeight="bold" mb={3}>{t('Muster Review')}</Typography>
 
             <Box display="flex" gap={2} mb={3}>
-                <Button variant={viewStatus === 'PENDING' ? "contained" : "outlined"} onClick={() => setViewStatus('PENDING')}>Pending</Button>
-                <Button variant={viewStatus === 'HISTORY' ? "contained" : "outlined"} onClick={() => setViewStatus('HISTORY')}>History</Button>
+                <Button variant={viewStatus === 'PENDING' ? "contained" : "outlined"} onClick={() => setViewStatus('PENDING')}>{t('Pending')}</Button>
+                <Button variant={viewStatus === 'HISTORY' ? "contained" : "outlined"} onClick={() => setViewStatus('HISTORY')}>{t('History')}</Button>
             </Box>
 
             {loading ? <Box display="flex" justifyContent="center" py={4}><CircularProgress /></Box> : (
@@ -196,7 +198,7 @@ export default function MusterReviewManager() {
                         </TableHead>
                         <TableBody>
                             {pendingItems.length === 0 ? (
-                                <TableRow><TableCell colSpan={6} align="center">No records found.</TableCell></TableRow>
+                                <TableRow><TableCell colSpan={6} align="center">{t('No records found.')}</TableCell></TableRow>
                             ) : (
                                 pendingItems.map((row) => (
                                     <TableRow key={row.id} hover>
@@ -281,7 +283,7 @@ export default function MusterReviewManager() {
                                                         minWidth: isMobile ? '80px' : 'auto'
                                                     }}
                                                 >
-                                                    Review
+                                                    {t('Review')}
                                                 </Button>
                                                 {viewStatus === 'HISTORY' && row.date >= todayStr && (
                                                     <Button
@@ -297,7 +299,7 @@ export default function MusterReviewManager() {
                                                             minWidth: isMobile ? '80px' : 'auto'
                                                         }}
                                                     >
-                                                        Edit
+                                                        {t('Edit')}
                                                     </Button>
                                                 )}
                                             </Box>
@@ -381,8 +383,8 @@ export default function MusterReviewManager() {
                 return (
                     <Dialog open={Boolean(selectedItem)} onClose={() => setSelectedItem(null)} maxWidth="lg" fullWidth>
                         <DialogTitle sx={{ bgcolor: '#e8f5e9', display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography component="div" variant="h6">Review Muster: {selectedItem?.divisionName} ({selectedItem?.date})</Typography>
-                            <Chip label={viewStatus} color={viewStatus === 'HISTORY' ? 'success' : 'warning'} />
+                            <Typography component="div" variant="h6">{t('Review Muster')}: {selectedItem?.divisionName} ({selectedItem?.date})</Typography>
+                            <Chip label={t(viewStatus)} color={viewStatus === 'HISTORY' ? 'success' : 'warning'} />
                         </DialogTitle>
                         <DialogContent sx={{ bgcolor: '#f1f8e9', p: 3 }}>
                             {selectedItem && (
@@ -407,10 +409,10 @@ export default function MusterReviewManager() {
                                     <Box display="flex" gap={3} flexDirection={{ xs: 'column', md: 'row' }} mt={1} sx={{ height: '60vh' }}>
                                     {/* Left Pane: Muster Chit */}
                                     <Box flex={1} display="flex" flexDirection="column">
-                                        <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Muster Chit</Typography>
+                                        <Typography variant="h6" gutterBottom sx={{ color: '#2e7d32', fontWeight: 'bold' }}>{t('Muster Chit')}</Typography>
                                         <Card variant="outlined" sx={{ flex: 1, overflowY: 'auto', p: 2, bgcolor: '#ffffff', borderRadius: 2 }}>
                                             {localDetails.length === 0 ? (
-                                                <Typography color="text.secondary" align="center">No details available.</Typography>
+                                                <Typography color="text.secondary" align="center">{t('No details available.')}</Typography>
                                             ) : (
                                                 localDetails.map((d: any, idx: number) => {
                                                     const wCount = d.assigned?.length || 0;
@@ -433,7 +435,7 @@ export default function MusterReviewManager() {
                                                 })
                                             )}
                                             <Box mt={2} pt={2} borderTop="2px solid #edeff1" display="flex" justifyContent="space-between" bgcolor="#f9fbe7" p={1} borderRadius={1}>
-                                                <Typography fontWeight="bold" color="#2e7d32">Total Workers</Typography>
+                                                <Typography fontWeight="bold" color="#2e7d32">{t('Total Workers')}</Typography>
                                                 <Typography fontWeight="bold" color="#2e7d32">
                                                     {localDetails.reduce((sum, d) => sum + (d.assigned ? d.assigned.length : 0), 0)}
                                                 </Typography>
@@ -444,11 +446,11 @@ export default function MusterReviewManager() {
                                     {/* Right Pane: Worker Assignments */}
                                     <Box flex={2} display="flex" flexDirection="column">
                                         <Box display="flex" justifyContent="space-between" alignItems="center" mb={1}>
-                                            <Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>Worker Assignments</Typography>
+                                            <Typography variant="h6" sx={{ color: '#2e7d32', fontWeight: 'bold' }}>{t('Worker Assignments')}</Typography>
                                             <Box display="flex" gap={1}>
-                                                <Chip size="small" label="Permanent" sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }} />
-                                                <Chip size="small" label="Casual" sx={{ bgcolor: '#e1f5fe', color: '#0288d1', fontWeight: 'bold' }} />
-                                                <Chip size="small" label="Contract" sx={{ bgcolor: '#f3e5f5', color: '#9c27b0', fontWeight: 'bold' }} />
+                                                <Chip size="small" label={t('Permanent')} sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }} />
+                                                <Chip size="small" label={t('Casual')} sx={{ bgcolor: '#e1f5fe', color: '#0288d1', fontWeight: 'bold' }} />
+                                                <Chip size="small" label={t('Contract')} sx={{ bgcolor: '#f3e5f5', color: '#9c27b0', fontWeight: 'bold' }} />
                                             </Box>
                                         </Box>
                                         <Box sx={{ flex: 1, overflowY: 'auto', pr: 1 }}>
@@ -674,8 +676,8 @@ export default function MusterReviewManager() {
                                 fullWidth
                                 variant="outlined"
                                 size="small"
-                                label="Manager Remarks (Optional)"
-                                placeholder="Add reason for rejection, or notes for approval..."
+                                label={t('Manager Remarks (Optional)')}
+                                placeholder={t('Add reason for rejection, or notes for approval...')}
                                 value={remarks}
                                 onChange={(e: any) => setRemarks(e.target.value)}
                                 disabled={!isEditMode}
@@ -683,15 +685,15 @@ export default function MusterReviewManager() {
                             />
                             <Box display="flex" justifyContent="flex-end" width="100%">
                                 <Box display="flex" gap={1}>
-                                    <Button onClick={() => setSelectedItem(null)}>Close</Button>
+                                    <Button onClick={() => setSelectedItem(null)}>{t('Close')}</Button>
                                     {isEditMode ? (
                                         <>
-                                            <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Reject</Button>
-                                            <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={handleApprove}>{viewStatus === 'HISTORY' ? 'Update Details' : 'Approve & Sign'}</Button>
+                                            <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>{t('Reject')}</Button>
+                                            <Button variant="contained" color="success" startIcon={<CheckCircleIcon />} onClick={handleApprove}>{viewStatus === 'HISTORY' ? t('Update Details') : t('Approve & Sign')}</Button>
                                         </>
                                     ) : (
                                         <>
-                                            {viewStatus === 'HISTORY' && selectedItem?.date >= todayStr && <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>Delete Record (Reset)</Button>}
+                                            {viewStatus === 'HISTORY' && selectedItem?.date >= todayStr && <Button variant="outlined" color="error" startIcon={<CancelIcon />} onClick={handleReject}>{t('Delete Record (Reset)')}</Button>}
                                         </>
                                     )}
                                 </Box>

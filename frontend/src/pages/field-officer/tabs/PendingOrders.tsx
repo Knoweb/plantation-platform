@@ -231,6 +231,9 @@ export default function PendingOrders() {
                                             case 'ISSUED':
                                                 statusChip = <Chip label={t('Issued')} size="small" color="primary" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;
+                                            case 'REJECTED':
+                                                statusChip = <Chip icon={<CancelIcon sx={{ fontSize: '14px !important' }} />} label={t('Rejected')} size="small" color="error" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
+                                                break;
                                             case 'DECLINED':
                                                 statusChip = <Chip label={t('Declined')} size="small" color="error" variant="outlined" sx={{ fontWeight: 'bold', height: 20, fontSize: '0.65rem' }} />;
                                                 break;

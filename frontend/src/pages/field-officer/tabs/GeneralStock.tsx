@@ -335,11 +335,11 @@ export default function GeneralStock() {
                         <Table size="small">
                             <TableHead>
                                 <TableRow>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Date')}</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Item')}</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Qty')}</TableCell>
-                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Note')}</TableCell>
-                                    <TableCell align="center" sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>{t('Actions')}</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Date</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Item</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Qty</TableCell>
+                                    <TableCell sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Note</TableCell>
+                                    <TableCell align="center" sx={{ color: '#888', fontWeight: 600, fontSize: isMobile ? '0.7rem' : '0.75rem' }}>Actions</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -376,13 +376,13 @@ export default function GeneralStock() {
                 <Table size={isMobile ? "small" : "medium"}>
                     <TableHead sx={{ bgcolor: '#f1f8e9' }}>
                         <TableRow>
-                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Item Name')}</TableCell>
-                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Category')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Unit')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Current Qty')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Buffer')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Minimum')}</TableCell>
-                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>{t('Status')}</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Item Name</TableCell>
+                            <TableCell sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Category</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Unit</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Current Qty</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Buffer</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Minimum</TableCell>
+                            <TableCell align="center" sx={{ fontWeight: 'bold', color: '#1b5e20', fontSize: isMobile ? '0.75rem' : '0.85rem' }}>Status</TableCell>
                         </TableRow>
                     </TableHead>
                     <TableBody>
@@ -506,15 +506,15 @@ export default function GeneralStock() {
                         fullWidth
                         multiline
                         rows={2}
-                        label="Manager Remarks (Optional)"
+                        label={t('Manager Remarks (Optional)')}
                         value={approveRemarks}
                         onChange={(e) => setApproveRemarks(e.target.value)}
                         variant="outlined"
-                        placeholder="Add reason or notes..."
+                        placeholder={t('Add reason or notes...')}
                     />
                 </DialogContent>
                 <DialogActions sx={{ p: 2, display: 'flex', justifyContent: 'space-between' }}>
-                    <Button onClick={() => setApproveOpen(false)}>Cancel</Button>
+                    <Button onClick={() => setApproveOpen(false)}>{t('Cancel')}</Button>
                     <Box gap={1} display="flex">
                         <Button
                             variant="contained"
