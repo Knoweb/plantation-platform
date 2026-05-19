@@ -20,6 +20,7 @@ export default function Correspondence() {
 
     const [chats, setChats] = useState<any[]>([]);
     const [selectedChatId, setSelectedChatId] = useState('');
+    const selectedChatIdRef = useRef('');
     const [searchQuery, setSearchQuery] = useState('');
     const [contactsLoading, setContactsLoading] = useState(true);
     const [messages, setMessages] = useState<any[]>([]);
@@ -46,7 +47,11 @@ export default function Correspondence() {
         document.body.removeChild(link);
     };
 
+    // Keep ref in sync so fetchMessages interval always reads latest value
+    useEffect(() => { selectedChatIdRef.current = selectedChatId; }, [selectedChatId]);
+
     const fetchMessages = useCallback(async () => {
+        const activeChatId = selectedChatIdRef.current;
         if (!myId || !tenantId) return;
         try {
             const res = await axios.get(`/api/messages?userId=${myId}&userRole=${myRole}`, {
@@ -55,20 +60,20 @@ export default function Correspondence() {
 
             const counts: { [key: string]: number } = {};
             res.data.forEach((m: any) => {
-                if (m.receiverId === myId && !m.read && m.senderId !== selectedChatId) {
+                if (m.receiverId === myId && !m.read && m.senderId !== activeChatId) {
                     counts[m.senderId] = (counts[m.senderId] || 0) + 1;
                 }
             });
             setUnreadCounts(counts);
 
             const filtered = res.data.filter((m: any) =>
-                (m.senderId === myId && m.receiverId === selectedChatId) ||
-                (m.senderId === selectedChatId && m.receiverId === myId)
+                (m.senderId === myId && m.receiverId === activeChatId) ||
+                (m.senderId === activeChatId && m.receiverId === myId)
             );
             setMessages(filtered);
 
             filtered.forEach((m: any) => {
-                if (m.senderId === selectedChatId && m.receiverId === myId && !m.read) {
+                if (m.senderId === activeChatId && m.receiverId === myId && !m.read) {
                     axios.put(`/api/messages/${m.id}/read`, {}, {
                         headers: { 'X-Tenant-ID': tenantId }
                     }).catch(err => console.error("Failed to mark read", err));
@@ -77,7 +82,7 @@ export default function Correspondence() {
         } catch (error) {
             console.error("Failed to fetch messages", error);
         }
-    }, [myId, myRole, tenantId, selectedChatId]);
+    }, [myId, myRole, tenantId]);
 
     // Heartbeat to update local lastSeen
     useEffect(() => {
