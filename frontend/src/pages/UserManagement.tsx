@@ -39,7 +39,6 @@ import axios from 'axios';
 const ROLES = [
     { value: 'MANAGER', label: 'Estate Manager' },
     { value: 'CHIEF_CLERK', label: 'Chief Clerk' },
-    { value: 'MANAGER_CLERK', label: 'Manager + Chief Clerk' },
     { value: 'FIELD_OFFICER', label: 'Field Officer' },
     { value: 'STORE_KEEPER', label: 'Store Keeper' }
 ];
