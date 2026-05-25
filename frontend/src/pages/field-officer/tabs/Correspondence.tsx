@@ -60,13 +60,17 @@ export default function Correspondence() {
                     counts[m.senderId] = (counts[m.senderId] || 0) + 1;
                 }
             });
-            setUnreadCounts(counts);
+            setUnreadCounts(prev => JSON.stringify(prev) === JSON.stringify(counts) ? prev : counts);
 
             const filtered = res.data.filter((m: any) =>
                 (m.senderId === myId && m.receiverId === activeChatId) ||
                 (m.senderId === activeChatId && m.receiverId === myId)
             );
-            setMessages(filtered);
+            
+            setMessages(prev => {
+                if (prev.length === filtered.length && JSON.stringify(prev) === JSON.stringify(filtered)) return prev;
+                return filtered;
+            });
 
             filtered.forEach((m: any) => {
                 if (m.senderId === activeChatId && m.receiverId === myId && !m.read) {
@@ -111,7 +115,11 @@ export default function Correspondence() {
                             type: 'user'
                         }));
 
-                    setChats(fetchedUsers);
+                    setChats(prev => {
+                        if (JSON.stringify(prev) === JSON.stringify(fetchedUsers)) return prev;
+                        return fetchedUsers;
+                    });
+                    
                     setSelectedChatId(prev => {
                         if (!prev && fetchedUsers.length > 0) {
                             return fetchedUsers[0].id;
