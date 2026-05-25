@@ -18,7 +18,10 @@ export default function Correspondence() {
     const myRole = userSession.role || 'FIELD_OFFICER';
     const { t } = useLanguage();
 
-    const [chats, setChats] = useState<any[]>([]);
+    const [chats, setChats] = useState<any[]>(() => {
+        const cached = sessionStorage.getItem(`cachedContacts_${tenantId}`);
+        return cached ? JSON.parse(cached) : [];
+    });
     const [selectedChatId, setSelectedChatId] = useState('');
     const [searchQuery, setSearchQuery] = useState('');
     const [messages, setMessages] = useState<any[]>([]);
@@ -49,6 +52,8 @@ export default function Correspondence() {
 
     const fetchMessages = async () => {
         const activeChatId = selectedChatIdRef.current;
+        if (!activeChatId) return; // Prevent fetching if no chat is selected
+
         try {
             const res = await axios.get(`/api/messages?userId=${myId}&userRole=${myRole}`, {
                 headers: { 'X-Tenant-ID': tenantId }
@@ -117,6 +122,7 @@ export default function Correspondence() {
 
                     setChats(prev => {
                         if (JSON.stringify(prev) === JSON.stringify(fetchedUsers)) return prev;
+                        sessionStorage.setItem(`cachedContacts_${tenantId}`, JSON.stringify(fetchedUsers));
                         return fetchedUsers;
                     });
                     
