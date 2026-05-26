@@ -47,8 +47,10 @@ export const translations: Record<string, Record<string, string>> = {
     'Logged in as:':                { si: 'ලෙස ඇතුල් වී ඇත:' },
 
     // ── Common UI ────────────────────────────────────────────────────────────────
+    'DIVISIONS':                    { si: 'ඩිවිෂන්' },
     'All Divisions':                { si: 'සියලු ඩිවිෂන්' },
     'Current Date':                 { si: 'වත්මන් දිනය' },
+    'CURRENT DATE':                 { si: 'වත්මන් දිනය' },
     'Overview':                     { si: 'දළ විශ්ලේෂණය' },
     "Overview of your plantation's performance and yield.": { si: 'ඔබේ වතු කාර්යසාධනය සහ අස්වැන්නෙහි දළ විශ්ලේෂණය.' },
     'Welcome back,':                { si: 'නැවත සාදරයෙන් පිළිගනිමු,' },
@@ -72,23 +74,28 @@ export const translations: Record<string, Record<string, string>> = {
     'Crop Performance (vs Budget)': { si: 'බෝග කාර්යසාධනය (අයවැය හා)' },
     'Crop':                         { si: 'බෝගය' },
     'Achievement':                  { si: 'ජයග්‍රහණය' },
+    'ACHIEVEMENT':                  { si: 'ජයග්‍රහණය' },
     'Total harvested this month to date': { si: 'මේ මාසයේ අදට රැස්කළ මුළු ප්‍රමාණය' },
     'Target Budget':                { si: 'ඉලක්ක අයවැය' },
+    'TARGET BUDGET':                { si: 'ඉලක්ක අයවැය' },
     'Budgeted for':                 { si: 'සඳහා අය කළ' },
     'Target Achievement':           { si: 'ඉලක්ක ජයග්‍රහණය' },
     'Shortfall of':                 { si: 'හිඟ ප්‍රමාණය:' },
     'kg to reach target.':          { si: 'kg ඉලක්කයට ළඟාවීමට.' },
     'Target Exceeded! Well done.':  { si: 'ඉලක්කය ඉක්මවා ගිය! ශාබාෂ්.' },
     'Contribution by Division':     { si: 'ඩිවිෂන් අනුව දායකත්වය' },
+    'CONTRIBUTION BY DIVISION':     { si: 'ඩිවිෂන් අනුව දායකත්වය' },
     'No division-wise data available for this month.': { si: 'මෙම මාසය සඳහා ඩිවිෂන් දත්ත නොමැත.' },
     'No performance data available for this selection.': { si: 'මෙම තෝරාගැනීම සඳහා ක්‍රියාසාධන දත්ත නොමැත.' },
 
     // ── ProfitSummaryCard ────────────────────────────────────────────────────────
     'INTERNAL PROJECTIONS':         { si: 'අභ්‍යන්තර ඇස්තමේන්තු' },
+    'Internal Projections':         { si: 'අභ්‍යන්තර ඇස්තමේන්තු' },
     'PROJECTION':                   { si: 'ඇස්තමේන්තුව' },
     'PROFITABLE':                   { si: 'ලාභදායී' },
     'POTENTIAL LOSS':               { si: 'ඇතිවිය හැකි අලාභය' },
     'Assumed Profit':               { si: 'ගණනය කළ ලාභය' },
+    'ASSUMED PROFIT':               { si: 'ගණනය කළ ලාභය' },
     'Operating with Surplus':       { si: 'අතිරික්තතාවයෙන් ක්‍රියාත්මකවීම' },
     'Budget Shortfall':             { si: 'අයවැය හිඟය' },
     'Assumed green leaf rate':      { si: 'ගණනය කළ කොළ දල්ල අනුපාතය' },
@@ -196,6 +203,7 @@ export const translations: Record<string, Record<string, string>> = {
     'Close Review':                 { si: 'සමාලෝචනය වසන්න' },
 
     // ── Correspondence ──────────────────────────────────────────────────────────
+    'Correspondence':               { si: 'ලිපි හුවමාරු' },
     'All Personnel':                { si: 'සියලු කාර්ය මණ්ඩලය' },
     'No messages yet':              { si: 'තවම පණිවිඩ නොමැත' },
     'Start a conversation with':    { si: 'සමග සංවාදයක් ආරම්භ කරන්න' },
@@ -210,6 +218,7 @@ export const translations: Record<string, Record<string, string>> = {
     'Offline':                      { si: 'විසන්ධිව' },
 
     // ── Leave Application ───────────────────────────────────────────────────────
+    'Leave Application':            { si: 'නිවාඩු අයදුම්පත' },
     'Leave Balance':                { si: 'නිවාඩු ශේෂය' },
     'Metric':                       { si: 'මිනුම' },
     'Duty':                         { si: 'රාජකාරී' },
@@ -246,15 +255,18 @@ export const translations: Record<string, Record<string, string>> = {
     'Okay, Got it':                 { si: 'හරි, තේරුණා' },
 
     // ── Order Request ───────────────────────────────────────────────────────────
+    'Order Request':                { si: 'ඇණවුම් ඉල්ලීම' },
     'Current Inventory':            { si: 'වත්මන් ඉන්වෙන්ටරිය' },
     'Stock':                        { si: 'තොගය' },
     'Request Details':              { si: 'ඉල්ලීම් විස්තර' },
     'Field No':                     { si: 'ක්ෂේත්‍ර අංකය' },
+    'Crop':                         { si: 'බෝගය' },
     'Quantity Needed':              { si: 'අවශ්‍ය ප්‍රමාණය' },
     'Remarks / Note':               { si: 'සටහන් / කෙටි නිවේදනය' },
     'Submit Request':               { si: 'ඉල්ලීම ඉදිරිපත් කරන්න' },
 
     // ── Divisions ───────────────────────────────────────────────────────────────
+    'Divisions':                    { si: 'ඩිවිෂන්' },
     'Add Division':                 { si: 'ඩිවිෂන් එකතු කරන්න' },
     'No Divisions Found':           { si: 'ඩිවිෂන් හමු නොවිණි' },
     'Start mapping your estate by adding a division.': { si: 'ඩිවිෂන් එකතු කිරීමෙන් ඔබේ ආදායම් ක්ෂේත්‍රය සිතියම් ගත කිරීම ආරම්භ කරන්න.' },
@@ -269,6 +281,8 @@ export const translations: Record<string, Record<string, string>> = {
     'Manage Map':                   { si: 'සිතියම කළමනාකරණය' },
 
     // ── Distribution of Works ───────────────────────────────────────────────────
+    'Distribution of Works':        { si: 'කාර්ය බෙදාහරීම' },
+    'Job Roles & Tasks':            { si: 'රැකියා භූමිකා සහ කාර්යයන්' },
     'Add Task':                     { si: 'කාර්යය එකතු කරන්න' },
     'Task Name':                    { si: 'කාර්යය නාමය' },
     'No tasks found.':              { si: 'කාර්යයන් හමු නොවිණි.' },
@@ -276,10 +290,13 @@ export const translations: Record<string, Record<string, string>> = {
     'Delete Task':                  { si: 'කාර්යය මකන්න' },
 
     // ── Staff Management / Worker Registry ────────────────────────────────────
+    'Staff Management':             { si: 'කාර්ය මණ්ඩල කළමනාකරණය' },
+    'Worker Registry':              { si: 'කම්කරු ලේඛනය' },
     'Add Worker':                   { si: 'කම්කරු එකතු කරන්න' },
     'Worker Name':                  { si: 'කම්කරු නාමය' },
     'Employment Type':              { si: 'රැකියා වර්ගය' },
     'PERMANENT':                    { si: 'ස්ථිර' },
+    'CASUAL':                       { si: 'සාමාන්‍ය' },
     'CONTRACT':                     { si: 'කොන්ත්‍රාත්' },
     'Active':                       { si: 'ක්‍රියාත්මකව' },
     'Inactive':                     { si: 'අක්‍රිය' },
@@ -287,6 +304,7 @@ export const translations: Record<string, Record<string, string>> = {
     'Search workers...':            { si: 'කම්කරුවන් සොයන්න...' },
 
     // ── Crop Book ───────────────────────────────────────────────────────────────
+    'Crop Book':                    { si: 'බෝග පොත' },
     'Field':                        { si: 'ක්ෂේත්‍රය' },
     'Acreage':                      { si: 'අක්කර' },
     'Total Yield':                  { si: 'මුළු අස්වැන්න' },
@@ -299,13 +317,17 @@ export const translations: Record<string, Record<string, string>> = {
     'Key Performance Indicators':   { si: 'ප්‍රධාන කාර්ය සාධන දර්ශක' },
 
     // ── Pending Orders ──────────────────────────────────────────────────────────
+    'Pending Orders':               { si: 'බලා සිටින ඇණවුම්' },
+    'Approve':                      { si: 'අනුමත කරන්න' },
     'Decline':                      { si: 'ප්‍රතික්ෂේප කරන්න' },
+    'Approved':                     { si: 'අනුමත කරන ලදී' },
     'Declined':                     { si: 'ප්‍රතික්ෂේප කරන ලදී' },
     'Requested By':                 { si: 'ඉල්ලීම් කළේ' },
     'Quantity':                     { si: 'ප්‍රමාණය' },
     'Requested On':                 { si: 'ඉල්ලීම් කළ දිනය' },
 
     // ── Store Keeper ────────────────────────────────────────────────────────────
+    'Store Keeper':                 { si: 'ගබඩා භාරකාරයා' },
     'Add Stock':                    { si: 'තොගය එකතු කරන්න' },
     'Transaction History':          { si: 'ගනුදෙනු ඉතිහාසය' },
     'Restock':                      { si: 'නැවත ගබඩා' },
@@ -327,11 +349,22 @@ export const translations: Record<string, Record<string, string>> = {
     'Divisional Stock':             { si: 'ඩිවිෂන් තොගය' },
     'Filter by Division':           { si: 'ඩිවිෂන් අනුව පෙරහන' },
     'My Order History':             { si: 'මගේ ඇණවුම් ඉතිහාසය' },
+    'Issued':                       { si: 'නිකුත් කළ' },
     'Cancelled':                    { si: 'අවලංගු කළ' },
 
     // ── Common extras ───────────────────────────────────────────────────────────
+    'Date':                         { si: 'දිනය' },
+    'Status':                       { si: 'තත්ත්වය' },
+    'Cancel':                       { si: 'අවලංගු' },
+    'Division':                     { si: 'ඩිවිෂන්' },
+    'Item':                         { si: 'කාරිතය' },
+    'Unit':                         { si: 'ඒකකය' },
+    'Manager Remarks (Optional)':   { si: 'කළමනාකරු සටහන් (අමතරව)' },
 
     // ── Crop Book ─────────────────────────────────────────────────────────────
+    'Crop Book':                    { si: 'බෝග පොත' },
+    'Month':                        { si: 'මාසය' },
+    'Download Snapshot':            { si: 'සාරාංශය බාගත කරන්න' },
     'Budget Targets':               { si: 'අයවැය ඉලක්ක' },
     'Wage Rates':                   { si: 'වැටුප් අනුපාත' },
     'Budgets':                      { si: 'අයවැය' },
@@ -339,9 +372,11 @@ export const translations: Record<string, Record<string, string>> = {
     'Factory Weight':               { si: 'කර්මාන්තශාලා බර' },
     'Field Weight':                 { si: 'ක්ෂේත්‍ර බර' },
     'Checkroll Weight':             { si: 'චෙක්රෝල් බර' },
+    'Yield per Acre':               { si: 'අක්කරයක අස්වැන්න' },
     'No. Of Pluckers':              { si: 'නෙලන්නන් සංඛ්‍යාව' },
     'Over kilos':                   { si: 'අතිරික්ත කිලෝ' },
     'Cash Kilos':                   { si: 'මුදල් කිලෝ' },
+    'Plucking Cost per Kg':         { si: 'කිලෝග්‍රෑමයක නෙලීමේ පිරිවැය' },
     'Todate':                       { si: 'අද දක්වා' },
     'Budgeted crop for the Year':   { si: 'වසර සඳහා අයවැයගත අස්වැන්න' },
     'Achieved Crop - Todate':       { si: 'අද දක්වා ලබාගත් අස්වැන්න' },
@@ -443,6 +478,9 @@ export const translations: Record<string, Record<string, string>> = {
     'Failed to approve inventory.':  { si: 'තොගය අනුමත කිරීමට අපොහොසත් විය.' },
     'Item deleted successfully':     { si: 'අයිතමය සාර්ථකව මකා දමන ලදී' },
     'Failed to delete item':         { si: 'අයිතමය මකා දැමීමට අපොහොසත් විය' },
+    'PENDING':                       { si: 'බලාපොරොත්තුවෙන්' },
+    'APPROVED':                      { si: 'අනුමතයි' },
+    'DECLINED':                      { si: 'ප්‍රතික්ෂේපිතයි' },
     'PENDING APPROVAL':              { si: 'අනුමත කිරීම් බලාපොරොත්තු වේ' },
 
     // ── Store Keeper Dashboard ────────────────────────────────────────────────
@@ -450,7 +488,9 @@ export const translations: Record<string, Record<string, string>> = {
     'Manage materials and issue stock.':      { si: 'ද්‍රව්‍ය කළමනාකරණය සහ තොග නිකුත් කිරීම.' },
     'Review and dispatch officer requests.':   { si: 'නිලධාරි ඉල්ලීම් සමාලෝචනය කිරීම සහ යැවීම.' },
     'Action Reqd':                   { si: 'ක්‍රියාමාර්ග අවශ්‍යයි' },
+    'Critical Alerts':               { si: 'විවේචනාත්මක ඇඟවීම්' },
     'Stock Safe':                    { si: 'තොග ආරක්ෂිතයි' },
+    'Stock Value (LKR)':             { si: 'තොග වටිනාකම (රුපියල්)' },
     'Across':                        { si: 'පුරා' },
     'items':                         { si: 'අයිතම' },
     'Review chats':                  { si: 'සංවාද බලන්න' },
@@ -493,6 +533,8 @@ export const translations: Record<string, Record<string, string>> = {
     'Cost Entered':                  { si: 'පිරිවැය ඇතුළත් කරන ලදී' },
     'Cost not entered':              { si: 'පිරිවැය ඇතුළත් කර නොමැත' },
     'Daily Entry Status':            { si: 'දෛනික ඇතුළත් කිරීම් තත්ත්වය' },
+    'permanent':                     { si: 'ස්ථිර' },
+    'casual':                        { si: 'අනියම්' },
     'contracts logged':              { si: 'කොන්ත්‍රාත්තු සටහන් කර ඇත' },
     'daily contract':                { si: 'දෛනික කොන්ත්‍රාත්' },
     'workers not logged':            { si: 'කම්කරුවන් සටහන් කර නොමැත' },
