@@ -6,29 +6,7 @@ on:
       - dev-isuru
 
 jobs:
-  build-and-push:
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v3
-
-      - name: Log in to the Container registry
-        uses: docker/login-action@v2
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Build and push all services
-        run: |
-          docker compose -f docker-compose.prod.yml build
-          docker compose -f docker-compose.prod.yml push
-
   deploy:
-    needs: build-and-push
     runs-on: ubuntu-latest
     steps:
       - name: Deploy via SSH
@@ -63,12 +41,24 @@ jobs:
             git fetch origin $BRANCH_NAME
             git reset --hard origin/$BRANCH_NAME
             
-            # Login to GitHub Container Registry on the server to securely pull the new images
-            echo $GITHUB_TOKEN | docker login ghcr.io -u Knoweb --password-stdin
+            # Step 1: Pre-build new images sequentially on the server to prevent RAM exhaustion and swapping
+            echo "Building discovery-server..."
+            docker compose -f docker-compose.prod.yml build discovery-server
             
-            # Start/Restart Services with Zero Downtime Deployment (ZDD)
-            # Step 1: Pull pre-built images from GitHub instantly
-            docker compose -f docker-compose.prod.yml pull
+            echo "Building api-gateway..."
+            docker compose -f docker-compose.prod.yml build api-gateway
+            
+            echo "Building tenant-service..."
+            docker compose -f docker-compose.prod.yml build tenant-service
+            
+            echo "Building inventory-service..."
+            docker compose -f docker-compose.prod.yml build inventory-service
+            
+            echo "Building operation-service..."
+            docker compose -f docker-compose.prod.yml build operation-service
+            
+            echo "Building frontend..."
+            docker compose -f docker-compose.prod.yml build frontend
             
             # Step 2: Spin up the new V2 containers perfectly alongside the old V1 containers
             docker compose -f docker-compose.prod.yml up -d --scale api-gateway=2 --scale frontend=2 --scale tenant-service=2 --scale inventory-service=2 --scale operation-service=2 --no-recreate
