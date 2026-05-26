@@ -12,6 +12,7 @@ import {
 import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddBusinessIcon from '@mui/icons-material/AddBusiness';
 import LogoutIcon from '@mui/icons-material/Logout';
+import StorageIcon from '@mui/icons-material/Storage';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 260;
@@ -98,6 +99,24 @@ export default function SuperAdminSidebar({ onNewEstateClick }: SuperAdminSideba
                     >
                         <ListItemIcon sx={{ color: 'white' }}><AddBusinessIcon /></ListItemIcon>
                         <ListItemText primary="New Estate" primaryTypographyProps={{ color: 'white', fontWeight: 'bold' }} />
+                    </ListItemButton>
+                </ListItem>
+
+                <Divider sx={{ bgcolor: 'rgba(255,255,255,0.2)', my: 2 }} />
+
+                <ListItem disablePadding>
+                    <ListItemButton
+                        onClick={() => window.open('http://165.232.175.225:9000', '_blank')}
+                        sx={{
+                            bgcolor: 'rgba(0, 0, 0, 0.15)',
+                            mx: 1,
+                            borderRadius: 2,
+                            mb: 1,
+                            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.3)' }
+                        }}
+                    >
+                        <ListItemIcon sx={{ color: '#ffd54f' }}><StorageIcon /></ListItemIcon>
+                        <ListItemText primary="Server Monitoring & Backups" primaryTypographyProps={{ color: '#ffd54f', fontWeight: 'bold', fontSize: '0.85rem', lineHeight: 1.2 }} />
                     </ListItemButton>
                 </ListItem>
             </List>
