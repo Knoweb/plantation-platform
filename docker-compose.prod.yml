@@ -137,9 +137,43 @@ services:
       - plantation-network
     restart: always
 
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: always
+    ports:
+      - "9000:9000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - portainer_data:/data
+    networks:
+      - plantation-network
+
+  pgbackups:
+    image: prodrigestivill/postgres-backup-local
+    container_name: pgbackups
+    restart: always
+    environment:
+      POSTGRES_HOST: postgres
+      POSTGRES_DB: plantation_db,inventory_db,operation_db
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: superman9
+      # Run backup daily at midnight
+      SCHEDULE: "@daily"
+      # Keep the last 7 days of backups
+      BACKUP_KEEP_DAYS: 7
+    volumes:
+      - pgbackups_data:/backups
+    depends_on:
+      - postgres
+    networks:
+      - plantation-network
+
 networks:
   plantation-network:
     driver: bridge
 
 volumes:
   postgres_data:
+  portainer_data:
+  pgbackups_data:
