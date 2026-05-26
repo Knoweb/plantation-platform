@@ -203,7 +203,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Close Review':                 { si: 'සමාලෝචනය වසන්න' },
 
     // ── Correspondence ──────────────────────────────────────────────────────────
-    'Correspondence':               { si: 'ලිපි හුවමාරු' },
     'All Personnel':                { si: 'සියලු කාර්ය මණ්ඩලය' },
     'No messages yet':              { si: 'තවම පණිවිඩ නොමැත' },
     'Start a conversation with':    { si: 'සමග සංවාදයක් ආරම්භ කරන්න' },
@@ -218,7 +217,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Offline':                      { si: 'විසන්ධිව' },
 
     // ── Leave Application ───────────────────────────────────────────────────────
-    'Leave Application':            { si: 'නිවාඩු අයදුම්පත' },
     'Leave Balance':                { si: 'නිවාඩු ශේෂය' },
     'Metric':                       { si: 'මිනුම' },
     'Duty':                         { si: 'රාජකාරී' },
@@ -255,18 +253,15 @@ export const translations: Record<string, Record<string, string>> = {
     'Okay, Got it':                 { si: 'හරි, තේරුණා' },
 
     // ── Order Request ───────────────────────────────────────────────────────────
-    'Order Request':                { si: 'ඇණවුම් ඉල්ලීම' },
     'Current Inventory':            { si: 'වත්මන් ඉන්වෙන්ටරිය' },
     'Stock':                        { si: 'තොගය' },
     'Request Details':              { si: 'ඉල්ලීම් විස්තර' },
     'Field No':                     { si: 'ක්ෂේත්‍ර අංකය' },
-    'Crop':                         { si: 'බෝගය' },
     'Quantity Needed':              { si: 'අවශ්‍ය ප්‍රමාණය' },
     'Remarks / Note':               { si: 'සටහන් / කෙටි නිවේදනය' },
     'Submit Request':               { si: 'ඉල්ලීම ඉදිරිපත් කරන්න' },
 
     // ── Divisions ───────────────────────────────────────────────────────────────
-    'Divisions':                    { si: 'ඩිවිෂන්' },
     'Add Division':                 { si: 'ඩිවිෂන් එකතු කරන්න' },
     'No Divisions Found':           { si: 'ඩිවිෂන් හමු නොවිණි' },
     'Start mapping your estate by adding a division.': { si: 'ඩිවිෂන් එකතු කිරීමෙන් ඔබේ ආදායම් ක්ෂේත්‍රය සිතියම් ගත කිරීම ආරම්භ කරන්න.' },
@@ -281,8 +276,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Manage Map':                   { si: 'සිතියම කළමනාකරණය' },
 
     // ── Distribution of Works ───────────────────────────────────────────────────
-    'Distribution of Works':        { si: 'කාර්ය බෙදාහරීම' },
-    'Job Roles & Tasks':            { si: 'රැකියා භූමිකා සහ කාර්යයන්' },
     'Add Task':                     { si: 'කාර්යය එකතු කරන්න' },
     'Task Name':                    { si: 'කාර්යය නාමය' },
     'No tasks found.':              { si: 'කාර්යයන් හමු නොවිණි.' },
@@ -290,8 +283,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Delete Task':                  { si: 'කාර්යය මකන්න' },
 
     // ── Staff Management / Worker Registry ────────────────────────────────────
-    'Staff Management':             { si: 'කාර්ය මණ්ඩල කළමනාකරණය' },
-    'Worker Registry':              { si: 'කම්කරු ලේඛනය' },
     'Add Worker':                   { si: 'කම්කරු එකතු කරන්න' },
     'Worker Name':                  { si: 'කම්කරු නාමය' },
     'Employment Type':              { si: 'රැකියා වර්ගය' },
@@ -304,7 +295,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Search workers...':            { si: 'කම්කරුවන් සොයන්න...' },
 
     // ── Crop Book ───────────────────────────────────────────────────────────────
-    'Crop Book':                    { si: 'බෝග පොත' },
     'Field':                        { si: 'ක්ෂේත්‍රය' },
     'Acreage':                      { si: 'අක්කර' },
     'Total Yield':                  { si: 'මුළු අස්වැන්න' },
@@ -320,14 +310,12 @@ export const translations: Record<string, Record<string, string>> = {
     'Pending Orders':               { si: 'බලා සිටින ඇණවුම්' },
     'Approve':                      { si: 'අනුමත කරන්න' },
     'Decline':                      { si: 'ප්‍රතික්ෂේප කරන්න' },
-    'Approved':                     { si: 'අනුමත කරන ලදී' },
     'Declined':                     { si: 'ප්‍රතික්ෂේප කරන ලදී' },
     'Requested By':                 { si: 'ඉල්ලීම් කළේ' },
     'Quantity':                     { si: 'ප්‍රමාණය' },
     'Requested On':                 { si: 'ඉල්ලීම් කළ දිනය' },
 
     // ── Store Keeper ────────────────────────────────────────────────────────────
-    'Store Keeper':                 { si: 'ගබඩා භාරකාරයා' },
     'Add Stock':                    { si: 'තොගය එකතු කරන්න' },
     'Transaction History':          { si: 'ගනුදෙනු ඉතිහාසය' },
     'Restock':                      { si: 'නැවත ගබඩා' },
@@ -349,22 +337,11 @@ export const translations: Record<string, Record<string, string>> = {
     'Divisional Stock':             { si: 'ඩිවිෂන් තොගය' },
     'Filter by Division':           { si: 'ඩිවිෂන් අනුව පෙරහන' },
     'My Order History':             { si: 'මගේ ඇණවුම් ඉතිහාසය' },
-    'Issued':                       { si: 'නිකුත් කළ' },
     'Cancelled':                    { si: 'අවලංගු කළ' },
 
     // ── Common extras ───────────────────────────────────────────────────────────
-    'Date':                         { si: 'දිනය' },
-    'Status':                       { si: 'තත්ත්වය' },
-    'Cancel':                       { si: 'අවලංගු' },
-    'Division':                     { si: 'ඩිවිෂන්' },
-    'Item':                         { si: 'කාරිතය' },
-    'Unit':                         { si: 'ඒකකය' },
-    'Manager Remarks (Optional)':   { si: 'කළමනාකරු සටහන් (අමතරව)' },
 
     // ── Crop Book ─────────────────────────────────────────────────────────────
-    'Crop Book':                    { si: 'බෝග පොත' },
-    'Month':                        { si: 'මාසය' },
-    'Download Snapshot':            { si: 'සාරාංශය බාගත කරන්න' },
     'Budget Targets':               { si: 'අයවැය ඉලක්ක' },
     'Wage Rates':                   { si: 'වැටුප් අනුපාත' },
     'Budgets':                      { si: 'අයවැය' },
@@ -372,7 +349,6 @@ export const translations: Record<string, Record<string, string>> = {
     'Factory Weight':               { si: 'කර්මාන්තශාලා බර' },
     'Field Weight':                 { si: 'ක්ෂේත්‍ර බර' },
     'Checkroll Weight':             { si: 'චෙක්රෝල් බර' },
-    'Yield per Acre':               { si: 'අක්කරයක අස්වැන්න' },
     'No. Of Pluckers':              { si: 'නෙලන්නන් සංඛ්‍යාව' },
     'Over kilos':                   { si: 'අතිරික්ත කිලෝ' },
     'Cash Kilos':                   { si: 'මුදල් කිලෝ' },
