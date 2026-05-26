@@ -13,6 +13,7 @@ import DashboardIcon from '@mui/icons-material/Dashboard';
 import AddBusinessIcon from '@mui/icons-material/AddBusiness';
 import LogoutIcon from '@mui/icons-material/Logout';
 import StorageIcon from '@mui/icons-material/Storage';
+import TimelineIcon from '@mui/icons-material/Timeline';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 const drawerWidth = 260;
@@ -117,6 +118,22 @@ export default function SuperAdminSidebar({ onNewEstateClick }: SuperAdminSideba
                     >
                         <ListItemIcon sx={{ color: '#ffd54f' }}><StorageIcon /></ListItemIcon>
                         <ListItemText primary="Server Monitoring & Backups" primaryTypographyProps={{ color: '#ffd54f', fontWeight: 'bold', fontSize: '0.85rem', lineHeight: 1.2 }} />
+                    </ListItemButton>
+                </ListItem>
+
+                <ListItem disablePadding>
+                    <ListItemButton
+                        onClick={() => window.open('http://165.232.175.225:3000', '_blank')}
+                        sx={{
+                            bgcolor: 'rgba(0, 0, 0, 0.15)',
+                            mx: 1,
+                            borderRadius: 2,
+                            mb: 1,
+                            '&:hover': { bgcolor: 'rgba(0, 0, 0, 0.3)' }
+                        }}
+                    >
+                        <ListItemIcon sx={{ color: '#4dd0e1' }}><TimelineIcon /></ListItemIcon>
+                        <ListItemText primary="Analytics Dashboard (Grafana)" primaryTypographyProps={{ color: '#4dd0e1', fontWeight: 'bold', fontSize: '0.85rem', lineHeight: 1.2 }} />
                     </ListItemButton>
                 </ListItem>
             </List>
