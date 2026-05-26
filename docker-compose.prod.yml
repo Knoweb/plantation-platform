@@ -16,6 +16,7 @@ services:
     restart: always
 
   discovery-server:
+    image: ghcr.io/knoweb/plantation-discovery-server:latest
     build: 
       context: ./backend/discovery-server
       dockerfile: Dockerfile
@@ -42,6 +43,7 @@ services:
     restart: always
 
   api-gateway:
+    image: ghcr.io/knoweb/plantation-api-gateway:latest
     build: 
       context: ./backend/api-gateway
       dockerfile: Dockerfile
@@ -57,6 +59,7 @@ services:
     restart: always
 
   tenant-service:
+    image: ghcr.io/knoweb/plantation-tenant-service:latest
     build: 
       context: ./backend/tenant-service
       dockerfile: Dockerfile
@@ -73,6 +76,7 @@ services:
     restart: always
 
   inventory-service:
+    image: ghcr.io/knoweb/plantation-inventory-service:latest
     build: 
       context: ./backend/inventory-service
       dockerfile: Dockerfile
@@ -92,6 +96,7 @@ services:
     restart: always
 
   operation-service:
+    image: ghcr.io/knoweb/plantation-operation-service:latest
     build: 
       context: ./backend/operation-service
       dockerfile: Dockerfile
@@ -111,6 +116,7 @@ services:
     restart: always
 
   frontend:
+    image: ghcr.io/knoweb/plantation-frontend:latest
     build: 
       context: ./frontend
       dockerfile: Dockerfile
