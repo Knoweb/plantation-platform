@@ -40,6 +40,10 @@ jobs:
             # Navigate to directory
             cd /root/plantation-platform
             
+            # Take a database backup before pulling new code and deploying
+            echo "Triggering pre-deployment database backup..."
+            docker exec pgbackups /backup.sh || echo "pgbackups container not running, skipping pre-deploy backup"
+            
             # Fetch latest
             git fetch origin $BRANCH_NAME
             git reset --hard origin/$BRANCH_NAME
