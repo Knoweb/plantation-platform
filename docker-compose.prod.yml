@@ -143,8 +143,6 @@ services:
     restart: always
     ports:
       - "9000:9000"
-    environment:
-      - RESTART_TRIGGER=1
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
       - portainer_data:/data
@@ -170,6 +168,46 @@ services:
       - postgres
     networks:
       - plantation-network
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+      - prometheus_data:/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    restart: always
+    networks:
+      - plantation-network
+
+  cadvisor:
+    image: gcr.io/cadvisor/cadvisor:v0.47.0
+    container_name: cadvisor
+    volumes:
+      - /:/rootfs:ro
+      - /var/run:/var/run:rw
+      - /sys:/sys:ro
+      - /var/lib/docker/:/var/lib/docker:ro
+    restart: always
+    networks:
+      - plantation-network
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+    volumes:
+      - grafana_data:/var/lib/grafana
+    depends_on:
+      - prometheus
+    restart: always
+    networks:
+      - plantation-network
 
 networks:
   plantation-network:
@@ -179,3 +217,5 @@ volumes:
   postgres_data:
   portainer_data:
   pgbackups_data:
+  prometheus_data:
+  grafana_data:
