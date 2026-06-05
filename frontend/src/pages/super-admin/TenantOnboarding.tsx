@@ -16,7 +16,7 @@ import DivisionsStep from './steps/DivisionsStep';
 import ConfigurationStep from './steps/ConfigurationStep';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const steps = ['Estate Details', 'Branding', 'Manage Divisions', 'Samajika'];
+const steps = ['Estate Details', 'Branding', 'Manage Divisions', 'Select Crops'];
 
 
 interface TenantOnboardingProps {
@@ -42,7 +42,9 @@ export default function TenantOnboarding({ isModal = false, onClose }: TenantOnb
         logo: '',
         divisions: [],
         configJson: {
-            samajika: true
+            tea: true,
+            rubber: false,
+            cinnamon: false
         } as Record<string, boolean>
     });
 
@@ -60,7 +62,9 @@ export default function TenantOnboarding({ isModal = false, onClose }: TenantOnb
             case 2: // Divisions
                 return true; // Optional
             case 3: // Configuration
-                return true; // Samajika can be true or false
+                // At least one crop selected
+                const keys = Object.keys(tenantData.configJson);
+                return keys.some(key => tenantData.configJson[key]);
             default:
                 return false;
         }
