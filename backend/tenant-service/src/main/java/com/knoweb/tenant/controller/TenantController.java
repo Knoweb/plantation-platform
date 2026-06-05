@@ -24,7 +24,7 @@ public class TenantController {
             return ResponseEntity.ok(tenantService.createTenant(request));
         } catch (Exception e) {
             e.printStackTrace();
-            return ResponseEntity.internalServerError().body(Map.of("message", e.getMessage()));
+            return ResponseEntity.badRequest().body(Map.of("message", e.getMessage()));
         }
     }
 
