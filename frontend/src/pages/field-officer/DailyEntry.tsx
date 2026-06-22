@@ -2306,7 +2306,7 @@ function HistoryTab() {
         }
     };
 
-    const handleReview = async (row: any) => {
+    const handleReview = async (row: any, autoPrint: boolean = false) => {
         setSelectedDate(`${row.date} - ${row.divisionName}`);
         setHistoricDivision(row.divisionId);
         setReviewOpen(true);
@@ -2377,6 +2377,9 @@ function HistoryTab() {
             console.error("Failed to lazy-load attendance for review", e);
         } finally {
             setReviewLoading(false);
+            if (autoPrint) {
+                setTimeout(() => window.print(), 800);
+            }
         }
 
         // Mark as read if it has an audit note
@@ -2669,11 +2672,11 @@ function HistoryTab() {
                                             >
                                                 {t('View')}
                                             </Button>
-                                            <Tooltip title={t('Download Sheet')}>
+                                            <Tooltip title={t('Download PDF Sheet')}>
                                                 <IconButton
                                                     size="small"
                                                     color="primary"
-                                                    onClick={() => handleDownloadCSV(row)}
+                                                    onClick={() => handleReview(row, true)}
                                                     sx={{ bgcolor: '#e3f2fd', border: '1px solid #bbdefb', '&:hover': { bgcolor: '#bbdefb' }, mr: 1 }}
                                                 >
                                                     <DownloadIcon fontSize="small" />
