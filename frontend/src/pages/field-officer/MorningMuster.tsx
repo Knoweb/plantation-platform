@@ -95,23 +95,27 @@ export default function MorningMuster() {
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${year}-${month}-${day}`;
 
-            // Step 1: If we don't have a division yet, fetch divisions first, resolve it, then re-fetch
+            // Step 1: If we don't have a division yet, fetch divisions first then trigger full fetch
             if (!activeDivisionId) {
                 const [divisionRes, taskRes] = await Promise.all([
                     axios.get(`/api/divisions?tenantId=${tenantId}`),
                     axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
                 ]);
-                setDivisions(divisionRes.data);
                 const tasks = taskRes.data.map((t: any) => t.name);
                 setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
 
-                if (divisionRes.data.length > 0) {
-                    const userDivisions = userSession.divisionAccess || [];
-                    const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
-                    const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
-                    const resolvedDivId = exists ? preferredDiv : divisionRes.data[0].divisionId;
-                    // Setting state will trigger useEffect to re-run with the new divisionId — no recursive call needed
-                    setSelectedDivisionId(resolvedDivId);
+                const allDivisions: Division[] = divisionRes.data;
+                setDivisions(allDivisions);
+
+                if (allDivisions.length > 0) {
+                    // Try to use field officer's assigned division first, otherwise use first available
+                    const userDivisions: string[] = userSession.divisionAccess || [];
+                    const preferredMatch = userDivisions.length > 0
+                        ? allDivisions.find((d: Division) => userDivisions.includes(d.divisionId))
+                        : null;
+                    const resolvedDiv = preferredMatch || allDivisions[0];
+                    setSelectedDivisionId(resolvedDiv.divisionId);
+                    // useEffect will re-fire with the new selectedDivisionId and trigger full fetch
                 }
                 return;
             }
