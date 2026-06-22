@@ -87,21 +87,21 @@ export default function MorningMuster() {
 
     const fetchData = async () => {
         try {
+            const [musterRes, allMusterRes, workerRes, fieldRes, divisionRes, taskRes, dailyWorkRes] = await Promise.all([
+                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
+                axios.get(`/api/operations/muster?tenantId=${tenantId}`), // ALL divisions for availability check
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}`) // For Manager-added workers
+            ]);
+
             const d = new Date();
             const year = d.getFullYear();
             const month = String(d.getMonth() + 1).padStart(2, '0');
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${year}-${month}-${day}`;
-
-            const [musterRes, allMusterRes, workerRes, fieldRes, divisionRes, taskRes, dailyWorkRes] = await Promise.all([
-                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${selectedDivisionId}&date=${today}`),
-                axios.get(`/api/operations/muster?tenantId=${tenantId}&date=${today}`), // ALL divisions for availability check
-                axios.get(`/api/workers?tenantId=${tenantId}`),
-                axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
-                axios.get(`/api/divisions?tenantId=${tenantId}`),
-                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
-                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&date=${today}`) // For Manager-added workers
-            ]);
 
             const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
             const allTodaysMustersList = allMusterRes.data.filter((m: Muster) => m.date === today);
