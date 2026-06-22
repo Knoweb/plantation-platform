@@ -2378,7 +2378,7 @@ function HistoryTab() {
         } finally {
             setReviewLoading(false);
             if (autoPrint) {
-                setTimeout(() => window.print(), 800);
+                setTimeout(() => downloadSnapshot(`Muster_Review_${row.divisionName}_${row.date}`), 800);
             }
         }
 
@@ -2392,6 +2392,51 @@ function HistoryTab() {
             }
         }
     };
+
+    const downloadSnapshot = async (customFilename?: string) => {
+        try {
+            const html2canvas = (await import('html2canvas')).default;
+            const element = document.getElementById('muster-review-content');
+            if (!element) return;
+            
+            // Backup styles
+            const originalMaxHeight = element.style.maxHeight;
+            const originalOverflow = element.style.overflow;
+            
+            // Prepare for full capture
+            element.style.maxHeight = 'none';
+            element.style.overflow = 'visible';
+
+            const canvas = await html2canvas(element, { 
+                scale: 2,
+                useCORS: true,
+                backgroundColor: '#f5f5f5'
+            });
+            
+            // Restore styles
+            element.style.maxHeight = originalMaxHeight;
+            element.style.overflow = originalOverflow;
+
+            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+            const a = document.createElement('a');
+            a.href = imgData;
+            const fname = customFilename || `Muster_Review_${selectedDate.replace(/ /g, '_')}`;
+            a.download = `${fname}.jpg`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            
+            // Optionally close the review modal if we just did an autoPrint
+            if (customFilename) {
+                setReviewOpen(false);
+            }
+        } catch (e) {
+            console.error('Snapshot failed', e);
+            alert("Failed to capture snapshot.");
+        }
+    };
+
+
 
 
     const handleSaveAudit = async () => {
@@ -2716,20 +2761,20 @@ function HistoryTab() {
                 <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <Box>Muster Review: {selectedDate}</Box>
                     <Button 
-                        onClick={() => window.print()} 
+                        onClick={() => downloadSnapshot()} 
                         variant="contained" 
                         size="small"
-                        startIcon={<PrintIcon />} 
+                        startIcon={<DownloadIcon />} 
                         sx={{ 
                             bgcolor: '#2e7d32', 
                             '&:hover': { bgcolor: '#1b5e20' },
                             '@media print': { display: 'none' } 
                         }}
                     >
-                        Download / Print
+                        Download Snapshot
                     </Button>
                 </DialogTitle>
-                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }} className="print-area">
+                <DialogContent id="muster-review-content" sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }} className="print-area">
                     <style>
                         {`
                             @media print {
