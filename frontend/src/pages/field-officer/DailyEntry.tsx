@@ -2143,7 +2143,13 @@ function HistoryTab() {
     const [divisions, setDivisions] = useState<any[]>([]);
     const [taskTypes, setTaskTypes] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
+    const [reviewLoading, setReviewLoading] = useState(false);
     const [notification, setNotification] = useState({ open: false, message: '', severity: 'success' as 'success' | 'error' });
+
+    // Lazy-load helpers stored after initial fetch
+    const [workerMap, setWorkerMap] = useState<Map<string, any>>(new Map());
+    const [fieldsData, setFieldsData] = useState<any[]>([]);
+    const [divDivMap, setDivDivMap] = useState<Map<string, string>>(new Map());
 
     // Review Modal State
     const [reviewOpen, setReviewOpen] = useState(false);
@@ -2184,84 +2190,40 @@ function HistoryTab() {
                 const dwRes = await axios.get(`/api/operations/daily-work?tenantId=${tenantId}`);
                 const morningMusters = dwRes.data.filter((dw: any) => dw.workType === 'Morning Muster');
 
-                // Fetch Attendance
-                const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}`);
-
-                // Map Attendance to Divisions via DailyWork ID (or infer)
-                // We build a helper map: DailyWorkID -> DivisionID
+                // Build a helper map: DailyWorkID -> DivisionID (for history rows)
                 const dwDivMap = new Map<string, string>();
                 dwRes.data.forEach((dw: any) => {
                     const id = dw.workId || dw.id;
                     if (id) dwDivMap.set(String(id), String(dw.divisionId));
                 });
 
-                const enrichedAttendance = attRes.data.map((rec: any) => {
-                    // Try to resolve division from dailyWork link or field
-                    let divId = 'UNKNOWN';
-                    if (rec.dailyWorkId) divId = dwDivMap.get(String(rec.dailyWorkId)) || 'UNKNOWN';
-                    if (divId === 'UNKNOWN') {
-                        // Fallback: try field mapping
-                        const f = fRes.data.find((field: any) => field.name && rec.fieldName && String(field.name).trim().toLowerCase() === String(rec.fieldName).trim().toLowerCase());
-                        if (f) divId = f.divisionId;
-                    }
+                // Store wMap and fRes data for use in handleReview lazy fetch
+                setWorkerMap(wMap);
+                setFieldsData(fRes.data);
+                setDivDivMap(dwDivMap);
 
-                    const mappedWorker = wMap.get(rec.workerId);
-                    return {
-                        ...rec,
-                        workerName: mappedWorker?.name || rec.workerName || 'Unknown',
-                        workerType: mappedWorker?.type || mappedWorker?.employmentType || mappedWorker?.workerType || 'CASUAL',
-                        gender: mappedWorker?.gender || 'MALE',
-                        divisionId: divId
-                    };
-                });
-
-                setRawData(enrichedAttendance); // Global store of attendance
-
-                // Construct History Rows from Morning Muster DailyWorks
+                // Construct History Rows from Morning Muster DailyWorks — NO attendance needed here, workerCount from DailyWork is enough
                 const historyRows = morningMusters.map((mm: any) => {
                     const date = mm.workDate;
                     const divId = mm.divisionId;
 
-                    // Filter attendance for this specific muster (Date + Division)
-                    const musterAtt = enrichedAttendance.filter((a: any) =>
-                        String(a.workDate).split('T')[0] === String(date).split('T')[0] &&
-                        String(a.divisionId) === String(divId)
-                    );
+                    // Use workerCount from DailyWork snapshot (no need to fetch attendance for list view)
+                    const isEveningSubmitted = mm.bulkWeights != null && mm.bulkWeights !== "";
 
-                    let attended = 0;
-                    let totalWeight = 0;
-                    let latestUpdate: string | null = null;
-                    let isEveningSubmitted = mm.bulkWeights != null && mm.bulkWeights !== "";
-
-                    musterAtt.forEach((item: any) => {
-
-                        if (item.status === 'PRESENT' || item.status === 'HALF_DAY' || item.status === 'COMPLETED') {
-                            attended++;
-                            totalWeight += (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
-                        }
-                        // Track latest update time
-                        if (item.updatedAt) {
-                            const parsedUpd = parseJavaDate(item.updatedAt);
-                            if (parsedUpd && (!latestUpdate || parsedUpd > (latestUpdate as any))) {
-                                latestUpdate = parsedUpd as any;
-                            }
-                        }
-                    });
-
-                    const finalSubmittedAt = parseJavaDate(mm.submittedAt) || latestUpdate || parseJavaDate(mm.createdAt);
+                    const finalSubmittedAt = parseJavaDate(mm.submittedAt) || parseJavaDate(mm.createdAt);
 
                     return {
-                        id: mm.workId, // Correct field from backend (DailyWork entity)
+                        id: mm.workId,
                         date: date,
                         divisionId: divId,
                         divisionName: divMap.get(divId) || 'Unknown',
                         submittedAt: finalSubmittedAt,
                         assigned: mm.workerCount,
-                        attended: attended,
-                        totalWeight: totalWeight,
+                        attended: mm.workerCount, // Use workerCount as proxy; detailed view loads on click
+                        totalWeight: 0,
                         types: ['Morning Muster'],
-                        details: mm.details, // Store the snapshot JSON here!
-                        bulkWeights: mm.bulkWeights, // Add DB-saved weights
+                        details: mm.details,
+                        bulkWeights: mm.bulkWeights,
                         isEveningSubmitted,
                         auditRemarks: mm.auditRemarks
                     };
@@ -2292,19 +2254,21 @@ function HistoryTab() {
     const handleReview = async (row: any) => {
         setSelectedDate(`${row.date} - ${row.divisionName}`);
         setHistoricDivision(row.divisionId);
+        setReviewOpen(true);
+        setSelectedMusterId(row.id);
+        setAuditNote(row.auditRemarks || '');
+        setSelectedRecords([]); // Clear previous records while loading
+        setReviewLoading(true);
 
         // Fetch historic weights from the database snapshot
         if (row.bulkWeights) {
             try {
-                // Ensure it gets wrapped properly depending on whether it's keyed by division or not
                 const parsed = JSON.parse(row.bulkWeights);
-                // wrap in generic way so historic UI can consume it
                 setHistoricWeights({ [row.divisionId]: parsed });
             } catch (e) {
                 setHistoricWeights({});
             }
         } else {
-            // Fallback to local storage (for very old data that never got the db fix)
             try {
                 const weights = localStorage.getItem(`dailyWeights_${tenantId}_${row.date}`);
                 setHistoricWeights(weights ? JSON.parse(weights) : {});
@@ -2313,35 +2277,52 @@ function HistoryTab() {
             }
         }
 
-        // Filter attendance for this specific Division + Date
-        const records = rawData.filter((r: any) => {
-            const rDate = String(r.workDate).split('T')[0];
-            const rowDate = String(row.date).split('T')[0];
-            return rDate === rowDate && String(r.divisionId) === String(row.divisionId);
-        });
-        setSelectedRecords(records);
+        // LAZY FETCH: only load attendance for this specific date + division
+        try {
+            const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${row.date}`);
 
-        // Use the snapshot directly from the row
-        if (row.details) {
-            try {
-                let parsedPlan = JSON.parse(row.details);
-                // Dynamically backfill missing worker types for old history records
-                parsedPlan = parsedPlan.map((plan: any) => ({
-                    ...plan,
-                    assigned: plan.assigned?.map((w: any) => ({
-                        ...w,
-                        type: w.type || rawData.find((r: any) => r.workerId === w.id)?.workerType || 'CASUAL'
-                    })) || []
-                }));
-                setMorningPlan(parsedPlan);
-            } catch (e) { setMorningPlan([]); }
-        } else {
-            setMorningPlan([]);
+            const enriched = attRes.data
+                .filter((rec: any) => {
+                    // Filter to this division using divDivMap or fieldsData fallback
+                    const divFromMap = divDivMap.get(String(rec.dailyWorkId));
+                    if (divFromMap) return String(divFromMap) === String(row.divisionId);
+                    const f = fieldsData.find((field: any) => field.name && rec.fieldName &&
+                        String(field.name).trim().toLowerCase() === String(rec.fieldName).trim().toLowerCase());
+                    return f ? String(f.divisionId) === String(row.divisionId) : false;
+                })
+                .map((rec: any) => {
+                    const mappedWorker = workerMap.get(rec.workerId);
+                    return {
+                        ...rec,
+                        workerName: mappedWorker?.name || rec.workerName || 'Unknown',
+                        workerType: mappedWorker?.type || mappedWorker?.employmentType || mappedWorker?.workerType || 'CASUAL',
+                        gender: mappedWorker?.gender || 'MALE',
+                        divisionId: row.divisionId
+                    };
+                });
+            setSelectedRecords(enriched);
+
+            // Backfill morning plan worker types
+            if (row.details) {
+                try {
+                    let parsedPlan = JSON.parse(row.details);
+                    parsedPlan = parsedPlan.map((plan: any) => ({
+                        ...plan,
+                        assigned: plan.assigned?.map((w: any) => ({
+                            ...w,
+                            type: w.type || enriched.find((r: any) => r.workerId === w.id)?.workerType || 'CASUAL'
+                        })) || []
+                    }));
+                    setMorningPlan(parsedPlan);
+                } catch (e) { setMorningPlan([]); }
+            } else {
+                setMorningPlan([]);
+            }
+        } catch (e) {
+            console.error("Failed to lazy-load attendance for review", e);
+        } finally {
+            setReviewLoading(false);
         }
-
-        setReviewOpen(true);
-        setSelectedMusterId(row.id);
-        setAuditNote(row.auditRemarks || '');
 
         // Mark as read if it has an audit note
         if (row.auditRemarks) {
@@ -2349,11 +2330,11 @@ function HistoryTab() {
             if (!seenAudits.includes(row.id)) {
                 seenAudits.push(row.id);
                 localStorage.setItem('seen_audit_notes', JSON.stringify(seenAudits));
-                // Notify sidebar to re-calculate alerts
                 window.dispatchEvent(new Event('muster-update'));
             }
         }
     };
+
 
     const handleSaveAudit = async () => {
         if (!selectedMusterId) return;
