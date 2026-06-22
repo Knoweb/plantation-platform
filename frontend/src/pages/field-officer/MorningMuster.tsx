@@ -85,17 +85,9 @@ export default function MorningMuster() {
 
     const [availableTasks, setAvailableTasks] = useState<string[]>([]);
 
-    const fetchData = async () => {
+    const fetchData = async (divId?: string) => {
         try {
-            const [musterRes, allMusterRes, workerRes, fieldRes, divisionRes, taskRes, dailyWorkRes] = await Promise.all([
-                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
-                axios.get(`/api/operations/muster?tenantId=${tenantId}`), // ALL divisions for availability check
-                axios.get(`/api/workers?tenantId=${tenantId}`),
-                axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${selectedDivisionId}`),
-                axios.get(`/api/divisions?tenantId=${tenantId}`),
-                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
-                axios.get(`/api/operations/daily-work?tenantId=${tenantId}`) // For Manager-added workers
-            ]);
+            const activeDivisionId = divId ?? selectedDivisionId;
 
             const d = new Date();
             const year = d.getFullYear();
@@ -103,16 +95,47 @@ export default function MorningMuster() {
             const day = String(d.getDate()).padStart(2, '0');
             const today = `${year}-${month}-${day}`;
 
+            // Step 1: If we don't have a division yet, fetch divisions first, resolve it, then re-fetch
+            if (!activeDivisionId) {
+                const [divisionRes, taskRes] = await Promise.all([
+                    axios.get(`/api/divisions?tenantId=${tenantId}`),
+                    axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
+                ]);
+                setDivisions(divisionRes.data);
+                const tasks = taskRes.data.map((t: any) => t.name);
+                setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
+
+                if (divisionRes.data.length > 0) {
+                    const userDivisions = userSession.divisionAccess || [];
+                    const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
+                    const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
+                    const resolvedDivId = exists ? preferredDiv : divisionRes.data[0].divisionId;
+                    setSelectedDivisionId(resolvedDivId);
+                    // Now fetch everything else with the resolved division
+                    await fetchData(resolvedDivId);
+                }
+                return;
+            }
+
+            // Step 2: Full fetch with a known divisionId
+            const [musterRes, allMusterRes, workerRes, fieldRes, divisionRes, taskRes, dailyWorkRes] = await Promise.all([
+                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${activeDivisionId}`),
+                axios.get(`/api/operations/muster?tenantId=${tenantId}&divisionId=${activeDivisionId}`), // scoped for availability
+                axios.get(`/api/workers?tenantId=${tenantId}`),
+                axios.get(`/api/fields?tenantId=${tenantId}&divisionId=${activeDivisionId}`),
+                axios.get(`/api/divisions?tenantId=${tenantId}`),
+                axios.get(`/api/operations/task-types?tenantId=${tenantId}`),
+                axios.get(`/api/operations/daily-work?tenantId=${tenantId}&divisionId=${activeDivisionId}&date=${today}`) // Scoped to today + division
+            ]);
+
             const todaysMusters = musterRes.data.filter((m: Muster) => m.date === today);
             const allTodaysMustersList = allMusterRes.data.filter((m: Muster) => m.date === today);
-            
+
             // Build a combined set of all assigned worker IDs for today:
-            // 1. From raw musters table (field officer assignments)
             const assignedSet = new Set<string>();
             allTodaysMustersList.forEach((m: Muster) => {
                 (m.workerIds || []).forEach(id => assignedSet.add(id));
             });
-            // 2. From daily_work records (includes workers added by Manager during review)
             dailyWorkRes.data.forEach((dw: any) => {
                 if (dw.workDate === today && dw.status !== 'REJECTED') {
                     try {
@@ -126,23 +149,16 @@ export default function MorningMuster() {
                     } catch (e) { /* skip malformed */ }
                 }
             });
-            
+
             setMusters(todaysMusters);
             setAllTodaysMusters(allTodaysMustersList);
             setAssignedWorkerIds(assignedSet);
             setWorkers(workerRes.data);
             setFields(fieldRes.data);
             setDivisions(divisionRes.data);
-            
+
             const tasks = taskRes.data.map((t: any) => t.name);
             setAvailableTasks(tasks.length > 0 ? tasks : ['Plucking', 'Sundry', 'Other']);
-            
-            if (divisionRes.data.length > 0 && !selectedDivisionId) {
-                const userDivisions = userSession.divisionAccess || [];
-                const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
-                const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
-                setSelectedDivisionId(exists ? preferredDiv : divisionRes.data[0].divisionId);
-            }
         } catch (e) {
             console.error("Failed to fetch muster data", e);
         }

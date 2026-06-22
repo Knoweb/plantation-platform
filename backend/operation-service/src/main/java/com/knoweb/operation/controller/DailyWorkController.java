@@ -86,6 +86,10 @@ public class DailyWorkController {
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String date) {
 
+        if (divisionId != null && date != null) {
+            java.time.LocalDate workDate = java.time.LocalDate.parse(date);
+            return ResponseEntity.ok(dailyWorkService.getRecordsByDivisionAndDate(tenantId, divisionId, workDate));
+        }
         if (divisionId != null) {
             return ResponseEntity.ok(dailyWorkService.getRecordsByDivision(tenantId, divisionId));
         }

@@ -13,5 +13,6 @@ public interface DailyWorkRepository extends JpaRepository<DailyWork, UUID> {
     List<DailyWork> findByTenantIdAndDivisionId(UUID tenantId, String divisionId);
     List<DailyWork> findByTenantIdAndWorkDate(UUID tenantId, LocalDate workDate);
     Optional<DailyWork> findTopByTenantIdAndDivisionIdAndWorkDateOrderByCreatedAtDesc(UUID tenantId, String divisionId, LocalDate workDate);
+    List<DailyWork> findByTenantIdAndDivisionIdAndWorkDate(UUID tenantId, String divisionId, LocalDate workDate);
     List<DailyWork> findByTenantIdAndAuditRemarksIsNotNull(UUID tenantId);
 }

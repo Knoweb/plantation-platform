@@ -131,6 +131,10 @@ public class DailyWorkService {
         return dailyWorkRepository.findByTenantIdAndDivisionId(tenantId, divisionId);
     }
 
+    public List<DailyWork> getRecordsByDivisionAndDate(UUID tenantId, String divisionId, java.time.LocalDate date) {
+        return dailyWorkRepository.findByTenantIdAndDivisionIdAndWorkDate(tenantId, divisionId, date);
+    }
+
     @Transactional
     public DailyWork updateBulkWeights(UUID workId, String bulkWeights, boolean isSubmission) {
         DailyWork work = dailyWorkRepository.findById(workId)
