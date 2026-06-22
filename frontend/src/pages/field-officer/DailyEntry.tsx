@@ -2716,27 +2716,33 @@ function HistoryTab() {
                             '@media print': { display: 'none' } 
                         }}
                     >
-                        Print Sheet
+                        Download / Print
                     </Button>
                 </DialogTitle>
                 <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }} className="print-area">
                     <style>
                         {`
                             @media print {
-                                body * { visibility: hidden; }
-                                .MuiDialog-root * { visibility: visible; }
+                                body { margin: 0; padding: 0; background-color: white; }
+                                body > *:not([role="presentation"]) { display: none !important; }
+                                .MuiDialog-root { position: static !important; }
+                                .MuiDialog-container { height: auto !important; align-items: flex-start !important; }
                                 .MuiDialog-paper {
-                                    position: absolute;
-                                    left: 0;
-                                    top: 0;
-                                    width: 100%;
                                     box-shadow: none !important;
                                     margin: 0 !important;
                                     padding: 0 !important;
+                                    max-width: 100% !important;
+                                    width: 100% !important;
+                                    overflow: visible !important;
+                                    -webkit-print-color-adjust: exact !important;
+                                    print-color-adjust: exact !important;
                                 }
-                                .print-area {
-                                    background-color: white !important;
+                                .MuiDialogContent-root { overflow: visible !important; max-height: none !important; }
+                                * {
+                                    -webkit-print-color-adjust: exact !important;
+                                    print-color-adjust: exact !important;
                                 }
+                                .print-area { background-color: white !important; }
                                 @page { size: auto; margin: 10mm; }
                             }
                         `}
