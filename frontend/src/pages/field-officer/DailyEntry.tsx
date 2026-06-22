@@ -395,15 +395,18 @@ function DailyEntryTab() {
                 const hasSubmitted = localStorage.getItem(submittedKey) === 'true';
                 const backendSubmitted = backendSubmittedDivisions.has(String(divId));
 
+                const workerType = wMap.get(rec.workerId)?.employmentType || 'PERMANENT';
+                
                 return {
                     ...rec,
                     workerName: wMap.get(rec.workerId)?.name || rec.workerName || rec.workerId,
-                    workerType: wMap.get(rec.workerId)?.employmentType || 'PERMANENT',
+                    workerType: workerType,
                     status: (hasDraft || hasSubmitted || backendSubmitted) ? rec.status : '',
                     amWeight: rec.amWeight ?? '',
                     pmWeight: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.pmWeight ?? '') : '',
                     overKilos: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.overKilos ?? '') : '',
                     otHours: (hasDraft || hasSubmitted || backendSubmitted) ? (rec.otHours ?? '') : '',
+                    cashKilos: workerType.includes('CONTRACT') ? ((Number(rec.amWeight) || 0) + (Number(rec.pmWeight) || 0)) : (rec.cashKilos ?? ''),
                     session: rec.session || 'FULL_DAY',
                     divisionId: divId,
                     tenantId: tenantId
@@ -470,7 +473,15 @@ function DailyEntryTab() {
     const handleUpdate = (id: string, field: keyof AttendanceRecord, value: any) => {
         setAttendanceData(prev => prev.map(item => {
             if (item.id === id) {
-                return { ...item, [field]: value };
+                const updatedItem = { ...item, [field]: value };
+                
+                // Auto-calculate Cash Kilos for Contract Workers based on AM + PM
+                if (updatedItem.workerType?.includes('CONTRACT') && (field === 'amWeight' || field === 'pmWeight' || field === 'cashKilos')) {
+                    // For piece rate / contract workers, cash kilos is strictly equal to the total weight plucked
+                    updatedItem.cashKilos = (Number(updatedItem.amWeight) || 0) + (Number(updatedItem.pmWeight) || 0);
+                }
+                
+                return updatedItem;
             }
             return item;
         }));
@@ -1693,10 +1704,10 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                     <Box width={55} display="flex" justifyContent="center">
                                                         <input
                                                             type="number"
-                                                            value={isPieceRate ? item.cashKilos ?? '' : ''}
+                                                            value={item.cashKilos ?? ''}
                                                             onChange={(e) => onUpdate(item.id, 'cashKilos', e.target.value)}
-                                                            disabled={isSubmitted || item.status === 'ABSENT' || !isPieceRate}
-                                                            style={{ ...inputStyle, width: 48, fontSize: '0.8rem' }}
+                                                            disabled={isSubmitted || item.status === 'ABSENT' || isPieceRate}
+                                                            style={{ ...inputStyle, width: 48, fontSize: '0.8rem', opacity: isPieceRate ? 0.7 : 1 }}
                                                         />
                                                     </Box>
                                                 )}
