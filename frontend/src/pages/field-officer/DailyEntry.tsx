@@ -2672,16 +2672,23 @@ function HistoryTab() {
                                             >
                                                 {t('View')}
                                             </Button>
-                                            <Tooltip title={t('Download PDF Sheet')}>
-                                                <IconButton
-                                                    size="small"
-                                                    color="primary"
-                                                    onClick={() => handleReview(row, true)}
-                                                    sx={{ bgcolor: '#e3f2fd', border: '1px solid #bbdefb', '&:hover': { bgcolor: '#bbdefb' }, mr: 1 }}
-                                                >
-                                                    <DownloadIcon fontSize="small" />
-                                                </IconButton>
-                                            </Tooltip>
+                                            <Button
+                                                variant="outlined"
+                                                size="small"
+                                                startIcon={<DownloadIcon />}
+                                                onClick={() => handleReview(row, true)}
+                                                sx={{ 
+                                                    textTransform: 'none', 
+                                                    borderRadius: 2, 
+                                                    mr: 1, 
+                                                    fontWeight: 'bold',
+                                                    borderColor: '#1976d2',
+                                                    color: '#1976d2',
+                                                    '&:hover': { borderColor: '#115293', bgcolor: 'rgba(25, 118, 210, 0.04)' }
+                                                }}
+                                            >
+                                                {t('Download')}
+                                            </Button>
                                             <Tooltip title={t('Delete Report')}>
                                                 <IconButton
                                                     size="small"
