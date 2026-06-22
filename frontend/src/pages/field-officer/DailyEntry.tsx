@@ -11,7 +11,8 @@ import {
     Visibility as VisibilityIcon,
     Delete as DeleteIcon,
     Refresh as RefreshIcon,
-    Print as PrintIcon
+    Print as PrintIcon,
+    Download as DownloadIcon
 } from '@mui/icons-material';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -2263,6 +2264,48 @@ function HistoryTab() {
         return () => window.removeEventListener('muster-update', fetchData);
     }, [tenantId]);
 
+    const handleDownloadCSV = async (row: any) => {
+        try {
+            const attRes = await axios.get(`/api/operations/attendance?tenantId=${tenantId}&date=${row.date}`);
+            
+            const enriched = attRes.data
+                .filter((rec: any) => {
+                    const divFromMap = divDivMap.get(String(rec.dailyWorkId));
+                    if (divFromMap) return String(divFromMap) === String(row.divisionId);
+                    const f = fieldsData.find((field: any) => field.name && rec.fieldName &&
+                        String(field.name).trim().toLowerCase() === String(rec.fieldName).trim().toLowerCase());
+                    return f ? String(f.divisionId) === String(row.divisionId) : false;
+                })
+                .map((rec: any) => {
+                    const mappedWorker = workerMap.get(rec.workerId);
+                    return {
+                        ...rec,
+                        workerName: mappedWorker?.name || rec.workerName || 'Unknown',
+                        workerType: mappedWorker?.type || mappedWorker?.employmentType || mappedWorker?.workerType || 'CASUAL'
+                    };
+                });
+                
+            let csv = "Date,Division,Worker Name,Type,Task,Field,AM Weight,PM Weight,Total Kilos,Over Kilos,Cash Kilos,OT Hours,Status\n";
+            enriched.forEach((item: any) => {
+                const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+                csv += `"${row.date}","${row.divisionName}","${item.workerName}","${item.workerType}","${item.workType || ''}","${item.fieldName || ''}","${item.amWeight || 0}","${item.pmWeight || 0}","${total}","${item.overKilos || 0}","${item.cashKilos || 0}","${item.otHours || 0}","${item.status || ''}"\n`;
+            });
+
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.setAttribute('hidden', '');
+            a.setAttribute('href', url);
+            a.setAttribute('download', `Evening_Muster_${row.divisionName}_${row.date}.csv`);
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+        } catch (e) {
+            console.error("Download failed", e);
+            alert("Failed to download CSV sheet.");
+        }
+    };
+
     const handleReview = async (row: any) => {
         setSelectedDate(`${row.date} - ${row.divisionName}`);
         setHistoricDivision(row.divisionId);
@@ -2626,6 +2669,16 @@ function HistoryTab() {
                                             >
                                                 {t('View')}
                                             </Button>
+                                            <Tooltip title={t('Download Sheet')}>
+                                                <IconButton
+                                                    size="small"
+                                                    color="primary"
+                                                    onClick={() => handleDownloadCSV(row)}
+                                                    sx={{ bgcolor: '#e3f2fd', border: '1px solid #bbdefb', '&:hover': { bgcolor: '#bbdefb' }, mr: 1 }}
+                                                >
+                                                    <DownloadIcon fontSize="small" />
+                                                </IconButton>
+                                            </Tooltip>
                                             <Tooltip title={t('Delete Report')}>
                                                 <IconButton
                                                     size="small"
