@@ -24,11 +24,17 @@ public class OperationService {
     private HarvestEventPublisher harvestEventPublisher;
 
     // Muster Operations
-    public List<Muster> getMusters(String tenantId) {
+    public List<Muster> getMusters(String tenantId, LocalDate date) {
+        if (date != null) {
+            return musterRepository.findByTenantIdAndDateOrderByDateDesc(tenantId, date);
+        }
         return musterRepository.findByTenantIdOrderByDateDesc(tenantId);
     }
 
-    public List<Muster> getMustersByDivision(String tenantId, String divisionId) {
+    public List<Muster> getMustersByDivision(String tenantId, String divisionId, LocalDate date) {
+        if (date != null) {
+            return musterRepository.findByTenantIdAndDivisionIdAndDateOrderByDateDesc(tenantId, divisionId, date);
+        }
         return musterRepository.findByTenantIdAndDivisionIdOrderByDateDesc(tenantId, divisionId);
     }
 

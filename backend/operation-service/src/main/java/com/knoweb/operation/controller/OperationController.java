@@ -29,11 +29,12 @@ public class OperationController {
     // Muster Endpoints
     @GetMapping("/muster")
     public ResponseEntity<?> getMusters(@RequestParam String tenantId,
-            @RequestParam(required = false) String divisionId) {
+            @RequestParam(required = false) String divisionId,
+            @RequestParam(required = false) @org.springframework.format.annotation.DateTimeFormat(iso = org.springframework.format.annotation.DateTimeFormat.ISO.DATE) java.time.LocalDate date) {
         if (divisionId != null && !divisionId.isEmpty()) {
-            return ResponseEntity.ok(service.getMustersByDivision(tenantId, divisionId));
+            return ResponseEntity.ok(service.getMustersByDivision(tenantId, divisionId, date));
         }
-        return ResponseEntity.ok(service.getMusters(tenantId));
+        return ResponseEntity.ok(service.getMusters(tenantId, date));
     }
 
     @PostMapping("/muster")
