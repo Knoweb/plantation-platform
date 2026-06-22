@@ -110,9 +110,8 @@ export default function MorningMuster() {
                     const preferredDiv = userDivisions.length > 0 ? userDivisions[0] : null;
                     const exists = divisionRes.data.find((d: Division) => d.divisionId === preferredDiv);
                     const resolvedDivId = exists ? preferredDiv : divisionRes.data[0].divisionId;
+                    // Setting state will trigger useEffect to re-run with the new divisionId — no recursive call needed
                     setSelectedDivisionId(resolvedDivId);
-                    // Now fetch everything else with the resolved division
-                    await fetchData(resolvedDivId);
                 }
                 return;
             }
@@ -194,7 +193,7 @@ export default function MorningMuster() {
 
         refreshData();
 
-        const intervalId = setInterval(refreshData, 5000);
+        const intervalId = setInterval(refreshData, 30000); // Poll every 30s — no need for 5s realtime on Morning Muster
         return () => {
             isMounted = false;
             clearInterval(intervalId);
