@@ -10,7 +10,8 @@ import {
     EditCalendar as EditStartIcon,
     Visibility as VisibilityIcon,
     Delete as DeleteIcon,
-    Refresh as RefreshIcon
+    Refresh as RefreshIcon,
+    Print as PrintIcon
 } from '@mui/icons-material';
 import { useLanguage } from '../../context/LanguageContext';
 
@@ -2648,12 +2649,45 @@ function HistoryTab() {
             </Paper >
 
             {/* FULL REVIEW MODAL */}
-            < Dialog open={reviewOpen} onClose={() => setReviewOpen(false)
-            } maxWidth="xl" fullWidth >
-                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold' }}>
-                    Muster Review: {selectedDate}
+            < Dialog open={reviewOpen} onClose={() => setReviewOpen(false)} maxWidth="xl" fullWidth >
+                <DialogTitle sx={{ bgcolor: '#e8f5e9', color: '#2e7d32', fontWeight: 'bold', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Box>Muster Review: {selectedDate}</Box>
+                    <Button 
+                        onClick={() => window.print()} 
+                        variant="contained" 
+                        size="small"
+                        startIcon={<PrintIcon />} 
+                        sx={{ 
+                            bgcolor: '#2e7d32', 
+                            '&:hover': { bgcolor: '#1b5e20' },
+                            '@media print': { display: 'none' } 
+                        }}
+                    >
+                        Print Sheet
+                    </Button>
                 </DialogTitle>
-                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }}>
+                <DialogContent sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }} className="print-area">
+                    <style>
+                        {`
+                            @media print {
+                                body * { visibility: hidden; }
+                                .MuiDialog-root * { visibility: visible; }
+                                .MuiDialog-paper {
+                                    position: absolute;
+                                    left: 0;
+                                    top: 0;
+                                    width: 100%;
+                                    box-shadow: none !important;
+                                    margin: 0 !important;
+                                    padding: 0 !important;
+                                }
+                                .print-area {
+                                    background-color: white !important;
+                                }
+                                @page { size: auto; margin: 10mm; }
+                            }
+                        `}
+                    </style>
                     {/* HIGH VISIBILITY TOP ALERT FOR AUDIT NOTES - Hidden for Chief Clerk (Author) */}
                     {auditNote && userRole !== 'CHIEF_CLERK' && (
                         <Alert 
