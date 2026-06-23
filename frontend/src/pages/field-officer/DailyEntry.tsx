@@ -15,6 +15,7 @@ import {
     Download as DownloadIcon
 } from '@mui/icons-material';
 import { useLanguage } from '../../context/LanguageContext';
+import { exportEveningMusterToExcel } from '../../utils/eveningMusterExcelExport';
 
 // --- Interfaces ---
 interface AttendanceRecord {
@@ -2395,44 +2396,20 @@ function HistoryTab() {
 
     const downloadSnapshot = async (customFilename?: string) => {
         try {
-            const html2canvas = (await import('html2canvas')).default;
-            const element = document.getElementById('muster-review-content');
-            if (!element) return;
-            
-            // Backup styles
-            const originalMaxHeight = element.style.maxHeight;
-            const originalOverflow = element.style.overflow;
-            
-            // Prepare for full capture
-            element.style.maxHeight = 'none';
-            element.style.overflow = 'visible';
-
-            const canvas = await html2canvas(element, { 
-                scale: 2,
-                useCORS: true,
-                backgroundColor: '#f5f5f5'
-            });
-            
-            // Restore styles
-            element.style.maxHeight = originalMaxHeight;
-            element.style.overflow = originalOverflow;
-
-            const imgData = canvas.toDataURL('image/jpeg', 0.95);
-            const a = document.createElement('a');
-            a.href = imgData;
-            const fname = customFilename || `Muster_Review_${selectedDate.replace(/ /g, '_')}`;
-            a.download = `${fname}.jpg`;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            
-            // Optionally close the review modal if we just did an autoPrint
+            const [dateStr, divName] = selectedDate.split(' - ');
+            await exportEveningMusterToExcel(
+                divName || 'Division',
+                dateStr || 'Date',
+                groupedRecords,
+                historicWeights,
+                uniqueFieldsInHistoryForWeights
+            );
             if (customFilename) {
                 setReviewOpen(false);
             }
         } catch (e) {
-            console.error('Snapshot failed', e);
-            alert("Failed to capture snapshot.");
+            console.error('Excel Export failed', e);
+            alert("Failed to export Excel report.");
         }
     };
 
@@ -2732,7 +2709,7 @@ function HistoryTab() {
                                                     '&:hover': { borderColor: '#115293', bgcolor: 'rgba(25, 118, 210, 0.04)' }
                                                 }}
                                             >
-                                                {t('Download')}
+                                                {t('Download Excel')}
                                             </Button>
                                             <Tooltip title={t('Delete Report')}>
                                                 <IconButton
@@ -2771,7 +2748,7 @@ function HistoryTab() {
                             '@media print': { display: 'none' } 
                         }}
                     >
-                        Download Snapshot
+                        Download Excel
                     </Button>
                 </DialogTitle>
                 <DialogContent id="muster-review-content" sx={{ mt: 1, bgcolor: '#f5f5f5', p: { xs: 1, sm: 2 } }} className="print-area">
