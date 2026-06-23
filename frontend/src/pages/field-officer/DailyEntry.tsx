@@ -1752,7 +1752,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                     <Box display="flex" gap={0.4} bgcolor="#1565c0" p={0.4} borderRadius={1.5}>
                                                         {!isPieceRate && (
                                                             <IconButton 
-                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half Day' })} 
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'HALF_DAY', workerName: item.workerName, label: 'Half' })} 
                                                                 size="small" 
                                                                 disabled={isSubmitted} 
                                                                 sx={{ 
@@ -1770,7 +1770,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                         )}
                                                         {!isPieceRate && (
                                                             <IconButton 
-                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Present' })} 
+                                                                onClick={() => setStatusConfirm({ itemId: item.id, newStatus: 'PRESENT', workerName: item.workerName, label: 'Full' })} 
                                                                 size="small" 
                                                                 disabled={isSubmitted} 
                                                                 sx={{ 
@@ -1787,7 +1787,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                                             </IconButton>
                                                         )}
                                                         <IconButton 
-                                                            onClick={() => setStatusConfirm({ itemId: item.id, newStatus: item.status === 'ABSENT' ? 'PRESENT' : 'ABSENT', workerName: item.workerName, label: item.status === 'ABSENT' ? 'Undo Absent' : 'Absent' })} 
+                                                            onClick={() => setStatusConfirm({ itemId: item.id, newStatus: item.status === 'ABSENT' ? 'PRESENT' : 'ABSENT', workerName: item.workerName, label: item.status === 'ABSENT' ? 'Undo Absent (Set to Full)' : 'Absent' })} 
                                                             size="small" 
                                                             disabled={isSubmitted} 
                                                             sx={{ 
@@ -1819,7 +1819,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                 <DialogTitle sx={{ color: '#d32f2f', fontWeight: 'bold', borderBottom: '1px solid #ffebee' }}>Confirm Status Change</DialogTitle>
                 <DialogContent sx={{ mt: 2, minWidth: 300 }}>
                     <Typography variant="body1">
-                        Are you sure you want to mark <strong>{statusConfirm?.workerName}</strong>'s attendance status as:
+                        Are you sure you want to mark <strong>{statusConfirm?.workerName}</strong>'s Aathama status as:
                     </Typography>
                     <Typography variant="h6" color="primary" fontWeight="bold" textAlign="center" mt={2} mb={1}>
                         {statusConfirm?.label}
