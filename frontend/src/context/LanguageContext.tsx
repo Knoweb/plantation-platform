@@ -69,6 +69,15 @@ export const translations: Record<string, Record<string, string>> = {
     'To-date':                      { si: 'දිනට' },
     'Last Month':                   { si: 'පසුගිය මාසය' },
     'YTD':                          { si: 'වර්ෂය-දක්වා' },
+    'Work Item':                    { si: 'වැඩ අයිතමය' },
+    'Todate':                       { si: 'අද දිනට' },
+    'This month':                   { si: 'මේ මාසය' },
+    'History':                      { si: 'ඉතිහාසය' },
+    'Amount (Rs.)':                 { si: 'මුදල (රු.)' },
+    'Cost/Kg':                      { si: 'වියදම/Kg' },
+    'Budget':                       { si: 'අයවැය' },
+    'Balance':                      { si: 'ඉතිරිය' },
+    'Actions':                      { si: 'ක්‍රියා' },
 
     // ── CropPerformanceCard ──────────────────────────────────────────────────────
     'Crop Performance (vs Budget)': { si: 'බෝග කාර්යසාධනය (අයවැය හා)' },

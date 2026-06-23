@@ -177,6 +177,7 @@ const getTodayLocalISO = () => {
 };
 
 export default function CostAnalysis() {
+    const { t } = useLanguage();
     const location = useLocation();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
@@ -451,35 +452,35 @@ export default function CostAnalysis() {
                             <TableHead>
                                 <TableRow>
                                     <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0 }}>
-                                        Work Item
+                                        {t('Work Item')}
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
-                                        Day
+                                        {t('Day')}
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
-                                        Todate
+                                        {t('Todate')}
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
-                                        This month
+                                        {t('This month')}
                                     </TableCell>
                                     <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
-                                        History
+                                        {t('History')}
                                     </TableCell>
                                     {isChiefClerk && (
                                         <TableCell rowSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', borderBottom: '1px solid #e0e0e0' }}>
-                                            Actions
+                                            {t('Actions')}
                                         </TableCell>
                                     )}
                                 </TableRow>
                                 <TableRow>
-                                    {headerCell('Amount (Rs.)')}
-                                    {headerCell('Cost/Kg')}
-                                    {headerCell('Amount (Rs.)')}
-                                    {headerCell('Cost/Kg')}
-                                    {headerCell('Budget')}
-                                    {headerCell('Balance')}
-                                    {headerCell('Last Mth')}
-                                    {headerCell('YTD')}
+                                    {headerCell(t('Amount (Rs.)'))}
+                                    {headerCell(t('Cost/Kg'))}
+                                    {headerCell(t('Amount (Rs.)'))}
+                                    {headerCell(t('Cost/Kg'))}
+                                    {headerCell(t('Budget'))}
+                                    {headerCell(t('Balance'))}
+                                    {headerCell(t('Last Month'))}
+                                    {headerCell(t('YTD'))}
                                 </TableRow>
                             </TableHead>
 

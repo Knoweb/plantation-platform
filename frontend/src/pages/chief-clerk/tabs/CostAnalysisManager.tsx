@@ -219,6 +219,7 @@ const normalizeCategories = (input: any): CostCategory[] => {
 };
 
 export default function CostAnalysisManager() {
+    const { t } = useLanguage();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const userRole = userSession.role || '';
     const isManager = userRole === 'MANAGER' || userRole === 'ESTATE_ADMIN' || userRole === 'OWNER';
@@ -1093,22 +1094,22 @@ export default function CostAnalysisManager() {
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>Work Item</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Day</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>Todate</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>This month</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>History</TableCell>
-                                    {userRole === 'CHIEF_CLERK' && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>Actions</TableCell>}
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>{t('Work Item')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('Day')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('Todate')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('This month')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>{t('History')}</TableCell>
+                                    {userRole === 'CHIEF_CLERK' && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>{t('Actions')}</TableCell>}
                                 </TableRow>
                                 <TableRow>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Amount (Rs.)</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Cost/Kg</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>Budget</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>Balance</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>Last Month</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>YTD</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Amount (Rs.)')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Cost/Kg')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Amount (Rs.)')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Cost/Kg')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>{t('Budget')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>{t('Balance')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Last Month')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('YTD')}</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
