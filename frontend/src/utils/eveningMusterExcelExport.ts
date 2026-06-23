@@ -5,7 +5,8 @@ export const exportEveningMusterToExcel = async (
     date: string,
     groupedRecords: any,
     historicWeights: any,
-    uniqueFieldsInHistoryForWeights: string[]
+    uniqueFieldsInHistoryForWeights: string[],
+    estateName?: string
 ) => {
     const workbook = new ExcelJS.Workbook();
     const sheet = workbook.addWorksheet('Evening Muster Results');
@@ -33,7 +34,15 @@ export const exportEveningMusterToExcel = async (
     // Main Header
     sheet.mergeCells(`A${currentRow}:K${currentRow}`);
     const titleCell = sheet.getCell(`A${currentRow}`);
-    titleCell.value = `🌙 Evening Results (Actual) - ${divisionName} - ${date}`;
+    
+    // Add Estate Name if available
+    let headerTitleText = `🌙 Evening Results (Actual) - ${divisionName} - ${date}`;
+    if (estateName) {
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-/i.test(estateName);
+        if (!isUUID) headerTitleText = `🏢 ${estateName} | ${headerTitleText}`;
+    }
+    
+    titleCell.value = headerTitleText;
     titleCell.font = { size: 16, bold: true, color: { argb: headerFontColor } };
     titleCell.alignment = { horizontal: 'center', vertical: 'middle' };
     titleCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: headerBg } };

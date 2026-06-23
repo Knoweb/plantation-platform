@@ -2406,12 +2406,14 @@ function HistoryTab() {
     const downloadSnapshot = async (customFilename?: string) => {
         try {
             const [dateStr, divName] = selectedDate.split(' - ');
+            const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
             await exportEveningMusterToExcel(
                 divName || 'Division',
                 dateStr || 'Date',
                 groupedRecords,
                 historicWeights,
-                uniqueFieldsInHistoryForWeights
+                uniqueFieldsInHistoryForWeights,
+                userSession.estateName
             );
             if (customFilename) {
                 setReviewOpen(false);
