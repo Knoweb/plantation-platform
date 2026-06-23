@@ -402,8 +402,11 @@ export default function CropBook() {
 
                     // Yield per Acre Day: only acreage of fields actually worked that day
                     const activeAcreageDay = dayActiveAcreage.get(i) || 0;
-                    const yPerAcreDay = (!isFuture && activeAcreageDay > 0) ? (d.permAndCasualWeightDay / activeAcreageDay) : 0;
-                    const yPerAcreToDate = (!isFuture && totalAcreage > 0) ? (permCasWtToDate / acreageDivisor) : 0;
+                    const dayTotalCrop = d.fieldWeightDay > 0 ? d.fieldWeightDay : d.checkrollWeightDay;
+                    const toDateTotalCrop = fldToDate > 0 ? fldToDate : chkToDate;
+
+                    const yPerAcreDay = (!isFuture && activeAcreageDay > 0) ? (dayTotalCrop / activeAcreageDay) : (!isFuture && dayTotalCrop > 0 ? 0 : 0);
+                    const yPerAcreToDate = (!isFuture && totalAcreage > 0) ? (toDateTotalCrop / acreageDivisor) : (!isFuture && toDateTotalCrop > 0 ? 0 : 0);
 
                     // Plucking Cost Per Kg:
                     // = (full athtama workers × wage) + (half athtama workers × wage/2) + (perm/casual over kilos × rate) + (OT hours × OT hour rate)
@@ -448,8 +451,8 @@ export default function CropBook() {
                         fieldWeightTodate: (!isFuture && fldToDate) ? fldToDate.toFixed(1) : '',
                         checkrollWeightDay: (!isFuture && d.checkrollWeightDay) ? d.checkrollWeightDay.toFixed(1) : '',
                         checkrollWeightTodate: (!isFuture && chkToDate) ? chkToDate.toFixed(1) : '',
-                        yieldPerAcreDay: (!isFuture && yPerAcreDay) ? yPerAcreDay.toFixed(2) : '',
-                        yieldPerAcreTodate: (!isFuture && yPerAcreToDate) ? yPerAcreToDate.toFixed(2) : '',
+                        yieldPerAcreDay: (!isFuture && (yPerAcreDay > 0 || dayTotalCrop > 0)) ? yPerAcreDay.toFixed(2) : '',
+                        yieldPerAcreTodate: (!isFuture && (yPerAcreToDate > 0 || toDateTotalCrop > 0)) ? yPerAcreToDate.toFixed(2) : '',
                         noOfPluckersDay: (!isFuture && d.noOfPluckersDay) ? d.noOfPluckersDay : '',
                         noOfPluckersTodate: (!isFuture && plkToDate) ? plkToDate : '',
                         overKilosDay: (!isFuture && d.overKilosDay) ? d.overKilosDay.toFixed(1) : '',
