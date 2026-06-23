@@ -181,7 +181,6 @@ export default function CostAnalysis() {
     const location = useLocation();
     const userSession = JSON.parse(sessionStorage.getItem('user') || '{}');
     const [activeCrop, setActiveCrop] = useState('Tea');
-    const { t } = useLanguage();
     const userRole = userSession.role || '';
     const isChiefClerk = userRole === 'CHIEF_CLERK';
     const [availableCrops, setAvailableCrops] = useState<string[]>(['Tea']);
@@ -374,6 +373,9 @@ export default function CostAnalysis() {
                                 {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </Typography>
                         </Box>
+                    </Box>
+                </Box>
+            </Paper>
             {/* Top Stats Cards */}
             <Grid container spacing={2} mb={2}>
                 <Grid item xs={12} sm={4}>
@@ -708,7 +710,7 @@ export default function CostAnalysis() {
                             </TableBody>
                         </Table>
                     </TableContainer>
-                )}
+                </Box>
             </Paper>
         </Box>
     );
