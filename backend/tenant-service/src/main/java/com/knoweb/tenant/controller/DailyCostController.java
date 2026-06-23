@@ -114,11 +114,17 @@ public class DailyCostController {
             CellStyle cropBandStyle = createCropBandStyle(workbook);
             CellStyle cropRowBlankStyle = createItemTextStyle(workbook);
             CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle dayHeaderStyle = createDayHeaderStyle(workbook);
+            CellStyle todateHeaderStyle = createTodateHeaderStyle(workbook);
             CellStyle categoryStyle = createCategoryStyle(workbook);
             CellStyle itemTextStyle = createItemTextStyle(workbook);
             CellStyle amountStyle = createAmountStyle(workbook);
+            CellStyle dayAmountStyle = createDayAmountStyle(workbook);
+            CellStyle todateAmountStyle = createTodateAmountStyle(workbook);
             CellStyle summaryLabelStyle = createSummaryLabelStyle(workbook);
             CellStyle summaryAmountStyle = createSummaryAmountStyle(workbook);
+            CellStyle summaryDayAmountStyle = createDaySummaryAmountStyle(workbook);
+            CellStyle summaryTodateAmountStyle = createTodateSummaryAmountStyle(workbook);
 
             Row titleRow = sheet.createRow(0);
             titleRow.setHeightInPoints(22);
@@ -157,14 +163,14 @@ public class DailyCostController {
             subHeaderRow.setHeightInPoints(20);
 
             createTextCell(groupHeaderRow, 0, "", headerStyle);
-            createTextCell(groupHeaderRow, 1, "Day", headerStyle);
-            createTextCell(groupHeaderRow, 3, "Todate", headerStyle);
+            createTextCell(groupHeaderRow, 1, "Day", dayHeaderStyle);
+            createTextCell(groupHeaderRow, 3, "Todate", todateHeaderStyle);
             createTextCell(groupHeaderRow, 5, "History", headerStyle);
 
             for (int i = 2; i < 7; i++) {
                 if (groupHeaderRow.getCell(i) == null) {
                     Cell blankCell = groupHeaderRow.createCell(i);
-                    blankCell.setCellStyle(headerStyle);
+                    blankCell.setCellStyle(i < 3 ? dayHeaderStyle : i < 5 ? todateHeaderStyle : headerStyle);
                 }
             }
 
@@ -175,7 +181,7 @@ public class DailyCostController {
             for (int i = 0; i < subColumns.length; i++) {
                 Cell cell = subHeaderRow.createCell(i + 1);
                 cell.setCellValue(subColumns[i]);
-                cell.setCellStyle(headerStyle);
+                cell.setCellStyle(i < 2 ? dayHeaderStyle : i < 4 ? todateHeaderStyle : headerStyle);
             }
 
             sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(3, 3, 1, 2));
@@ -216,18 +222,18 @@ public class DailyCostController {
 
                         double dayAmount = parseAmount(itemNode.path("dayAmount").asText("0"));
                         totalDayAmount += dayAmount;
-                        createAmountCell(row, 1, dayAmount, amountStyle);
+                        createAmountCell(row, 1, dayAmount, dayAmountStyle);
                         createTextCell(row, 2, resolveCostPerKgValue(
                                 itemNode.path("dayCostPerKgOverride").asText(""),
                                 dayAmount,
-                                cropWeights.dayWeight), amountStyle);
+                                cropWeights.dayWeight), dayAmountStyle);
                         double todateAmount = parseAmount(itemNode.path("todateAmount").asText("0"));
                         totalTodateAmount += todateAmount;
-                        createAmountCell(row, 3, todateAmount, amountStyle);
+                        createAmountCell(row, 3, todateAmount, todateAmountStyle);
                         createTextCell(row, 4, resolveCostPerKgValue(
                                 itemNode.path("todateCostPerKgOverride").asText(""),
                                 todateAmount,
-                                cropWeights.todateWeight), amountStyle);
+                                cropWeights.todateWeight), todateAmountStyle);
                         double lastMonthAmount = parseAmount(itemNode.path("lastMonthAmount").asText("0"));
                         double ytdAmount = parseAmount(itemNode.path("ytdAmount").asText("0"));
                         totalLastMonthAmount += lastMonthAmount;
@@ -240,10 +246,10 @@ public class DailyCostController {
                     Cell summaryLabelCell = summaryRow.createCell(0);
                     summaryLabelCell.setCellValue("Total Cost for " + categoryName);
                     summaryLabelCell.setCellStyle(summaryLabelStyle);
-                    createAmountCell(summaryRow, 1, totalDayAmount, summaryAmountStyle);
-                    createTextCell(summaryRow, 2, resolveCostPerKgValue("", totalDayAmount, cropWeights.dayWeight), summaryAmountStyle);
-                    createAmountCell(summaryRow, 3, totalTodateAmount, summaryAmountStyle);
-                    createTextCell(summaryRow, 4, resolveCostPerKgValue("", totalTodateAmount, cropWeights.todateWeight), summaryAmountStyle);
+                    createAmountCell(summaryRow, 1, totalDayAmount, summaryDayAmountStyle);
+                    createTextCell(summaryRow, 2, resolveCostPerKgValue("", totalDayAmount, cropWeights.dayWeight), summaryDayAmountStyle);
+                    createAmountCell(summaryRow, 3, totalTodateAmount, summaryTodateAmountStyle);
+                    createTextCell(summaryRow, 4, resolveCostPerKgValue("", totalTodateAmount, cropWeights.todateWeight), summaryTodateAmountStyle);
                     createAmountCell(summaryRow, 5, totalLastMonthAmount, summaryAmountStyle);
                     createAmountCell(summaryRow, 6, totalYtdAmount, summaryAmountStyle);
 
@@ -826,6 +832,80 @@ public class DailyCostController {
         style.setAlignment(HorizontalAlignment.RIGHT);
         style.setDataFormat(workbook.createDataFormat().getFormat("0.00"));
         style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createDayHeaderStyle(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setBold(true);
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createTodateHeaderStyle(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setBold(true);
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.CENTER);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createDayAmountStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00"));
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createTodateAmountStyle(Workbook workbook) {
+        CellStyle style = workbook.createCellStyle();
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setVerticalAlignment(VerticalAlignment.CENTER);
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00"));
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createDaySummaryAmountStyle(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setBold(true);
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00"));
+        style.setFillForegroundColor(IndexedColors.LIGHT_YELLOW.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        applyThinBorder(style);
+        return style;
+    }
+
+    private CellStyle createTodateSummaryAmountStyle(Workbook workbook) {
+        Font font = workbook.createFont();
+        font.setBold(true);
+        CellStyle style = workbook.createCellStyle();
+        style.setFont(font);
+        style.setAlignment(HorizontalAlignment.RIGHT);
+        style.setDataFormat(workbook.createDataFormat().getFormat("0.00"));
+        style.setFillForegroundColor(IndexedColors.PALE_BLUE.getIndex());
         style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
         applyThinBorder(style);
         return style;
