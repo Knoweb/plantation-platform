@@ -1162,7 +1162,7 @@ export default function CostAnalysisManager() {
                                                                     })}
                                                                     sx={{ color: '#1976d2' }}
                                                                 >
-                                                                    <EditIcon sx={{ fontSize: 16 }} />
+                                                                    <EditIcon sx={{ fontSize: 16, animation: 'pencilShake 0.4s linear infinite', '@keyframes pencilShake': { '0%, 100%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 2px #1976d2)' }, '25%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '50%': { transform: 'rotate(25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '75%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' } } }} />
                                                                 </IconButton>
                                                             </Tooltip>
                                                             <Tooltip title="Delete category">
@@ -1266,7 +1266,7 @@ export default function CostAnalysisManager() {
                                                                 }
                                                                 sx={{ color: '#1976d2' }}
                                                             >
-                                                                <EditIcon sx={{ fontSize: 16 }} />
+                                                                <EditIcon sx={{ fontSize: 16, animation: 'pencilShake 0.4s linear infinite', '@keyframes pencilShake': { '0%, 100%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 2px #1976d2)' }, '25%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '50%': { transform: 'rotate(25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '75%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' } } }} />
                                                             </IconButton>
                                                         </Tooltip>
                                                         <Tooltip title="Delete item">
@@ -1349,7 +1349,7 @@ export default function CostAnalysisManager() {
                                                             })}
                                                             sx={{ color: '#1976d2' }}
                                                         >
-                                                            <EditIcon sx={{ fontSize: 16 }} />
+                                                            <EditIcon sx={{ fontSize: 16, animation: 'pencilShake 0.4s linear infinite', '@keyframes pencilShake': { '0%, 100%': { transform: 'rotate(0deg) scale(1)', filter: 'drop-shadow(0 0 2px #1976d2)' }, '25%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '50%': { transform: 'rotate(25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' }, '75%': { transform: 'rotate(-25deg) scale(1.3)', filter: 'drop-shadow(0 0 6px #1976d2)' } } }} />
                                                         </IconButton>
                                                     </Tooltip>
                                                 </TableCell>
