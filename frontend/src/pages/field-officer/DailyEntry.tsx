@@ -1625,8 +1625,15 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                         )}
 
                         <Box p={1} display="flex" flexDirection="column" gap={0.5} sx={{ minWidth: 700 }}>
-                            {items.map((item: any) => {
-                                const isPieceRate = item.workerType?.includes('CONTRACT');
+                            {Array.from(new Set(items.map((i: any) => i.fieldName || 'Unknown Field'))).map((fieldName: any) => (
+                                <React.Fragment key={fieldName}>
+                                    <Box sx={{ bgcolor: '#e8f5e9', py: 0.5, px: 1.5, borderRadius: 1, mt: 1, mb: 0.5, display: 'inline-block', alignSelf: 'flex-start', border: '1px solid #c8e6c9' }}>
+                                        <Typography variant="caption" fontWeight="bold" color="#2e7d32">
+                                            {fieldName}
+                                        </Typography>
+                                    </Box>
+                                    {items.filter((i: any) => (i.fieldName || 'Unknown Field') === fieldName).map((item: any) => {
+                                        const isPieceRate = item.workerType?.includes('CONTRACT');
                                 const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
 
                                 return (
@@ -1802,6 +1809,8 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     </Box>
                                 );
                             })}
+                                </React.Fragment>
+                            ))}
                     </Box>
                 </Box>
             </Paper>
