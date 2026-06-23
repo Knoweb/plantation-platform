@@ -1626,7 +1626,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
 
                         <Box p={1} display="flex" flexDirection="column" gap={0.5} sx={{ minWidth: 700 }}>
                             {Array.from(new Set(items.map((i: any) => i.fieldName || 'Unknown Field'))).map((fieldName: any) => (
-                                <React.Fragment key={fieldName}>
+                                <Fragment key={fieldName}>
                                     <Box sx={{ bgcolor: '#e8f5e9', py: 0.5, px: 1.5, borderRadius: 1, mt: 1, mb: 0.5, display: 'inline-block', alignSelf: 'flex-start', border: '1px solid #c8e6c9' }}>
                                         <Typography variant="caption" fontWeight="bold" color="#2e7d32">
                                             {fieldName}
@@ -1809,7 +1809,7 @@ function TaskSection({ task, items, onUpdate, isSubmitted, hideOutput = false, f
                                     </Box>
                                 );
                             })}
-                                </React.Fragment>
+                                </Fragment>
                             ))}
                     </Box>
                 </Box>
