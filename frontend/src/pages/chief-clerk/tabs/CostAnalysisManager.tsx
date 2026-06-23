@@ -1094,22 +1094,22 @@ export default function CostAnalysisManager() {
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>{t('Work Item')}</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('Day')}</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('Todate')}</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1b5e20' }}>{t('This month')}</TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555' }}>{t('History')}</TableCell>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word', borderRight: '1px solid #e0e0e0' }}>{t('Work Item')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#f57f17', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>{t('Day')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#1565c0', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>{t('Todate')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#2e7d32', bgcolor: '#e8f5e9', borderRight: '1px solid #e0e0e0' }}>{t('This month')}</TableCell>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', color: '#555', borderRight: '1px solid #e0e0e0' }}>{t('History')}</TableCell>
                                     {userRole === 'CHIEF_CLERK' && <TableCell rowSpan={2} sx={{ fontWeight: 'bold', textAlign: 'center' }}>{t('Actions')}</TableCell>}
                                 </TableRow>
                                 <TableRow>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Amount (Rs.)')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Cost/Kg')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Amount (Rs.)')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Cost/Kg')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>{t('Budget')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#f1f8e9' }}>{t('Balance')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#fffde7' }}>{t('Amount (Rs.)')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>{t('Cost/Kg')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#e3f2fd' }}>{t('Amount (Rs.)')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>{t('Cost/Kg')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#e8f5e9' }}>{t('Budget')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', bgcolor: '#e8f5e9', borderRight: '1px solid #e0e0e0' }}>{t('Balance')}</TableCell>
                                     <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('Last Month')}</TableCell>
-                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right' }}>{t('YTD')}</TableCell>
+                                    <TableCell sx={{ fontWeight: 'bold', textAlign: 'right', borderRight: '1px solid #e0e0e0' }}>{t('YTD')}</TableCell>
                                 </TableRow>
                             </TableHead>
                             <TableBody>
@@ -1191,7 +1191,7 @@ export default function CostAnalysisManager() {
                                         rows.push(
                                             <TableRow key={`${category.id}-${item.id}`} sx={{ '&:hover': { bgcolor: '#fafafa' } }}>
                                                 <TableCell sx={{ pl: 4, whiteSpace: 'normal', wordBreak: 'break-word' }}>{item.name}</TableCell>
-                                                <TableCell align="right">
+                                                <TableCell align="right" sx={{ bgcolor: '#fffde7' }}>
                                                     {isManager ? (
                                                         <Typography fontWeight="500">
                                                             {fmtAmount(item.dayAmount)}
@@ -1229,19 +1229,20 @@ export default function CostAnalysisManager() {
                                                         </Box>
                                                     )}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>
                                                     {fmtPerKg(item.dayAmount, weights.day, item.dayCostPerKgOverride)}
                                                 </TableCell>
-                                                <TableCell align="right">{fmtAmount(item.todateAmount)}</TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                <TableCell align="right" sx={{ bgcolor: '#e3f2fd' }}>{fmtAmount(item.todateAmount)}</TableCell>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>
                                                     {fmtPerKg(item.todateAmount, weights.todate, item.todateCostPerKgOverride)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ bgcolor: '#e3f2fd11', fontWeight: 500 }}>
+                                                <TableCell align="right" sx={{ bgcolor: '#e8f5e9', fontWeight: 500 }}>
                                                     {item.budgetAmount ? fmtAmount(String(item.budgetAmount)) : '-'}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ 
-                                                    bgcolor: '#e3f2fd11', 
+                                                    bgcolor: '#e8f5e9', 
                                                     fontWeight: 'bold',
+                                                    borderRight: '1px solid #e0e0e0',
                                                     color: (item.budgetAmount || 0) - parseFloat(item.todateAmount || '0') < 0 ? '#d32f2f' : '#2e7d32'
                                                 }}>
                                                     {item.budgetAmount ? fmtAmount(String(item.budgetAmount - parseFloat(item.todateAmount || '0'))) : '-'}
@@ -1303,24 +1304,25 @@ export default function CostAnalysisManager() {
                                     rows.push(
                                         <TableRow key={`${category.id}-sum`} sx={{ bgcolor: '#eeeeee' }}>
                                             <TableCell sx={{ fontWeight: 'bold', whiteSpace: 'normal', wordBreak: 'break-word' }}>Total Cost for {category.name}</TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#fffde7' }}>
                                                 {fmtTotal(catDayTotal(category))}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888' }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>
                                                 {fmtPerKg(String(catDayTotal(category)), weights.day)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold' }}>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd' }}>
                                                 {fmtTotal(catFieldTotal(category, 'todateAmount'))}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888' }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>
                                                 {fmtPerKg(String(catFieldTotal(category, 'todateAmount')), weights.todate)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd44' }}>
+                                            <TableCell align="right" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9' }}>
                                                 {category.budgetAmount ? fmtTotal(category.budgetAmount) : fmtTotal(category.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0))}
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
                                                 fontWeight: 'bold', 
-                                                bgcolor: '#e3f2fd44',
+                                                bgcolor: '#e8f5e9',
+                                                borderRight: '1px solid #e0e0e0',
                                                 color: (category.budgetAmount || category.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - catFieldTotal(category, 'todateAmount') >= 0 ? '#2e7d32' : '#d32f2f'
                                             }}>
                                                 {(category.budgetAmount || category.items.some(i => i.budgetAmount)) || catFieldTotal(category, 'todateAmount') > 0

@@ -374,29 +374,79 @@ export default function CostAnalysis() {
                                 {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
                             </Typography>
                         </Box>
-                    </Box>
-                </Box>
+            {/* Top Stats Cards */}
+            <Grid container spacing={2} mb={2}>
+                <Grid item xs={12} sm={4}>
+                    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: '#e3f2fd', border: '1px solid #bbdefb', display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold" textTransform="uppercase">{t('Total Harvest')}</Typography>
+                        <Box display="flex" alignItems="baseline" gap={1}>
+                            <Typography variant="h4" color="#1565c0" fontWeight="bold">
+                                {(weights.day || 0).toLocaleString('en-US')}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" fontWeight="bold">Kg</Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: '#f3e5f5', border: '1px solid #e1bee7', display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold" textTransform="uppercase">{t('Total Cost (Rs.)')}</Typography>
+                        <Box display="flex" alignItems="baseline" gap={1}>
+                            <Typography variant="h4" color="#7b1fa2" fontWeight="bold">
+                                {categoriesWithBudgets.reduce((acc, cat) => acc + catDayTotal(cat), 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+                <Grid item xs={12} sm={4}>
+                    <Paper elevation={0} sx={{ p: 2, borderRadius: 2, bgcolor: '#fff3e0', border: '1px solid #ffe0b2', display: 'flex', flexDirection: 'column' }}>
+                        <Typography variant="caption" color="text.secondary" fontWeight="bold" textTransform="uppercase">{t('Average COP')}</Typography>
+                        <Box display="flex" alignItems="baseline" gap={1}>
+                            <Typography variant="h4" color="#e65100" fontWeight="bold">
+                                {fmtPerKg(
+                                    String(categoriesWithBudgets.reduce((acc, cat) => acc + catDayTotal(cat), 0)),
+                                    weights.day
+                                )}
+                            </Typography>
+                            <Typography variant="body2" color="text.secondary" fontWeight="bold">Rs./Kg</Typography>
+                        </Box>
+                    </Paper>
+                </Grid>
+            </Grid>
+
+            <Paper elevation={0} sx={{ borderRadius: 2, border: '1px solid #e0e0e0', overflow: 'hidden' }}>
                 {/* Crop Tabs */}
-                <Box sx={{ borderBottom: '1px solid #e0e0e0', bgcolor: '#f5f5f5' }}>
-                    <Tabs value={activeCrop} onChange={(_, v) => setActiveCrop(v)}
-                        sx={{ minHeight: 36, '& .MuiTab-root': { minHeight: 36, fontWeight: 'bold', textTransform: 'none', borderRight: '1px solid #ccc' } }}>
-                        {availableCrops.map(crop => (
-                            <Tab key={crop} label={crop} value={crop} sx={{
-                                bgcolor: activeCrop === crop ? (CROP_COLORS[crop]?.tab || '#757575') : '#e8e8e8',
-                                color: activeCrop === crop ? '#fff !important' : '#555',
-                            }} />
-                        ))}
-                    </Tabs>
+                <Box sx={{ borderBottom: 1, borderColor: 'divider', bgcolor: '#fafafa', display: 'flex', px: 1, pt: 1, gap: 1 }}>
+                    {['Tea', 'Rubber', 'Cinnamon'].map(crop => (
+                        <Box
+                            key={crop}
+                            onClick={() => setActiveCrop(crop)}
+                            sx={{
+                                py: 1.5,
+                                px: 3,
+                                cursor: 'pointer',
+                                borderTopLeftRadius: 8,
+                                borderTopRightRadius: 8,
+                                fontWeight: activeCrop === crop ? 'bold' : 'normal',
+                                color: activeCrop === crop ? (CROP_COLORS[crop]?.tab || '#333') : '#757575',
+                                bgcolor: activeCrop === crop ? '#fff' : 'transparent',
+                                border: activeCrop === crop ? '1px solid #e0e0e0' : '1px solid transparent',
+                                borderBottom: 'none',
+                                position: 'relative',
+                                '&::after': activeCrop === crop ? {
+                                    content: '""',
+                                    position: 'absolute',
+                                    bottom: -1, left: 0, right: 0, height: 2,
+                                    bgcolor: '#fff'
+                                } : {}
+                            }}
+                        >
+                            {crop}
+                        </Box>
+                    ))}
                 </Box>
 
-                {loading && (
-                    <Box display="flex" justifyContent="center" py={6}>
-                        <CircularProgress size={30} sx={{ color: colors.tab }} />
-                    </Box>
-                )}
-
-                {!loading && (
-                    <TableContainer sx={{ overflowX: 'auto' }}>
+                <Box sx={{ p: 2 }}>
+                    <TableContainer sx={{ maxHeight: '60vh' }}>
                         <Table
                             size="small"
                             stickyHeader
@@ -451,19 +501,19 @@ export default function CostAnalysis() {
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0 }}>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0, borderRight: '1px solid #e0e0e0' }}>
                                         {t('Work Item')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fffde7', color: '#f57f17', borderRight: '1px solid #e0e0e0' }}>
                                         {t('Day')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd', color: '#1565c0', borderRight: '1px solid #e0e0e0' }}>
                                         {t('Todate')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#1b5e20', borderBottom: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9', color: '#2e7d32', borderRight: '1px solid #e0e0e0' }}>
                                         {t('This month')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderBottom: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderRight: '1px solid #e0e0e0' }}>
                                         {t('History')}
                                     </TableCell>
                                     {isChiefClerk && (
@@ -473,14 +523,14 @@ export default function CostAnalysis() {
                                     )}
                                 </TableRow>
                                 <TableRow>
-                                    {headerCell(t('Amount (Rs.)'))}
-                                    {headerCell(t('Cost/Kg'))}
-                                    {headerCell(t('Amount (Rs.)'))}
-                                    {headerCell(t('Cost/Kg'))}
-                                    {headerCell(t('Budget'))}
-                                    {headerCell(t('Balance'))}
-                                    {headerCell(t('Last Month'))}
-                                    {headerCell(t('YTD'))}
+                                    {headerCell(t('Amount (Rs.)'), '#fffde7')}
+                                    {headerCell(t('Cost/Kg'), '#fffde7', '#1b5e20', true)}
+                                    {headerCell(t('Amount (Rs.)'), '#e3f2fd')}
+                                    {headerCell(t('Cost/Kg'), '#e3f2fd', '#1b5e20', true)}
+                                    {headerCell(t('Budget'), '#e8f5e9')}
+                                    {headerCell(t('Balance'), '#e8f5e9', '#1b5e20', true)}
+                                    {headerCell(t('Last Month'), '#fafafa')}
+                                    {headerCell(t('YTD'), '#fafafa', '#1b5e20', true)}
                                 </TableRow>
                             </TableHead>
 
@@ -512,24 +562,25 @@ export default function CostAnalysis() {
                                             }}>
                                                 {item.name}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ bgcolor: '#fffde7', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.dayAmount)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmtPerKg(parseFloat(item.dayAmount || '0'), weights.day, item.dayCostPerKgOverride)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ bgcolor: '#e3f2fd', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.todateAmount)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmtPerKg(parseFloat(item.todateAmount || '0'), weights.todate, item.todateCostPerKgOverride)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ bgcolor: '#e3f2fd11', fontWeight: 500, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ bgcolor: '#e8f5e9', fontWeight: 500, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {item.budgetAmount ? fmt(String(item.budgetAmount)) : '-'}
                                             </TableCell>
                                             <TableCell align="right" sx={{ 
-                                                bgcolor: '#e3f2fd11', 
+                                                bgcolor: '#e8f5e9', 
                                                 fontWeight: 600, 
+                                                borderRight: '1px solid #e0e0e0',
                                                 color: (item.budgetAmount || 0) - (parseFloat(item.todateAmount || '0')) >= 0 ? '#2e7d32' : '#d32f2f',
                                                 ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) 
                                             }}>
@@ -570,26 +621,27 @@ export default function CostAnalysis() {
                                                 }}>
                                                     Total Cost for {cat.name}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#fffde7' }}>
                                                     {fmtTotal(totalDayAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>
                                                     {fmtPerKg(totalDayAmount, weights.day)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab }}>
+                                                <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e3f2fd' }}>
                                                     {fmtTotal(totalTodateAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888' }}>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>
                                                     {fmtPerKg(totalTodateAmount, weights.todate)}
                                                 </TableCell>
-                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e3f2fd11' }}>
+                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e8f5e9' }}>
                                                     {cat.budgetAmount || cat.items.some(i => i.budgetAmount) 
                                                         ? fmtTotal(cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0))
                                                         : '-'}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ 
                                                     fontWeight: 'bold', 
-                                                    bgcolor: '#e3f2fd11',
+                                                    bgcolor: '#e8f5e9',
+                                                    borderRight: '1px solid #e0e0e0',
                                                     color: (cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - totalTodateAmount >= 0 ? '#2e7d32' : '#d32f2f' 
                                                 }}>
                                                     {(cat.budgetAmount || cat.items.some(i => i.budgetAmount)) || totalTodateAmount > 0
