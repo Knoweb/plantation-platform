@@ -6,9 +6,11 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.knoweb.tenant.entity.DailyCost;
 import com.knoweb.tenant.entity.Field;
+import com.knoweb.tenant.entity.MonthlyBudget;
 import com.knoweb.tenant.repository.CropConfigRepository;
 import com.knoweb.tenant.repository.DailyCostRepository;
 import com.knoweb.tenant.repository.FieldRepository;
+import com.knoweb.tenant.repository.MonthlyBudgetRepository;
 import com.knoweb.tenant.service.CostCalculationService;
 import org.apache.poi.ss.usermodel.*;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
@@ -39,6 +41,7 @@ public class DailyCostController {
     private final CostCalculationService costCalculationService;
     private final CropConfigRepository cropConfigRepository;
     private final FieldRepository fieldRepository;
+    private final MonthlyBudgetRepository monthlyBudgetRepository;
     private final DiscoveryClient discoveryClient;
     private final ObjectMapper objectMapper;
 
@@ -47,12 +50,14 @@ public class DailyCostController {
             CostCalculationService costCalculationService,
             CropConfigRepository cropConfigRepository,
             FieldRepository fieldRepository,
+            MonthlyBudgetRepository monthlyBudgetRepository,
             DiscoveryClient discoveryClient,
             ObjectMapper objectMapper) {
         this.dailyCostRepository = dailyCostRepository;
         this.costCalculationService = costCalculationService;
         this.cropConfigRepository = cropConfigRepository;
         this.fieldRepository = fieldRepository;
+        this.monthlyBudgetRepository = monthlyBudgetRepository;
         this.discoveryClient = discoveryClient;
         this.objectMapper = objectMapper;
     }
@@ -131,8 +136,8 @@ public class DailyCostController {
             Cell titleCell = titleRow.createCell(0);
             titleCell.setCellValue("Cost Analysis");
             titleCell.setCellStyle(titleStyle);
-            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 6));
-            for (int i = 1; i < 7; i++) {
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(0, 0, 0, 8));
+            for (int i = 1; i < 9; i++) {
                 Cell mergedCell = titleRow.createCell(i);
                 mergedCell.setCellStyle(titleStyle);
             }
@@ -146,13 +151,15 @@ public class DailyCostController {
             createRibbonCell(ribbonRow, 4, LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")), ribbonValueStyle);
             createRibbonCell(ribbonRow, 5, "", ribbonValueStyle);
             createRibbonCell(ribbonRow, 6, "", ribbonValueStyle);
+            createRibbonCell(ribbonRow, 7, "", ribbonValueStyle);
+            createRibbonCell(ribbonRow, 8, "", ribbonValueStyle);
 
             Row cropRow = sheet.createRow(2);
             cropRow.setHeightInPoints(20);
             Cell cropCell = cropRow.createCell(0);
             cropCell.setCellValue(cropType.toUpperCase(Locale.ROOT));
             cropCell.setCellStyle(cropBandStyle);
-            for (int i = 1; i < 7; i++) {
+            for (int i = 1; i < 9; i++) {
                 Cell blankCell = cropRow.createCell(i);
                 blankCell.setCellStyle(cropRowBlankStyle);
             }
@@ -165,16 +172,17 @@ public class DailyCostController {
             createTextCell(groupHeaderRow, 0, "", headerStyle);
             createTextCell(groupHeaderRow, 1, "Day", dayHeaderStyle);
             createTextCell(groupHeaderRow, 3, "Todate", todateHeaderStyle);
-            createTextCell(groupHeaderRow, 5, "History", headerStyle);
+            createTextCell(groupHeaderRow, 5, "This month", headerStyle);
+            createTextCell(groupHeaderRow, 7, "History", headerStyle);
 
-            for (int i = 2; i < 7; i++) {
+            for (int i = 2; i < 9; i++) {
                 if (groupHeaderRow.getCell(i) == null) {
                     Cell blankCell = groupHeaderRow.createCell(i);
                     blankCell.setCellStyle(i < 3 ? dayHeaderStyle : i < 5 ? todateHeaderStyle : headerStyle);
                 }
             }
 
-            String[] subColumns = {"Amount (Rs.)", "Cost/Kg", "Amount (Rs.)", "Cost/Kg", "Last Month", "YTD"};
+            String[] subColumns = {"Amount (Rs.)", "Cost/Kg", "Amount (Rs.)", "Cost/Kg", "Budget", "Balance", "Last Month", "YTD"};
             Cell workItemSubHeader = subHeaderRow.createCell(0);
             workItemSubHeader.setCellValue("Work Item");
             workItemSubHeader.setCellStyle(headerStyle);
@@ -187,12 +195,21 @@ public class DailyCostController {
             sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(3, 3, 1, 2));
             sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(3, 3, 3, 4));
             sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(3, 3, 5, 6));
+            sheet.addMergedRegion(new org.apache.poi.ss.util.CellRangeAddress(3, 3, 7, 8));
 
             JsonNode categories = objectMapper.readTree(resolved.getCostData());
             CropWeights cropWeights = fetchCropWeights(tenantId, cropType, date);
+            String yearMonth = date.format(DateTimeFormatter.ofPattern("yyyy-MM"));
+            List<MonthlyBudget> budgets = monthlyBudgetRepository.findByTenantIdAndCropTypeIgnoreCaseAndYearMonth(tenantId, cropType, yearMonth);
+            Map<String, Double> budgetMap = new HashMap<>();
+            for (MonthlyBudget mb : budgets) {
+                budgetMap.put(mb.getItemName(), mb.getAmount());
+            }
+
             int rowIdx = 5;
             double grandTotalDay = 0.0;
             double grandTotalTodate = 0.0;
+            double grandTotalBudget = 0.0;
             double grandTotalLastMonth = 0.0;
             double grandTotalYtd = 0.0;
             if (categories.isArray()) {
@@ -204,7 +221,7 @@ public class DailyCostController {
                     }
 
                     Row categoryRow = sheet.createRow(rowIdx++);
-                    for (int i = 0; i < 7; i++) {
+                    for (int i = 0; i < 9; i++) {
                         Cell categoryCell = categoryRow.createCell(i);
                         categoryCell.setCellStyle(categoryStyle);
                     }
@@ -212,12 +229,19 @@ public class DailyCostController {
 
                     double totalDayAmount = 0.0;
                     double totalTodateAmount = 0.0;
+                    double totalBudgetAmount = 0.0;
                     double totalLastMonthAmount = 0.0;
                     double totalYtdAmount = 0.0;
+                    
+                    double catBudgetAmount = budgetMap.getOrDefault(categoryName, 0.0);
+                    boolean hasCatBudget = budgetMap.containsKey(categoryName);
+                    boolean anyItemHasBudget = false;
+
                     for (JsonNode itemNode : items) {
                         Row row = sheet.createRow(rowIdx++);
+                        String itemName = itemNode.path("name").asText("");
                         Cell workItemCell = row.createCell(0);
-                        workItemCell.setCellValue(itemNode.path("name").asText(""));
+                        workItemCell.setCellValue(itemName);
                         workItemCell.setCellStyle(itemTextStyle);
 
                         double dayAmount = parseAmount(itemNode.path("dayAmount").asText("0"));
@@ -234,12 +258,24 @@ public class DailyCostController {
                                 itemNode.path("todateCostPerKgOverride").asText(""),
                                 todateAmount,
                                 cropWeights.todateWeight), todateAmountStyle);
+
+                        Double itemBudget = budgetMap.get(itemName);
+                        if (itemBudget != null) {
+                            totalBudgetAmount += itemBudget;
+                            anyItemHasBudget = true;
+                            createAmountCell(row, 5, itemBudget, amountStyle);
+                            createAmountCell(row, 6, itemBudget - todateAmount, amountStyle);
+                        } else {
+                            createTextCell(row, 5, "-", amountStyle);
+                            createTextCell(row, 6, "-", amountStyle);
+                        }
+
                         double lastMonthAmount = parseAmount(itemNode.path("lastMonthAmount").asText("0"));
                         double ytdAmount = parseAmount(itemNode.path("ytdAmount").asText("0"));
                         totalLastMonthAmount += lastMonthAmount;
                         totalYtdAmount += ytdAmount;
-                        createAmountCell(row, 5, lastMonthAmount, amountStyle);
-                        createAmountCell(row, 6, ytdAmount, amountStyle);
+                        createAmountCell(row, 7, lastMonthAmount, amountStyle);
+                        createAmountCell(row, 8, ytdAmount, amountStyle);
                     }
 
                     Row summaryRow = sheet.createRow(rowIdx++);
@@ -250,11 +286,22 @@ public class DailyCostController {
                     createTextCell(summaryRow, 2, resolveCostPerKgValue("", totalDayAmount, cropWeights.dayWeight), summaryDayAmountStyle);
                     createAmountCell(summaryRow, 3, totalTodateAmount, summaryTodateAmountStyle);
                     createTextCell(summaryRow, 4, resolveCostPerKgValue("", totalTodateAmount, cropWeights.todateWeight), summaryTodateAmountStyle);
-                    createAmountCell(summaryRow, 5, totalLastMonthAmount, summaryAmountStyle);
-                    createAmountCell(summaryRow, 6, totalYtdAmount, summaryAmountStyle);
+
+                    double budgetTotal = hasCatBudget ? catBudgetAmount : totalBudgetAmount;
+                    if (hasCatBudget || anyItemHasBudget) {
+                        createAmountCell(summaryRow, 5, budgetTotal, summaryAmountStyle);
+                        createAmountCell(summaryRow, 6, budgetTotal - totalTodateAmount, summaryAmountStyle);
+                    } else {
+                        createTextCell(summaryRow, 5, "-", summaryAmountStyle);
+                        createTextCell(summaryRow, 6, "-", summaryAmountStyle);
+                    }
+
+                    createAmountCell(summaryRow, 7, totalLastMonthAmount, summaryAmountStyle);
+                    createAmountCell(summaryRow, 8, totalYtdAmount, summaryAmountStyle);
 
                     grandTotalDay += totalDayAmount;
                     grandTotalTodate += totalTodateAmount;
+                    grandTotalBudget += budgetTotal;
                     grandTotalLastMonth += totalLastMonthAmount;
                     grandTotalYtd += totalYtdAmount;
                 }
@@ -280,11 +327,20 @@ public class DailyCostController {
             createTextCell(grandTotalRow, 2, "", grandStyle);
             createAmountCell(grandTotalRow, 3, grandTotalTodate, grandStyle);
             createTextCell(grandTotalRow, 4, "", grandStyle);
-            createAmountCell(grandTotalRow, 5, grandTotalLastMonth, grandStyle);
-            createAmountCell(grandTotalRow, 6, grandTotalYtd, grandStyle);
+
+            if (grandTotalBudget > 0) {
+                createAmountCell(grandTotalRow, 5, grandTotalBudget, grandStyle);
+                createAmountCell(grandTotalRow, 6, grandTotalBudget - grandTotalTodate, grandStyle);
+            } else {
+                createTextCell(grandTotalRow, 5, "-", grandStyle);
+                createTextCell(grandTotalRow, 6, "-", grandStyle);
+            }
+
+            createAmountCell(grandTotalRow, 7, grandTotalLastMonth, grandStyle);
+            createAmountCell(grandTotalRow, 8, grandTotalYtd, grandStyle);
 
             int filterLastRow = Math.max(4, rowIdx - 1);
-            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(4, filterLastRow, 0, 6));
+            sheet.setAutoFilter(new org.apache.poi.ss.util.CellRangeAddress(4, filterLastRow, 0, 8));
 
             sheet.setZoom(108);
             // Use fixed widths so Excel filter arrows don't crush the grouped header labels.
@@ -293,8 +349,10 @@ public class DailyCostController {
             sheet.setColumnWidth(2, 3000);
             sheet.setColumnWidth(3, 4200);
             sheet.setColumnWidth(4, 3000);
-            sheet.setColumnWidth(5, 3600);
-            sheet.setColumnWidth(6, 3200);
+            sheet.setColumnWidth(5, 4200);
+            sheet.setColumnWidth(6, 4200);
+            sheet.setColumnWidth(7, 3600);
+            sheet.setColumnWidth(8, 3200);
 
             workbook.write(out);
             String filename = "Cost_Analysis_" + cropType + "_" + date + ".xlsx";
