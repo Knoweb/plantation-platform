@@ -503,19 +503,19 @@ export default function CostAnalysis() {
                             </colgroup>
                             <TableHead>
                                 <TableRow>
-                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0, borderRight: '1px solid #e0e0e0' }}>
+                                    <TableCell rowSpan={2} sx={{ fontWeight: 'bold', bgcolor: '#fafafa', zIndex: isMobile ? 1 : 11, position: 'sticky', left: isMobile ? 'auto' : 0, borderRight: '2px solid #bdbdbd' }}>
                                         {t('Work Item')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fffde7', color: '#f57f17', borderRight: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fffde7', color: '#f57f17', borderRight: '2px solid #bdbdbd' }}>
                                         {t('Day')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd', color: '#1565c0', borderRight: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e3f2fd', color: '#1565c0', borderRight: '2px solid #bdbdbd' }}>
                                         {t('Todate')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9', color: '#2e7d32', borderRight: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#e8f5e9', color: '#2e7d32', borderRight: '2px solid #bdbdbd' }}>
                                         {t('This month')}
                                     </TableCell>
-                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderRight: '1px solid #e0e0e0' }}>
+                                    <TableCell colSpan={2} align="center" sx={{ fontWeight: 'bold', bgcolor: '#fafafa', color: '#555', borderRight: '2px solid #bdbdbd' }}>
                                         {t('History')}
                                     </TableCell>
                                     {isChiefClerk && (
@@ -567,13 +567,13 @@ export default function CostAnalysis() {
                                             <TableCell align="right" sx={{ bgcolor: '#fffde7', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.dayAmount)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '2px solid #bdbdbd', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmtPerKg(parseFloat(item.dayAmount || '0'), weights.day, item.dayCostPerKgOverride)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ bgcolor: '#e3f2fd', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmt(item.todateAmount)}
                                             </TableCell>
-                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
+                                            <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '2px solid #bdbdbd', ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
                                                 {fmtPerKg(parseFloat(item.todateAmount || '0'), weights.todate, item.todateCostPerKgOverride)}
                                             </TableCell>
                                             <TableCell align="right" sx={{ bgcolor: '#e8f5e9', fontWeight: 500, ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) }}>
@@ -582,7 +582,7 @@ export default function CostAnalysis() {
                                             <TableCell align="right" sx={{ 
                                                 bgcolor: '#e8f5e9', 
                                                 fontWeight: 600, 
-                                                borderRight: '1px solid #e0e0e0',
+                                                borderRight: '2px solid #bdbdbd',
                                                 color: (item.budgetAmount || 0) - (parseFloat(item.todateAmount || '0')) >= 0 ? '#2e7d32' : '#d32f2f',
                                                 ...(idx === 0 && { borderTop: `2px solid ${colors.tab}` }) 
                                             }}>
@@ -626,13 +626,13 @@ export default function CostAnalysis() {
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#fffde7' }}>
                                                     {fmtTotal(totalDayAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '1px solid #e0e0e0' }}>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#fffde7', borderRight: '2px solid #bdbdbd' }}>
                                                     {fmtPerKg(totalDayAmount, weights.day)}
                                                 </TableCell>
                                                 <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e3f2fd' }}>
                                                     {fmtTotal(totalTodateAmount)}
                                                 </TableCell>
-                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '1px solid #e0e0e0' }}>
+                                                <TableCell align="right" sx={{ color: '#888', bgcolor: '#e3f2fd', borderRight: '2px solid #bdbdbd' }}>
                                                     {fmtPerKg(totalTodateAmount, weights.todate)}
                                                 </TableCell>
                                                  <TableCell align="right" sx={{ fontWeight: 'bold', color: colors.tab, bgcolor: '#e8f5e9' }}>
@@ -643,7 +643,7 @@ export default function CostAnalysis() {
                                                 <TableCell align="right" sx={{ 
                                                     fontWeight: 'bold', 
                                                     bgcolor: '#e8f5e9',
-                                                    borderRight: '1px solid #e0e0e0',
+                                                    borderRight: '2px solid #bdbdbd',
                                                     color: (cat.budgetAmount || cat.items.reduce((acc, it) => acc + (it.budgetAmount || 0), 0)) - totalTodateAmount >= 0 ? '#2e7d32' : '#d32f2f' 
                                                 }}>
                                                     {(cat.budgetAmount || cat.items.some(i => i.budgetAmount)) || totalTodateAmount > 0
