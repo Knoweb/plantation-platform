@@ -80,19 +80,27 @@ export const exportEveningMusterToExcel = async (
         currentRow++;
 
         // Column Headers
-        const headers = ['👨‍🌾 WORKER', 'DIVISION', 'FIELD', 'WORK TYPE', 'TYPE', 'AM', 'PM', 'TOTAL', 'OVER KILOS', 'OT HOURS', 'AATHAMA'];
+        const headers = ['👨‍🌾 WORKER', 'DIVISION', 'FIELD', 'WORK TYPE', 'TYPE', 'AM', 'PM', 'TOTAL', 'OVER KILOS', 'OT HOURS', 'අත්තම'];
         headers.forEach((h, i) => {
             const cell = sheet.getCell(currentRow, i + 1);
             cell.value = h;
             cell.font = { bold: true, size: 10, color: { argb: 'FF555555' } };
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: subHeaderBg } };
-            cell.border = { bottom: { style: 'thin', color: { argb: 'FFDDDDDD' } } };
-            cell.alignment = { horizontal: i > 0 ? 'center' : 'left' };
+            cell.border = { 
+                top: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                left: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                bottom: { style: 'thin', color: { argb: 'FFCCCCCC' } },
+                right: { style: 'thin', color: { argb: 'FFCCCCCC' } }
+            };
+            cell.alignment = { horizontal: i > 0 ? 'center' : 'left', vertical: 'middle' };
         });
         currentRow++;
 
-        items.forEach((item: any) => {
+        items.forEach((item: any, index: number) => {
             const total = (Number(item.amWeight) || 0) + (Number(item.pmWeight) || 0);
+            let attendance = (item.status || 'FULL').toUpperCase();
+            if (attendance === 'PRESENT') attendance = 'FULL';
+
             const rowData = [
                 `👤 ${item.workerName}`,
                 divisionName || '-',
@@ -104,14 +112,22 @@ export const exportEveningMusterToExcel = async (
                 total || '-',
                 item.overKilos || '-',
                 item.otHours || '-',
-                (item.status || 'FULL').toUpperCase()
+                attendance
             ];
+
+            const rowBgColor = index % 2 === 0 ? 'FFFFFFFF' : 'FFF9F9F9'; // Alternating row colors
 
             rowData.forEach((val, i) => {
                 const cell = sheet.getCell(currentRow, i + 1);
                 cell.value = val;
-                cell.alignment = { horizontal: i > 0 ? 'center' : 'left' };
-                cell.border = { bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } } };
+                cell.alignment = { horizontal: i > 0 ? 'center' : 'left', vertical: 'middle' };
+                cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: rowBgColor } };
+                cell.border = { 
+                    top: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                    left: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                    bottom: { style: 'thin', color: { argb: 'FFEEEEEE' } },
+                    right: { style: 'thin', color: { argb: 'FFEEEEEE' } }
+                };
                 
                 // Add conditional color for worker type
                 if (i === 4) { // Worker Type column
